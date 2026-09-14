@@ -20,6 +20,35 @@ def test_annotation_is_an_immutable_value_object() -> None:
         annotation.start = 3  # type: ignore[misc]
 
 
+def test_annotation_identity_is_the_span_until_a_document_qualifies_it() -> None:
+    unqualified = Annotation(2, 8, "3041563")
+    qualified = Annotation(2, 8, "3041563", "capital")
+
+    assert unqualified.identity == (None, 2, 8)
+    assert qualified.identity == ("capital", 2, 8)
+    assert qualified.span == (2, 8)
+
+
+def test_identical_spans_in_different_documents_do_not_collide() -> None:
+    expected = [
+        Annotation(0, 6, "3040686", "encamp"),
+        Annotation(0, 6, "3041204", "canillo"),
+    ]
+    predicted = [Annotation(0, 6, "3040686", "encamp")]
+
+    assert recognition_recall(expected, predicted) == 0.5
+    assert resolution_accuracy(expected, predicted) == 0.5
+
+
+def test_predictions_are_not_credited_to_another_document() -> None:
+    expected = [Annotation(0, 6, "3040686", "encamp")]
+    predicted = [Annotation(0, 6, "3040686", "canillo")]
+
+    assert recognition_precision(expected, predicted) == 0.0
+    assert recognition_recall(expected, predicted) == 0.0
+    assert resolution_accuracy(expected, predicted) == 0.0
+
+
 @pytest.mark.parametrize(
     ("expected", "predicted", "precision", "recall", "f1"),
     [

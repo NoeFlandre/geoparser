@@ -11,24 +11,36 @@ class Annotation:
     start: int
     end: int
     identifier: str | None = None
+    document_id: str | None = None
+    """The document this span belongs to, when annotations from several are
+    compared at once. Spans only identify a place within one document, so
+    without it the same offsets in two documents are the same annotation."""
 
     @property
     def span(self) -> tuple[int, int]:
         """Return the half-open character span."""
         return self.start, self.end
 
+    @property
+    def identity(self) -> tuple[str | None, int, int]:
+        """Return the span qualified by its document, if one was given."""
+        return self.document_id, self.start, self.end
 
-def _unique_spans(annotations: Sequence[Annotation]) -> set[tuple[int, int]]:
+
+Identity = tuple[str | None, int, int]
+
+
+def _unique_spans(annotations: Sequence[Annotation]) -> set[Identity]:
     """Return distinct spans, ignoring any resolution identifiers."""
-    return {annotation.span for annotation in annotations}
+    return {annotation.identity for annotation in annotations}
 
 
 def _resolved_pairs(
     annotations: Sequence[Annotation],
-) -> set[tuple[tuple[int, int], str]]:
+) -> set[tuple[Identity, str]]:
     """Return distinct spans paired with their available identifiers."""
     return {
-        (annotation.span, annotation.identifier)
+        (annotation.identity, annotation.identifier)
         for annotation in annotations
         if annotation.identifier is not None
     }
