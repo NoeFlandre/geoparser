@@ -194,6 +194,44 @@ class TestSpacyRecognizerInitialization:
         assert mock_spacy_load.call_count == 1
         assert recognizer.nlp == mock_nlp
 
+    @patch("geoparser.modules.recognizers.spacy.spacy.load")
+    def test_explains_missing_transformer_plugin(self, mock_spacy_load):
+        """Test that a missing transformer plugin gets actionable guidance."""
+        # Arrange
+        spacy_error = ValueError(
+            "[E002] Can't find factory for 'curated_transformer' for language "
+            "English (en). This usually happens when spaCy calls "
+            "`nlp.create_pipe` with a custom component name that's not "
+            "registered on the current language class."
+        )
+        mock_spacy_load.side_effect = spacy_error
+
+        # Act
+        with pytest.raises(ValueError) as raised:
+            SpacyRecognizer(model_name="en_core_web_trf")
+
+        # Assert
+        assert "spacy-curated-transformers" in str(raised.value)
+        assert "en_core_web_trf" in str(raised.value)
+        assert raised.value.__cause__ is spacy_error
+
+    @patch("geoparser.modules.recognizers.spacy.spacy.load")
+    def test_does_not_rewrite_available_factory_mentions(self, mock_spacy_load):
+        """Test that an unrelated error mentioning the factory stays unchanged."""
+        # Arrange
+        spacy_error = ValueError(
+            "[E002] Can't find factory for 'ner'. Available factories include "
+            "'curated_transformer', but this model has an invalid NER config."
+        )
+        mock_spacy_load.side_effect = spacy_error
+
+        # Act
+        with pytest.raises(ValueError) as raised:
+            SpacyRecognizer(model_name="en_core_web_sm")
+
+        # Assert
+        assert raised.value is spacy_error
+
 
 @pytest.mark.unit
 class TestSpacyRecognizerPredict:

@@ -8,6 +8,12 @@ from spacy.training import Example
 
 from geoparser.modules.recognizers import Recognizer
 
+# spaCy's transformer pipelines build their first component from this factory,
+# which lives in the spacy-curated-transformers plugin rather than in spaCy.
+TRANSFORMER_FACTORY = "curated_transformer"
+TRANSFORMER_PLUGIN = "spacy-curated-transformers"
+MISSING_TRANSFORMER_FACTORY = f"Can't find factory for '{TRANSFORMER_FACTORY}'"
+
 
 class SpacyRecognizer(Recognizer):
     """
@@ -59,20 +65,19 @@ class SpacyRecognizer(Recognizer):
 
         Returns:
             Configured spaCy Language model
+
+        Raises:
+            ValueError: If the model needs the transformer plugin and it is
+                not installed
         """
         # Try to load spaCy model, download if not available
         try:
-            nlp = spacy.load(self.model_name)
-        except OSError:
-            # Model not found, download it
-            # Progress text, not behaviour; the download and reload below are
-            # what the tests pin.
-            # pragma: no mutate start - progress prose, not behaviour; the
-            # download and the reload below are what the tests pin.
-            print(f"Downloading spaCy model '{self.model_name}'...")
-            # pragma: no mutate end
-            spacy.cli.download(self.model_name)
-            nlp = spacy.load(self.model_name)
+            nlp = self._load_or_download()
+        except ValueError as error:
+            hint = self._missing_plugin_hint(error)
+            if hint is None:
+                raise
+            raise ValueError(hint) from error
 
         # Remove non-NER components to optimize performance
         pipe_components = [
@@ -84,6 +89,38 @@ class SpacyRecognizer(Recognizer):
         for pipe_name in [p for p in pipe_components if p in nlp.pipe_names]:
             nlp.remove_pipe(pipe_name)
         return nlp
+
+    def _load_or_download(self) -> spacy.language.Language:
+        """Load the configured model, downloading it when necessary."""
+        try:
+            return spacy.load(self.model_name)
+        except OSError:
+            # Model not found, download it
+            # Progress text, not behaviour; the download and reload below are
+            # what the tests pin.
+            # pragma: no mutate start - progress prose, not behaviour; the
+            # download and reload below are what the tests pin.
+            print(f"Downloading spaCy model '{self.model_name}'...")
+            # pragma: no mutate end
+            spacy.cli.download(self.model_name)
+            return spacy.load(self.model_name)
+
+    def _missing_plugin_hint(self, error: ValueError) -> str | None:
+        """Return an actionable hint only for the missing transformer factory."""
+        if MISSING_TRANSFORMER_FACTORY not in str(error):
+            return None
+        # pragma: no mutate start - guidance prose; tests pin the named
+        # plugin, model, and original error.
+        return (
+            f"The spaCy model '{self.model_name}' is a transformer pipeline, so "
+            f"it needs the '{TRANSFORMER_PLUGIN}' plugin to supply its "
+            f"'{TRANSFORMER_FACTORY}' component, and that plugin is not "
+            f"installed. Install it with `pip install {TRANSFORMER_PLUGIN}`. "
+            f"It publishes no release for Python 3.14 or later; on those "
+            f"versions use a non-transformer model such as 'en_core_web_lg' "
+            f"instead. Original spaCy error: {error}"
+        )
+        # pragma: no mutate end
 
     def predict(self, texts: list[str]) -> list[list[tuple[int, int]] | None]:
         """

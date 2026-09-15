@@ -166,6 +166,8 @@ resolver_trf = SentenceTransformerResolver(model_name="dguzh/geo-all-distilrober
 project.run_recognizer(recognizer_trf, tag="transformer")
 project.run_resolver(resolver_trf, tag="transformer")
 
+The `en_core_web_trf` pipeline requires the `spacy-curated-transformers` plugin. Install the pinned compatible line with `pip install "spacy-curated-transformers>=0.3.1,<1"`. The plugin has no Python 3.14 release yet; on that interpreter use the non-transformer `en_core_web_lg` model instead.
+
 # Compare results from different configurations
 baseline_docs = project.get_documents(tag="baseline")
 transformer_docs = project.get_documents(tag="transformer")

@@ -32,6 +32,10 @@ dependencies = [
     "shapely>=2.1.2,<3",
     # 3.8.14 has cp314 wheels on GitHub but not on PyPI (explosion/spaCy#13949)
     "spacy>=3.8.7,<4,!=3.8.14",
+    # Transformer pipelines use the curated_transformer factory supplied by
+    # this plugin. It has no Python 3.14 release yet; SpacyRecognizer gives an
+    # actionable non-transformer fallback on that interpreter.
+    "spacy-curated-transformers>=0.3.1,<1; python_full_version < '3.14'",
     "sqlalchemy>=2.0.44,<3",
     "sqlmodel>=0.0.39,<0.0.40",
     "torch>=2.9.0,<3",
