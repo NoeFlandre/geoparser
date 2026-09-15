@@ -166,8 +166,6 @@ resolver_trf = SentenceTransformerResolver(model_name="dguzh/geo-all-distilrober
 project.run_recognizer(recognizer_trf, tag="transformer")
 project.run_resolver(resolver_trf, tag="transformer")
 
-The `en_core_web_trf` pipeline requires the `spacy-curated-transformers` plugin. Install the pinned compatible line with `pip install "spacy-curated-transformers>=0.3.1,<1"`. The plugin has no Python 3.14 release yet; on that interpreter use the non-transformer `en_core_web_lg` model instead.
-
 # Compare results from different configurations
 baseline_docs = project.get_documents(tag="baseline")
 transformer_docs = project.get_documents(tag="transformer")
@@ -180,6 +178,8 @@ print("\nTransformer Results:")
 for doc in transformer_docs:
     print(f"  Found {len(doc.toponyms)} toponyms")
 ```
+
+The `en_core_web_trf` pipeline requires the `spacy-curated-transformers` plugin. Install the pinned compatible line with `pip install "spacy-curated-transformers>=0.3.1,<1"`. The plugin has no Python 3.14 release yet; on that interpreter use the non-transformer `en_core_web_lg` model instead.
 
 Tags enable you to run multiple recognition and resolution strategies on the same corpus and compare their performance. Each tag maintains its own pointer to which recognizer and resolver were used, so when you call `get_documents(tag="baseline")`, you see only the results from the modules associated with that tag. It's important to understand that tags are designed to represent complete processing pipelines, not individual modules. When using tags, always run both a recognizer and a resolver with the same tag, as resolution results are inherently tied to recognition results. Using different tags for recognition and resolution within the same pipeline will lead to invalid or incomplete results.
 

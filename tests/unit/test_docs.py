@@ -44,6 +44,40 @@ def _public_text_files() -> list[Path]:
     return files
 
 
+def _fence_marker(line: str) -> str:
+    """Return the backtick or tilde run that opens or closes a code fence."""
+    stripped = line.lstrip(" ")
+    for char in ("`", "~"):
+        run = len(stripped) - len(stripped.lstrip(char))
+        if run >= 3:
+            return char * run
+    return ""
+
+
+def _outside_code_fences(text: str) -> str:
+    """Return a Markdown document with its fenced code blocks blanked out.
+
+    Fenced lines become empty rather than disappearing so that line numbers and
+    paragraph boundaries survive, which keeps a failure message pointing at the
+    same place a reader sees in the rendered page.
+    """
+    prose: list[str] = []
+    fence = ""
+    for line in text.splitlines():
+        marker = _fence_marker(line)
+        if not fence:
+            if marker:
+                fence = marker
+                prose.append("")
+            else:
+                prose.append(line)
+            continue
+        if marker and marker[0] == fence[0] and len(marker) >= len(fence):
+            fence = ""
+        prose.append("")
+    return "\n".join(prose)
+
+
 def _transformer_sources() -> list[Path]:
     """Find public sources that present the transformer model."""
     return sorted(
@@ -71,6 +105,36 @@ class TestTransformerDocumentation:
             assert PLUGIN in text, path
             assert "Python 3.14" in text, path
             assert ALTERNATIVE in text, path
+
+    def test_code_fences_are_blanked_out(self):
+        """Pin the stripper so the placement guard cannot pass vacuously."""
+        page = "\n".join(
+            [
+                "before",
+                "``` python",
+                "inside",
+                "```",
+                "after",
+            ]
+        )
+
+        assert _outside_code_fences(page) == "before\n\n\n\nafter"
+
+    def test_prerequisite_reads_as_prose(self):
+        """The prerequisite sits beside the example, not inside its fence.
+
+        A reader who meets this note inside a Python code fence would copy it
+        into their script, so presence alone is not enough: it has to land
+        outside every fenced code block on the page.
+        """
+        pages = [path for path in _transformer_sources() if path.suffix == ".md"]
+
+        assert pages
+        for path in pages:
+            prose = _outside_code_fences(path.read_text(encoding="utf-8"))
+            assert PLUGIN in prose, path
+            assert "Python 3.14" in prose, path
+            assert ALTERNATIVE in prose, path
 
     def test_non_markdown_examples_pin_plugin_version(self):
         """Notebook and build examples use the spaCy-compatible plugin line."""
