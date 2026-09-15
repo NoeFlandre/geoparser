@@ -61,7 +61,10 @@ def build_stages(
                     "geoparser",
                     "demo",
                     "--per-rule-ignores",
-                    "DEP002=accelerate|python-multipart|peft|protobuf|sentencepiece,"
+                    # These packages are loaded through entry points rather
+                    # than imports, so deptry cannot see them being used.
+                    "DEP002=accelerate|python-multipart|peft|protobuf"
+                    "|sentencepiece|spacy-curated-transformers,"
                     "DEP004=plotly",
                 ),
             ),
