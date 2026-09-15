@@ -70,14 +70,7 @@ class SpacyRecognizer(Recognizer):
             ValueError: If the model needs the transformer plugin and it is
                 not installed
         """
-        # Try to load spaCy model, download if not available
-        try:
-            nlp = self._load_or_download()
-        except ValueError as error:
-            hint = self._missing_plugin_hint(error)
-            if hint is None:
-                raise
-            raise ValueError(hint) from error
+        nlp = self._load_with_plugin_hint()
 
         # Remove non-NER components to optimize performance
         pipe_components = [
@@ -89,6 +82,20 @@ class SpacyRecognizer(Recognizer):
         for pipe_name in [p for p in pipe_components if p in nlp.pipe_names]:
             nlp.remove_pipe(pipe_name)
         return nlp
+
+    def _load_with_plugin_hint(self) -> spacy.language.Language:
+        """Load the model, explaining a missing transformer plugin.
+
+        Any other ValueError is left untouched, so unrelated spaCy failures
+        keep their original message and traceback.
+        """
+        try:
+            return self._load_or_download()
+        except ValueError as error:
+            hint = self._missing_plugin_hint(error)
+            if hint is None:
+                raise
+            raise ValueError(hint) from error
 
     def _load_or_download(self) -> spacy.language.Language:
         """Load the configured model, downloading it when necessary."""
