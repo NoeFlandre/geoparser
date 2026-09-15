@@ -188,6 +188,11 @@ pytest_add_cli_args = ["--no-cov", "-p", "no:cacheprovider"]
 # along or every mutant "fails" for want of a file.
 also_copy = [
     "docs",
+    # The documentation guard scans the public surfaces for transformer
+    # examples; without these it finds nothing to check and every mutant
+    # "fails" for want of a file rather than because it survived.
+    "README.md",
+    "demo",
     "scripts",
     ".github",
     ".dockerignore",

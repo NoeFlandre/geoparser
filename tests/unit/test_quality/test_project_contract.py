@@ -4,6 +4,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from tests.unit import test_docs as docs_guard
+
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10 CI.
@@ -58,6 +60,10 @@ def test_mutation_runner_copies_quality_support_modules() -> None:
         "Dockerfile",
         "mkdocs.yml",
     } <= copied_paths
+    # The documentation guard reads these public surfaces directly, so a
+    # mutant run that left them behind would fail for want of a file rather
+    # than because a mutant survived.
+    assert set(docs_guard.PUBLIC_ROOTS) <= copied_paths
 
 
 def test_public_documentation_uses_strict_mkdocs_material() -> None:
