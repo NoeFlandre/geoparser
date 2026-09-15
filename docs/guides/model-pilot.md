@@ -29,6 +29,15 @@ context window to 128 tokens, and converts only the CPU reranker to float32.
 These choices reduce peak local resource pressure without replacing real
 inference with mocks.
 
+## How the aggregate is counted
+
+The aggregate metrics compare annotations that carry the document they came
+from, so the same offsets in two sentences stay two annotations. The reported
+gold and predicted counts are the denominators those metrics use: on the
+committed run the resolution accuracy of 0.067 is one correct identifier out of
+the fifteen gold annotations, not out of a smaller set that collisions between
+documents had merged.
+
 ## Reading the resolution number
 
 The pilot reports exact-identifier resolution accuracy, and on the committed
