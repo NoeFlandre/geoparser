@@ -12,6 +12,8 @@ from scripts.pilot import (
     _limit_model_context,
     _use_cpu_float32,
     build_report,
+    collect_predictions,
+    combine_timings_ms,
     write_report,
 )
 
@@ -110,6 +112,98 @@ def test_build_report_records_annotations_metrics_and_timings() -> None:
         },
         "elapsed_ms": 12.346,
     }
+
+
+def test_aggregate_keeps_documents_with_identical_spans_apart() -> None:
+    cases = (
+        PilotCase("encamp", "Encamp welcomes hikers.", (PilotSpan(0, 6, "3040686"),)),
+        PilotCase("canillo", "Canillo lies north.", (PilotSpan(0, 7, "3041204"),)),
+        PilotCase("route", "Encamp and Canillo.", (PilotSpan(0, 6, "3040686"),)),
+    )
+    # Only the first document is recognized and resolved. Without document
+    # identity the third document's gold span collapses onto the first one's,
+    # hiding a missed annotation behind a perfect recall.
+    predictions = ((Annotation(0, 6, "3040686"),), (), ())
+
+    aggregate = build_report(cases, predictions, (1.0, 1.0, 1.0), models={})[
+        "aggregate"
+    ]
+
+    assert aggregate["gold_annotation_count"] == 3
+    assert aggregate["predicted_annotation_count"] == 1
+    assert aggregate["recognition"]["precision"] == 1.0
+    assert aggregate["recognition"]["recall"] == pytest.approx(1 / 3)
+    assert aggregate["resolution"]["accuracy"] == pytest.approx(1 / 3)
+
+
+def test_aggregate_counts_are_the_metric_denominators() -> None:
+    # A repeated span within one document is one annotation to the metrics, so
+    # the reported counts have to describe that same population.
+    cases = (
+        PilotCase("encamp", "Encamp welcomes hikers.", (PilotSpan(0, 6, "3040686"),)),
+    )
+    predictions = ((Annotation(0, 6, "3040686"), Annotation(0, 6, "3040686")),)
+
+    aggregate = build_report(cases, predictions, (1.0,), models={})["aggregate"]
+
+    assert aggregate["predicted_annotation_count"] == 1
+    assert aggregate["recognition"]["precision"] == 1.0
+
+
+def test_collect_predictions_follows_the_requested_document_order() -> None:
+    class FakeDocument:
+        def __init__(self, identifier: str, start: int) -> None:
+            self.id = identifier
+            self.toponyms = [
+                SimpleNamespace(
+                    start=start,
+                    end=start + 6,
+                    location=SimpleNamespace(identifier="3040686"),
+                )
+            ]
+
+    documents = {"a": FakeDocument("a", 0), "b": FakeDocument("b", 10)}
+
+    class FakeProject:
+        def get_documents(self, ids=None):
+            # The database has no ordering contract, so an unfiltered read is
+            # free to hand documents back in any order at all.
+            if ids is None:
+                return list(reversed(list(documents.values())))
+            return [documents[id] for id in ids]
+
+    predictions = collect_predictions(FakeProject(), ["a", "b"])
+
+    assert predictions == [
+        [Annotation(0, 6, "3040686")],
+        [Annotation(10, 16, "3040686")],
+    ]
+
+
+def test_combine_timings_ms_matches_documents_by_text() -> None:
+    cases = (
+        PilotCase("first", "Encamp.", ()),
+        PilotCase("second", "Canillo.", ()),
+    )
+    # Both phases observe the documents in their own order.
+    recognition_ms = {"Canillo.": 2.0, "Encamp.": 1.0}
+    resolution_ms = {"Encamp.": 0.5, "Canillo.": 0.25}
+
+    assert combine_timings_ms(cases, recognition_ms, resolution_ms) == [1.5, 2.25]
+
+
+def test_combine_timings_ms_treats_an_unobserved_document_as_untimed() -> None:
+    cases = (PilotCase("first", "Encamp.", ()),)
+
+    assert combine_timings_ms(cases, {}, {}) == [0.0]
+
+
+def test_pilot_case_texts_are_unique() -> None:
+    # Timings are matched back to their case by text, which only identifies a
+    # document while the texts stay distinct.
+    texts = [case.text for case in PILOT_CASES]
+
+    assert len(set(texts)) == len(texts)
 
 
 def test_build_report_rejects_misaligned_inputs() -> None:

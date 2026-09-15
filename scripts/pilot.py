@@ -9,7 +9,7 @@ import os
 import time
 import uuid
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -132,6 +132,21 @@ def _gold_annotations(case: PilotCase) -> tuple[Annotation, ...]:
     )
 
 
+def _qualified(case: PilotCase, annotations: Sequence[Annotation]) -> list[Annotation]:
+    """Tag annotations with their document for corpus-wide comparison.
+
+    Offsets repeat across the pilot documents, so comparing them corpus-wide
+    without the document they came from would let one document's span stand in
+    for another's.
+    """
+    return [replace(annotation, document_id=case.case_id) for annotation in annotations]
+
+
+def _distinct_annotation_count(annotations: Sequence[Annotation]) -> int:
+    """Count the annotations the metrics compare, after de-duplication."""
+    return len({annotation.identity for annotation in annotations})
+
+
 def _limit_model_context(resolver: Any) -> None:
     """Bound the real resolver window for the short, fixed pilot documents."""
     resolver.transformer.max_seq_length = MAX_SEQUENCE_LENGTH
@@ -205,8 +220,16 @@ def build_report(
             cases, predictions, timings_ms, strict=True
         )
     ]
-    gold = tuple(annotation for case in cases for annotation in _gold_annotations(case))
-    predicted = tuple(annotation for document in predictions for annotation in document)
+    gold = [
+        annotation
+        for case in cases
+        for annotation in _qualified(case, _gold_annotations(case))
+    ]
+    predicted = [
+        annotation
+        for case, document in zip(cases, predictions, strict=True)
+        for annotation in _qualified(case, document)
+    ]
 
     from geoparser.evaluation import (
         recognition_f1,
@@ -221,8 +244,8 @@ def build_report(
         "configuration": dict(configuration or {}),
         "aggregate": {
             "document_count": len(cases),
-            "gold_annotation_count": len(gold),
-            "predicted_annotation_count": len(predicted),
+            "gold_annotation_count": _distinct_annotation_count(gold),
+            "predicted_annotation_count": _distinct_annotation_count(predicted),
             "recognition": {
                 "precision": recognition_precision(gold, predicted),
                 "recall": recognition_recall(gold, predicted),
@@ -320,6 +343,36 @@ def _document_annotations(document: object) -> list[Annotation]:
     ]
 
 
+def collect_predictions(
+    project: Any, document_ids: Sequence[Any]
+) -> list[list[Annotation]]:
+    """Read predictions back in the order the documents were created.
+
+    An unfiltered read has no ordering contract, so the documents are asked
+    for by the IDs ``Project.create_documents`` returned.
+    """
+    return [
+        _document_annotations(document)
+        for document in project.get_documents(document_ids)
+    ]
+
+
+def combine_timings_ms(
+    cases: Sequence[PilotCase],
+    recognition_ms: Mapping[str, float],
+    resolution_ms: Mapping[str, float],
+) -> list[float]:
+    """Sum the two phases' per-document durations, matched by document text.
+
+    Each phase observes the documents in whatever order it is handed them, so
+    the text is what relates a measurement back to its case.
+    """
+    return [
+        recognition_ms.get(case.text, 0.0) + resolution_ms.get(case.text, 0.0)
+        for case in cases
+    ]
+
+
 def run_pilot(
     *,
     config_path: Path,
@@ -342,10 +395,15 @@ def run_pilot(
     torch.set_num_threads(torch_threads)
 
     class TimedGLiNER2Recognizer(GLiNER2Recognizer):
-        """Record one real recognition duration per input document."""
+        """Record one real recognition duration per input document, by text.
+
+        The recognizer is handed the documents in whatever order the project
+        read them back, so the text rather than the position is what relates a
+        duration to its pilot case.
+        """
 
         def __init__(self) -> None:
-            self.document_timings_ms: list[float] = []
+            self.document_timings_ms: dict[str, float] = {}
             super().__init__()
 
         def _document_references(self, text: str) -> list[tuple[int, int]]:
@@ -353,7 +411,10 @@ def run_pilot(
             try:
                 return super()._document_references(text)
             finally:
-                self.document_timings_ms.append((time.perf_counter() - started) * 1000)
+                elapsed_ms = (time.perf_counter() - started) * 1000
+                self.document_timings_ms[text] = (
+                    self.document_timings_ms.get(text, 0.0) + elapsed_ms
+                )
 
     class TimedJinaResolver(JinaResolver):
         """Record per-document resolution-decision durations in a batch."""
@@ -392,7 +453,7 @@ def run_pilot(
     texts = [case.text for case in PILOT_CASES]
     project = Project(f"pilot-{uuid.uuid4().hex[:8]}")
     try:
-        project.create_documents(texts)
+        document_ids = project.create_documents(texts)
 
         # Keep the two largest model graphs out of memory at the same time.
         # The project and service layers preserve the same end-to-end database
@@ -404,7 +465,7 @@ def run_pilot(
             time.perf_counter() - recognition_started
         ) * 1000
         recognizer_model_name = recognizer.model_name
-        recognition_timings_ms = tuple(recognizer.document_timings_ms)
+        recognition_timings_ms = dict(recognizer.document_timings_ms)
         del recognizer
         gc.collect()
 
@@ -419,13 +480,10 @@ def run_pilot(
         resolution_started = time.perf_counter()
         project.run_resolver(resolver)
         resolution_batch_elapsed_ms = (time.perf_counter() - resolution_started) * 1000
-        documents = project.get_documents()
-        predictions = [_document_annotations(document) for document in documents]
-        timings_ms = [
-            recognition_timings_ms[index]
-            + resolver.document_timings_ms.get(case.text, 0.0)
-            for index, case in enumerate(PILOT_CASES)
-        ]
+        predictions = collect_predictions(project, document_ids)
+        timings_ms = combine_timings_ms(
+            PILOT_CASES, recognition_timings_ms, resolver.document_timings_ms
+        )
     finally:
         project.delete()
 
