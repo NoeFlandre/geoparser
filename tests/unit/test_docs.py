@@ -1,32 +1,41 @@
 """Regression checks for public spaCy transformer documentation."""
 
-import subprocess
 from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-GUARD = Path(__file__).resolve()
 MODEL = "en_core_web_trf"
 PLUGIN = "spacy-curated-transformers"
 PIN = "spacy-curated-transformers>=0.3.1,<1"
 ALTERNATIVE = "en_core_web_lg"
+# The surfaces a reader meets before running anything: the landing page, the
+# published documentation, and the runnable demo.
+PUBLIC_ROOTS = ("README.md", "docs", "demo")
 
 
-def _tracked_text_files() -> list[Path]:
-    """Return tracked text files that can contain public examples."""
-    result = subprocess.run(
-        ["git", "ls-files", "-z"],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        check=True,
-        text=True,
-    )
+def _repository_root() -> Path:
+    """Return the checkout that carries the public documentation.
+
+    Walking up beats a fixed parent count because mutmut runs the suite from a
+    copied ``mutants`` tree that holds only the mutated package. That copy has
+    no documentation to scan, and no repository metadata either, so asking the
+    version control system for the file list fails there outright.
+    """
+    for candidate in Path(__file__).resolve().parents:
+        if all((candidate / root).exists() for root in PUBLIC_ROOTS):
+            return candidate
+    raise RuntimeError(f"no checkout above {__file__} contains {PUBLIC_ROOTS}")
+
+
+def _public_text_files() -> list[Path]:
+    """Return readable text files on the project's public surfaces."""
+    root = _repository_root()
+    candidates: list[Path] = []
+    for name in PUBLIC_ROOTS:
+        source = root / name
+        candidates.extend([source] if source.is_file() else sorted(source.rglob("*")))
     files = []
-    for name in result.stdout.split("\0"):
-        if not name:
-            continue
-        path = REPO_ROOT / name
+    for path in candidates:
         try:
             path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
@@ -36,13 +45,11 @@ def _tracked_text_files() -> list[Path]:
 
 
 def _transformer_sources() -> list[Path]:
-    """Find tracked public sources that present the transformer model."""
+    """Find public sources that present the transformer model."""
     return sorted(
         path
-        for path in _tracked_text_files()
-        if path != GUARD
-        and "tests" not in path.relative_to(REPO_ROOT).parts
-        and MODEL in path.read_text(encoding="utf-8")
+        for path in _public_text_files()
+        if MODEL in path.read_text(encoding="utf-8")
     )
 
 
