@@ -40,6 +40,7 @@ def build_stages(
     artifact_dir = artifact_dir.resolve()
     coverage_report = artifact_dir / "coverage-html"
     coverage_data = artifact_dir / ".coverage"
+    demo_docker_tag = f"{docker_tag}-demo"
 
     stages = [
         Stage("baseline", (_uv("pytest", "--cov-fail-under=100"),), root),
@@ -169,6 +170,23 @@ def build_stages(
                     ".",
                 ),
                 ("docker", "run", "--rm", docker_tag),
+                (
+                    "docker",
+                    "build",
+                    "--file",
+                    "demo/Dockerfile",
+                    "--tag",
+                    demo_docker_tag,
+                    ".",
+                ),
+                (
+                    "docker",
+                    "run",
+                    "--rm",
+                    demo_docker_tag,
+                    "jupyter",
+                    "--version",
+                ),
             )
         )
     stages.extend(
@@ -269,6 +287,7 @@ def main(argv: list[str] | None = None) -> int:
         finally:
             if not args.skip_docker:
                 cleanup_docker_image(root, environment, docker_tag)
+                cleanup_docker_image(root, environment, f"{docker_tag}-demo")
 
 
 if __name__ == "__main__":

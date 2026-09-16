@@ -1,4 +1,5 @@
 import random
+import sys
 import typing as t
 from pathlib import Path
 
@@ -12,7 +13,15 @@ from geoparser.modules.recognizers import Recognizer
 # which lives in the spacy-curated-transformers plugin rather than in spaCy.
 TRANSFORMER_FACTORY = "curated_transformer"
 TRANSFORMER_PLUGIN = "spacy-curated-transformers"
+TRANSFORMER_PLUGIN_REQUIREMENT = "spacy-curated-transformers>=0.3.1,<1"
+TRANSFORMER_INSTALL_COMMAND = f'pip install "{TRANSFORMER_PLUGIN_REQUIREMENT}"'
+TRANSFORMER_PLUGIN_UNAVAILABLE_FROM = (3, 14)
 MISSING_TRANSFORMER_FACTORY = f"Can't find factory for '{TRANSFORMER_FACTORY}'"
+LANGUAGE_FALLBACK_MODELS = {
+    "de": "de_core_news_lg",
+    "en": "en_core_web_lg",
+    "fr": "fr_core_news_lg",
+}
 
 
 class SpacyRecognizer(Recognizer):
@@ -116,18 +125,31 @@ class SpacyRecognizer(Recognizer):
         """Return an actionable hint only for the missing transformer factory."""
         if MISSING_TRANSFORMER_FACTORY not in str(error):
             return None
+        if sys.version_info >= TRANSFORMER_PLUGIN_UNAVAILABLE_FROM:
+            fallback = self._non_transformer_fallback()
+            availability_hint = (
+                "The plugin has no release for Python 3.14 or later; use "
+                f"{fallback} instead."
+            )
+        else:
+            availability_hint = f"Install it with `{TRANSFORMER_INSTALL_COMMAND}`."
         # pragma: no mutate start - guidance prose; tests pin the named
         # plugin, model, and original error.
         return (
             f"The spaCy model '{self.model_name}' is a transformer pipeline, so "
             f"it needs the '{TRANSFORMER_PLUGIN}' plugin to supply its "
             f"'{TRANSFORMER_FACTORY}' component, and that plugin is not "
-            f"installed. Install it with `pip install {TRANSFORMER_PLUGIN}`. "
-            f"It publishes no release for Python 3.14 or later; on those "
-            f"versions use a non-transformer model such as 'en_core_web_lg' "
-            f"instead. Original spaCy error: {error}"
+            f"installed. {availability_hint} Original spaCy error: {error}"
         )
         # pragma: no mutate end
+
+    def _non_transformer_fallback(self) -> str:
+        """Return a non-transformer model recommendation for this language."""
+        language_code = self.model_name.split("_", 1)[0].lower()
+        fallback_model = LANGUAGE_FALLBACK_MODELS.get(language_code)
+        if fallback_model is None:
+            return "a non-transformer spaCy model for the requested language"
+        return f"the non-transformer '{fallback_model}' model"
 
     def predict(self, texts: list[str]) -> list[list[tuple[int, int]] | None]:
         """

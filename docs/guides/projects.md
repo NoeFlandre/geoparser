@@ -179,7 +179,7 @@ for doc in transformer_docs:
     print(f"  Found {len(doc.toponyms)} toponyms")
 ```
 
-The `en_core_web_trf` pipeline requires the `spacy-curated-transformers` plugin. Install the pinned compatible line with `pip install "spacy-curated-transformers>=0.3.1,<1"`. The plugin has no Python 3.14 release yet; on that interpreter use the non-transformer `en_core_web_lg` model instead.
+The `en_core_web_trf` pipeline requires the `spacy-curated-transformers` plugin. Install the pinned compatible line with `pip install "spacy-curated-transformers>=0.3.1,<1"`. The plugin has no Python 3.14 release yet; on that interpreter use a non-transformer model for the requested language, for example `en_core_web_lg` for English.
 
 Tags enable you to run multiple recognition and resolution strategies on the same corpus and compare their performance. Each tag maintains its own pointer to which recognizer and resolver were used, so when you call `get_documents(tag="baseline")`, you see only the results from the modules associated with that tag. It's important to understand that tags are designed to represent complete processing pipelines, not individual modules. When using tags, always run both a recognizer and a resolver with the same tag, as resolution results are inherently tied to recognition results. Using different tags for recognition and resolution within the same pipeline will lead to invalid or incomplete results.
 

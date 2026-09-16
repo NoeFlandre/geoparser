@@ -79,6 +79,23 @@ def test_quality_runner_uses_the_requested_ephemeral_docker_tag(tmp_path: Path) 
         ".",
     ) in smoke.commands
     assert ("docker", "run", "--rm", "geoparser:test") in smoke.commands
+    assert (
+        "docker",
+        "build",
+        "--file",
+        "demo/Dockerfile",
+        "--tag",
+        "geoparser:test-demo",
+        ".",
+    ) in smoke.commands
+    assert (
+        "docker",
+        "run",
+        "--rm",
+        "geoparser:test-demo",
+        "jupyter",
+        "--version",
+    ) in smoke.commands
 
 
 def test_quality_runner_removes_only_the_ephemeral_docker_image(
@@ -114,8 +131,9 @@ def test_quality_runner_cleans_the_image_after_stages(monkeypatch) -> None:
     )
 
     assert main(["--skip-mutation"]) == 0
-    assert len(tags) == 1
+    assert len(tags) == 2
     assert tags[0].startswith("geoparser:qa-geoparser-qa-")
+    assert tags[1] == f"{tags[0]}-demo"
 
 
 def test_quality_runner_sets_deterministic_python_environment(monkeypatch) -> None:

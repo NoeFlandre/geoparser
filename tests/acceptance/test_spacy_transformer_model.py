@@ -2,8 +2,12 @@
 
 from unittest.mock import Mock, patch
 
+import catalogue
 import pytest
+import spacy
+from confection import Config
 from pytest_bdd import given, parsers, scenarios, then, when
+from spacy.util import registry
 
 from geoparser.modules.recognizers.spacy import SpacyRecognizer
 
@@ -58,3 +62,25 @@ def original_error_kept(model_state: dict[str, object]) -> None:
     assert isinstance(error, ValueError)
     assert "[E002]" in str(error)
     assert error.__cause__ is model_state["spacy_error"]
+
+
+def test_real_spacy_loader_reaches_missing_factory_fallback(tmp_path, monkeypatch):
+    """Exercise the fallback through spaCy's real local-model loader."""
+    monkeypatch.setattr(registry._entry_point_factories, "get_all", lambda: {})
+    factory_key = (*registry.factories.namespace, "curated_transformer")
+    monkeypatch.delitem(catalogue.REGISTRY, factory_key, raising=False)
+
+    nlp = spacy.blank("en")
+    model_path = tmp_path / "local_transformer_model"
+    nlp.to_disk(model_path)
+    config = Config().from_disk(model_path / "config.cfg")
+    config["nlp"]["pipeline"] = ["curated_transformer"]
+    config["components"]["curated_transformer"] = {"factory": "curated_transformer"}
+    config.to_disk(model_path / "config.cfg")
+
+    with pytest.raises(ValueError) as raised:
+        SpacyRecognizer(model_name=str(model_path))
+
+    assert "spacy-curated-transformers" in str(raised.value)
+    assert "Can't find factory for 'curated_transformer'" in str(raised.value)
+    assert raised.value.__cause__ is not None

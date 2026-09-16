@@ -134,6 +134,7 @@ class TestTransformerDocumentation:
             prose = _outside_code_fences(path.read_text(encoding="utf-8"))
             assert PLUGIN in prose, path
             assert "Python 3.14" in prose, path
+            assert "requested language" in prose, path
             assert ALTERNATIVE in prose, path
 
     def test_non_markdown_examples_pin_plugin_version(self):
