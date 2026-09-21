@@ -247,8 +247,11 @@ class TestSpacyRecognizerInitialization:
             SpacyRecognizer(model_name="en_core_web_trf")
 
         assert "pip install" not in str(raised.value)
-        assert "has no release for Python 3.14 or later" in str(raised.value)
-        assert "en_core_web_lg" in str(raised.value)
+        assert (
+            "The plugin has no release for Python 3.14 or later; use "
+            "the non-transformer 'en_core_web_lg' model instead."
+            in str(raised.value)
+        )
 
     @pytest.mark.parametrize(
         ("model_name", "fallback"),
@@ -256,6 +259,9 @@ class TestSpacyRecognizerInitialization:
             ("de_dep_news_trf", "de_core_news_lg"),
             ("fr_dep_news_trf", "fr_core_news_lg"),
             ("en_core_web_trf", "en_core_web_lg"),
+            # Upper case: the language code is normalized before lookup, so a
+            # model named this way still finds its fallback.
+            ("EN_core_web_trf", "en_core_web_lg"),
             ("xx_custom_trf", None),
         ],
     )
@@ -272,11 +278,17 @@ class TestSpacyRecognizerInitialization:
         )
 
         assert hint is not None
+        expected_fallback = (
+            "a non-transformer spaCy model for the requested language"
+            if fallback is None
+            else f"the non-transformer '{fallback}' model"
+        )
+        assert recognizer._non_transformer_fallback() == expected_fallback
         if fallback is None:
-            assert "a non-transformer spaCy model for the requested language" in hint
+            assert expected_fallback in hint
             assert "en_core_web_lg" not in hint
         else:
-            assert fallback in hint
+            assert expected_fallback in hint
 
     @patch("geoparser.modules.recognizers.spacy.spacy.load")
     def test_does_not_rewrite_available_factory_mentions(self, mock_spacy_load):

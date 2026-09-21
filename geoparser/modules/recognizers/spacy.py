@@ -145,7 +145,7 @@ class SpacyRecognizer(Recognizer):
 
     def _non_transformer_fallback(self) -> str:
         """Return a non-transformer model recommendation for this language."""
-        language_code = self.model_name.split("_", 1)[0].lower()
+        language_code = self.model_name.partition("_")[0].lower()
         fallback_model = LANGUAGE_FALLBACK_MODELS.get(language_code)
         if fallback_model is None:
             return "a non-transformer spaCy model for the requested language"
