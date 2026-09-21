@@ -47,11 +47,11 @@ The two pre-configured gazetteers cover the modern world and Switzerland in deta
 
 ## Project Status
 
-The library is under active development and its architecture is still evolving; while the version remains below 1.0, minor releases may make breaking changes. [ROADMAP.md](https://github.com/dguzh/geoparser/blob/main/ROADMAP.md) describes the larger changes we intend to make.
+The library is under active development and its architecture is still evolving; while the version remains below 1.0, minor releases may make breaking changes. [ROADMAP.md](https://github.com/NoeFlandre/geoparser/blob/main/ROADMAP.md) describes the larger changes we intend to make.
 
 ## Contributing
 
-The Irchel Geoparser is open source. Questions, bug reports, and ideas are all welcome on the [issue tracker](https://github.com/dguzh/geoparser/issues), and contributions are welcome too — see [CONTRIBUTING.md](https://github.com/dguzh/geoparser/blob/main/CONTRIBUTING.md).
+The Irchel Geoparser is open source. Questions, bug reports, and ideas are all welcome on the [issue tracker](https://github.com/NoeFlandre/geoparser/issues), and contributions are welcome too — see [CONTRIBUTING.md](https://github.com/NoeFlandre/geoparser/blob/main/CONTRIBUTING.md).
 
 ## Acknowledgments
 
@@ -59,4 +59,4 @@ The Irchel Geoparser originated as part of Diego Gomes' Master's thesis and was 
 
 ## License
 
-The Irchel Geoparser is released under the [MIT License](https://github.com/dguzh/geoparser/blob/main/LICENSE). It depends on a number of third-party libraries, listed in [pyproject.toml](https://github.com/dguzh/geoparser/blob/main/pyproject.toml). Each is distributed separately under its own license, which pip installs alongside it.
+The Irchel Geoparser is released under the [MIT License](https://github.com/NoeFlandre/geoparser/blob/main/LICENSE). It depends on a number of third-party libraries, listed in [pyproject.toml](https://github.com/NoeFlandre/geoparser/blob/main/pyproject.toml). Each is distributed separately under its own license, which pip installs alongside it.

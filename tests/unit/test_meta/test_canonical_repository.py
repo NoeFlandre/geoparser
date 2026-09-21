@@ -26,7 +26,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 
-CANONICAL_SLUG = "dguzh/geoparser"
+CANONICAL_SLUG = "NoeFlandre/geoparser"
 CANONICAL_URL = f"https://github.com/{CANONICAL_SLUG}"
 
 # ``github.com`` followed by an owner and this repository's name, however the

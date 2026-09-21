@@ -615,7 +615,7 @@ Neither is a fault in the configuration, and neither is visible from the build o
 
 Here is the complete configuration used by the walkthrough:
 
-[Download `pleiades.yaml`](https://github.com/dguzh/geoparser/blob/main/docs/examples/pleiades.yaml)
+[Download `pleiades.yaml`](https://github.com/NoeFlandre/geoparser/blob/main/docs/examples/pleiades.yaml)
 
 The repository keeps this example beside the documentation so it can be
 validated and reused without copying a large data artifact.
@@ -777,4 +777,4 @@ Downloaded files are discarded once the build finishes, which means every rebuil
 
 ### Further Examples
 
-The pre-configured gazetteers are built exactly the same way, and their files are worth reading once you have your own working: [geonames.yaml](https://github.com/dguzh/geoparser/blob/main/geoparser/gazetteer/configs/geonames.yaml) (a large tabular dataset with four lookup joins) and [swissnames3d.yaml](https://github.com/dguzh/geoparser/blob/main/geoparser/gazetteer/configs/swissnames3d.yaml) (six spatial sources, chained spatial joins, and multi-part geometry merging).
+The pre-configured gazetteers are built exactly the same way, and their files are worth reading once you have your own working: [geonames.yaml](https://github.com/NoeFlandre/geoparser/blob/main/geoparser/gazetteer/configs/geonames.yaml) (a large tabular dataset with four lookup joins) and [swissnames3d.yaml](https://github.com/NoeFlandre/geoparser/blob/main/geoparser/gazetteer/configs/swissnames3d.yaml) (six spatial sources, chained spatial joins, and multi-part geometry merging).

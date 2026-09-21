@@ -1,6 +1,6 @@
 # Roadmap
 
-This file collects the larger changes we intend to make to the Irchel Geoparser. They are directions rather than scheduled work, and none of them are needed to use the library as it is today. Feedback on any of them is welcome in the [issue tracker](https://github.com/dguzh/geoparser/issues).
+This file collects the larger changes we intend to make to the Irchel Geoparser. They are directions rather than scheduled work, and none of them are needed to use the library as it is today. Feedback on any of them is welcome in the [issue tracker](https://github.com/NoeFlandre/geoparser/issues).
 
 ## Modular packaging
 
