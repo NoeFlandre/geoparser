@@ -22,6 +22,13 @@ GPUS="${GPUS:-1}"
 REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
 RESULTS="${RESULTS:-$HOME/geoparser-bench}"
 CLUSTER="${CLUSTER:-}"
+# besteffort takes GPUs that would otherwise sit idle, and gives them straight
+# back when someone with a claim on them asks. The job is killed rather than
+# queued behind, which is why it checkpoints per chunk; paired with OAR's
+# idempotent type it is resubmitted automatically and resumes where it stopped.
+# Some sites grant a user no other access to a GPU cluster, and OAR says so:
+# "You can only access the required resources in besteffort."
+QUEUE="${QUEUE:-default}"
 
 mkdir -p "$RESULTS/logs"
 
@@ -45,16 +52,22 @@ if [[ -n "$existing" ]]; then
 fi
 
 RESOURCES="host=1/gpu=${GPUS},walltime=${WALLTIME}"
-PROPERTY=()
+OPTIONS=()
 if [[ -n "$CLUSTER" ]]; then
-    PROPERTY=(-p "cluster='${CLUSTER}'")
+    OPTIONS+=(-p "cluster='${CLUSTER}'")
+fi
+if [[ "$QUEUE" == "besteffort" ]]; then
+    # idempotent tells OAR to resubmit the job when it is preempted. That is
+    # only safe because the work resumes from its checkpoint rather than
+    # starting over, so a resubmission costs the current chunk and no more.
+    OPTIONS+=(-q besteffort -t besteffort -t idempotent)
 fi
 
-echo "submitting: oarsub -l ${RESOURCES} ${PROPERTY[*]-}"
+echo "submitting: oarsub -l ${RESOURCES} ${OPTIONS[*]-}"
 oarsub \
     -n "$JOB_NAME" \
     -l "$RESOURCES" \
-    "${PROPERTY[@]}" \
+    "${OPTIONS[@]}" \
     -O "$RESULTS/logs/%jobid%.out" \
     -E "$RESULTS/logs/%jobid%.err" \
     --checkpoint 600 \
