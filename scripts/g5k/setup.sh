@@ -16,8 +16,16 @@ set -euo pipefail
 VENV="${VENV:-$HOME/geoparser-venv}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# pip caches its downloads under ~/.cache by default, which on a site with a
+# 24 GB quota costs more than the environment it is installing -- the CUDA
+# wheels alone are gigabytes, kept once in the cache and again in the venv.
+# Sending the cache to node-local scratch keeps /home for what must persist.
+export PIP_CACHE_DIR="${PIP_CACHE_DIR:-/tmp/pip-cache-$USER}"
+mkdir -p "$PIP_CACHE_DIR"
+
 echo "repository: $REPO_ROOT"
 echo "virtualenv: $VENV"
+echo "pip cache:  $PIP_CACHE_DIR (kept off /home)"
 
 if [[ ! -d "$VENV" ]]; then
     python3 -m venv "$VENV"
