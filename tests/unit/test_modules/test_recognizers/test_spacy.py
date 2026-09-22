@@ -249,8 +249,7 @@ class TestSpacyRecognizerInitialization:
         assert "pip install" not in str(raised.value)
         assert (
             "The plugin has no release for Python 3.14 or later; use "
-            "the non-transformer 'en_core_web_lg' model instead."
-            in str(raised.value)
+            "the non-transformer 'en_core_web_lg' model instead." in str(raised.value)
         )
 
     @pytest.mark.parametrize(
