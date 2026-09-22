@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from scripts.quality_gauntlet import (
+    Stage,
     build_stages,
     cleanup_docker_image,
     main,
@@ -27,6 +28,33 @@ def test_quality_stages_have_the_required_order(tmp_path: Path) -> None:
     ]
     ty_command = next(stage for stage in stages if stage.name == "ty").commands[0]
     assert ty_command[-3:] == ("geoparser", "scripts", "tests")
+
+
+def _dep002_ignores(stages: list[Stage]) -> set[str]:
+    dependencies = next(stage for stage in stages if stage.name == "dependencies")
+    deptry = next(command for command in dependencies.commands if "deptry" in command)
+    ignores = deptry[deptry.index("--per-rule-ignores") + 1]
+    rule = next(part for part in ignores.split(",") if part.startswith("DEP002="))
+    return set(rule.removeprefix("DEP002=").split("|"))
+
+
+def test_dependency_stage_ignores_only_entry_point_loaded_packages(
+    tmp_path: Path,
+) -> None:
+    """deptry cannot see packages that a runtime loads through entry points.
+
+    spacy-curated-transformers supplies the ``curated_transformer`` factory that
+    SpacyRecognizer names as a string, so it is used without ever being
+    imported. Pinning the set keeps the allowance from quietly widening.
+    """
+    assert _dep002_ignores(build_stages(Path("/repo"), tmp_path)) == {
+        "accelerate",
+        "peft",
+        "protobuf",
+        "python-multipart",
+        "sentencepiece",
+        "spacy-curated-transformers",
+    }
 
 
 def test_uv_quality_commands_do_not_resolve_network_dependencies(
@@ -85,6 +113,23 @@ def test_quality_runner_uses_the_requested_ephemeral_docker_tag(tmp_path: Path) 
         ".",
     ) in smoke.commands
     assert ("docker", "run", "--rm", "geoparser:test") in smoke.commands
+    assert (
+        "docker",
+        "build",
+        "--file",
+        "demo/Dockerfile",
+        "--tag",
+        "geoparser:test-demo",
+        ".",
+    ) in smoke.commands
+    assert (
+        "docker",
+        "run",
+        "--rm",
+        "geoparser:test-demo",
+        "jupyter",
+        "--version",
+    ) in smoke.commands
 
 
 def test_quality_runner_removes_only_the_ephemeral_docker_image(
@@ -120,8 +165,9 @@ def test_quality_runner_cleans_the_image_after_stages(monkeypatch) -> None:
     )
 
     assert main(["--skip-mutation"]) == 0
-    assert len(tags) == 1
+    assert len(tags) == 2
     assert tags[0].startswith("geoparser:qa-geoparser-qa-")
+    assert tags[1] == f"{tags[0]}-demo"
 
 
 def test_quality_runner_sets_deterministic_python_environment(monkeypatch) -> None:

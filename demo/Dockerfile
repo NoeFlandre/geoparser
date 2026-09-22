@@ -9,8 +9,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install geoparser and demo dependencies
-RUN pip install --no-cache-dir geoparser jupyter plotly
+# Install geoparser and demo dependencies. The transformer pipeline requires
+# the plugin version compatible with spaCy 3.8.
+RUN pip install --no-cache-dir geoparser jupyter plotly \
+    "spacy-curated-transformers>=0.3.1,<1"
 
 # Download spaCy models
 RUN python -m spacy download en_core_web_sm && \

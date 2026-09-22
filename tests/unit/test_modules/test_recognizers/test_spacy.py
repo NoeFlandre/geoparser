@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+import geoparser.modules.recognizers.spacy as spacy_module
 from geoparser.modules.recognizers.spacy import SpacyRecognizer
 
 
@@ -193,6 +194,117 @@ class TestSpacyRecognizerInitialization:
         # spacy.load should be called only once (no download needed)
         assert mock_spacy_load.call_count == 1
         assert recognizer.nlp == mock_nlp
+
+    @patch("geoparser.modules.recognizers.spacy.spacy.load")
+    def test_explains_missing_transformer_plugin(self, mock_spacy_load):
+        """Test that a missing transformer plugin gets actionable guidance."""
+        # Arrange
+        spacy_error = ValueError(
+            "[E002] Can't find factory for 'curated_transformer' for language "
+            "English (en). This usually happens when spaCy calls "
+            "`nlp.create_pipe` with a custom component name that's not "
+            "registered on the current language class."
+        )
+        mock_spacy_load.side_effect = spacy_error
+
+        # Act
+        with pytest.raises(ValueError) as raised:
+            SpacyRecognizer(model_name="en_core_web_trf")
+
+        # Assert
+        assert "spacy-curated-transformers" in str(raised.value)
+        assert "en_core_web_trf" in str(raised.value)
+        assert raised.value.__cause__ is spacy_error
+
+    def test_pins_transformer_install_command_before_python_314(self, monkeypatch):
+        """Test that supported Python versions receive the exact install spec."""
+        monkeypatch.setattr(spacy_module.sys, "version_info", (3, 13))
+        spacy_error = ValueError("[E002] Can't find factory for 'curated_transformer'")
+
+        with (
+            patch(
+                "geoparser.modules.recognizers.spacy.spacy.load",
+                side_effect=spacy_error,
+            ),
+            pytest.raises(ValueError) as raised,
+        ):
+            SpacyRecognizer(model_name="en_core_web_trf")
+
+        assert 'pip install "spacy-curated-transformers>=0.3.1,<1"' in str(raised.value)
+
+    def test_uses_language_fallback_on_python_314(self, monkeypatch):
+        """Test that Python 3.14 avoids recommending an unavailable plugin."""
+        monkeypatch.setattr(spacy_module.sys, "version_info", (3, 14))
+        spacy_error = ValueError("[E002] Can't find factory for 'curated_transformer'")
+
+        with (
+            patch(
+                "geoparser.modules.recognizers.spacy.spacy.load",
+                side_effect=spacy_error,
+            ),
+            pytest.raises(ValueError) as raised,
+        ):
+            SpacyRecognizer(model_name="en_core_web_trf")
+
+        assert "pip install" not in str(raised.value)
+        assert (
+            "The plugin has no release for Python 3.14 or later; use "
+            "the non-transformer 'en_core_web_lg' model instead." in str(raised.value)
+        )
+
+    @pytest.mark.parametrize(
+        ("model_name", "fallback"),
+        [
+            ("de_dep_news_trf", "de_core_news_lg"),
+            ("fr_dep_news_trf", "fr_core_news_lg"),
+            ("en_core_web_trf", "en_core_web_lg"),
+            # Upper case: the language code is normalized before lookup, so a
+            # model named this way still finds its fallback.
+            ("EN_core_web_trf", "en_core_web_lg"),
+            ("xx_custom_trf", None),
+        ],
+    )
+    def test_recommends_a_language_preserving_fallback(
+        self, monkeypatch, model_name, fallback
+    ):
+        """Test known languages and the safe generic unknown-language guidance."""
+        monkeypatch.setattr(spacy_module.sys, "version_info", (3, 14))
+        recognizer = object.__new__(SpacyRecognizer)
+        recognizer.model_name = model_name
+
+        hint = recognizer._missing_plugin_hint(
+            ValueError("Can't find factory for 'curated_transformer'")
+        )
+
+        assert hint is not None
+        expected_fallback = (
+            "a non-transformer spaCy model for the requested language"
+            if fallback is None
+            else f"the non-transformer '{fallback}' model"
+        )
+        assert recognizer._non_transformer_fallback() == expected_fallback
+        if fallback is None:
+            assert expected_fallback in hint
+            assert "en_core_web_lg" not in hint
+        else:
+            assert expected_fallback in hint
+
+    @patch("geoparser.modules.recognizers.spacy.spacy.load")
+    def test_does_not_rewrite_available_factory_mentions(self, mock_spacy_load):
+        """Test that an unrelated error mentioning the factory stays unchanged."""
+        # Arrange
+        spacy_error = ValueError(
+            "[E002] Can't find factory for 'ner'. Available factories include "
+            "'curated_transformer', but this model has an invalid NER config."
+        )
+        mock_spacy_load.side_effect = spacy_error
+
+        # Act
+        with pytest.raises(ValueError) as raised:
+            SpacyRecognizer(model_name="en_core_web_sm")
+
+        # Assert
+        assert raised.value is spacy_error
 
 
 @pytest.mark.unit

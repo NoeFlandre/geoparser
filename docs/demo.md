@@ -25,6 +25,8 @@ geoparser = Geoparser(recognizer=recognizer, resolver=resolver)
 
 `en_core_web_trf` rather than the default `en_core_web_sm`, because nineteenth-century narrative prose is unlike the news text the small model was trained on and it misses noticeably more. And `min_similarity=0.7` rather than `0.6`, because a wrong marker on a map is more damaging than a missing one: a mistake is visible and misleading, while an omission is merely absent. The gazetteer is not named here because `SentenceTransformerResolver` uses GeoNames unless told otherwise.
 
+The `en_core_web_trf` pipeline requires the `spacy-curated-transformers` plugin. Install the pinned compatible line with `pip install "spacy-curated-transformers>=0.3.1,<1"`. The plugin has no Python 3.14 release yet; on that interpreter use a non-transformer model for the requested language, for example `en_core_web_lg` for English.
+
 This is the general shape of tuning a pipeline: the defaults are a reasonable starting point, and the right values depend on your material and on which kind of error costs you more.
 
 ## Parsing and Aggregating

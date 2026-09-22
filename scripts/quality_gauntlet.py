@@ -46,6 +46,7 @@ def build_stages(
         if offline
         else ("uv", "lock", "--check")
     )
+    demo_docker_tag = f"{docker_tag}-demo"
 
     stages = [
         Stage("baseline", (_uv("pytest", "--cov-fail-under=100"),), root),
@@ -67,7 +68,10 @@ def build_stages(
                     "geoparser",
                     "demo",
                     "--per-rule-ignores",
-                    "DEP002=accelerate|python-multipart|peft|protobuf|sentencepiece,"
+                    # These packages are loaded through entry points rather
+                    # than imports, so deptry cannot see them being used.
+                    "DEP002=accelerate|python-multipart|peft|protobuf"
+                    "|sentencepiece|spacy-curated-transformers,"
                     "DEP004=plotly",
                 ),
             ),
@@ -174,6 +178,23 @@ def build_stages(
                     ".",
                 ),
                 ("docker", "run", "--rm", docker_tag),
+                (
+                    "docker",
+                    "build",
+                    "--file",
+                    "demo/Dockerfile",
+                    "--tag",
+                    demo_docker_tag,
+                    ".",
+                ),
+                (
+                    "docker",
+                    "run",
+                    "--rm",
+                    demo_docker_tag,
+                    "jupyter",
+                    "--version",
+                ),
             )
         )
     stages.extend(
@@ -280,6 +301,7 @@ def main(argv: list[str] | None = None) -> int:
         finally:
             if not args.skip_docker:
                 cleanup_docker_image(root, environment, docker_tag)
+                cleanup_docker_image(root, environment, f"{docker_tag}-demo")
 
 
 if __name__ == "__main__":

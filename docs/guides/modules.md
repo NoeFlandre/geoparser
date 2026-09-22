@@ -64,6 +64,8 @@ recognizer = SpacyRecognizer(
 
 The `model_name` parameter accepts any spaCy model that includes a named entity recognizer. Larger models like `en_core_web_trf` provide higher accuracy but require more memory and processing time. For non-English texts, specify an appropriate spaCy model for that language.
 
+The `en_core_web_trf` pipeline requires the `spacy-curated-transformers` plugin. Install the pinned compatible line with `pip install "spacy-curated-transformers>=0.3.1,<1"`. The plugin has no Python 3.14 release yet; on that interpreter use a non-transformer model for the requested language, for example `en_core_web_lg` for English.
+
 The `entity_types` parameter allows you to filter which entity types are considered as toponyms. By default, the recognizer includes FAC (facilities like buildings and landmarks), GPE (geopolitical entities like countries and cities), and LOC (natural locations and regions). If your application only needs to identify country and city names, you might restrict this to just GPE.
 
 ## Built-in Resolvers
