@@ -56,11 +56,17 @@ OPTIONS=()
 if [[ -n "$CLUSTER" ]]; then
     OPTIONS+=(-p "cluster='${CLUSTER}'")
 fi
+# How long before the walltime OAR sends the checkpoint signal. besteffort
+# jobs are capped at a minute, which is enough: the run's own progress is
+# already on disk after every chunk, so this signal is a courtesy rather than
+# the thing that saves the work.
+CHECKPOINT_SECONDS=600
 if [[ "$QUEUE" == "besteffort" ]]; then
     # idempotent tells OAR to resubmit the job when it is preempted. That is
     # only safe because the work resumes from its checkpoint rather than
     # starting over, so a resubmission costs the current chunk and no more.
     OPTIONS+=(-q besteffort -t besteffort -t idempotent)
+    CHECKPOINT_SECONDS=60
 fi
 
 echo "submitting: oarsub -l ${RESOURCES} ${OPTIONS[*]-}"
@@ -70,7 +76,7 @@ oarsub \
     "${OPTIONS[@]}" \
     -O "$RESULTS/logs/%jobid%.out" \
     -E "$RESULTS/logs/%jobid%.err" \
-    --checkpoint 600 \
+    --checkpoint "$CHECKPOINT_SECONDS" \
     --signal 12 \
     "REPO_ROOT='$REPO_ROOT' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
 DEVICE='${DEVICE:-auto}' CHUNK_SIZE='${CHUNK_SIZE:-5}' \
