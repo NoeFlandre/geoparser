@@ -39,8 +39,12 @@ python -m pip install --quiet --upgrade pip
 # of torch is the default on PyPI for Linux, which is what the GPU nodes need;
 # the project's own uv index pin selects the CPU build, so it is bypassed here.
 python -m pip install --quiet -e "$REPO_ROOT"
+# Both spaCy models the pipelines reach for. xx_sent_ud_sm backs the resolver's
+# context window; without it here, the first job pip installs it at runtime,
+# into the /home venv and over the network, in the middle of a reservation.
 python -m pip install --quiet \
-    "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0.tar.gz"
+    "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0.tar.gz" \
+    "https://github.com/explosion/spacy-models/releases/download/xx_sent_ud_sm-3.8.0/xx_sent_ud_sm-3.8.0.tar.gz"
 
 # Importing the stack here is a convenience, not a gate. Site frontends can be
 # virtual machines whose CPU advertises no SSE4.2/AVX, and NumPy's wheels refuse

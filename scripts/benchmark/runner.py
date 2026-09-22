@@ -154,6 +154,10 @@ def run_phase(
         f"to do on {device}"
     )
 
+    # Model construction is inside the timer: loading a cross encoder is a
+    # real cost of choosing that pipeline, and leaving it out understated the
+    # slower one by minutes.
+    loading_started = time.perf_counter()
     recognizer = resolver = None
     if phase == RECOGNITION:
         recognizer = pipelines.build_recognizer(pipeline, device=device)
@@ -162,6 +166,7 @@ def run_phase(
             pipeline, device=device, min_similarity=min_similarity
         )
     names = pipelines.model_names(recognizer, resolver)
+    state.elapsed_seconds += time.perf_counter() - loading_started
 
     try:
         for index, chunk in enumerate(chunks(remaining, chunk_size), start=1):
