@@ -128,6 +128,13 @@ class TestRenderMarkdown:
         assert text.count("| upstream |") == 2
         assert text.count("| swapped |") == 2
 
+    def test_lists_the_hybrid_pipeline_in_both_tables(self):
+        """Test that the new pipeline name renders in both metric tables."""
+        text = self.render([self.result("upstream"), self.result("hybrid")])
+
+        assert text.count("| upstream |") == 2
+        assert text.count("| hybrid |") == 2
+
     def test_names_the_models(self):
         """Test that the report says what actually ran."""
         text = self.render([self.result()])
@@ -146,10 +153,10 @@ class TestRenderMarkdown:
         assert "| swapped | cuda | 0.800" not in text
 
     def test_explains_the_abstention_threshold(self):
-        """Test that the reader is told why the threshold is shared."""
+        """Test that the reader is told model score scales may differ."""
         text = self.render([self.result()])
 
-        assert "abstains on every toponym" in text
+        assert "different similarity scales" in text
 
     def test_says_resolution_is_scored_on_gold_spans(self):
         """Test that the experimental design is stated, not implied."""

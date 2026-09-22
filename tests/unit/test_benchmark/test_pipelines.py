@@ -1,0 +1,96 @@
+"""Factory tests for benchmark pipeline composition."""
+
+import sys
+from types import ModuleType, SimpleNamespace
+from unittest.mock import Mock
+
+import pytest
+
+from scripts.benchmark import pipelines
+from scripts.benchmark.__main__ import build_parser
+
+
+def _patch_module_classes(monkeypatch, **classes):
+    """Patch lazy module imports without loading transformer models."""
+    package = ModuleType("geoparser")
+    package.__path__ = []
+    modules = ModuleType("geoparser.modules")
+
+    def get_module_class(name):
+        if name not in classes:
+            raise AttributeError(name)
+        return classes[name]
+
+    modules.__getattr__ = get_module_class
+    gazetteer = ModuleType("geoparser.gazetteer")
+    gazetteer.Gazetteer = Mock()
+    package.modules = modules
+    package.gazetteer = gazetteer
+    monkeypatch.setitem(sys.modules, "geoparser", package)
+    monkeypatch.setitem(sys.modules, "geoparser.modules", modules)
+    monkeypatch.setitem(sys.modules, "geoparser.gazetteer", gazetteer)
+
+
+def test_hybrid_is_a_distinct_benchmark_pipeline():
+    assert pipelines.PIPELINES == ("upstream", "swapped", "hybrid")
+
+
+def test_cli_accepts_the_hybrid_pipeline():
+    arguments = build_parser().parse_args(["--pipeline", pipelines.HYBRID])
+
+    assert arguments.pipeline == [pipelines.HYBRID]
+
+
+def test_hybrid_uses_gliner2_for_recognition(monkeypatch):
+    recognizer = SimpleNamespace(model_name="fastino/gliner2.5-multi-v1", model=Mock())
+    gliner_factory = Mock(return_value=recognizer)
+    _patch_module_classes(monkeypatch, GLiNER2Recognizer=gliner_factory)
+
+    result = pipelines.build_recognizer(pipelines.HYBRID, device="cuda")
+
+    assert result is recognizer
+    gliner_factory.assert_called_once_with()
+    recognizer.model.to.assert_called_once_with("cuda")
+
+
+@pytest.mark.parametrize("pipeline", [pipelines.UPSTREAM, "hybrid"])
+def test_upstream_and_hybrid_use_the_same_minilm_resolver(monkeypatch, pipeline):
+    transformer = Mock()
+    resolver = SimpleNamespace(
+        model_name="dguzh/geo-all-MiniLM-L6-v2",
+        transformer=transformer,
+        reranker=None,
+    )
+    resolver_factory = Mock(return_value=resolver)
+    _patch_module_classes(monkeypatch, SentenceTransformerResolver=resolver_factory)
+    monkeypatch.setattr(pipelines, "GAZETTEER_NAME", "geonames")
+
+    result = pipelines.build_resolver(pipeline, device="cuda", min_similarity=0.0)
+
+    assert result is resolver
+    resolver_factory.assert_called_once_with(
+        model_name=pipelines.UPSTREAM_RESOLVER_MODEL,
+        gazetteer_name="geonames",
+        min_similarity=0.0,
+    )
+    transformer.to.assert_called_once_with("cuda")
+
+
+def test_swapped_keeps_jina_resolver(monkeypatch):
+    resolver = SimpleNamespace(transformer=Mock(), reranker=Mock())
+    jina_factory = Mock(return_value=resolver)
+    _patch_module_classes(monkeypatch, JinaResolver=jina_factory)
+
+    result = pipelines.build_resolver(
+        pipelines.SWAPPED, device="cpu", min_similarity=0.0
+    )
+
+    assert result is resolver
+    jina_factory.assert_called_once_with(gazetteer_name="geonames", min_similarity=0.0)
+    resolver.transformer.to.assert_called_once_with("cpu")
+    resolver.reranker.to.assert_called_once_with("cpu")
+
+
+def test_unknown_pipeline_is_rejected():
+    with pytest.raises(ValueError, match="Unknown benchmark pipeline"):
+        pipelines.build_recognizer("unknown", device="cpu")

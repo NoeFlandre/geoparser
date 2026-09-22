@@ -1,9 +1,10 @@
 """
-Build the two pipelines under comparison, and place them on a device.
+Build the benchmark pipelines and place them on a device.
 
 ``upstream`` is what the library shipped before the module swap: spaCy for
 recognition and the thesis' fine-tuned MiniLM for resolution. ``swapped`` is
-the current pair: GLiNER2 and Jina v5 with a reranker.
+the GLiNER2 and Jina v5 pair. ``hybrid`` keeps GLiNER2 recognition but uses
+the upstream MiniLM resolver.
 
 Device placement is done here rather than left to the libraries because they
 do not agree. ``SentenceTransformer`` selects CUDA by itself when it is
@@ -19,7 +20,9 @@ import typing as t
 
 UPSTREAM = "upstream"
 SWAPPED = "swapped"
-PIPELINES = (UPSTREAM, SWAPPED)
+HYBRID = "hybrid"
+PIPELINES = (UPSTREAM, SWAPPED, HYBRID)
+UPSTREAM_RESOLVER_MODEL = "dguzh/geo-all-MiniLM-L6-v2"
 
 # The upstream recognizer. The transformer pipeline needs a plugin the library
 # does not install, so the small pipeline is what upstream runs out of the box.
@@ -71,12 +74,15 @@ def build_recognizer(pipeline: str, *, device: str) -> t.Any:
     Return the recognizer half of a named pipeline.
 
     Args:
-        pipeline: Either ``upstream`` or ``swapped``
+        pipeline: ``upstream`` uses spaCy; ``swapped`` and ``hybrid`` use GLiNER2
         device: Where to place the model
 
     Returns:
         The constructed recognizer
     """
+    if pipeline not in PIPELINES:
+        raise ValueError(f"Unknown benchmark pipeline: {pipeline}")
+
     if pipeline == UPSTREAM:
         from geoparser.modules import SpacyRecognizer
 
@@ -110,7 +116,7 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
     along.
 
     Args:
-        pipeline: Either ``upstream`` or ``swapped``
+        pipeline: ``upstream`` and ``hybrid`` use MiniLM; ``swapped`` uses Jina
         device: Where to place the models
         min_similarity: Similarity the best candidate must reach to be used
 
@@ -119,11 +125,16 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
     """
     from geoparser.gazetteer import Gazetteer  # noqa: F401 - import order
 
-    if pipeline == UPSTREAM:
+    if pipeline not in PIPELINES:
+        raise ValueError(f"Unknown benchmark pipeline: {pipeline}")
+
+    if pipeline in (UPSTREAM, HYBRID):
         from geoparser.modules import SentenceTransformerResolver
 
         resolver = SentenceTransformerResolver(
-            gazetteer_name=GAZETTEER_NAME, min_similarity=min_similarity
+            model_name=UPSTREAM_RESOLVER_MODEL,
+            gazetteer_name=GAZETTEER_NAME,
+            min_similarity=min_similarity,
         )
     else:
         from geoparser.modules import JinaResolver

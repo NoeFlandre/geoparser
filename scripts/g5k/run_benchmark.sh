@@ -71,6 +71,12 @@ python -m geoparser list
 echo "=== running benchmark ==="
 ARGS=(--output-dir "$RESULTS" --device "$DEVICE" --chunk-size "$CHUNK_SIZE"
       --min-similarity "$MIN_SIMILARITY")
+if [[ -n "${PIPELINES:-}" ]]; then
+    IFS=',' read -r -a selected_pipelines <<< "$PIPELINES"
+    for pipeline in "${selected_pipelines[@]}"; do
+        ARGS+=(--pipeline "$pipeline")
+    done
+fi
 if [[ -n "$LIMIT" ]]; then
     ARGS+=(--limit "$LIMIT")
 fi

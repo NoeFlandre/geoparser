@@ -29,6 +29,12 @@ CLUSTER="${CLUSTER:-}"
 # Some sites grant a user no other access to a GPU cluster, and OAR says so:
 # "You can only access the required resources in besteffort."
 QUEUE="${QUEUE:-default}"
+PIPELINES="${PIPELINES:-}"
+
+if [[ -n "$PIPELINES" && ! "$PIPELINES" =~ ^(upstream|swapped|hybrid)(,(upstream|swapped|hybrid))*$ ]]; then
+    echo "PIPELINES must be a comma-separated list of upstream, swapped, and/or hybrid" >&2
+    exit 2
+fi
 
 mkdir -p "$RESULTS/logs"
 
@@ -80,7 +86,8 @@ oarsub \
     --signal 12 \
     "REPO_ROOT='$REPO_ROOT' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
 DEVICE='${DEVICE:-auto}' CHUNK_SIZE='${CHUNK_SIZE:-5}' \
-MIN_SIMILARITY='${MIN_SIMILARITY:-0.0}' bash $REPO_ROOT/scripts/g5k/run_benchmark.sh"
+MIN_SIMILARITY='${MIN_SIMILARITY:-0.0}' PIPELINES='$PIPELINES' \
+bash $REPO_ROOT/scripts/g5k/run_benchmark.sh"
 
 echo
 echo "Watch it with:   oarstat -u"
