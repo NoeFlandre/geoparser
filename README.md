@@ -3,12 +3,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/dguzh/geoparser/actions/workflows/test.yml?query=branch%3Amain+"><img src="https://img.shields.io/github/actions/workflow/status/dguzh/geoparser/test.yml?branch=main&logo=github&label=CI" alt="CI"></a>
-  <a href="https://coverage-badge.samuelcolvin.workers.dev/redirect/dguzh/geoparser"><img src="https://coverage-badge.samuelcolvin.workers.dev/dguzh/geoparser.svg" alt="Coverage"></a>
+  <a href="https://github.com/NoeFlandre/geoparser/actions/workflows/test.yml?query=branch%3Amain+"><img src="https://img.shields.io/github/actions/workflow/status/NoeFlandre/geoparser/test.yml?branch=main&logo=github&label=CI" alt="CI"></a>
+  <a href="https://coverage-badge.samuelcolvin.workers.dev/redirect/NoeFlandre/geoparser"><img src="https://coverage-badge.samuelcolvin.workers.dev/NoeFlandre/geoparser.svg" alt="Coverage"></a>
   <a href="https://pypi.org/project/geoparser"><img src="https://img.shields.io/pypi/v/geoparser.svg" alt="PyPI"></a>
   <a href="https://pepy.tech/projects/geoparser"><img src="https://static.pepy.tech/badge/geoparser" alt="Downloads"></a>
   <a href="https://pypi.org/project/geoparser"><img src="https://img.shields.io/pypi/pyversions/geoparser.svg" alt="Python"></a>
-  <a href="https://github.com/dguzh/geoparser/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dguzh/geoparser.svg" alt="License"></a>
+  <a href="https://github.com/NoeFlandre/geoparser/blob/main/LICENSE"><img src="https://img.shields.io/github/license/NoeFlandre/geoparser.svg" alt="License"></a>
 </p>
 
 A Python library for extracting place names from text and linking them to geographic locations.
@@ -73,7 +73,7 @@ The library is under active development and its architecture is still evolving; 
 
 ## Contributing
 
-Questions, bug reports, and ideas are always welcome via [issues](https://github.com/dguzh/geoparser/issues). Pull requests are appreciated too — see [CONTRIBUTING.md](CONTRIBUTING.md) for local setup and development guidelines.
+Questions, bug reports, and ideas are always welcome via [issues](https://github.com/NoeFlandre/geoparser/issues). Pull requests are appreciated too — see [CONTRIBUTING.md](CONTRIBUTING.md) for local setup and development guidelines.
 
 ## Acknowledgments
 

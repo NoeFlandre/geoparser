@@ -49,7 +49,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://geoparser.app"
-Repository = "https://github.com/dguzh/geoparser"
+Repository = "https://github.com/NoeFlandre/geoparser"
 
 [dependency-groups]
 # Everything needed to develop, test and document the project. `uv sync`
