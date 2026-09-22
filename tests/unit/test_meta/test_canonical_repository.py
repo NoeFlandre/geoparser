@@ -36,18 +36,26 @@ REPO_LINK = re.compile(r"github\.com/(?P<owner>[A-Za-z0-9][A-Za-z0-9._-]*)/geopa
 
 def _tracked_text_files() -> list[Path]:
     """Every tracked file that reads back as text, newest checkout state."""
-    listing = subprocess.run(
-        ["git", "ls-files", "-z"],
-        cwd=ROOT,
-        capture_output=True,
-        check=True,
-        text=True,
-    )
+    try:
+        listing = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=ROOT,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+        candidates = [ROOT / name for name in listing.stdout.split("\0") if name]
+    except (OSError, subprocess.CalledProcessError):
+        ignored_parts = {".git", ".hypothesis", ".pytest_cache", ".ruff_cache"}
+        candidates = sorted(
+            path
+            for path in ROOT.rglob("*")
+            if path.is_file()
+            and not ignored_parts.intersection(path.relative_to(ROOT).parts)
+        )
+
     files = []
-    for name in listing.stdout.split("\0"):
-        if not name:
-            continue
-        path = ROOT / name
+    for path in candidates:
         try:
             path.read_text("utf-8")
         except (OSError, UnicodeDecodeError):
@@ -103,3 +111,24 @@ class TestCanonicalRepository:
 
         # Act & Assert
         assert citation["repository-code"] == CANONICAL_URL
+
+
+def test_text_file_inventory_falls_back_without_a_git_checkout(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """The inventory still works inside mutmut's Git-free source copy."""
+    import tests.unit.test_meta.test_canonical_repository as module
+
+    (tmp_path / "z.txt").write_text("z", encoding="utf-8")
+    (tmp_path / "a.txt").write_text("a", encoding="utf-8")
+
+    def missing_git(*args, **kwargs):
+        raise subprocess.CalledProcessError(128, ["git", "ls-files"])
+
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.setattr(module.subprocess, "run", missing_git)
+
+    assert module._tracked_text_files() == [
+        tmp_path / "a.txt",
+        tmp_path / "z.txt",
+    ]
