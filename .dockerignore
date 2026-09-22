@@ -20,4 +20,6 @@ data
 .env.*
 secrets
 tests
-demo
+# The demo image is built from the repository root and needs its notebook.
+demo/*
+!demo/demo.ipynb
