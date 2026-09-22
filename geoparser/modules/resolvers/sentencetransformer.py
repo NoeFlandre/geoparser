@@ -1,3 +1,4 @@
+import re
 import typing as t
 from pathlib import Path
 
@@ -138,6 +139,15 @@ class SentenceTransformerResolver(Resolver):
         self.candidate_embeddings: dict[
             int, torch.Tensor
         ] = {}  # feature_id -> embedding
+
+        # Caches for deterministic, resolver-local preprocessing.  The
+        # resolver owns these because the values depend on its gazetteer and
+        # attribute map.
+        self.candidate_search_cache: dict[
+            tuple[str, str, int], tuple[Feature, ...]
+        ] = {}
+        self.candidate_descriptions: dict[int, str] = {}
+        self.measured_sentences: dict[str, tuple[Sentence, ...]] = {}
 
     def _load_transformer(self, model_name: str, **kwargs) -> SentenceTransformer:
         """
@@ -486,11 +496,25 @@ class SentenceTransformerResolver(Resolver):
                 if result is not None:
                     continue
 
-                found = self.gazetteer.search(text[start:end], method, tiers=tiers)
+                found = self._search_candidates(text[start:end], method, tiers)
                 self._merge_candidates(doc_candidates[ref_idx], found)
 
+    def _search_candidates(
+        self, name: str, method: str, tiers: int
+    ) -> tuple["Feature", ...]:
+        """Search the gazetteer once for each normalized query and tier."""
+        normalized_name = re.sub(r'"', "", name).strip()
+        key = (normalized_name, method, tiers)
+        if key not in self.candidate_search_cache:
+            self.candidate_search_cache[key] = tuple(
+                self.gazetteer.search(normalized_name, method, tiers=tiers)
+            )
+        return self.candidate_search_cache[key]
+
     @staticmethod
-    def _merge_candidates(existing: list["Feature"], found: list["Feature"]) -> None:
+    def _merge_candidates(
+        existing: list["Feature"], found: t.Iterable["Feature"]
+    ) -> None:
         """
         Append newly found candidates, skipping ones already present.
 
@@ -563,7 +587,7 @@ class SentenceTransformerResolver(Resolver):
         if not pending:
             return
 
-        descriptions = [self._generate_description(candidate) for candidate in pending]
+        descriptions = [self._candidate_description(candidate) for candidate in pending]
         # As with contexts, the encoder's output length is its own contract.
         embeddings = self._encode(descriptions, role="candidate")
         # As above: one embedding per description, so strict= is immaterial.
@@ -587,11 +611,39 @@ class SentenceTransformerResolver(Resolver):
             results: Nested list of current results (modified in-place)
             min_similarity: Similarity a candidate must reach to be accepted
         """
+        pending_contexts = []
+        pending_candidates = []
         for doc_contexts, doc_candidates, doc_results in zip(
             contexts, candidates, results, strict=True
         ):
+            for context, candidate_list, result in zip(
+                doc_contexts, doc_candidates, doc_results, strict=True
+            ):
+                if result is None and candidate_list:
+                    pending_contexts.append(context)
+                    pending_candidates.append(candidate_list)
+
+        pending_similarities = self._calculate_similarity_batches(
+            pending_contexts, pending_candidates
+        )
+        pending_index = 0
+
+        for doc_contexts, doc_candidates, doc_results in zip(
+            contexts, candidates, results, strict=True
+        ):
+            doc_similarities: list[list[float] | None] = []
+            for candidate_list, result in zip(doc_candidates, doc_results, strict=True):
+                if result is None and candidate_list:
+                    doc_similarities.append(pending_similarities[pending_index])
+                    pending_index += 1
+                else:
+                    doc_similarities.append(None)
             self._evaluate_document(
-                doc_contexts, doc_candidates, doc_results, min_similarity
+                doc_contexts,
+                doc_candidates,
+                doc_results,
+                min_similarity,
+                doc_similarities,
             )
 
     def _evaluate_document(
@@ -600,6 +652,7 @@ class SentenceTransformerResolver(Resolver):
         doc_candidates: list[list["Feature"]],
         doc_results: list[tuple[str, str] | None],
         min_similarity: float,
+        similarities: list[list[float] | None] | None = None,
     ) -> None:
         """
         Resolve one document's still-unresolved references, in place.
@@ -617,7 +670,15 @@ class SentenceTransformerResolver(Resolver):
             if result is not None or not candidate_list:
                 continue
 
-            referent = self._best_referent(context, candidate_list, min_similarity)
+            if similarities is None:
+                referent = self._best_referent(context, candidate_list, min_similarity)
+            else:
+                referent = self._best_referent(
+                    context,
+                    candidate_list,
+                    min_similarity,
+                    similarities[ref_idx],
+                )
             if referent is not None:
                 doc_results[ref_idx] = referent
 
@@ -626,6 +687,7 @@ class SentenceTransformerResolver(Resolver):
         context: str,
         candidate_list: list["Feature"],
         min_similarity: float,
+        similarities: list[float] | None = None,
     ) -> tuple[str, str] | None:
         """
         Pick the candidate most similar to a reference's context.
@@ -639,10 +701,14 @@ class SentenceTransformerResolver(Resolver):
             A (gazetteer_name, identifier) pair, or None when the best
             candidate is not similar enough
         """
-        similarities = self._calculate_similarities(
-            self.context_embeddings[context],
-            [self.candidate_embeddings[candidate.id] for candidate in candidate_list],
-        )
+        if similarities is None:
+            similarities = self._calculate_similarities(
+                self.context_embeddings[context],
+                [
+                    self.candidate_embeddings[candidate.id]
+                    for candidate in candidate_list
+                ],
+            )
         best_idx = max(range(len(similarities)), key=lambda j: similarities[j])
         if similarities[best_idx] < min_similarity:
             return None
@@ -671,7 +737,7 @@ class SentenceTransformerResolver(Resolver):
 
         return select_context(self._measured_sentences(text), start, end, token_limit)
 
-    def _measured_sentences(self, text: str) -> list[Sentence]:
+    def _measured_sentences(self, text: str) -> tuple[Sentence, ...]:
         """
         The document's sentences, priced in encoder tokens.
 
@@ -685,15 +751,17 @@ class SentenceTransformerResolver(Resolver):
         Returns:
             One Sentence per sentence of the document, in order
         """
-        return [
-            Sentence(
-                text=sent.text,
-                start=sent.start_char,
-                end=sent.end_char,
-                cost=self._sentence_tokens(sent),
+        if text not in self.measured_sentences:
+            self.measured_sentences[text] = tuple(
+                Sentence(
+                    text=sent.text,
+                    start=sent.start_char,
+                    end=sent.end_char,
+                    cost=self._sentence_tokens(sent),
+                )
+                for sent in self._sentences(text)
             )
-            for sent in self._sentences(text)
-        ]
+        return self.measured_sentences[text]
 
     def _token_limit(self) -> int:
         """
@@ -804,6 +872,14 @@ class SentenceTransformerResolver(Resolver):
 
         return " ".join(description_parts).strip()
 
+    def _candidate_description(self, candidate: "Feature") -> str:
+        """Return a cached textual description for one gazetteer feature."""
+        if candidate.id not in self.candidate_descriptions:
+            self.candidate_descriptions[candidate.id] = self._generate_description(
+                candidate
+            )
+        return self.candidate_descriptions[candidate.id]
+
     def _calculate_similarities(
         self,
         context_embedding: torch.Tensor,
@@ -834,6 +910,54 @@ class SentenceTransformerResolver(Resolver):
         # pragma: no mutate end
 
         return similarities.tolist()
+
+    def _calculate_similarity_batches(
+        self,
+        contexts: list[str],
+        candidate_lists: list[list["Feature"]],
+    ) -> list[list[float]]:
+        """Score every candidate list with one flattened cosine operation."""
+        if not candidate_lists:
+            return []
+
+        scores = [[] for _ in candidate_lists]
+        pending = [
+            (index, context, candidate_list)
+            for index, (context, candidate_list) in enumerate(
+                zip(contexts, candidate_lists, strict=True)
+            )
+            if candidate_list
+        ]
+        if not pending:
+            return scores
+
+        pending_indices = [item[0] for item in pending]
+        lengths = [len(item[2]) for item in pending]
+        context_tensor = torch.stack(
+            [self.context_embeddings[item[1]] for item in pending]
+        )
+        candidate_tensor = torch.cat(
+            [
+                torch.stack(
+                    [self.candidate_embeddings[candidate.id] for candidate in item[2]]
+                )
+                for item in pending
+            ]
+        )
+        repeated_contexts = torch.repeat_interleave(
+            context_tensor,
+            torch.tensor(lengths, device=context_tensor.device),
+            dim=0,
+        )
+        similarities = torch.nn.functional.cosine_similarity(
+            repeated_contexts, candidate_tensor, dim=1
+        ).tolist()
+
+        offset = 0
+        for index, length in zip(pending_indices, lengths, strict=True):
+            scores[index] = similarities[offset : offset + length]
+            offset += length
+        return scores
 
     def fit(
         self,

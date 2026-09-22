@@ -85,15 +85,15 @@ class TestCreateDocuments:
         project = self._project()
         created = []
 
-        def _create(session, document_create):
-            created.append(document_create)
-            return SimpleNamespace(id=uuid.uuid4())
+        def _create_many(session, document_creates):
+            created.extend(document_creates)
+            return [SimpleNamespace(id=uuid.uuid4()) for _ in document_creates]
 
         with (
             patch("geoparser.project.project.get_session"),
             patch(
-                "geoparser.project.project.DocumentRepository.create",
-                side_effect=_create,
+                "geoparser.project.project.DocumentRepository.create_many",
+                side_effect=_create_many,
             ),
         ):
             # Act
@@ -112,8 +112,8 @@ class TestCreateDocuments:
         with (
             patch("geoparser.project.project.get_session"),
             patch(
-                "geoparser.project.project.DocumentRepository.create",
-                side_effect=[SimpleNamespace(id=i) for i in ids],
+                "geoparser.project.project.DocumentRepository.create_many",
+                return_value=[SimpleNamespace(id=i) for i in ids],
             ),
         ):
             # Act

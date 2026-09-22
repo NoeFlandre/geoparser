@@ -120,7 +120,10 @@ class TestRecordReferentPredictions:
     def test_tolerates_fewer_referents_than_references(self):
         """A short prediction list leaves the remaining references alone."""
         # Arrange
-        references = [SimpleNamespace(id="r1"), SimpleNamespace(id="r2")]
+        references = [
+            SimpleNamespace(id="r1", start=0, end=1),
+            SimpleNamespace(id="r2", start=2, end=3),
+        ]
 
         # Act
         referents, resolutions = self._record(references, [("geonames", "1")])
@@ -198,3 +201,87 @@ class TestReferentValidation:
         # Act & Assert
         with pytest.raises(ValueError, match=r"'999'.*'geonames'"):
             self._create("geonames", "999", found=False)
+
+
+@pytest.mark.unit
+class TestBatchPersistence:
+    """The services stage model rows and issue one write per prediction batch."""
+
+    def test_recognition_records_all_rows_with_one_add_all(self):
+        """References and the processing marker are submitted together."""
+        document = SimpleNamespace(id=uuid.uuid4(), text="Paris Berlin")
+        service = RecognitionService(Mock())
+
+        session = Mock()
+        service._document_texts = {document.id: document.text}
+        service._record_reference_predictions(
+            session, [document], [[(0, 5), (6, 12)]], "rec"
+        )
+
+        session.add_all.assert_called_once()
+        assert len(session.add_all.call_args.args[0]) == 3
+
+    def test_resolution_records_all_rows_with_one_add_all(self):
+        """Referents and resolution markers are submitted together."""
+        references = [
+            SimpleNamespace(id=uuid.uuid4()),
+            SimpleNamespace(id=uuid.uuid4()),
+        ]
+        service = ResolutionService(Mock())
+        feature = SimpleNamespace(identifier="123")
+        session = Mock()
+
+        with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
+            gazetteer.return_value.find.return_value = feature
+            service._record_referent_predictions(
+                session,
+                references,
+                [("geonames", "123"), ("geonames", "123")],
+                "res",
+            )
+
+        session.add_all.assert_called_once()
+        assert len(session.add_all.call_args.args[0]) == 4
+
+
+@pytest.mark.unit
+class TestBatchStatusQueries:
+    """Status filtering uses one set-based query per service batch."""
+
+    def test_recognition_filters_documents_with_one_lookup(self):
+        """Document status checks do not query once per document."""
+        documents = [SimpleNamespace(id="d1"), SimpleNamespace(id="d2")]
+        service = RecognitionService(Mock())
+        session = Mock()
+
+        with patch(
+            "geoparser.services.recognition.RecognitionRepository.get_processed_document_ids",
+            return_value={"d2"},
+        ) as lookup:
+            remaining = service._filter_unprocessed_documents(session, documents, "rec")
+
+        assert remaining == [documents[0]]
+        lookup.assert_called_once_with(session, ["d1", "d2"], "rec")
+
+    def test_resolution_filters_references_with_one_lookup(self):
+        """Reference status checks do not query once per reference."""
+        references = [
+            SimpleNamespace(id="r1", start=0, end=1),
+            SimpleNamespace(id="r2", start=2, end=3),
+        ]
+        documents = [SimpleNamespace(text="text", references=references)]
+        service = ResolutionService(Mock())
+        session = Mock()
+
+        with patch(
+            "geoparser.services.resolution.ResolutionRepository.get_processed_reference_ids",
+            return_value={"r2"},
+        ) as lookup:
+            texts, boundaries, remaining = service._collect_unprocessed(
+                session, documents, "res"
+            )
+
+        assert texts == ["text"]
+        assert boundaries == [[(0, 1)]]
+        assert remaining == [[references[0]]]
+        lookup.assert_called_once_with(session, ["r1", "r2"], "res")

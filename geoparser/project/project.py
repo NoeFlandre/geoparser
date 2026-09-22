@@ -96,15 +96,13 @@ class Project:
             )
             # pragma: no mutate end
 
-        document_ids = []
-
         with get_session() as session:
-            for text in texts:
-                document_create = DocumentCreate(text=text, project_id=self.id)
-                document = DocumentRepository.create(session, document_create)
-                document_ids.append(document.id)
+            document_creates = [
+                DocumentCreate(text=text, project_id=self.id) for text in texts
+            ]
+            documents = DocumentRepository.create_many(session, document_creates)
 
-        return document_ids
+        return [document.id for document in documents]
 
     def create_references(
         self, texts: list[str], references: list[list[tuple]], tag: str

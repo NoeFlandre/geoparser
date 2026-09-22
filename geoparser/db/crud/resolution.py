@@ -72,6 +72,20 @@ class ResolutionRepository(BaseRepository[Resolution]):
         return db.exec(statement).unique().first()
 
     @classmethod
+    def get_processed_reference_ids(
+        cls, db: Session, reference_ids: list[uuid.UUID], resolver_id: str
+    ) -> set[uuid.UUID]:
+        """Return requested reference IDs already processed by a resolver."""
+        if not reference_ids:
+            return set()
+
+        statement = select(Resolution.reference_id).where(
+            Resolution.resolver_id == resolver_id,
+            Resolution.reference_id.in_(reference_ids),  # ty: ignore[unresolved-attribute]
+        )
+        return set(db.exec(statement).all())
+
+    @classmethod
     def get_unprocessed_references(
         cls, db: Session, project_id: uuid.UUID, resolver_id: str
     ) -> list[Reference]:

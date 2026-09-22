@@ -6,13 +6,16 @@ from sqlmodel import Session
 from geoparser.db.crud import (
     RecognitionRepository,
     RecognizerRepository,
-    ReferenceRepository,
 )
 from geoparser.db.db import get_session
-from geoparser.db.models import RecognitionCreate, RecognizerCreate, ReferenceCreate
+from geoparser.db.models import (
+    Document,
+    Recognition,
+    RecognizerCreate,
+    Reference,
+)
 
 if t.TYPE_CHECKING:
-    from geoparser.db.models import Document
     from geoparser.modules.recognizers.base import Recognizer
 
 
@@ -32,6 +35,7 @@ class RecognitionService:
             recognizer: The recognizer module to use for predictions
         """
         self.recognizer = recognizer
+        self._document_texts: dict[uuid.UUID, str] = {}
 
     def _ensure_recognizer_record(self, recognizer: "Recognizer") -> str:
         """
@@ -72,26 +76,38 @@ class RecognitionService:
             return
 
         with get_session() as session:
-            # Filter out documents that have already been processed by this recognizer
-            unprocessed_documents = self._filter_unprocessed_documents(
-                session, documents, recognizer_id
-            )
-
-            if not unprocessed_documents:
-                return
-
-            # Extract text from documents for prediction
-            texts = [doc.text for doc in unprocessed_documents]
-
-            # Only call predict if there are texts to process
-            if texts:
-                # Get predictions from recognizer using raw text
-                predicted_references = self.recognizer.predict(texts)
-
-                # Process predictions and update database
-                self._record_reference_predictions(
-                    session, unprocessed_documents, predicted_references, recognizer_id
+            try:
+                # Filter out documents that have already been processed by this recognizer
+                unprocessed_documents = self._filter_unprocessed_documents(
+                    session, documents, recognizer_id
                 )
+
+                if not unprocessed_documents:
+                    return
+
+                # Extract text from documents for prediction
+                texts = [doc.text for doc in unprocessed_documents]
+
+                # Only call predict if there are texts to process
+                if texts:
+                    # Get predictions from recognizer using raw text
+                    predicted_references = self.recognizer.predict(texts)
+
+                    # The reference text is already available in this batch, so
+                    # builders do not need one document query per predicted span.
+                    self._document_texts = {
+                        document.id: document.text for document in unprocessed_documents
+                    }
+                    self._record_reference_predictions(
+                        session,
+                        unprocessed_documents,
+                        predicted_references,
+                        recognizer_id,
+                    )
+                    session.commit()
+            except Exception:
+                session.rollback()
+                raise
 
     def fit(self, documents: list["Document"], **kwargs) -> None:
         """
@@ -154,6 +170,7 @@ class RecognitionService:
         # that drops it or passes another falsy value pairs them identically.
         pairs = zip(documents, predicted_references, strict=False)
         # pragma: no mutate end
+        pending: list[Reference | Recognition] = []
         for document, references in pairs:
             # Skip documents where predictions are not available
             # (None indicates the recognizer couldn't process this document)
@@ -162,12 +179,21 @@ class RecognitionService:
 
             # Create references with recognizer ID
             for start, end in references:
-                self._create_reference_record(
+                reference = self._create_reference_record(
                     session, document.id, start, end, recognizer_id
                 )
+                if reference is not None:
+                    pending.append(reference)
 
             # Mark document as processed
-            self._create_recognition_record(session, document.id, recognizer_id)
+            recognition = self._create_recognition_record(
+                session, document.id, recognizer_id
+            )
+            if recognition is not None:
+                pending.append(recognition)
+
+        if pending:
+            session.add_all(pending)
 
     def _create_reference_record(
         self,
@@ -176,7 +202,7 @@ class RecognitionService:
         start: int,
         end: int,
         recognizer_id: str,
-    ) -> None:
+    ) -> Reference:
         """
         Create a reference record with the recognizer ID.
 
@@ -187,15 +213,23 @@ class RecognitionService:
             end: End position of the reference
             recognizer_id: ID of the recognizer
         """
-        # Create the reference with recognizer ID directly
-        reference_create = ReferenceCreate(
-            start=start, end=end, document_id=document_id, recognizer_id=recognizer_id
+        document_text = self._document_texts.get(document_id)
+        if document_text is None and document_id not in self._document_texts:
+            document = session.get(Document, document_id)
+            candidate_text = getattr(document, "text", None)
+            document_text = candidate_text if isinstance(candidate_text, str) else None
+
+        return Reference(
+            start=start,
+            end=end,
+            text=None if document_text is None else document_text[start:end],
+            document_id=document_id,
+            recognizer_id=recognizer_id,
         )
-        ReferenceRepository.create(session, reference_create)
 
     def _create_recognition_record(
         self, session: Session, document_id: uuid.UUID, recognizer_id: str
-    ) -> None:
+    ) -> Recognition:
         """
         Create a recognition record for a document processed by a specific recognizer.
 
@@ -204,10 +238,10 @@ class RecognitionService:
             document_id: ID of the document that was processed
             recognizer_id: ID of the recognizer that processed it
         """
-        recognition_create = RecognitionCreate(
-            document_id=document_id, recognizer_id=recognizer_id
+        return Recognition(
+            document_id=document_id,
+            recognizer_id=recognizer_id,
         )
-        RecognitionRepository.create(session, recognition_create)
 
     def _filter_unprocessed_documents(
         self, session: Session, documents: list["Document"], recognizer_id: str
@@ -223,12 +257,8 @@ class RecognitionService:
         Returns:
             List of documents that haven't been processed by this recognizer
         """
-        unprocessed_documents = []
-        for doc in documents:
-            # Check if this document has already been processed by this recognizer
-            existing_recognition = RecognitionRepository.get_by_document_and_recognizer(
-                session, doc.id, recognizer_id
-            )
-            if not existing_recognition:
-                unprocessed_documents.append(doc)
-        return unprocessed_documents
+        document_ids = [doc.id for doc in documents]
+        processed_ids = RecognitionRepository.get_processed_document_ids(
+            session, document_ids, recognizer_id
+        )
+        return [doc for doc in documents if doc.id not in processed_ids]

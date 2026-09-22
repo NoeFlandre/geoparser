@@ -43,6 +43,18 @@ class TestBaseRepositoryCreate:
         assert retrieved_project.id == created_project.id
         assert retrieved_project.name == "Persistent Project"
 
+    def test_creates_many_records_with_one_batch(self, test_session: Session):
+        """A batch is persisted together and keeps its input order."""
+        projects = [
+            ProjectCreate(name="First"),
+            ProjectCreate(name="Second"),
+        ]
+
+        created = ProjectRepository.create_many(test_session, projects)
+
+        assert [project.name for project in created] == ["First", "Second"]
+        assert all(project.id is not None for project in created)
+
 
 @pytest.mark.unit
 class TestBaseRepositoryGet:

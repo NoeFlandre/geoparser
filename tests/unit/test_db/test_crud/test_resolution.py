@@ -289,3 +289,41 @@ class TestResolutionRepositoryGetUnprocessedReferences:
         # Assert - Should only contain ref from project1
         assert len(unprocessed) == 1
         assert unprocessed[0].id == ref1_proj1.id
+
+
+@pytest.mark.unit
+class TestResolutionRepositoryProcessedReferenceIds:
+    """Test the set-based processed-reference lookup."""
+
+    def test_returns_processed_ids_for_requested_references(
+        self,
+        test_session: Session,
+        reference_factory,
+        resolver_factory,
+    ):
+        """The lookup scopes one resolver to the requested reference IDs."""
+        # Arrange
+        resolver_factory(id="test_res")
+        processed = reference_factory()
+        unprocessed = reference_factory()
+        ResolutionRepository.create(
+            test_session,
+            ResolutionCreate(reference_id=processed.id, resolver_id="test_res"),
+        )
+
+        # Act
+        ids = ResolutionRepository.get_processed_reference_ids(
+            test_session, [unprocessed.id, processed.id], "test_res"
+        )
+
+        # Assert
+        assert ids == {processed.id}
+
+    def test_returns_empty_set_for_no_requested_references(self, test_session: Session):
+        """An empty batch does not issue an invalid empty IN query."""
+        assert (
+            ResolutionRepository.get_processed_reference_ids(
+                test_session, [], "test_res"
+            )
+            == set()
+        )

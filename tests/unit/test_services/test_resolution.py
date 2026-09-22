@@ -136,6 +136,38 @@ class TestResolutionServicePredict:
             with pytest.raises(ValueError, match="does not exist in gazetteer"):
                 service.predict([document])
 
+    def test_invalid_prediction_does_not_leave_partial_batch_writes(
+        self,
+        test_session,
+        mock_sentencetransformer_resolver,
+        document_factory,
+        reference_factory,
+    ):
+        """All referent validation happens before the batch is committed."""
+        from unittest.mock import Mock
+
+        document = document_factory(text="Test Test")
+        first = reference_factory(start=0, end=4, document_id=document.id)
+        second = reference_factory(start=5, end=9, document_id=document.id)
+        test_session.refresh(document)
+        mock_sentencetransformer_resolver.predict.return_value = [
+            [("geonames", "123"), ("geonames", "missing")]
+        ]
+        service = ResolutionService(mock_sentencetransformer_resolver)
+        feature = Mock(identifier="123")
+
+        with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
+            gazetteer.return_value.find.side_effect = [feature, None]
+            with pytest.raises(ValueError, match="does not exist in gazetteer"):
+                service.predict([document])
+
+        from geoparser.db.crud import ReferentRepository, ResolutionRepository
+
+        assert ReferentRepository.get_by_reference(test_session, first.id) == []
+        assert ReferentRepository.get_by_reference(test_session, second.id) == []
+        assert ResolutionRepository.get_by_reference(test_session, first.id) == []
+        assert ResolutionRepository.get_by_reference(test_session, second.id) == []
+
     def test_skips_references_when_resolver_returns_none(
         self,
         test_session,
