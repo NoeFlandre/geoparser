@@ -73,7 +73,7 @@ From there it is an ordinary plot: read `latitude` and `longitude` from each fea
 
 ## Run It Yourself
 
-The complete notebook is in the repository at [demo/demo.ipynb](https://github.com/dguzh/geoparser/blob/main/demo/demo.ipynb). It downloads the book, splits the chapters, runs the pipeline, and builds the map you see above.
+The complete notebook is in the repository at [demo/demo.ipynb](https://github.com/NoeFlandre/geoparser/blob/main/demo/demo.ipynb). It downloads the book, splits the chapters, runs the pipeline, and builds the map you see above.
 
 To run it in your own environment, you need the library and the `geonames` gazetteer, both covered in [installation](installation.md), plus two extras:
 
