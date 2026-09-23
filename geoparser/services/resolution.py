@@ -207,27 +207,6 @@ class ResolutionService:
         ]
         return spans, pairs
 
-    def _record_referent_predictions(
-        self,
-        session: Session,
-        unprocessed_references: list["Reference"],
-        predicted_referents: list[tuple[str, str] | None],
-        resolver_id: str,
-    ) -> None:
-        """
-        Process referent predictions and update the database.
-
-        Args:
-            session: Database session
-            unprocessed_references: List of references to process
-            predicted_referents: List where each element is either a (gazetteer_name, identifier) tuple
-                                or None for references where predictions are not available
-            resolver_id: ID of the resolver that made the predictions
-        """
-        self._record_referent_prediction_groups(
-            session, [unprocessed_references], [predicted_referents], resolver_id
-        )
-
     def _record_all_referent_predictions(
         self,
         session: Session,
@@ -256,21 +235,20 @@ class ResolutionService:
         group_pairs = zip(reference_groups, predicted_groups, strict=False)
         # pragma: no mutate end
         for references, predictions in group_pairs:
+            # pragma: no mutate start - as above, strict=False is the default.
             pairs = zip(references, predictions, strict=False)
+            # pragma: no mutate end
             for reference, referent in pairs:
                 # Skip references where predictions are not available
                 # (None indicates the resolver couldn't process this reference)
                 if referent is not None:
-                    pending += self._reference_records(
-                        session, reference, referent, resolver_id
-                    )
+                    pending += self._reference_records(reference, referent, resolver_id)
 
         if pending:
             session.add_all(pending)
 
     def _reference_records(
         self,
-        session: Session,
         reference: "Reference",
         referent: tuple[str, str],
         resolver_id: str,
@@ -279,7 +257,6 @@ class ResolutionService:
         Build one reference's referent record and its processed marker.
 
         Args:
-            session: Database session
             reference: The reference that was resolved
             referent: The (gazetteer name, identifier) it was resolved to
             resolver_id: ID of the resolver that made the prediction
@@ -290,15 +267,14 @@ class ResolutionService:
         gazetteer_name, identifier = referent
         records = [
             self._create_referent_record(
-                session, reference.id, gazetteer_name, identifier, resolver_id
+                reference.id, gazetteer_name, identifier, resolver_id
             ),
-            self._create_resolution_record(session, reference.id, resolver_id),
+            self._create_resolution_record(reference.id, resolver_id),
         ]
         return [record for record in records if record is not None]
 
     def _create_referent_record(
         self,
-        session: Session,
         reference_id: uuid.UUID,
         gazetteer_name: str,
         identifier: str,
@@ -308,7 +284,6 @@ class ResolutionService:
         Create a referent record with the resolver ID.
 
         Args:
-            session: Database session
             reference_id: ID of the reference
             gazetteer_name: Name of the gazetteer
             identifier: Identifier value in the gazetteer
@@ -334,13 +309,12 @@ class ResolutionService:
         )
 
     def _create_resolution_record(
-        self, session: Session, reference_id: uuid.UUID, resolver_id: str
+        self, reference_id: uuid.UUID, resolver_id: str
     ) -> Resolution:
         """
         Create a resolution record for a reference processed by a specific resolver.
 
         Args:
-            session: Database session
             reference_id: ID of the reference that was processed
             resolver_id: ID of the resolver that processed it
         """

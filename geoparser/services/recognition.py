@@ -35,7 +35,6 @@ class RecognitionService:
             recognizer: The recognizer module to use for predictions
         """
         self.recognizer = recognizer
-        self._document_texts: dict[uuid.UUID, str] = {}
 
     def _ensure_recognizer_record(self, recognizer: "Recognizer") -> str:
         """
@@ -107,9 +106,6 @@ class RecognitionService:
         predicted_references = self.recognizer.predict(
             [document.text for document in documents]
         )
-        # The reference text is already available in this batch, so builders
-        # do not need one document query per predicted span.
-        self._document_texts = {document.id: document.text for document in documents}
         self._record_reference_predictions(
             session, documents, predicted_references, recognizer_id
         )
@@ -180,16 +176,13 @@ class RecognitionService:
             # Skip documents where predictions are not available
             # (None indicates the recognizer couldn't process this document)
             if references is not None:
-                pending += self._document_records(
-                    session, document, references, recognizer_id
-                )
+                pending += self._document_records(document, references, recognizer_id)
 
         if pending:
             session.add_all(pending)
 
     def _document_records(
         self,
-        session: Session,
         document: "Document",
         references: list[tuple[int, int]],
         recognizer_id: str,
@@ -198,7 +191,6 @@ class RecognitionService:
         Build one document's reference records and its processed marker.
 
         Args:
-            session: Database session
             document: The document the references were predicted for
             references: Predicted (start, end) spans
             recognizer_id: ID of the recognizer that made the predictions
@@ -207,21 +199,16 @@ class RecognitionService:
             The records to stage, references first
         """
         records: list[Reference | Recognition | None] = [
-            self._create_reference_record(
-                session, document.id, start, end, recognizer_id
-            )
+            self._create_reference_record(document, start, end, recognizer_id)
             for start, end in references
         ]
         # Mark document as processed
-        records.append(
-            self._create_recognition_record(session, document.id, recognizer_id)
-        )
+        records.append(self._create_recognition_record(document.id, recognizer_id))
         return [record for record in records if record is not None]
 
     def _create_reference_record(
         self,
-        session: Session,
-        document_id: uuid.UUID,
+        document: "Document",
         start: int,
         end: int,
         recognizer_id: str,
@@ -229,35 +216,31 @@ class RecognitionService:
         """
         Create a reference record with the recognizer ID.
 
+        The span's text is cut from the document in hand, so recording a
+        batch needs no query per predicted span.
+
         Args:
-            session: Database session
-            document_id: ID of the document containing the reference
+            document: The document containing the reference
             start: Start position of the reference
             end: End position of the reference
             recognizer_id: ID of the recognizer
         """
-        document_text = self._document_texts.get(document_id)
-        if document_text is None and document_id not in self._document_texts:
-            document = session.get(Document, document_id)
-            candidate_text = getattr(document, "text", None)
-            document_text = candidate_text if isinstance(candidate_text, str) else None
-
+        text = getattr(document, "text", None)
         return Reference(
             start=start,
             end=end,
-            text=None if document_text is None else document_text[start:end],
-            document_id=document_id,
+            text=text[start:end] if isinstance(text, str) else None,
+            document_id=document.id,
             recognizer_id=recognizer_id,
         )
 
     def _create_recognition_record(
-        self, session: Session, document_id: uuid.UUID, recognizer_id: str
+        self, document_id: uuid.UUID, recognizer_id: str
     ) -> Recognition:
         """
         Create a recognition record for a document processed by a specific recognizer.
 
         Args:
-            session: Database session
             document_id: ID of the document that was processed
             recognizer_id: ID of the recognizer that processed it
         """
