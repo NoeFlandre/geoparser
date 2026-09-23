@@ -25,6 +25,7 @@ from pathlib import Path
 
 from scripts.benchmark.chart import render_bar_chart
 from scripts.benchmark.corpora import CORPORA
+from scripts.benchmark.pipelines import HYBRID, PRIOR_SETTINGS
 
 DEFAULT_REPO_ID = "NoeFlandre/geoparser-benchmark-results"
 EVIDENCE_DIR = Path(__file__).resolve().parents[2] / "benchmark-evidence"
@@ -92,6 +93,15 @@ PIPELINE_DESCRIPTIONS = {
         "and a small log-population prior; no extra model.",
     ),
 }
+
+# The pipelines the main tables and charts compare; the ablations get their
+# own section.
+MAIN_PIPELINES = tuple(PIPELINE_DESCRIPTIONS)
+
+# Hybrid, then each ablation variant; the factorial cells are the first four.
+ABLATION_PIPELINES = (HYBRID, "trim", "population", "prior")
+SWEEP_PIPELINES = ("population-0.05", "population-0.2")
+ABLATION_CHART = "charts/ablation-acc161.svg"
 
 # Corpus-name prefix: (display name, one-line description).
 BENCHMARKS = {
@@ -217,18 +227,32 @@ def _pipeline_section() -> list[str]:
 
 def latest_results(
     rows: Sequence[dict[str, t.Any]],
+    *,
+    metric: str | None = None,
+    pipelines: Sequence[str] | None = None,
 ) -> dict[tuple[str, str], dict[str, t.Any]]:
     """
     Keep, for every corpus and pipeline, the row of the most recent run.
 
     Runs are ordered by when they started rather than by folder name, so a
-    partial run cannot shadow the complete rerun that followed it.
+    partial run cannot shadow the complete rerun that followed it. Given a
+    metric, only rows that measured it count, so a resolution-only rerun
+    cannot blank out the recognition scores of the run before it.
+
+    Args:
+        rows: Collected result rows
+        metric: Consider only rows where this value is present
+        pipelines: Consider only these pipelines
 
     Returns:
         (corpus, pipeline) to its latest row, corpus names lower-cased
     """
     latest: dict[tuple[str, str], dict[str, t.Any]] = {}
     for row in sorted(rows, key=lambda row: row.get("started_at", "")):
+        if metric is not None and row.get(metric) is None:
+            continue
+        if pipelines is not None and row["pipeline"] not in pipelines:
+            continue
         latest[(row["corpus"].lower(), row["pipeline"])] = row
     return latest
 
@@ -264,13 +288,14 @@ def _corpus_order(corpora: set[str]) -> list[str]:
 
 
 def _leaderboard(
-    latest: dict[tuple[str, str], dict[str, t.Any]],
+    rows: Sequence[dict[str, t.Any]],
     metric: str,
     title: str,
     *,
     higher_is_better: bool = True,
 ) -> list[str]:
-    """One compact table: a row per corpus, a column per pipeline."""
+    """One compact table: a row per corpus, a column per main pipeline."""
+    latest = latest_results(rows, metric=metric, pipelines=MAIN_PIPELINES)
     pipelines = [
         name
         for name in PIPELINE_DESCRIPTIONS
@@ -294,13 +319,66 @@ def _leaderboard(
     return [*lines, ""]
 
 
+def _settings(pipeline: str) -> tuple[str, str]:
+    """A variant's (inflection trimming, population weight), as shown."""
+    weight, fallback = PRIOR_SETTINGS.get(pipeline, (0.0, False))
+    return ("on" if fallback else "off"), f"{weight:g}"
+
+
+def _ablation_section(rows: Sequence[dict[str, t.Any]]) -> list[str]:
+    """Hybrid and each variant, over the corpora every one of them ran on."""
+    variants = [*ABLATION_PIPELINES, *SWEEP_PIPELINES]
+    accuracy = latest_results(rows, metric="accuracy_at_161km", pipelines=variants)
+    auc = latest_results(rows, metric="auc", pipelines=variants)
+    present = [name for name in variants if any(p == name for _, p in accuracy)]
+    if len(present) < 2 or HYBRID not in present:
+        return []
+    corpora = sorted(
+        {corpus for corpus, _ in accuracy}.intersection(
+            *({c for c, p in accuracy if p == name} for name in present)
+        )
+    )
+    lines = [
+        "## Ablation",
+        "",
+        "hybrid with one change at a time, recognition held fixed. Means are",
+        f"over the {len(corpora)} corpora every variant ran on; the last column",
+        "counts corpora where Acc@161km beats / trails hybrid.",
+        "",
+        "| Variant | Trimming | Prior weight | Mean Acc@161km | Mean AUC "
+        "| Better / worse |",
+        "| --- | --- | ---: | ---: | ---: | ---: |",
+    ]
+
+    def value(table: dict, corpus: str, name: str, metric: str) -> float:
+        return round(float(table[(corpus, name)][metric]), 3)
+
+    for name in present:
+        trimming, weight = _settings(name)
+        mean_acc = sum(
+            value(accuracy, c, name, "accuracy_at_161km") for c in corpora
+        ) / len(corpora)
+        mean_auc = sum(value(auc, c, name, "auc") for c in corpora) / len(corpora)
+        deltas = [
+            value(accuracy, c, name, "accuracy_at_161km")
+            - value(accuracy, c, HYBRID, "accuracy_at_161km")
+            for c in corpora
+        ]
+        better = sum(delta > 0 for delta in deltas)
+        worse = sum(delta < 0 for delta in deltas)
+        lines.append(
+            f"| {name} | {trimming} | {weight} | {mean_acc:.3f} | {mean_auc:.3f} "
+            f"| {better} / {worse} |"
+        )
+    return [*lines, ""]
+
+
 def render_charts(rows: Sequence[dict[str, t.Any]]) -> dict[str, str]:
     """Return each chart's upload path and SVG, from the latest results."""
-    latest = latest_results(rows)
-    corpora = _corpus_order({corpus for corpus, _ in latest})
-    return {
+    corpora = _corpus_order({row["corpus"].lower() for row in rows})
+    charts = {
         path: render_bar_chart(
-            latest,
+            latest_results(rows, metric=metric, pipelines=MAIN_PIPELINES),
             metric,
             CHART_TITLES[metric],
             corpora=corpora,
@@ -308,6 +386,17 @@ def render_charts(rows: Sequence[dict[str, t.Any]]) -> dict[str, str]:
         )
         for metric, path in CHART_FILES.items()
     }
+    ablation = latest_results(
+        rows, metric="accuracy_at_161km", pipelines=ABLATION_PIPELINES
+    )
+    if len({pipeline for _, pipeline in ablation}) > 1:
+        charts[ABLATION_CHART] = render_bar_chart(
+            ablation,
+            "accuracy_at_161km",
+            "Ablation: Acc@161km, one change at a time (higher is better)",
+            corpora=[c for c in corpora if any(k[0] == c for k in ablation)],
+        )
+    return charts
 
 
 def _chart_links(repo_id: str | None) -> list[str]:
@@ -321,9 +410,18 @@ def _chart_links(repo_id: str | None) -> list[str]:
     ]
 
 
+def _ablation_chart_link(
+    rows: Sequence[dict[str, t.Any]], repo_id: str | None
+) -> list[str]:
+    """The ablation chart's image link, when there is an ablation to show."""
+    if repo_id is None or not _ablation_section(rows):
+        return []
+    base = f"https://huggingface.co/datasets/{repo_id}/resolve/main"
+    return [f"![Ablation: Acc@161km]({base}/{ABLATION_CHART})", ""]
+
+
 def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None) -> str:
     """Return the dataset card, with compact results tables built from ``rows``."""
-    latest = latest_results(rows)
     lines = [
         "---",
         f"license: {LICENSE}",
@@ -354,11 +452,13 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
         "**Bold** is best on a corpus, <u>underlined</u> second.",
         "",
         *_chart_links(repo_id),
-        *_leaderboard(latest, "accuracy_at_161km", "Resolution: Acc@161km"),
+        *_leaderboard(rows, "accuracy_at_161km", "Resolution: Acc@161km"),
         *_leaderboard(
-            latest, "auc", "Resolution: AUC (lower is better)", higher_is_better=False
+            rows, "auc", "Resolution: AUC (lower is better)", higher_is_better=False
         ),
-        *_leaderboard(latest, "f1", "Recognition: F1"),
+        *_leaderboard(rows, "f1", "Recognition: F1"),
+        *_ablation_section(rows),
+        *_ablation_chart_link(rows, repo_id),
         "## Files",
         "",
         f"`{RESULTS_FILE}` (the viewer) has every run with AUC, errors and",

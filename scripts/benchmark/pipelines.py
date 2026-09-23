@@ -24,7 +24,21 @@ UPSTREAM = "upstream"
 SWAPPED = "swapped"
 HYBRID = "hybrid"
 PRIOR = "prior"
-PIPELINES = (UPSTREAM, SWAPPED, HYBRID, PRIOR)
+DEFAULT_PIPELINES = (UPSTREAM, SWAPPED, HYBRID, PRIOR)
+
+# PriorResolver settings as (population_weight, inflection_fallback). prior
+# turns both on; the ablations are hybrid with one factor changed at a time,
+# plus a sweep of the prior's weight on its own. Their recognition is
+# hybrid's, so only their resolution phase needs running.
+PRIOR_SETTINGS = {
+    PRIOR: (0.1, True),
+    "trim": (0.0, True),
+    "population": (0.1, False),
+    "population-0.05": (0.05, False),
+    "population-0.2": (0.2, False),
+}
+ABLATIONS = tuple(name for name in PRIOR_SETTINGS if name != PRIOR)
+PIPELINES = (*DEFAULT_PIPELINES, *ABLATIONS)
 UPSTREAM_RESOLVER_MODEL = "dguzh/geo-all-MiniLM-L6-v2"
 
 # The upstream recognizer. The transformer pipeline needs a plugin the library
@@ -119,8 +133,8 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
     along.
 
     Args:
-        pipeline: ``upstream`` and ``hybrid`` use MiniLM, ``prior`` MiniLM
-            with a population prior, and ``swapped`` Jina
+        pipeline: ``upstream`` and ``hybrid`` use MiniLM, ``prior`` and
+            the ablations MiniLM with PRIOR_SETTINGS, and ``swapped`` Jina
         device: Where to place the models
         min_similarity: Similarity the best candidate must reach to be used
 
@@ -140,13 +154,16 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
             gazetteer_name=GAZETTEER_NAME,
             min_similarity=min_similarity,
         )
-    elif pipeline == PRIOR:
+    elif pipeline in PRIOR_SETTINGS:
         from geoparser.modules import PriorResolver
 
+        population_weight, inflection_fallback = PRIOR_SETTINGS[pipeline]
         resolver = PriorResolver(
             model_name=UPSTREAM_RESOLVER_MODEL,
             gazetteer_name=GAZETTEER_NAME,
             min_similarity=min_similarity,
+            population_weight=population_weight,
+            inflection_fallback=inflection_fallback,
         )
     else:
         from geoparser.modules import JinaResolver

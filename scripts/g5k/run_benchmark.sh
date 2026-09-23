@@ -77,6 +77,12 @@ if [[ -n "${PIPELINES:-}" ]]; then
         ARGS+=(--pipeline "$pipeline")
     done
 fi
+if [[ -n "${PHASES:-}" ]]; then
+    IFS=',' read -r -a selected_phases <<< "$PHASES"
+    for phase in "${selected_phases[@]}"; do
+        ARGS+=(--phase "$phase")
+    done
+fi
 if [[ -n "${CORPORA:-}" ]]; then
     IFS=',' read -r -a selected_corpora <<< "$CORPORA"
     for corpus_name in "${selected_corpora[@]}"; do

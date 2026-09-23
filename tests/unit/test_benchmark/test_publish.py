@@ -358,3 +358,86 @@ def test_every_registered_corpus_family_is_described():
     from scripts.benchmark.publish import BENCHMARKS
 
     assert {name.split("-")[0] for name in CORPORA} <= set(BENCHMARKS)
+
+
+class TestLatestPerMetric:
+    """A resolution-only rerun must not blank out recognition scores."""
+
+    def test_skips_rows_without_the_metric(self):
+        """The latest row that has the metric is the one shown."""
+        full = _row("full", "geovirus", "hybrid", f1=0.8, acc=0.7, started="1")
+        resolution_only = _row(
+            "ablation", "geovirus", "hybrid", f1=None, acc=0.75, started="2"
+        )
+
+        f1 = latest_results([full, resolution_only], metric="f1")
+        acc = latest_results([full, resolution_only], metric="accuracy_at_161km")
+
+        assert f1[("geovirus", "hybrid")]["f1"] == 0.8
+        assert acc[("geovirus", "hybrid")]["accuracy_at_161km"] == 0.75
+
+
+def _ablation_rows():
+    """Two corpora, every ablation cell, with known accuracies."""
+    acc = {
+        "hybrid": (0.50, 0.60),
+        "trim": (0.55, 0.60),
+        "population": (0.45, 0.70),
+        "prior": (0.60, 0.65),
+        "population-0.05": (0.50, 0.62),
+        "population-0.2": (0.40, 0.72),
+    }
+    rows = []
+    for pipeline, values in acc.items():
+        for corpus, value in zip(("geovirus", "newsli-tr"), values, strict=True):
+            row = _row("abl", corpus, pipeline, f1=None, acc=value, started="9")
+            row["auc"] = 1 - value
+            rows.append(row)
+    return rows
+
+
+class TestAblationSection:
+    """One factor at a time, summarised against hybrid."""
+
+    def test_lists_each_variant_with_its_settings(self):
+        """The table says which factor each row turns on."""
+        card = render_card(_ablation_rows())
+
+        assert "## Ablation" in card
+        assert "| hybrid | off | 0 |" in card
+        assert "| trim | on | 0 |" in card
+        assert "| population | off | 0.1 |" in card
+        assert "| prior | on | 0.1 |" in card
+        assert "| population-0.2 | off | 0.2 |" in card
+
+    def test_reports_means_and_wins_against_hybrid(self):
+        """Mean Acc@161km over corpora, and corpora better or worse."""
+        card = render_card(_ablation_rows())
+
+        trim_row = next(
+            line for line in card.splitlines() if line.startswith("| trim |")
+        )
+        assert "0.575" in trim_row
+        assert "1 / 0" in trim_row
+        population = next(
+            line for line in card.splitlines() if line.startswith("| population |")
+        )
+        assert "1 / 1" in population
+
+    def test_is_absent_without_ablation_results(self):
+        """A card without ablation runs has no empty section."""
+        card = render_card([_row("r", "geovirus", "hybrid", f1=0.9, acc=0.8)])
+
+        assert "## Ablation" not in card
+
+    def test_charts_the_factorial_cells(self):
+        """The ablation chart compares hybrid, trim, population and prior."""
+        from scripts.benchmark.publish import render_charts
+
+        charts = render_charts(_ablation_rows())
+
+        assert "charts/ablation-acc161.svg" in charts
+        svg = charts["charts/ablation-acc161.svg"]
+        for name in ("hybrid", "trim", "population", "prior"):
+            assert f">{name}<" in svg
+        assert "population-0.2" not in svg

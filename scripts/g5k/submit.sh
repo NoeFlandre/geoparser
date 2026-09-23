@@ -38,8 +38,17 @@ if [[ -n "$CORPORA" && ! "$CORPORA" =~ ^[a-z0-9-]+(,[a-z0-9-]+)*$ ]]; then
     exit 2
 fi
 
-if [[ -n "$PIPELINES" && ! "$PIPELINES" =~ ^(upstream|swapped|hybrid|prior)(,(upstream|swapped|hybrid|prior))*$ ]]; then
-    echo "PIPELINES must be a comma-separated list of upstream, swapped, hybrid, and/or prior" >&2
+# Names are checked by the benchmark CLI itself; this only keeps the value
+# safe to splice into the job's command line.
+if [[ -n "$PIPELINES" && ! "$PIPELINES" =~ ^[a-z0-9.-]+(,[a-z0-9.-]+)*$ ]]; then
+    echo "PIPELINES must be a comma-separated list of pipeline names" >&2
+    exit 2
+fi
+
+# recognition and/or resolution; empty runs both.
+PHASES="${PHASES:-}"
+if [[ -n "$PHASES" && ! "$PHASES" =~ ^(recognition|resolution)(,(recognition|resolution))?$ ]]; then
+    echo "PHASES must be recognition, resolution, or both, comma-separated" >&2
     exit 2
 fi
 
@@ -93,7 +102,7 @@ oarsub \
     --signal 12 \
     "REPO_ROOT='$REPO_ROOT' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
 DEVICE='${DEVICE:-auto}' CHUNK_SIZE='${CHUNK_SIZE:-5}' \
-MIN_SIMILARITY='${MIN_SIMILARITY:-0.0}' PIPELINES='$PIPELINES' CORPORA='$CORPORA' \
+MIN_SIMILARITY='${MIN_SIMILARITY:-0.0}' PIPELINES='$PIPELINES' CORPORA='$CORPORA' PHASES='$PHASES' \
 bash $REPO_ROOT/scripts/g5k/run_benchmark.sh"
 
 echo
