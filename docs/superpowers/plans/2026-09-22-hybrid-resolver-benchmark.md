@@ -46,7 +46,9 @@ def test_hybrid_uses_minilm_sentence_transformer_for_resolution(monkeypatch):
     )
     monkeypatch.setattr(pipelines, "GAZETTEER_NAME", "geonames")
 
-    result = pipelines.build_resolver(pipelines.HYBRID, device="cuda", min_similarity=0.0)
+    result = pipelines.build_resolver(
+        pipelines.HYBRID, device="cuda", min_similarity=0.0
+    )
 
     assert result is resolver
     sentence_transformer.assert_called_once_with(
@@ -58,9 +60,7 @@ def test_hybrid_moves_both_models_to_requested_device(monkeypatch):
     transformer = Mock()
     resolver = SimpleNamespace(transformer=transformer, reranker=None)
     factory = Mock(return_value=resolver)
-    monkeypatch.setattr(
-        "geoparser.modules.SentenceTransformerResolver", factory
-    )
+    monkeypatch.setattr("geoparser.modules.SentenceTransformerResolver", factory)
 
     pipelines.build_resolver(pipelines.HYBRID, device="cuda", min_similarity=0.0)
 
