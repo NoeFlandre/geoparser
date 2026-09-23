@@ -38,8 +38,8 @@ if [[ -n "$CORPORA" && ! "$CORPORA" =~ ^[a-z0-9-]+(,[a-z0-9-]+)*$ ]]; then
     exit 2
 fi
 
-if [[ -n "$PIPELINES" && ! "$PIPELINES" =~ ^(upstream|swapped|hybrid)(,(upstream|swapped|hybrid))*$ ]]; then
-    echo "PIPELINES must be a comma-separated list of upstream, swapped, and/or hybrid" >&2
+if [[ -n "$PIPELINES" && ! "$PIPELINES" =~ ^(upstream|swapped|hybrid|prior)(,(upstream|swapped|hybrid|prior))*$ ]]; then
+    echo "PIPELINES must be a comma-separated list of upstream, swapped, hybrid, and/or prior" >&2
     exit 2
 fi
 

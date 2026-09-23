@@ -32,7 +32,7 @@ def _patch_module_classes(monkeypatch, **classes):
 
 
 def test_hybrid_is_a_distinct_benchmark_pipeline():
-    assert pipelines.PIPELINES == ("upstream", "swapped", "hybrid")
+    assert pipelines.PIPELINES == ("upstream", "swapped", "hybrid", "prior")
 
 
 def test_cli_accepts_the_hybrid_pipeline():
@@ -94,3 +94,30 @@ def test_swapped_keeps_jina_resolver(monkeypatch):
 def test_unknown_pipeline_is_rejected():
     with pytest.raises(ValueError, match="Unknown benchmark pipeline"):
         pipelines.build_recognizer("unknown", device="cpu")
+
+
+def test_prior_uses_gliner2_for_recognition(monkeypatch):
+    recognizer = SimpleNamespace(model=Mock())
+    gliner_factory = Mock(return_value=recognizer)
+    _patch_module_classes(monkeypatch, GLiNER2Recognizer=gliner_factory)
+
+    assert pipelines.build_recognizer(pipelines.PRIOR, device="cpu") is recognizer
+
+
+def test_prior_uses_the_prior_resolver_on_the_upstream_model(monkeypatch):
+    resolver = SimpleNamespace(transformer=Mock(), reranker=None)
+    prior_factory = Mock(return_value=resolver)
+    _patch_module_classes(monkeypatch, PriorResolver=prior_factory)
+    monkeypatch.setattr(pipelines, "GAZETTEER_NAME", "geonames")
+
+    result = pipelines.build_resolver(
+        pipelines.PRIOR, device="cuda", min_similarity=0.0
+    )
+
+    assert result is resolver
+    prior_factory.assert_called_once_with(
+        model_name=pipelines.UPSTREAM_RESOLVER_MODEL,
+        gazetteer_name="geonames",
+        min_similarity=0.0,
+    )
+    resolver.transformer.to.assert_called_once_with("cuda")

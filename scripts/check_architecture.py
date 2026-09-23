@@ -41,6 +41,7 @@ FORBIDDEN_IMPORTS: dict[str, set[str]] = {
 PURE_MODULES: set[str] = {
     "geoparser.evaluation",
     "geoparser.modules.resolvers.context",
+    "geoparser.modules.resolvers.ranking",
 }
 
 
