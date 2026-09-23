@@ -15,6 +15,8 @@ reports and checkpoints hold scores, offsets and coordinates, not articles.
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import json
 import sys
 import typing as t
@@ -26,6 +28,45 @@ EVIDENCE_DIR = Path(__file__).resolve().parents[2] / "benchmark-evidence"
 LICENSE = "cc-by-nc-sa-4.0"
 REPORT_NAME = "benchmark-report.json"
 BASELINE_PREFIX = "baseline"
+# One flat table for the Hub's viewer: left to itself it tries to read every
+# JSON file in the repo as one dataset, and reports, checkpoints and
+# summaries do not share a schema.
+RESULTS_FILE = "results.csv"
+MODEL_ROLES = ("recognizer", "resolver", "reranker")
+COLUMNS = (
+    "run",
+    "corpus",
+    "language",
+    "documents",
+    "gold_toponyms",
+    "pipeline",
+    *MODEL_ROLES,
+    "f1",
+    "accuracy_at_161km",
+    "auc",
+    "elapsed_seconds",
+    "commit",
+)
+
+PIPELINE_DESCRIPTIONS = {
+    "upstream": (
+        "The original geoparser pipeline: spaCy named-entity recognition "
+        "(English model) finds toponyms, and a sentence-transformer "
+        "fine-tuned for geocoding ranks GeoNames candidates by similarity "
+        "to the toponym in context."
+    ),
+    "swapped": (
+        "Both stages replaced: GLiNER2 (`fastino/gliner2.5-multi-v1`), a "
+        "multilingual zero-shot extractor, recognizes toponyms; GeoNames "
+        "candidates are ranked by `jinaai/jina-embeddings-v5-text-small` and "
+        "re-scored by `jinaai/jina-reranker-v3.5`. Historical only: its "
+        "GeoVirus report is kept under `runs/*/baseline-jina/`."
+    ),
+    "hybrid": (
+        "GLiNER2's multilingual zero-shot recognition combined with the "
+        "upstream geocoding sentence-transformer resolver."
+    ),
+}
 
 
 def collect_rows(evidence_dir: Path) -> list[dict[str, t.Any]]:
@@ -52,6 +93,10 @@ def collect_rows(evidence_dir: Path) -> list[dict[str, t.Any]]:
                     "documents": data["documents"],
                     "gold_toponyms": data["gold_toponyms"],
                     "pipeline": pipeline["name"],
+                    **{
+                        role: (pipeline.get("models") or {}).get(role, "")
+                        for role in MODEL_ROLES
+                    },
                     "f1": recognition.get("f1"),
                     "accuracy_at_161km": resolution.get("accuracy_at_161km"),
                     "auc": resolution.get("auc"),
@@ -67,11 +112,53 @@ def _number(value: float | None) -> str:
     return "-" if value is None else f"{value:.3f}"
 
 
+def render_csv(rows: Sequence[dict[str, t.Any]]) -> str:
+    """Return the rows as the CSV the dataset viewer shows."""
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=COLUMNS, lineterminator="\n")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({column: row.get(column, "") for column in COLUMNS})
+    return buffer.getvalue()
+
+
+def _pipeline_section(rows: Sequence[dict[str, t.Any]]) -> list[str]:
+    """Describe each pipeline, with the models it was run with."""
+    lines = ["## Pipelines", ""]
+    for name, description in PIPELINE_DESCRIPTIONS.items():
+        combos = sorted(
+            {
+                tuple(row.get(role, "") for role in MODEL_ROLES)
+                for row in rows
+                if row["pipeline"] == name
+            }
+        )
+        lines.append(f"- **{name}**: {description}")
+        for combo in combos:
+            models = ", ".join(
+                f"{role} `{model}`"
+                for role, model in zip(MODEL_ROLES, combo, strict=True)
+                if model
+            )
+            lines.append(f"  - Models: {models}")
+    lines += [
+        "",
+        "Every pipeline resolves against the same GeoNames gazetteer.",
+        "",
+    ]
+    return lines
+
+
 def render_card(rows: Sequence[dict[str, t.Any]]) -> str:
     """Return the dataset card, with a results table built from ``rows``."""
     lines = [
         "---",
         f"license: {LICENSE}",
+        "configs:",
+        "- config_name: default",
+        "  data_files:",
+        "  - split: train",
+        f"    path: {RESULTS_FILE}",
         "language: [en, de, fr, fi, sv]",
         "pretty_name: Geoparser benchmark results",
         "tags: [geoparsing, toponym-resolution, benchmark]",
@@ -86,7 +173,12 @@ def render_card(rows: Sequence[dict[str, t.Any]]) -> str:
         "compared on the same toponyms. AUC is lower-is-better and normalised by",
         "the harness itself.",
         "",
-        "`runs/` holds each run's reports, checkpoints and Grid'5000 job logs.",
+        f"`{RESULTS_FILE}` is the table below, one row per run, corpus and",
+        "pipeline; `runs/` holds each run's reports, checkpoints and",
+        "Grid'5000 job logs.",
+        "",
+        *_pipeline_section(rows),
+        "## Results",
         "",
         "| Run | Corpus | Lang | Docs | Gold | Pipeline | Rec F1 | Acc@161km "
         "| AUC | Seconds | Commit |",
@@ -128,6 +220,13 @@ def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> None:
         folder_path=str(evidence_dir),
         path_in_repo="runs",
         commit_message="Upload benchmark evidence",
+    )
+    api.upload_file(
+        repo_id=repo_id,
+        repo_type="dataset",
+        path_or_fileobj=render_csv(rows).encode("utf-8"),
+        path_in_repo=RESULTS_FILE,
+        commit_message="Regenerate results table",
     )
     api.upload_file(
         repo_id=repo_id,
