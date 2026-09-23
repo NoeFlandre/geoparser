@@ -111,6 +111,11 @@ BENCHMARKS = {
         "TopRes19th",
         "19th-century British newspapers, OCR (HIPE-2022).",
     ),
+    "newsli": (
+        "NewsLi",
+        "Wikinews linked to GeoNames (UniTopRank, Hu et al., 2026); "
+        "first 500 articles per language.",
+    ),
 }
 
 
@@ -327,7 +332,7 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
         "  data_files:",
         "  - split: train",
         f"    path: {RESULTS_FILE}",
-        "language: [en, de, fr, fi, sv]",
+        "language: [en, de, fr, fi, sv, ar, es, fa, ja, pl, ro, sr, ta, tr, uk]",
         "pretty_name: Geoparser benchmark results",
         "tags: [geoparsing, toponym-resolution, benchmark]",
         "---",

@@ -350,3 +350,11 @@ class TestMetricCoverage:
         card = render_card(rows)
 
         assert "| geovirus | en | **0.200** | <u>0.400</u> |" in card
+
+
+def test_every_registered_corpus_family_is_described():
+    """A new corpus cannot reach the card without a description."""
+    from scripts.benchmark.corpora import CORPORA
+    from scripts.benchmark.publish import BENCHMARKS
+
+    assert {name.split("-")[0] for name in CORPORA} <= set(BENCHMARKS)
