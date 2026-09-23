@@ -6,7 +6,6 @@ so this module needs no fine-tuning to recognize place names, and the label
 list is a configuration choice rather than a property of the checkpoint.
 """
 
-import sys
 import typing as t
 
 from gliner2 import AutoExtractor
@@ -40,15 +39,12 @@ class GLiNER2Recognizer(Recognizer):
 
     # GLiNER2 attends over its whole input at once, so memory grows with the
     # square of the text: a 133k-character newspaper page asked a 15 GB GPU
-    # for 12 GB in one allocation, and 20k-character windows of dense OCR
-    # still filled it. Longer texts are split into overlapping windows. The
-    # limit sits above GeoVirus's longest article (8k characters), so
-    # ordinary documents are still passed whole and extracted as before.
+    # for 12 GB, and even 10k-character windows of noisy OCR filled it, as
+    # OCR splits into far more tokens per character than clean text. Longer
+    # texts go through GLiNER2's own long-document mode, which scans fixed
+    # word chunks. The limit sits above GeoVirus's longest article (8k
+    # characters), so ordinary documents are still extracted whole.
     WINDOW_CHARS: t.ClassVar[int] = 10_000
-    # Wide enough that a toponym cut by one window's edge lies whole inside
-    # the next; each window keeps only the spans starting in the half of the
-    # overlap nearer to it, so one found in both is kept once.
-    OVERLAP_CHARS: t.ClassVar[int] = 1_000
 
     def __init__(
         self,
@@ -106,49 +102,13 @@ class GLiNER2Recognizer(Recognizer):
         Returns:
             The distinct spans, ordered by position in the text
         """
-        spans: set[tuple[int, int]] = set()
-        for offset, keep_from, keep_to in self._windows(text):
-            result = self.model.extract_entities(
-                text[offset : offset + self.WINDOW_CHARS],
-                self.entity_types,
-                include_spans=True,
-            )
-            spans |= {
-                (offset + start, offset + end)
-                for start, end in self._spans(result.get("entities", {}))
-                if keep_from <= offset + start < keep_to
-            }
-        return sorted(spans)
-
-    @classmethod
-    def _windows(cls, text: str) -> list[tuple[int, int, int]]:
-        """
-        Split a text into windows of at most WINDOW_CHARS characters.
-
-        Windows end at whitespace where there is some, so a word is not cut,
-        and consecutive windows overlap by about OVERLAP_CHARS. Each window
-        owns the spans starting in [keep_from, keep_to), and the owned ranges
-        tile the text, so every span is kept by exactly one window.
-
-        Args:
-            text: The document text
-
-        Returns:
-            (offset, keep_from, keep_to) per window, in text order
-        """
-        windows: list[tuple[int, int, int]] = []
-        start, keep_from = 0, 0
-        while start + cls.WINDOW_CHARS < len(text):
-            end = start + cls.WINDOW_CHARS
-            cut = text.rfind(" ", end - cls.OVERLAP_CHARS // 2, end)
-            cut = end if cut <= start else cut
-            following = text.find(" ", cut - cls.OVERLAP_CHARS, cut)
-            following = cut - cls.OVERLAP_CHARS if following == -1 else following + 1
-            boundary = (following + cut) // 2
-            windows.append((start, keep_from, boundary))
-            start, keep_from = following, boundary
-        windows.append((start, keep_from, sys.maxsize))
-        return windows
+        extract = (
+            self.model.extract_entities_long
+            if len(text) > self.WINDOW_CHARS
+            else self.model.extract_entities
+        )
+        result = extract(text, self.entity_types, include_spans=True)
+        return sorted(self._spans(result.get("entities", {})))
 
     @staticmethod
     def _spans(by_label: dict[str, list[dict]]) -> set[tuple[int, int]]:

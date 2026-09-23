@@ -306,85 +306,44 @@ class TestPartialOffsets:
         assert recognizer.predict(["x"]) == [[]]
 
 
-def _finder(word):
-    """A fake extract_entities that reports every occurrence of one word."""
-
-    def extract(text, entity_types, include_spans):
-        spans, start = [], text.find(word)
-        while start != -1:
-            spans.append({"text": word, "start": start, "end": start + len(word)})
-            start = text.find(word, start + 1)
-        return _entities(location=spans)
-
-    return extract
-
-
 @pytest.mark.unit
 class TestLongDocuments:
     """
-    Texts beyond the window are split, so memory stays bounded.
+    Texts beyond WINDOW_CHARS go through GLiNER2's own long-document mode.
 
-    GLiNER2 attends over the whole input at once, and a 133k-character page
-    asks a 15 GB GPU for 12 GB in one allocation. Below the window a text is
-    passed whole, exactly as before.
+    GLiNER2 attends over its whole input at once: a 133k-character page asked
+    a 15 GB GPU for 12 GB, and even 10k-character windows of noisy OCR filled
+    it, because OCR splits into far more tokens per character than clean text.
+    extract_entities_long scans fixed word chunks, which bounds memory by
+    words. Shorter texts are passed whole, exactly as before.
     """
 
     def test_a_short_text_is_passed_whole(self, extractor):
-        """A text within the window is extracted in one call."""
+        """A text within the limit takes the ordinary, whole-text path."""
         recognizer = GLiNER2Recognizer()
-        recognizer.model.extract_entities.side_effect = _finder("Paris")
+        recognizer.model.extract_entities.return_value = _entities(
+            city=[{"text": "Paris", "start": 3, "end": 8}]
+        )
 
-        recognizer.predict(["in Paris"])
+        assert recognizer.predict(["in Paris"]) == [[(3, 8)]]
+        recognizer.model.extract_entities_long.assert_not_called()
 
-        assert recognizer.model.extract_entities.call_count == 1
-
-    def test_no_window_exceeds_the_limit(self, extractor):
-        """Every call the model sees is at most WINDOW_CHARS long."""
+    def test_a_long_text_takes_the_chunked_path(self, extractor):
+        """A text over the limit is scanned in word chunks, with spans kept."""
         recognizer = GLiNER2Recognizer()
-        recognizer.model.extract_entities.side_effect = _finder("Paris")
-        text = "word " * (GLiNER2Recognizer.WINDOW_CHARS // 2)
+        recognizer.model.extract_entities_long.return_value = _entities(
+            city=[{"text": "Paris", "start": 12_000, "end": 12_005}]
+        )
+        text = "x" * (GLiNER2Recognizer.WINDOW_CHARS + 1)
 
-        recognizer.predict([text])
-
-        lengths = [
-            len(call.args[0])
-            for call in recognizer.model.extract_entities.call_args_list
-        ]
-        assert len(lengths) > 1
-        assert max(lengths) <= GLiNER2Recognizer.WINDOW_CHARS
-
-    def test_offsets_are_relative_to_the_whole_text(self, extractor):
-        """Spans found in a later window are shifted back into the document."""
-        recognizer = GLiNER2Recognizer()
-        recognizer.model.extract_entities.side_effect = _finder("Paris")
-        filler = "word " * GLiNER2Recognizer.WINDOW_CHARS
-        text = "Paris " + filler + "Paris " + filler + "Paris"
-
-        (spans,) = recognizer.predict([text])
-
-        assert [text[start:end] for start, end in spans] == ["Paris"] * 3
-        assert spans == sorted(set(spans))
-
-    def test_an_entity_in_the_overlap_is_found_once(self, extractor):
-        """A toponym near a window edge is neither lost nor duplicated."""
-        recognizer = GLiNER2Recognizer()
-        recognizer.model.extract_entities.side_effect = _finder("Paris")
-        window = GLiNER2Recognizer.WINDOW_CHARS
-        for position in range(window - 300, window + 50, 37):
-            text = "x " * (position // 2) + "Paris " + "y " * window
-
-            (spans,) = recognizer.predict([text])
-
-            assert [text[start:end] for start, end in spans] == ["Paris"], position
+        assert recognizer.predict([text]) == [[(12_000, 12_005)]]
+        recognizer.model.extract_entities.assert_not_called()
+        recognizer.model.extract_entities_long.assert_called_once_with(
+            text, ["city", "country", "location"], include_spans=True
+        )
 
 
 @pytest.mark.unit
-def test_the_window_fits_a_t4_and_keeps_ordinary_articles_whole():
-    """
-    The window is pinned by measurement, not taste.
-
-    20k characters of OCR ran a 15 GB T4 out of memory (OAR job 6937505),
-    and GeoVirus's longest article is 8,059 characters, which must still be
-    extracted in one piece so earlier results are unchanged.
-    """
-    assert 8_059 < GLiNER2Recognizer.WINDOW_CHARS < 20_000
+def test_the_limit_keeps_ordinary_articles_whole():
+    """GeoVirus's longest article (8,059 characters) is still passed whole."""
+    assert GLiNER2Recognizer.WINDOW_CHARS > 8_059
