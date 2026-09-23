@@ -327,3 +327,43 @@ class TestResolutionRepositoryProcessedReferenceIds:
             )
             == set()
         )
+
+
+@pytest.mark.unit
+class TestGetProcessedReferenceIdsScope:
+    """Both filters of the processed-ID lookup matter."""
+
+    def test_ignores_another_resolvers_work(
+        self, test_session: Session, reference_factory, resolver_factory
+    ):
+        """A reference another resolver processed is still to do."""
+        resolver_factory(id="mine")
+        resolver_factory(id="other")
+        reference = reference_factory()
+        ResolutionRepository.create(
+            test_session,
+            ResolutionCreate(reference_id=reference.id, resolver_id="other"),
+        )
+
+        assert (
+            ResolutionRepository.get_processed_reference_ids(
+                test_session, [reference.id], "mine"
+            )
+            == set()
+        )
+
+    def test_ignores_references_that_were_not_asked_about(
+        self, test_session: Session, reference_factory, resolver_factory
+    ):
+        """Only the requested IDs are reported, even if others were processed."""
+        resolver_factory(id="mine")
+        asked, other = reference_factory(), reference_factory()
+        for reference in (asked, other):
+            ResolutionRepository.create(
+                test_session,
+                ResolutionCreate(reference_id=reference.id, resolver_id="mine"),
+            )
+
+        assert ResolutionRepository.get_processed_reference_ids(
+            test_session, [asked.id], "mine"
+        ) == {asked.id}

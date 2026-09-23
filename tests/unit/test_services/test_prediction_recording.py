@@ -30,14 +30,14 @@ class TestRecordReferencePredictions:
             patch.object(
                 service,
                 "_create_reference_record",
-                side_effect=lambda s, d, start, end, r: references.append(
-                    (d, start, end)
+                side_effect=lambda d, start, end, r: references.append(
+                    (d.id, start, end)
                 ),
             ),
             patch.object(
                 service,
                 "_create_recognition_record",
-                side_effect=lambda s, d, r: recognitions.append(d),
+                side_effect=lambda d, r: recognitions.append(d),
             ),
         ):
             service._record_reference_predictions(Mock(), documents, predictions, "rec")
@@ -106,15 +106,17 @@ class TestRecordReferentPredictions:
             patch.object(
                 service,
                 "_create_referent_record",
-                side_effect=lambda s, ref, g, i, r: referents.append((ref, g, i)),
+                side_effect=lambda ref, g, i, r: referents.append((ref, g, i)),
             ),
             patch.object(
                 service,
                 "_create_resolution_record",
-                side_effect=lambda s, ref, r: resolutions.append(ref),
+                side_effect=lambda ref, r: resolutions.append(ref),
             ),
         ):
-            service._record_referent_predictions(Mock(), references, predictions, "res")
+            service._record_referent_prediction_groups(
+                Mock(), [references], [predictions], "res"
+            )
         return referents, resolutions
 
     def test_tolerates_fewer_referents_than_references(self):
@@ -177,7 +179,7 @@ class TestReferentValidation:
         ):
             gazetteer.return_value.find.return_value = feature
             service._create_referent_record(
-                Mock(), uuid.uuid4(), gazetteer_name, identifier, "res"
+                uuid.uuid4(), gazetteer_name, identifier, "res"
             )
         return gazetteer
 
@@ -213,7 +215,6 @@ class TestBatchPersistence:
         service = RecognitionService(Mock())
 
         session = Mock()
-        service._document_texts = {document.id: document.text}
         service._record_reference_predictions(
             session, [document], [[(0, 5), (6, 12)]], "rec"
         )
@@ -233,10 +234,10 @@ class TestBatchPersistence:
 
         with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
             gazetteer.return_value.find.return_value = feature
-            service._record_referent_predictions(
+            service._record_referent_prediction_groups(
                 session,
-                references,
-                [("geonames", "123"), ("geonames", "123")],
+                [references],
+                [[("geonames", "123"), ("geonames", "123")]],
                 "res",
             )
 
