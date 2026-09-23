@@ -175,8 +175,8 @@ class TestPipelineDescriptions:
     """Saying what each candidate is."""
 
     def test_every_pipeline_is_described(self):
-        """Test that upstream, swapped and hybrid each have an explanation."""
-        assert set(PIPELINE_DESCRIPTIONS) == {"upstream", "swapped", "hybrid"}
+        """Test that every benchmark pipeline has an explanation."""
+        assert set(PIPELINE_DESCRIPTIONS) == {"upstream", "swapped", "hybrid", "prior"}
 
     def test_card_explains_each_pipeline_and_its_models(self):
         """Test that the card lists every pipeline with its models."""

@@ -66,6 +66,12 @@ PIPELINE_DESCRIPTIONS = {
         "GLiNER2's multilingual zero-shot recognition combined with the "
         "upstream geocoding sentence-transformer resolver."
     ),
+    "prior": (
+        "hybrid with two light changes to resolution and no extra model: an "
+        "exact gazetteer miss is retried with the word's ending trimmed "
+        "(Finnish 'Saksan' -> 'Saksa'), and candidates are ranked by "
+        "similarity plus a small log-population prior."
+    ),
 }
 
 

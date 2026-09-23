@@ -4,7 +4,9 @@ Build the benchmark pipelines and place them on a device.
 ``upstream`` is what the library shipped before the module swap: spaCy for
 recognition and the thesis' fine-tuned MiniLM for resolution. ``swapped`` is
 the GLiNER2 and Jina v5 pair. ``hybrid`` keeps GLiNER2 recognition but uses
-the upstream MiniLM resolver.
+the upstream MiniLM resolver. ``prior`` is ``hybrid`` with the
+``PriorResolver``: the same MiniLM encoder, plus an inflection fallback for
+exact gazetteer misses and a population prior on the ranking.
 
 Device placement is done here rather than left to the libraries because they
 do not agree. ``SentenceTransformer`` selects CUDA by itself when it is
@@ -21,7 +23,8 @@ import typing as t
 UPSTREAM = "upstream"
 SWAPPED = "swapped"
 HYBRID = "hybrid"
-PIPELINES = (UPSTREAM, SWAPPED, HYBRID)
+PRIOR = "prior"
+PIPELINES = (UPSTREAM, SWAPPED, HYBRID, PRIOR)
 UPSTREAM_RESOLVER_MODEL = "dguzh/geo-all-MiniLM-L6-v2"
 
 # The upstream recognizer. The transformer pipeline needs a plugin the library
@@ -74,7 +77,7 @@ def build_recognizer(pipeline: str, *, device: str) -> t.Any:
     Return the recognizer half of a named pipeline.
 
     Args:
-        pipeline: ``upstream`` uses spaCy; ``swapped`` and ``hybrid`` use GLiNER2
+        pipeline: ``upstream`` uses spaCy; the others use GLiNER2
         device: Where to place the model
 
     Returns:
@@ -116,7 +119,8 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
     along.
 
     Args:
-        pipeline: ``upstream`` and ``hybrid`` use MiniLM; ``swapped`` uses Jina
+        pipeline: ``upstream`` and ``hybrid`` use MiniLM, ``prior`` MiniLM
+            with a population prior, and ``swapped`` Jina
         device: Where to place the models
         min_similarity: Similarity the best candidate must reach to be used
 
@@ -132,6 +136,14 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
         from geoparser.modules import SentenceTransformerResolver
 
         resolver = SentenceTransformerResolver(
+            model_name=UPSTREAM_RESOLVER_MODEL,
+            gazetteer_name=GAZETTEER_NAME,
+            min_similarity=min_similarity,
+        )
+    elif pipeline == PRIOR:
+        from geoparser.modules import PriorResolver
+
+        resolver = PriorResolver(
             model_name=UPSTREAM_RESOLVER_MODEL,
             gazetteer_name=GAZETTEER_NAME,
             min_similarity=min_similarity,
