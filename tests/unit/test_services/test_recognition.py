@@ -4,6 +4,7 @@ Unit tests for geoparser/services/recognition.py
 Tests the RecognitionService class with mocked recognizers.
 """
 
+import uuid
 from unittest.mock import patch
 
 import pytest
@@ -229,16 +230,26 @@ class TestRecognitionFailures:
         ):
             service.predict([document])
 
-    def test_reads_the_document_when_its_text_was_not_batched(
-        self, test_session, mock_spacy_recognizer, document_factory
-    ):
-        """A reference for a document outside the batch still gets its text."""
-        document = document_factory(text="New York is a city.")
-        service = RecognitionService(mock_spacy_recognizer)
-        service._document_texts = {}
+    def test_cuts_the_reference_text_from_the_document(self, mock_spacy_recognizer):
+        """The span's text comes from the document, with no query."""
+        from types import SimpleNamespace
 
-        reference = service._create_reference_record(
-            test_session, document.id, 0, 8, "recognizer"
-        )
+        document = SimpleNamespace(id=uuid.uuid4(), text="New York is a city.")
+        service = RecognitionService(mock_spacy_recognizer)
+
+        reference = service._create_reference_record(document, 0, 8, "recognizer")
 
         assert reference.text == "New York"
+        assert reference.document_id == document.id
+        assert reference.recognizer_id == "recognizer"
+
+    def test_leaves_the_text_empty_for_a_document_without_one(
+        self, mock_spacy_recognizer
+    ):
+        """A document with no string text yields a reference without text."""
+        from types import SimpleNamespace
+
+        document = SimpleNamespace(id=uuid.uuid4())
+        service = RecognitionService(mock_spacy_recognizer)
+
+        assert service._create_reference_record(document, 0, 8, "r").text is None

@@ -220,3 +220,52 @@ class TestAreaUnderErrorCurve:
         hundred_km = area_under_error_curve(gold, [located(0, 1, 0.0, 0.898)])
 
         assert hundred_km < 10 * ten_km
+
+
+class TestMutationPins:
+    """Edges of the arithmetic that a plausible slip would get wrong."""
+
+    def test_rounding_past_one_does_not_leave_the_asin_domain(self):
+        """This antipodal pair rounds the haversine term to 1 + 2e-16."""
+        latitude, longitude = 66.16849958870057, -92.19208432063249
+
+        distance = haversine_km(latitude, longitude, -latitude, longitude + 180)
+
+        assert distance == pytest.approx(math.pi * 6371.0088, rel=1e-9)
+
+    @pytest.mark.parametrize(
+        ("metric", "expected"),
+        [
+            (mean_error_km, 100.0),
+            (median_error_km, 100.0),
+            (lambda e, p, **k: accuracy_at_km(e, p, **k), 1.0),
+            # Normalized by the configured error itself, so exactly 1.0; the
+            # default maximum would score log(20040) / log(101), about 2.1.
+            (area_under_error_curve, 1.0),
+        ],
+    )
+    def test_every_summary_passes_on_a_custom_unresolved_error(self, metric, expected):
+        """An unplaced toponym costs the configured error, not the maximum."""
+        gold = [located(0, 1, *ZURICH)]
+
+        assert metric(gold, [], unresolved_error_km=100.0) == pytest.approx(expected)
+
+    def test_median_of_four_averages_the_two_middle_errors(self):
+        """Sorted errors [U, 224, 224, 0] have a median of 224."""
+        gold = [located(i, i + 1, *ZURICH) for i in range(4)]
+        predicted = [
+            located(1, 2, *GENEVA),
+            located(2, 3, *GENEVA),
+            located(3, 4, *ZURICH),
+        ]
+
+        assert median_error_km(gold, predicted) == pytest.approx(
+            haversine_km(*ZURICH, *GENEVA)
+        )
+
+    def test_area_averages_over_every_toponym(self):
+        """Two errors average; they are not multiplied by the count."""
+        gold = [located(0, 1, *ZURICH), located(1, 2, *ZURICH)]
+        predicted = [located(0, 1, *ZURICH)]
+
+        assert area_under_error_curve(gold, predicted) == pytest.approx(0.5)
