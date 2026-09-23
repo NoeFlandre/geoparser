@@ -1007,6 +1007,24 @@ class TestSentenceTransformerResolverHelperMethods:
     )
     @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
     @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
+    def test_batch_of_only_empty_candidate_lists_scores_nothing(
+        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
+    ):
+        """References without candidates get empty score lists, no tensor work."""
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        resolver = SentenceTransformerResolver()
+
+        assert resolver._calculate_similarity_batches(["a", "b"], [[], []]) == [[], []]
+
+    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch(
+        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
+    )
+    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
+    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
     def test_evaluation_uses_one_similarity_batch_for_all_references(
         self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
     ):
