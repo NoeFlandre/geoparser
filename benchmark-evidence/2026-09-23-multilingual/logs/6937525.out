@@ -1,0 +1,403 @@
+=== job 6937525 on grue-2.nancy.grid5000.fr at 2026-09-23T10:30:15+02:00 ===
+=== environment ===
+torch 2.14.0+cu130
+cuda available: True
+gpu: Tesla T4
+Tesla T4, 15360 MiB
+/dev/sda5       375G  2.1M  356G   1% /tmp
+=== building gazetteer on node-local disk ===
+geonames  (9733.6 MB)
+=== running benchmark ===
+device: cuda (Tesla T4)
+geovirus (en): 229 documents, 2167 gold toponyms, corpus 2f8a928b9af4a442, commit 9d0bf44
+  upstream/recognition: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+  upstream/resolution: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+  hybrid/recognition: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+  hybrid/resolution: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+# geovirus benchmark
+
+- Documents: 229
+- Gold toponyms: 2167
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+| upstream | cuda | 0.837 | 0.784 | 0.810 |
+| hybrid | cuda | 0.826 | 0.832 | 0.829 |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| upstream | cuda | 0.834 | 262.7 | 30.5 | 0.300 | 84.8 |
+| hybrid | cuda | 0.834 | 262.7 | 30.5 | 0.300 | 65.2 |
+
+## Models
+
+- **upstream**: recognizer=en_core_web_sm, resolver=dguzh/geo-all-MiniLM-L6-v2
+- **hybrid**: recognizer=fastino/gliner2.5-multi-v1, resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+hipe2020-de (de): 48 documents, 558 gold toponyms, corpus 4d90055cddb45a7f, commit 9d0bf44
+  upstream/recognition: 48 of 48 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/48 done
+    chunk 2/5 (10 docs) saved; 20/48 done
+    chunk 3/5 (10 docs) saved; 30/48 done
+    chunk 4/5 (10 docs) saved; 40/48 done
+    chunk 5/5 (8 docs) saved; 48/48 done
+  upstream/resolution: 48 of 48 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/48 done
+    chunk 2/5 (10 docs) saved; 20/48 done
+    chunk 3/5 (10 docs) saved; 30/48 done
+    chunk 4/5 (10 docs) saved; 40/48 done
+    chunk 5/5 (8 docs) saved; 48/48 done
+  hybrid/recognition: 48 of 48 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/48 done
+    chunk 2/5 (10 docs) saved; 20/48 done
+    chunk 3/5 (10 docs) saved; 30/48 done
+    chunk 4/5 (10 docs) saved; 40/48 done
+    chunk 5/5 (8 docs) saved; 48/48 done
+  hybrid/resolution: 48 of 48 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/48 done
+    chunk 2/5 (10 docs) saved; 20/48 done
+    chunk 3/5 (10 docs) saved; 30/48 done
+    chunk 4/5 (10 docs) saved; 40/48 done
+    chunk 5/5 (8 docs) saved; 48/48 done
+# hipe2020-de benchmark
+
+- Documents: 48
+- Gold toponyms: 558
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+| upstream | cuda | 0.222 | 0.280 | 0.247 |
+| hybrid | cuda | 0.648 | 0.568 | 0.606 |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| upstream | cuda | 0.640 | 1147.4 | 35.9 | 0.371 | 20.5 |
+| hybrid | cuda | 0.640 | 1147.4 | 35.9 | 0.371 | 36.9 |
+
+## Models
+
+- **upstream**: recognizer=en_core_web_sm, resolver=dguzh/geo-all-MiniLM-L6-v2
+- **hybrid**: recognizer=fastino/gliner2.5-multi-v1, resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+hipe2020-fr (fr): 43 documents, 800 gold toponyms, corpus 7e756f77b368ec9a, commit 9d0bf44
+  upstream/recognition: 43 of 43 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/43 done
+    chunk 2/5 (10 docs) saved; 20/43 done
+    chunk 3/5 (10 docs) saved; 30/43 done
+    chunk 4/5 (10 docs) saved; 40/43 done
+    chunk 5/5 (3 docs) saved; 43/43 done
+  upstream/resolution: 43 of 43 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/43 done
+    chunk 2/5 (10 docs) saved; 20/43 done
+    chunk 3/5 (10 docs) saved; 30/43 done
+    chunk 4/5 (10 docs) saved; 40/43 done
+    chunk 5/5 (3 docs) saved; 43/43 done
+  hybrid/recognition: 43 of 43 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/43 done
+    chunk 2/5 (10 docs) saved; 20/43 done
+    chunk 3/5 (10 docs) saved; 30/43 done
+    chunk 4/5 (10 docs) saved; 40/43 done
+    chunk 5/5 (3 docs) saved; 43/43 done
+  hybrid/resolution: 43 of 43 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/43 done
+    chunk 2/5 (10 docs) saved; 20/43 done
+    chunk 3/5 (10 docs) saved; 30/43 done
+    chunk 4/5 (10 docs) saved; 40/43 done
+    chunk 5/5 (3 docs) saved; 43/43 done
+# hipe2020-fr benchmark
+
+- Documents: 43
+- Gold toponyms: 800
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+| upstream | cuda | 0.306 | 0.146 | 0.198 |
+| hybrid | cuda | 0.739 | 0.626 | 0.678 |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| upstream | cuda | 0.766 | 652.8 | 6.0 | 0.294 | 42.8 |
+| hybrid | cuda | 0.766 | 652.8 | 6.0 | 0.294 | 63.3 |
+
+## Models
+
+- **upstream**: recognizer=en_core_web_sm, resolver=dguzh/geo-all-MiniLM-L6-v2
+- **hybrid**: recognizer=fastino/gliner2.5-multi-v1, resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+hipe2020-en (en): 38 documents, 158 gold toponyms, corpus 745da3aa1fce5f24, commit 9d0bf44
+  upstream/recognition: 38 of 38 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/38 done
+    chunk 2/4 (10 docs) saved; 20/38 done
+    chunk 3/4 (10 docs) saved; 30/38 done
+    chunk 4/4 (8 docs) saved; 38/38 done
+  upstream/resolution: 38 of 38 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/38 done
+    chunk 2/4 (10 docs) saved; 20/38 done
+    chunk 3/4 (10 docs) saved; 30/38 done
+    chunk 4/4 (8 docs) saved; 38/38 done
+  hybrid/recognition: 38 of 38 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/38 done
+    chunk 2/4 (10 docs) saved; 20/38 done
+    chunk 3/4 (10 docs) saved; 30/38 done
+    chunk 4/4 (8 docs) saved; 38/38 done
+  hybrid/resolution: 38 of 38 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/38 done
+    chunk 2/4 (10 docs) saved; 20/38 done
+    chunk 3/4 (10 docs) saved; 30/38 done
+    chunk 4/4 (8 docs) saved; 38/38 done
+# hipe2020-en benchmark
+
+- Documents: 38
+- Gold toponyms: 158
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+| upstream | cuda | 0.488 | 0.506 | 0.497 |
+| hybrid | cuda | 0.541 | 0.759 | 0.632 |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| upstream | cuda | 0.620 | 1302.5 | 40.2 | 0.400 | 10.8 |
+| hybrid | cuda | 0.620 | 1302.5 | 40.2 | 0.400 | 20.1 |
+
+## Models
+
+- **upstream**: recognizer=en_core_web_sm, resolver=dguzh/geo-all-MiniLM-L6-v2
+- **hybrid**: recognizer=fastino/gliner2.5-multi-v1, resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newseye-de (de): 8 documents, 628 gold toponyms, corpus 6be58effb319164f, commit 9d0bf44
+  upstream/recognition: 8 of 8 documents to do on cuda
+    chunk 1/1 (8 docs) saved; 8/8 done
+  upstream/resolution: 8 of 8 documents to do on cuda
+    chunk 1/1 (8 docs) saved; 8/8 done
+  hybrid/recognition: 8 of 8 documents to do on cuda
+    chunk 1/1 (8 docs) saved; 8/8 done
+  hybrid/resolution: 8 of 8 documents to do on cuda
+    chunk 1/1 (8 docs) saved; 8/8 done
+# newseye-de benchmark
+
+- Documents: 8
+- Gold toponyms: 628
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+| upstream | cuda | 0.078 | 0.162 | 0.105 |
+| hybrid | cuda | 0.307 | 0.331 | 0.319 |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| upstream | cuda | 0.646 | 705.2 | 5.6 | 0.321 | 22.0 |
+| hybrid | cuda | 0.646 | 705.2 | 5.6 | 0.321 | 74.4 |
+
+## Models
+
+- **upstream**: recognizer=en_core_web_sm, resolver=dguzh/geo-all-MiniLM-L6-v2
+- **hybrid**: recognizer=fastino/gliner2.5-multi-v1, resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newseye-fr (fr): 33 documents, 665 gold toponyms, corpus 9f7e02ad02a29b0f, commit 9d0bf44
+  upstream/recognition: 33 of 33 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/33 done
+    chunk 2/4 (10 docs) saved; 20/33 done
+    chunk 3/4 (10 docs) saved; 30/33 done
+    chunk 4/4 (3 docs) saved; 33/33 done
+  upstream/resolution: 33 of 33 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/33 done
+    chunk 2/4 (10 docs) saved; 20/33 done
+    chunk 3/4 (10 docs) saved; 30/33 done
+    chunk 4/4 (3 docs) saved; 33/33 done
+  hybrid/recognition: 33 of 33 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/33 done
+=== cleaning /tmp/geoparser-6937525 at 2026-09-23T10:50:18+02:00 ===
+/dev/sda5       375G  2.1M  356G   1% /tmp

@@ -182,3 +182,4 @@ mutants/
 # source control: the corpus, checkpoints and reports are all reproduced by
 # `python -m scripts.benchmark`.
 /benchmark-results/
+.tmp/

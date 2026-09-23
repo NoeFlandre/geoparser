@@ -1,8 +1,13 @@
 """
-Command line entry point for the GeoVirus benchmark.
+Command line entry point for the geoparsing benchmark.
 
     python -m scripts.benchmark --limit 10 --device auto
     python -m scripts.benchmark --output-dir ~/geoparser-bench --device cuda
+    python -m scripts.benchmark --corpus hipe2020-de --corpus newseye-fi
+    python -m scripts.benchmark --corpus all
+
+Each corpus is scored into its own folder under the output directory, and a
+summary across all of them is written at its root.
 
 Re-running the same command resumes: work already checkpointed is skipped, so
 a job that ended at its walltime continues in the next one.
@@ -18,7 +23,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from scripts.benchmark import checkpoint as ckpt
-from scripts.benchmark import corpus, pipelines, provenance, report, runner
+from scripts.benchmark import corpora, corpus, pipelines, provenance, report, runner
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -35,7 +40,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Pipeline to run; repeat for several. Defaults to both.",
     )
     parser.add_argument(
-        "--limit", type=int, default=None, help="Use only the first N articles"
+        "--corpus",
+        action="append",
+        choices=[*corpora.CORPORA, "all"],
+        help="Corpus to score; repeat for several, or 'all'. Defaults to geovirus.",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Use only the first N documents"
     )
     parser.add_argument(
         "--output-dir",
@@ -74,34 +85,40 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the benchmark and write its report."""
-    arguments = build_parser().parse_args(argv)
-    output_dir = arguments.output_dir.expanduser()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    os.environ.setdefault("GEOPARSER_DB_PATH", str(output_dir / "benchmark.sqlite"))
+def corpus_output_dir(output_dir: Path, name: str) -> Path:
+    """Return the folder one corpus's checkpoints and report are written to."""
+    return output_dir / name
 
-    corpus_path = corpus.download_corpus(output_dir / f"{corpus.CORPUS_NAME}.xml")
-    digest = corpus.corpus_digest(corpus_path)
-    documents = corpus.parse_corpus(corpus_path, limit=arguments.limit)
+
+def run_corpus(
+    loaded: corpora.LoadedCorpus,
+    arguments: argparse.Namespace,
+    output_dir: Path,
+    *,
+    device: str,
+    commit: str,
+    facts: dict,
+) -> list[dict]:
+    """
+    Score every requested pipeline on one corpus and write its report.
+
+    Returns:
+        One summary row per pipeline
+    """
+    documents = loaded.documents
     gold_count = corpus.gold_toponym_count(documents)
-
-    device = pipelines.resolve_device(arguments.device)
-    commit = provenance.source_commit(REPOSITORY_ROOT)
-    facts = provenance.environment(os.environ.get("OAR_JOB_ID"))
-
+    output_dir.mkdir(parents=True, exist_ok=True)
     print(
-        f"{len(documents)} documents, {gold_count} gold toponyms, "
-        f"corpus {digest}, commit {commit}"
+        f"{loaded.name} ({loaded.language}): {len(documents)} documents, "
+        f"{gold_count} gold toponyms, corpus {loaded.digest}, commit {commit}"
     )
-    print(f"device: {pipelines.describe_device(device)}")
 
     phases = arguments.phase or [runner.RECOGNITION, runner.RESOLUTION]
     results = []
     for pipeline in arguments.pipeline or list(pipelines.PIPELINES):
         identity = ckpt.RunIdentity(
             pipeline=pipeline,
-            corpus_digest=digest,
+            corpus_digest=loaded.digest,
             gazetteer=pipelines.GAZETTEER_NAME,
             min_similarity=arguments.min_similarity,
             limit=arguments.limit,
@@ -132,7 +149,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     text = report.render_markdown(
         results,
-        corpus_name=corpus.CORPUS_NAME,
+        corpus_name=loaded.name,
         documents=len(documents),
         gold_toponyms=gold_count,
         gazetteer=pipelines.GAZETTEER_NAME,
@@ -142,8 +159,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     (output_dir / "benchmark-report.json").write_text(
         json.dumps(
             {
-                "corpus": corpus.CORPUS_NAME,
-                "corpus_digest": digest,
+                "corpus": loaded.name,
+                "language": loaded.language,
+                "corpus_digest": loaded.digest,
                 "documents": len(documents),
                 "gold_toponyms": gold_count,
                 "gazetteer": pipelines.GAZETTEER_NAME,
@@ -167,6 +185,53 @@ def main(argv: Sequence[str] | None = None) -> int:
         encoding="utf-8",
     )
     print(text)
+    return [
+        {
+            "corpus": loaded.name,
+            "language": loaded.language,
+            "documents": len(documents),
+            "gold_toponyms": gold_count,
+            "pipeline": result.name,
+            "recognition": result.recognition,
+            "resolution": result.resolution,
+            "elapsed_seconds": result.elapsed_seconds,
+        }
+        for result in results
+    ]
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the benchmark on every requested corpus and write the reports."""
+    arguments = build_parser().parse_args(argv)
+    output_dir = arguments.output_dir.expanduser()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("GEOPARSER_DB_PATH", str(output_dir / "benchmark.sqlite"))
+
+    requested = arguments.corpus or list(corpora.DEFAULT)
+    names = list(corpora.CORPORA) if "all" in requested else requested
+
+    device = pipelines.resolve_device(arguments.device)
+    commit = provenance.source_commit(REPOSITORY_ROOT)
+    facts = provenance.environment(os.environ.get("OAR_JOB_ID"))
+    print(f"device: {pipelines.describe_device(device)}")
+
+    rows: list[dict] = []
+    for name in dict.fromkeys(names):
+        folder = corpus_output_dir(output_dir, name)
+        loaded = corpora.load(name, folder, limit=arguments.limit)
+        rows += run_corpus(
+            loaded, arguments, folder, device=device, commit=commit, facts=facts
+        )
+        (output_dir / "summary.md").write_text(
+            report.render_summary(rows), encoding="utf-8"
+        )
+        (output_dir / "summary.json").write_text(
+            json.dumps(
+                {"commit": commit, "environment": facts, "rows": rows}, indent=2
+            ),
+            encoding="utf-8",
+        )
+    print(report.render_summary(rows))
     return 0
 
 

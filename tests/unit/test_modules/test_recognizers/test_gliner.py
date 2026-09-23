@@ -304,3 +304,57 @@ class TestPartialOffsets:
 
         # Act & Assert
         assert recognizer.predict(["x"]) == [[]]
+
+
+@pytest.mark.unit
+class TestLongDocuments:
+    """
+    Texts beyond WINDOW_CHARS go through GLiNER2's own long-document mode.
+
+    GLiNER2 attends over its whole input at once: a 133k-character page asked
+    a 15 GB GPU for 12 GB, and even 10k-character windows of noisy OCR filled
+    it, because OCR splits into far more tokens per character than clean text.
+    extract_entities_long scans fixed word chunks, which bounds memory by
+    words. Shorter texts are passed whole, exactly as before.
+    """
+
+    def test_a_short_text_is_passed_whole(self, extractor):
+        """A text within the limit takes the ordinary, whole-text path."""
+        recognizer = GLiNER2Recognizer()
+        recognizer.model.extract_entities.return_value = _entities(
+            city=[{"text": "Paris", "start": 3, "end": 8}]
+        )
+
+        assert recognizer.predict(["in Paris"]) == [[(3, 8)]]
+        recognizer.model.extract_entities_long.assert_not_called()
+
+    def test_a_long_text_takes_the_chunked_path(self, extractor):
+        """A text over the limit is scanned in word chunks, with spans kept."""
+        recognizer = GLiNER2Recognizer()
+        recognizer.model.extract_entities_long.return_value = _entities(
+            city=[{"text": "Paris", "start": 12_000, "end": 12_005}]
+        )
+        text = "x" * (GLiNER2Recognizer.WINDOW_CHARS + 1)
+
+        assert recognizer.predict([text]) == [[(12_000, 12_005)]]
+        recognizer.model.extract_entities.assert_not_called()
+        recognizer.model.extract_entities_long.assert_called_once_with(
+            text, ["city", "country", "location"], include_spans=True
+        )
+
+
+@pytest.mark.unit
+def test_the_limit_keeps_ordinary_articles_whole():
+    """GeoVirus's longest article (8,059 characters) is still passed whole."""
+    assert GLiNER2Recognizer.WINDOW_CHARS > 8_059
+
+
+@pytest.mark.unit
+def test_a_text_exactly_at_the_limit_is_passed_whole(extractor):
+    """The long-document mode starts strictly above WINDOW_CHARS."""
+    recognizer = GLiNER2Recognizer()
+    recognizer.model.extract_entities.return_value = _entities()
+
+    recognizer.predict(["x" * GLiNER2Recognizer.WINDOW_CHARS])
+
+    recognizer.model.extract_entities_long.assert_not_called()

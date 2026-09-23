@@ -37,6 +37,15 @@ class GLiNER2Recognizer(Recognizer):
         "location",
     )
 
+    # GLiNER2 attends over its whole input at once, so memory grows with the
+    # square of the text: a 133k-character newspaper page asked a 15 GB GPU
+    # for 12 GB, and even 10k-character windows of noisy OCR filled it, as
+    # OCR splits into far more tokens per character than clean text. Longer
+    # texts go through GLiNER2's own long-document mode, which scans fixed
+    # word chunks. The limit sits above GeoVirus's longest article (8k
+    # characters), so ordinary documents are still extracted whole.
+    WINDOW_CHARS: t.ClassVar[int] = 10_000
+
     def __init__(
         self,
         model_name: str = DEFAULT_MODEL_NAME,
@@ -93,9 +102,12 @@ class GLiNER2Recognizer(Recognizer):
         Returns:
             The distinct spans, ordered by position in the text
         """
-        result = self.model.extract_entities(
-            text, self.entity_types, include_spans=True
+        extract = (
+            self.model.extract_entities_long
+            if len(text) > self.WINDOW_CHARS
+            else self.model.extract_entities
         )
+        result = extract(text, self.entity_types, include_spans=True)
         return sorted(self._spans(result.get("entities", {})))
 
     @staticmethod

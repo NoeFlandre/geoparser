@@ -30,6 +30,13 @@ CLUSTER="${CLUSTER:-}"
 # "You can only access the required resources in besteffort."
 QUEUE="${QUEUE:-default}"
 PIPELINES="${PIPELINES:-}"
+# Comma-separated corpus names from scripts/benchmark/corpora.py, or "all".
+CORPORA="${CORPORA:-}"
+
+if [[ -n "$CORPORA" && ! "$CORPORA" =~ ^[a-z0-9-]+(,[a-z0-9-]+)*$ ]]; then
+    echo "CORPORA must be a comma-separated list of corpus names, or all" >&2
+    exit 2
+fi
 
 if [[ -n "$PIPELINES" && ! "$PIPELINES" =~ ^(upstream|swapped|hybrid)(,(upstream|swapped|hybrid))*$ ]]; then
     echo "PIPELINES must be a comma-separated list of upstream, swapped, and/or hybrid" >&2
@@ -86,7 +93,7 @@ oarsub \
     --signal 12 \
     "REPO_ROOT='$REPO_ROOT' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
 DEVICE='${DEVICE:-auto}' CHUNK_SIZE='${CHUNK_SIZE:-5}' \
-MIN_SIMILARITY='${MIN_SIMILARITY:-0.0}' PIPELINES='$PIPELINES' \
+MIN_SIMILARITY='${MIN_SIMILARITY:-0.0}' PIPELINES='$PIPELINES' CORPORA='$CORPORA' \
 bash $REPO_ROOT/scripts/g5k/run_benchmark.sh"
 
 echo

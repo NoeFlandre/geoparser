@@ -1,0 +1,487 @@
+/var/lib/oar/.batch_job_bashrc: line 5: /home/nflandre/.bashrc: No such file or directory
+/var/lib/oar/.batch_job_bashrc: line 5: /home/nflandre/.bashrc: No such file or directory
+
+─────────────────────────────────── geonames ───────────────────────────────────
+
+Prepared sources                         ━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:00:29
+Compiled features                        ━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:01:57
+Built artifact                           ━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:08:29
+
+Summary
+
+Features  13,472,152
+Names     28,720,157
+
+
+real	11m0.344s
+user	18m38.131s
+sys	2m28.295s
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.02it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.02it/s]
+Batches:   0%|          | 0/38 [00:00<?, ?it/s]Batches:  24%|██▎       | 9/38 [00:00<00:00, 82.44it/s]Batches:  53%|█████▎    | 20/38 [00:00<00:00, 97.28it/s]Batches:  84%|████████▍ | 32/38 [00:00<00:00, 107.12it/s]Batches: 100%|██████████| 38/38 [00:00<00:00, 108.00it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 95.93it/s]
+Batches:   0%|          | 0/31 [00:00<?, ?it/s]Batches:  45%|████▌     | 14/31 [00:00<00:00, 139.85it/s]Batches:  94%|█████████▎| 29/31 [00:00<00:00, 143.18it/s]Batches: 100%|██████████| 31/31 [00:00<00:00, 143.53it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 96.75it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 97.73it/s]
+Batches:   0%|          | 0/14 [00:00<?, ?it/s]Batches: 100%|██████████| 14/14 [00:00<00:00, 145.96it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 190.34it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 81.58it/s]
+Batches:   0%|          | 0/20 [00:00<?, ?it/s]Batches:  75%|███████▌  | 15/20 [00:00<00:00, 143.88it/s]Batches: 100%|██████████| 20/20 [00:00<00:00, 145.28it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 201.56it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.92it/s]
+Batches:   0%|          | 0/56 [00:00<?, ?it/s]Batches:  25%|██▌       | 14/56 [00:00<00:00, 139.37it/s]Batches:  52%|█████▏    | 29/56 [00:00<00:00, 142.68it/s]Batches:  79%|███████▊  | 44/56 [00:00<00:00, 143.51it/s]Batches: 100%|██████████| 56/56 [00:00<00:00, 144.22it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 135.94it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 72.62it/s]
+Batches:   0%|          | 0/16 [00:00<?, ?it/s]Batches:  94%|█████████▍| 15/16 [00:00<00:00, 144.31it/s]Batches: 100%|██████████| 16/16 [00:00<00:00, 147.09it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 68.49it/s]
+Batches:   0%|          | 0/19 [00:00<?, ?it/s]Batches:  79%|███████▉  | 15/19 [00:00<00:00, 142.71it/s]Batches: 100%|██████████| 19/19 [00:00<00:00, 142.18it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 142.36it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 75.13it/s]
+Batches:   0%|          | 0/66 [00:00<?, ?it/s]Batches:  23%|██▎       | 15/66 [00:00<00:00, 140.53it/s]Batches:  45%|████▌     | 30/66 [00:00<00:00, 141.27it/s]Batches:  68%|██████▊   | 45/66 [00:00<00:00, 143.05it/s]Batches:  91%|█████████ | 60/66 [00:00<00:00, 144.11it/s]Batches: 100%|██████████| 66/66 [00:00<00:00, 144.02it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 64.57it/s]
+Batches:   0%|          | 0/20 [00:00<?, ?it/s]Batches:  75%|███████▌  | 15/20 [00:00<00:00, 141.93it/s]Batches: 100%|██████████| 20/20 [00:00<00:00, 143.53it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 84.78it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 185.54it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 30.47it/s]
+Batches:   0%|          | 0/47 [00:00<?, ?it/s]Batches:  30%|██▉       | 14/47 [00:00<00:00, 139.59it/s]Batches:  62%|██████▏   | 29/47 [00:00<00:00, 141.82it/s]Batches:  94%|█████████▎| 44/47 [00:00<00:00, 143.94it/s]Batches: 100%|██████████| 47/47 [00:00<00:00, 143.52it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 67.09it/s]
+Batches:   0%|          | 0/10 [00:00<?, ?it/s]Batches: 100%|██████████| 10/10 [00:00<00:00, 141.91it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 160.76it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 30.10it/s]
+Batches:   0%|          | 0/18 [00:00<?, ?it/s]Batches:  83%|████████▎ | 15/18 [00:00<00:00, 143.51it/s]Batches: 100%|██████████| 18/18 [00:00<00:00, 144.63it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 77.93it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 111.58it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 30.49it/s]
+Batches:   0%|          | 0/30 [00:00<?, ?it/s]Batches:  50%|█████     | 15/30 [00:00<00:00, 142.75it/s]Batches: 100%|██████████| 30/30 [00:00<00:00, 144.23it/s]Batches: 100%|██████████| 30/30 [00:00<00:00, 143.86it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 60.23it/s]
+Batches:   0%|          | 0/22 [00:00<?, ?it/s]Batches:  64%|██████▎   | 14/22 [00:00<00:00, 139.30it/s]Batches: 100%|██████████| 22/22 [00:00<00:00, 143.12it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 30.47it/s]
+Batches:   0%|          | 0/81 [00:00<?, ?it/s]Batches:  17%|█▋        | 14/81 [00:00<00:00, 137.20it/s]Batches:  36%|███▌      | 29/81 [00:00<00:00, 139.39it/s]Batches:  54%|█████▍    | 44/81 [00:00<00:00, 141.52it/s]Batches:  73%|███████▎  | 59/81 [00:00<00:00, 142.16it/s]Batches:  91%|█████████▏| 74/81 [00:00<00:00, 142.70it/s]Batches: 100%|██████████| 81/81 [00:00<00:00, 142.47it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 69.16it/s]
+Batches:   0%|          | 0/6 [00:00<?, ?it/s]Batches: 100%|██████████| 6/6 [00:00<00:00, 108.52it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.49it/s]
+Batches:   0%|          | 0/8 [00:00<?, ?it/s]Batches: 100%|██████████| 8/8 [00:00<00:00, 117.41it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 152.26it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 30.24it/s]
+Batches:   0%|          | 0/84 [00:00<?, ?it/s]Batches:  17%|█▋        | 14/84 [00:00<00:00, 136.68it/s]Batches:  35%|███▍      | 29/84 [00:00<00:00, 139.41it/s]Batches:  52%|█████▏    | 44/84 [00:00<00:00, 140.94it/s]Batches:  70%|███████   | 59/84 [00:00<00:00, 142.51it/s]Batches:  88%|████████▊ | 74/84 [00:00<00:00, 143.58it/s]Batches: 100%|██████████| 84/84 [00:00<00:00, 143.21it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 168.75it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 22.91it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 22.87it/s]
+Batches:   0%|          | 0/6 [00:00<?, ?it/s]Batches: 100%|██████████| 6/6 [00:00<00:00, 110.88it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.65it/s]
+Batches:   0%|          | 0/152 [00:00<?, ?it/s]Batches:   9%|▉         | 14/152 [00:00<00:01, 131.78it/s]Batches:  18%|█▊        | 28/152 [00:00<00:00, 136.19it/s]Batches:  28%|██▊       | 42/152 [00:00<00:00, 135.59it/s]Batches:  37%|███▋      | 56/152 [00:00<00:00, 133.50it/s]Batches:  47%|████▋     | 71/152 [00:00<00:00, 135.97it/s]Batches:  57%|█████▋    | 86/152 [00:00<00:00, 137.99it/s]Batches:  66%|██████▋   | 101/152 [00:00<00:00, 139.52it/s]Batches:  76%|███████▋  | 116/152 [00:00<00:00, 141.23it/s]Batches:  86%|████████▌ | 131/152 [00:00<00:00, 142.89it/s]Batches:  96%|█████████▌| 146/152 [00:01<00:00, 143.52it/s]Batches: 100%|██████████| 152/152 [00:01<00:00, 140.22it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 65.16it/s]
+Batches:   0%|          | 0/21 [00:00<?, ?it/s]Batches:  71%|███████▏  | 15/21 [00:00<00:00, 141.54it/s]Batches: 100%|██████████| 21/21 [00:00<00:00, 143.40it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 59.27it/s]
+Batches:   0%|          | 0/92 [00:00<?, ?it/s]Batches:  15%|█▌        | 14/92 [00:00<00:00, 136.74it/s]Batches:  32%|███▏      | 29/92 [00:00<00:00, 140.35it/s]Batches:  48%|████▊     | 44/92 [00:00<00:00, 142.59it/s]Batches:  64%|██████▍   | 59/92 [00:00<00:00, 143.84it/s]Batches:  80%|████████  | 74/92 [00:00<00:00, 145.25it/s]Batches:  98%|█████████▊| 90/92 [00:00<00:00, 147.23it/s]Batches: 100%|██████████| 92/92 [00:00<00:00, 145.50it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 154.08it/s]
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:2101: UserWarning: Checkpoint uses legacy list-valued extra_special_tokens metadata; loading with compatibility normalization.
+  tokenizer = load_extractor_tokenizer(tokenizer_source)
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:1147: RuntimeWarning: Encoder rejected attn_implementation='sdpa'; falling back to 'eager' (DebertaV2Model does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet. Please request the support for this architecture: https://github.com/huggingface/transformers/issues/28005. If you believe this error is a bug, please open an issue in Transformers GitHub repository and load your model with the argument `attn_implementation="eager"` meanwhile. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="eager")`)
+  self.encoder = self._load_encoder(
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 88.15it/s]
+Batches:   0%|          | 0/38 [00:00<?, ?it/s]Batches:  26%|██▋       | 10/38 [00:00<00:00, 95.63it/s]Batches:  55%|█████▌    | 21/38 [00:00<00:00, 102.35it/s]Batches:  89%|████████▉ | 34/38 [00:00<00:00, 113.69it/s]Batches: 100%|██████████| 38/38 [00:00<00:00, 113.62it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 93.52it/s]
+Batches:   0%|          | 0/31 [00:00<?, ?it/s]Batches:  48%|████▊     | 15/31 [00:00<00:00, 142.89it/s]Batches:  97%|█████████▋| 30/31 [00:00<00:00, 143.32it/s]Batches: 100%|██████████| 31/31 [00:00<00:00, 143.91it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 195.33it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 109.24it/s]
+Batches:   0%|          | 0/14 [00:00<?, ?it/s]Batches: 100%|██████████| 14/14 [00:00<00:00, 145.68it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 194.55it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 77.46it/s]
+Batches:   0%|          | 0/20 [00:00<?, ?it/s]Batches:  75%|███████▌  | 15/20 [00:00<00:00, 143.54it/s]Batches: 100%|██████████| 20/20 [00:00<00:00, 145.01it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 206.06it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 76.72it/s]
+Batches:   0%|          | 0/56 [00:00<?, ?it/s]Batches:  27%|██▋       | 15/56 [00:00<00:00, 140.41it/s]Batches:  54%|█████▎    | 30/56 [00:00<00:00, 143.14it/s]Batches:  80%|████████  | 45/56 [00:00<00:00, 143.83it/s]Batches: 100%|██████████| 56/56 [00:00<00:00, 144.88it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 140.32it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 72.30it/s]
+Batches:   0%|          | 0/16 [00:00<?, ?it/s]Batches:  94%|█████████▍| 15/16 [00:00<00:00, 144.60it/s]Batches: 100%|██████████| 16/16 [00:00<00:00, 147.42it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 68.92it/s]
+Batches:   0%|          | 0/19 [00:00<?, ?it/s]Batches:  79%|███████▉  | 15/19 [00:00<00:00, 144.21it/s]Batches: 100%|██████████| 19/19 [00:00<00:00, 145.22it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 156.73it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 74.53it/s]
+Batches:   0%|          | 0/66 [00:00<?, ?it/s]Batches:  23%|██▎       | 15/66 [00:00<00:00, 140.45it/s]Batches:  45%|████▌     | 30/66 [00:00<00:00, 142.07it/s]Batches:  68%|██████▊   | 45/66 [00:00<00:00, 143.66it/s]Batches:  91%|█████████ | 60/66 [00:00<00:00, 144.43it/s]Batches: 100%|██████████| 66/66 [00:00<00:00, 144.50it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 65.09it/s]
+Batches:   0%|          | 0/20 [00:00<?, ?it/s]Batches:  75%|███████▌  | 15/20 [00:00<00:00, 141.89it/s]Batches: 100%|██████████| 20/20 [00:00<00:00, 144.01it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 194.25it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 188.29it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 30.44it/s]
+Batches:   0%|          | 0/47 [00:00<?, ?it/s]Batches:  32%|███▏      | 15/47 [00:00<00:00, 140.97it/s]Batches:  64%|██████▍   | 30/47 [00:00<00:00, 142.65it/s]Batches:  96%|█████████▌| 45/47 [00:00<00:00, 144.38it/s]Batches: 100%|██████████| 47/47 [00:00<00:00, 144.48it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 69.53it/s]
+Batches:   0%|          | 0/10 [00:00<?, ?it/s]Batches: 100%|██████████| 10/10 [00:00<00:00, 142.67it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 163.34it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 30.58it/s]
+Batches:   0%|          | 0/18 [00:00<?, ?it/s]Batches:  83%|████████▎ | 15/18 [00:00<00:00, 144.21it/s]Batches: 100%|██████████| 18/18 [00:00<00:00, 139.86it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 76.01it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 107.89it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 30.78it/s]
+Batches:   0%|          | 0/30 [00:00<?, ?it/s]Batches:  50%|█████     | 15/30 [00:00<00:00, 143.15it/s]Batches: 100%|██████████| 30/30 [00:00<00:00, 145.75it/s]Batches: 100%|██████████| 30/30 [00:00<00:00, 145.21it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 65.24it/s]
+Batches:   0%|          | 0/22 [00:00<?, ?it/s]Batches:  64%|██████▎   | 14/22 [00:00<00:00, 135.98it/s]Batches: 100%|██████████| 22/22 [00:00<00:00, 141.25it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 30.17it/s]
+Batches:   0%|          | 0/81 [00:00<?, ?it/s]Batches:  17%|█▋        | 14/81 [00:00<00:00, 136.02it/s]Batches:  35%|███▍      | 28/81 [00:00<00:00, 137.76it/s]Batches:  53%|█████▎    | 43/81 [00:00<00:00, 140.14it/s]Batches:  72%|███████▏  | 58/81 [00:00<00:00, 140.57it/s]Batches:  90%|█████████ | 73/81 [00:00<00:00, 141.08it/s]Batches: 100%|██████████| 81/81 [00:00<00:00, 141.20it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 70.00it/s]
+Batches:   0%|          | 0/6 [00:00<?, ?it/s]Batches: 100%|██████████| 6/6 [00:00<00:00, 109.23it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 66.93it/s]
+Batches:   0%|          | 0/8 [00:00<?, ?it/s]Batches: 100%|██████████| 8/8 [00:00<00:00, 115.43it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 171.37it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 29.98it/s]
+Batches:   0%|          | 0/84 [00:00<?, ?it/s]Batches:  17%|█▋        | 14/84 [00:00<00:00, 135.63it/s]Batches:  35%|███▍      | 29/84 [00:00<00:00, 138.97it/s]Batches:  52%|█████▏    | 44/84 [00:00<00:00, 140.62it/s]Batches:  70%|███████   | 59/84 [00:00<00:00, 142.19it/s]Batches:  88%|████████▊ | 74/84 [00:00<00:00, 143.36it/s]Batches: 100%|██████████| 84/84 [00:00<00:00, 142.90it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 173.40it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 22.83it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 22.80it/s]
+Batches:   0%|          | 0/6 [00:00<?, ?it/s]Batches: 100%|██████████| 6/6 [00:00<00:00, 110.16it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.21it/s]
+Batches:   0%|          | 0/152 [00:00<?, ?it/s]Batches:   9%|▉         | 14/152 [00:00<00:01, 134.09it/s]Batches:  18%|█▊        | 28/152 [00:00<00:00, 135.67it/s]Batches:  28%|██▊       | 43/152 [00:00<00:00, 138.47it/s]Batches:  38%|███▊      | 58/152 [00:00<00:00, 140.04it/s]Batches:  48%|████▊     | 73/152 [00:00<00:00, 141.14it/s]Batches:  58%|█████▊    | 88/152 [00:00<00:00, 142.17it/s]Batches:  68%|██████▊   | 103/152 [00:00<00:00, 142.73it/s]Batches:  78%|███████▊  | 118/152 [00:00<00:00, 143.85it/s]Batches:  88%|████████▊ | 133/152 [00:00<00:00, 144.91it/s]Batches:  97%|█████████▋| 148/152 [00:01<00:00, 145.62it/s]Batches: 100%|██████████| 152/152 [00:01<00:00, 143.01it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 67.62it/s]
+Batches:   0%|          | 0/21 [00:00<?, ?it/s]Batches:  67%|██████▋   | 14/21 [00:00<00:00, 137.48it/s]Batches: 100%|██████████| 21/21 [00:00<00:00, 141.28it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 59.37it/s]
+Batches:   0%|          | 0/92 [00:00<?, ?it/s]Batches:  14%|█▍        | 13/92 [00:00<00:00, 129.54it/s]Batches:  30%|███       | 28/92 [00:00<00:00, 136.65it/s]Batches:  47%|████▋     | 43/92 [00:00<00:00, 141.07it/s]Batches:  63%|██████▎   | 58/92 [00:00<00:00, 142.95it/s]Batches:  79%|███████▉  | 73/92 [00:00<00:00, 143.62it/s]Batches:  96%|█████████▌| 88/92 [00:00<00:00, 145.08it/s]Batches: 100%|██████████| 92/92 [00:00<00:00, 143.46it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 156.41it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches:  67%|██████▋   | 2/3 [00:00<00:00, 16.92it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 15.11it/s]
+Batches:   0%|          | 0/47 [00:00<?, ?it/s]Batches:  28%|██▊       | 13/47 [00:00<00:00, 122.82it/s]Batches:  57%|█████▋    | 27/47 [00:00<00:00, 131.57it/s]Batches:  87%|████████▋ | 41/47 [00:00<00:00, 134.56it/s]Batches: 100%|██████████| 47/47 [00:00<00:00, 134.06it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 161.36it/s]
+Batches:   0%|          | 0/8 [00:00<?, ?it/s]Batches: 100%|██████████| 8/8 [00:00<00:00, 143.38it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 144.92it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 16.15it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 16.13it/s]
+Batches:   0%|          | 0/17 [00:00<?, ?it/s]Batches:  65%|██████▍   | 11/17 [00:00<00:00, 105.73it/s]Batches: 100%|██████████| 17/17 [00:00<00:00, 117.57it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 151.11it/s]
+Batches:   0%|          | 0/5 [00:00<?, ?it/s]Batches: 100%|██████████| 5/5 [00:00<00:00, 93.53it/s]
+Batches:   0%|          | 0/11 [00:00<?, ?it/s]Batches:  91%|█████████ | 10/11 [00:00<00:00, 89.60it/s]Batches: 100%|██████████| 11/11 [00:00<00:00, 91.00it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.06it/s]
+Batches:   0%|          | 0/9 [00:00<?, ?it/s]Batches: 100%|██████████| 9/9 [00:00<00:00, 91.28it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 157.18it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 141.80it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 143.54it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 26.23it/s]
+Batches:   0%|          | 0/20 [00:00<?, ?it/s]Batches:  70%|███████   | 14/20 [00:00<00:00, 139.75it/s]Batches: 100%|██████████| 20/20 [00:00<00:00, 141.61it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 185.56it/s]
+Batches:   0%|          | 0/14 [00:00<?, ?it/s]Batches:  71%|███████▏  | 10/14 [00:00<00:00, 91.25it/s]Batches: 100%|██████████| 14/14 [00:00<00:00, 92.65it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 110.94it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 19.70it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 19.67it/s]
+Batches:   0%|          | 0/9 [00:00<?, ?it/s]Batches: 100%|██████████| 9/9 [00:00<00:00, 94.33it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 161.99it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 174.40it/s]
+Batches:   0%|          | 0/6 [00:00<?, ?it/s]Batches: 100%|██████████| 6/6 [00:00<00:00, 151.39it/s]
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:2101: UserWarning: Checkpoint uses legacy list-valued extra_special_tokens metadata; loading with compatibility normalization.
+  tokenizer = load_extractor_tokenizer(tokenizer_source)
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:1147: RuntimeWarning: Encoder rejected attn_implementation='sdpa'; falling back to 'eager' (DebertaV2Model does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet. Please request the support for this architecture: https://github.com/huggingface/transformers/issues/28005. If you believe this error is a bug, please open an issue in Transformers GitHub repository and load your model with the argument `attn_implementation="eager"` meanwhile. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="eager")`)
+  self.encoder = self._load_encoder(
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches:  67%|██████▋   | 2/3 [00:00<00:00, 16.97it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 13.82it/s]
+Batches:   0%|          | 0/47 [00:00<?, ?it/s]Batches:  30%|██▉       | 14/47 [00:00<00:00, 129.87it/s]Batches:  60%|█████▉    | 28/47 [00:00<00:00, 134.32it/s]Batches:  91%|█████████▏| 43/47 [00:00<00:00, 137.44it/s]Batches: 100%|██████████| 47/47 [00:00<00:00, 137.12it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 164.36it/s]
+Batches:   0%|          | 0/8 [00:00<?, ?it/s]Batches: 100%|██████████| 8/8 [00:00<00:00, 142.66it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 136.49it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 22.32it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 22.29it/s]
+Batches:   0%|          | 0/17 [00:00<?, ?it/s]Batches:  76%|███████▋  | 13/17 [00:00<00:00, 123.07it/s]Batches: 100%|██████████| 17/17 [00:00<00:00, 128.45it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 152.49it/s]
+Batches:   0%|          | 0/5 [00:00<?, ?it/s]Batches: 100%|██████████| 5/5 [00:00<00:00, 93.61it/s]
+Batches:   0%|          | 0/11 [00:00<?, ?it/s]Batches:  91%|█████████ | 10/11 [00:00<00:00, 89.52it/s]Batches: 100%|██████████| 11/11 [00:00<00:00, 90.91it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 60.56it/s]
+Batches:   0%|          | 0/9 [00:00<?, ?it/s]Batches: 100%|██████████| 9/9 [00:00<00:00, 91.11it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 158.52it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 144.63it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 146.40it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 27.05it/s]
+Batches:   0%|          | 0/20 [00:00<?, ?it/s]Batches:  75%|███████▌  | 15/20 [00:00<00:00, 141.11it/s]Batches: 100%|██████████| 20/20 [00:00<00:00, 142.42it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 189.99it/s]
+Batches:   0%|          | 0/14 [00:00<?, ?it/s]Batches:  71%|███████▏  | 10/14 [00:00<00:00, 91.27it/s]Batches: 100%|██████████| 14/14 [00:00<00:00, 92.61it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 116.93it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 20.93it/s]
+Batches:   0%|          | 0/9 [00:00<?, ?it/s]Batches: 100%|██████████| 9/9 [00:00<00:00, 102.93it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 163.07it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 175.66it/s]
+Batches:   0%|          | 0/6 [00:00<?, ?it/s]Batches: 100%|██████████| 6/6 [00:00<00:00, 151.24it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches:  50%|█████     | 2/4 [00:00<00:00, 16.95it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 13.19it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 13.64it/s]
+Batches:   0%|          | 0/56 [00:00<?, ?it/s]Batches:  23%|██▎       | 13/56 [00:00<00:00, 129.76it/s]Batches:  48%|████▊     | 27/56 [00:00<00:00, 132.28it/s]Batches:  75%|███████▌  | 42/56 [00:00<00:00, 136.46it/s]Batches: 100%|██████████| 56/56 [00:00<00:00, 137.50it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 156.32it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 88.74it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 133.84it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches:  50%|█████     | 2/4 [00:00<00:00, 17.07it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 12.53it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 13.04it/s]
+Batches:   0%|          | 0/43 [00:00<?, ?it/s]Batches:  33%|███▎      | 14/43 [00:00<00:00, 136.55it/s]Batches:  67%|██████▋   | 29/43 [00:00<00:00, 141.29it/s]Batches: 100%|██████████| 43/43 [00:00<00:00, 142.87it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 153.31it/s]
+Batches:   0%|          | 0/7 [00:00<?, ?it/s]Batches: 100%|██████████| 7/7 [00:00<00:00, 90.04it/s]
+Batches:   0%|          | 0/8 [00:00<?, ?it/s]Batches: 100%|██████████| 8/8 [00:00<00:00, 90.68it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches:  67%|██████▋   | 2/3 [00:00<00:00, 17.43it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 14.15it/s]
+Batches:   0%|          | 0/22 [00:00<?, ?it/s]Batches:  55%|█████▍    | 12/22 [00:00<00:00, 115.87it/s]Batches: 100%|██████████| 22/22 [00:00<00:00, 126.24it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 135.86it/s]
+Batches:   0%|          | 0/15 [00:00<?, ?it/s]Batches:  67%|██████▋   | 10/15 [00:00<00:00, 90.98it/s]Batches: 100%|██████████| 15/15 [00:00<00:00, 94.97it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 23.92it/s]
+Batches:   0%|          | 0/14 [00:00<?, ?it/s]Batches: 100%|██████████| 14/14 [00:00<00:00, 132.64it/s]Batches: 100%|██████████| 14/14 [00:00<00:00, 132.41it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 136.44it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 166.66it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 110.35it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 150.08it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 174.67it/s]
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:2101: UserWarning: Checkpoint uses legacy list-valued extra_special_tokens metadata; loading with compatibility normalization.
+  tokenizer = load_extractor_tokenizer(tokenizer_source)
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:1147: RuntimeWarning: Encoder rejected attn_implementation='sdpa'; falling back to 'eager' (DebertaV2Model does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet. Please request the support for this architecture: https://github.com/huggingface/transformers/issues/28005. If you believe this error is a bug, please open an issue in Transformers GitHub repository and load your model with the argument `attn_implementation="eager"` meanwhile. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="eager")`)
+  self.encoder = self._load_encoder(
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches:  50%|█████     | 2/4 [00:00<00:00, 16.80it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 12.69it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 13.17it/s]
+Batches:   0%|          | 0/56 [00:00<?, ?it/s]Batches:  23%|██▎       | 13/56 [00:00<00:00, 129.87it/s]Batches:  48%|████▊     | 27/56 [00:00<00:00, 132.53it/s]Batches:  75%|███████▌  | 42/56 [00:00<00:00, 137.26it/s]Batches: 100%|██████████| 56/56 [00:00<00:00, 138.20it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 158.66it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 89.10it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 137.79it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches:  50%|█████     | 2/4 [00:00<00:00, 17.03it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 13.40it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 13.84it/s]
+Batches:   0%|          | 0/43 [00:00<?, ?it/s]Batches:  33%|███▎      | 14/43 [00:00<00:00, 137.02it/s]Batches:  67%|██████▋   | 29/43 [00:00<00:00, 141.82it/s]Batches: 100%|██████████| 43/43 [00:00<00:00, 143.31it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 152.73it/s]
+Batches:   0%|          | 0/7 [00:00<?, ?it/s]Batches: 100%|██████████| 7/7 [00:00<00:00, 90.75it/s]
+Batches:   0%|          | 0/8 [00:00<?, ?it/s]Batches: 100%|██████████| 8/8 [00:00<00:00, 90.91it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches:  67%|██████▋   | 2/3 [00:00<00:00, 17.12it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 14.02it/s]
+Batches:   0%|          | 0/22 [00:00<?, ?it/s]Batches:  55%|█████▍    | 12/22 [00:00<00:00, 111.79it/s]Batches: 100%|██████████| 22/22 [00:00<00:00, 121.01it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 137.61it/s]
+Batches:   0%|          | 0/15 [00:00<?, ?it/s]Batches:  67%|██████▋   | 10/15 [00:00<00:00, 91.34it/s]Batches: 100%|██████████| 15/15 [00:00<00:00, 95.33it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 22.25it/s]
+Batches:   0%|          | 0/14 [00:00<?, ?it/s]Batches:  93%|█████████▎| 13/14 [00:00<00:00, 127.07it/s]Batches: 100%|██████████| 14/14 [00:00<00:00, 128.89it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 138.50it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 168.38it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 110.91it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 149.17it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 177.09it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.37it/s]
+Batches:   0%|          | 0/22 [00:00<?, ?it/s]Batches:  50%|█████     | 11/22 [00:00<00:00, 105.22it/s]Batches: 100%|██████████| 22/22 [00:00<00:00, 114.33it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 166.47it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 98.00it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 94.33it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.33it/s]
+Batches:   0%|          | 0/22 [00:00<?, ?it/s]Batches:  45%|████▌     | 10/22 [00:00<00:00, 94.79it/s]Batches: 100%|██████████| 22/22 [00:00<00:00, 117.20it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 170.38it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 130.16it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 139.43it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 86.28it/s]
+Batches:   0%|          | 0/18 [00:00<?, ?it/s]Batches:  83%|████████▎ | 15/18 [00:00<00:00, 143.62it/s]Batches: 100%|██████████| 18/18 [00:00<00:00, 145.66it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 151.21it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 185.54it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 84.24it/s]
+Batches:   0%|          | 0/13 [00:00<?, ?it/s]Batches: 100%|██████████| 13/13 [00:00<00:00, 140.49it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 168.67it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 134.42it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 191.40it/s]
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:2101: UserWarning: Checkpoint uses legacy list-valued extra_special_tokens metadata; loading with compatibility normalization.
+  tokenizer = load_extractor_tokenizer(tokenizer_source)
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:1147: RuntimeWarning: Encoder rejected attn_implementation='sdpa'; falling back to 'eager' (DebertaV2Model does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet. Please request the support for this architecture: https://github.com/huggingface/transformers/issues/28005. If you believe this error is a bug, please open an issue in Transformers GitHub repository and load your model with the argument `attn_implementation="eager"` meanwhile. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="eager")`)
+  self.encoder = self._load_encoder(
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.06it/s]
+Batches:   0%|          | 0/22 [00:00<?, ?it/s]Batches:  45%|████▌     | 10/22 [00:00<00:00, 92.21it/s]Batches:  95%|█████████▌| 21/22 [00:00<00:00, 101.85it/s]Batches: 100%|██████████| 22/22 [00:00<00:00, 102.02it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 169.97it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 99.00it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 94.23it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.14it/s]
+Batches:   0%|          | 0/22 [00:00<?, ?it/s]Batches:  41%|████      | 9/22 [00:00<00:00, 84.18it/s]Batches: 100%|██████████| 22/22 [00:00<00:00, 107.08it/s]Batches: 100%|██████████| 22/22 [00:00<00:00, 103.52it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 169.93it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 143.29it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 141.14it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 87.53it/s]
+Batches:   0%|          | 0/18 [00:00<?, ?it/s]Batches:  83%|████████▎ | 15/18 [00:00<00:00, 144.92it/s]Batches: 100%|██████████| 18/18 [00:00<00:00, 147.09it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 155.09it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 189.96it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 80.26it/s]
+Batches:   0%|          | 0/13 [00:00<?, ?it/s]Batches: 100%|██████████| 13/13 [00:00<00:00, 143.01it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 171.08it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 134.58it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 191.87it/s]
+Batches:   0%|          | 0/10 [00:00<?, ?it/s]Batches:  20%|██        | 2/10 [00:00<00:00, 16.78it/s]Batches:  40%|████      | 4/10 [00:00<00:00, 15.13it/s]Batches:  60%|██████    | 6/10 [00:00<00:00, 15.51it/s]Batches:  80%|████████  | 8/10 [00:00<00:00, 15.75it/s]Batches: 100%|██████████| 10/10 [00:00<00:00, 15.73it/s]Batches: 100%|██████████| 10/10 [00:00<00:00, 15.69it/s]
+Batches:   0%|          | 0/112 [00:00<?, ?it/s]Batches:  12%|█▏        | 13/112 [00:00<00:00, 126.23it/s]Batches:  23%|██▎       | 26/112 [00:00<00:00, 127.09it/s]Batches:  36%|███▌      | 40/112 [00:00<00:00, 130.91it/s]Batches:  49%|████▉     | 55/112 [00:00<00:00, 136.69it/s]Batches:  62%|██████▎   | 70/112 [00:00<00:00, 139.77it/s]Batches:  75%|███████▌  | 84/112 [00:00<00:00, 138.72it/s]Batches:  88%|████████▊ | 99/112 [00:00<00:00, 140.40it/s]Batches: 100%|██████████| 112/112 [00:00<00:00, 138.74it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 133.59it/s]
+Batches:   0%|          | 0/25 [00:00<?, ?it/s]Batches:  36%|███▌      | 9/25 [00:00<00:00, 84.89it/s]Batches:  76%|███████▌  | 19/25 [00:00<00:00, 91.66it/s]Batches: 100%|██████████| 25/25 [00:00<00:00, 99.22it/s]
+Batches:   0%|          | 0/11 [00:00<?, ?it/s]Batches:  82%|████████▏ | 9/11 [00:00<00:00, 89.76it/s]Batches: 100%|██████████| 11/11 [00:00<00:00, 90.08it/s]
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:2101: UserWarning: Checkpoint uses legacy list-valued extra_special_tokens metadata; loading with compatibility normalization.
+  tokenizer = load_extractor_tokenizer(tokenizer_source)
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:1147: RuntimeWarning: Encoder rejected attn_implementation='sdpa'; falling back to 'eager' (DebertaV2Model does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet. Please request the support for this architecture: https://github.com/huggingface/transformers/issues/28005. If you believe this error is a bug, please open an issue in Transformers GitHub repository and load your model with the argument `attn_implementation="eager"` meanwhile. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="eager")`)
+  self.encoder = self._load_encoder(
+Batches:   0%|          | 0/10 [00:00<?, ?it/s]Batches:  20%|██        | 2/10 [00:00<00:00, 16.90it/s]Batches:  40%|████      | 4/10 [00:00<00:00, 14.53it/s]Batches:  60%|██████    | 6/10 [00:00<00:00, 14.61it/s]Batches:  80%|████████  | 8/10 [00:00<00:00, 14.91it/s]Batches: 100%|██████████| 10/10 [00:00<00:00, 15.13it/s]Batches: 100%|██████████| 10/10 [00:00<00:00, 15.05it/s]
+Batches:   0%|          | 0/112 [00:00<?, ?it/s]Batches:  12%|█▏        | 13/112 [00:00<00:00, 126.32it/s]Batches:  23%|██▎       | 26/112 [00:00<00:00, 125.43it/s]Batches:  36%|███▌      | 40/112 [00:00<00:00, 129.41it/s]Batches:  49%|████▉     | 55/112 [00:00<00:00, 135.55it/s]Batches:  62%|██████▎   | 70/112 [00:00<00:00, 138.59it/s]Batches:  76%|███████▌  | 85/112 [00:00<00:00, 140.01it/s]Batches:  89%|████████▉ | 100/112 [00:00<00:00, 141.38it/s]Batches: 100%|██████████| 112/112 [00:00<00:00, 138.81it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 134.08it/s]
+Batches:   0%|          | 0/25 [00:00<?, ?it/s]Batches:  36%|███▌      | 9/25 [00:00<00:00, 84.96it/s]Batches:  84%|████████▍ | 21/25 [00:00<00:00, 101.65it/s]Batches: 100%|██████████| 25/25 [00:00<00:00, 104.89it/s]
+Batches:   0%|          | 0/11 [00:00<?, ?it/s]Batches:  91%|█████████ | 10/11 [00:00<00:00, 89.14it/s]Batches: 100%|██████████| 11/11 [00:00<00:00, 91.52it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 16.76it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 16.74it/s]
+Batches:   0%|          | 0/22 [00:00<?, ?it/s]Batches:  59%|█████▉    | 13/22 [00:00<00:00, 123.85it/s]Batches: 100%|██████████| 22/22 [00:00<00:00, 132.12it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 145.41it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 99.07it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 88.66it/s]
+Batches:   0%|          | 0/5 [00:00<?, ?it/s]Batches:  40%|████      | 2/5 [00:00<00:00, 17.09it/s]Batches:  80%|████████  | 4/5 [00:00<00:00, 13.89it/s]Batches: 100%|██████████| 5/5 [00:00<00:00, 14.57it/s]
+Batches:   0%|          | 0/53 [00:00<?, ?it/s]Batches:  25%|██▍       | 13/53 [00:00<00:00, 129.99it/s]Batches:  51%|█████     | 27/53 [00:00<00:00, 135.74it/s]Batches:  79%|███████▉  | 42/53 [00:00<00:00, 140.16it/s]Batches: 100%|██████████| 53/53 [00:00<00:00, 140.94it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 141.92it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 96.72it/s]
+Batches:   0%|          | 0/7 [00:00<?, ?it/s]Batches: 100%|██████████| 7/7 [00:00<00:00, 88.63it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches:  50%|█████     | 2/4 [00:00<00:00, 16.97it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 12.97it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 13.44it/s]
+Batches:   0%|          | 0/30 [00:00<?, ?it/s]Batches:  47%|████▋     | 14/30 [00:00<00:00, 137.24it/s]Batches:  97%|█████████▋| 29/30 [00:00<00:00, 142.48it/s]Batches: 100%|██████████| 30/30 [00:00<00:00, 142.07it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 157.08it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 144.73it/s]
+Batches:   0%|          | 0/83 [00:00<?, ?it/s]Batches:  11%|█         | 9/83 [00:00<00:00, 80.25it/s]Batches:  22%|██▏       | 18/83 [00:00<00:00, 81.21it/s]Batches:  39%|███▊      | 32/83 [00:00<00:00, 105.48it/s]Batches:  57%|█████▋    | 47/83 [00:00<00:00, 119.65it/s]Batches:  75%|███████▍  | 62/83 [00:00<00:00, 128.15it/s]Batches:  93%|█████████▎| 77/83 [00:00<00:00, 133.30it/s]Batches: 100%|██████████| 83/83 [00:00<00:00, 121.83it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 66.26it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.37it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 162.82it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 134.39it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 138.67it/s]
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:2101: UserWarning: Checkpoint uses legacy list-valued extra_special_tokens metadata; loading with compatibility normalization.
+  tokenizer = load_extractor_tokenizer(tokenizer_source)
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:1147: RuntimeWarning: Encoder rejected attn_implementation='sdpa'; falling back to 'eager' (DebertaV2Model does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet. Please request the support for this architecture: https://github.com/huggingface/transformers/issues/28005. If you believe this error is a bug, please open an issue in Transformers GitHub repository and load your model with the argument `attn_implementation="eager"` meanwhile. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="eager")`)
+  self.encoder = self._load_encoder(
+[W923 11:16:05.792405816 CUDACachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 631242752 bytes (free: 558694400, total: 15636037632).
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 16.76it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 16.73it/s]
+Batches:   0%|          | 0/22 [00:00<?, ?it/s]Batches:  55%|█████▍    | 12/22 [00:00<00:00, 119.75it/s]Batches: 100%|██████████| 22/22 [00:00<00:00, 130.32it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 144.58it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 96.11it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 88.69it/s]
+Batches:   0%|          | 0/5 [00:00<?, ?it/s]Batches:  40%|████      | 2/5 [00:00<00:00, 17.07it/s]Batches:  80%|████████  | 4/5 [00:00<00:00, 14.14it/s]Batches: 100%|██████████| 5/5 [00:00<00:00, 14.66it/s]
+Batches:   0%|          | 0/53 [00:00<?, ?it/s]Batches:  25%|██▍       | 13/53 [00:00<00:00, 128.25it/s]Batches:  51%|█████     | 27/53 [00:00<00:00, 134.30it/s]Batches:  79%|███████▉  | 42/53 [00:00<00:00, 138.66it/s]Batches: 100%|██████████| 53/53 [00:00<00:00, 139.44it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 141.63it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 94.81it/s]
+Batches:   0%|          | 0/7 [00:00<?, ?it/s]Batches: 100%|██████████| 7/7 [00:00<00:00, 88.52it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches:  50%|█████     | 2/4 [00:00<00:00, 16.91it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 13.42it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 13.84it/s]
+Batches:   0%|          | 0/30 [00:00<?, ?it/s]Batches:  47%|████▋     | 14/30 [00:00<00:00, 133.84it/s]Batches:  97%|█████████▋| 29/30 [00:00<00:00, 139.88it/s]Batches: 100%|██████████| 30/30 [00:00<00:00, 139.40it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 156.74it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 145.52it/s]
+Batches:   0%|          | 0/83 [00:00<?, ?it/s]Batches:  11%|█         | 9/83 [00:00<00:00, 81.07it/s]Batches:  24%|██▍       | 20/83 [00:00<00:00, 93.84it/s]Batches:  39%|███▊      | 32/83 [00:00<00:00, 102.55it/s]Batches:  55%|█████▌    | 46/83 [00:00<00:00, 116.46it/s]Batches:  73%|███████▎  | 61/83 [00:00<00:00, 126.96it/s]Batches:  92%|█████████▏| 76/83 [00:00<00:00, 133.11it/s]Batches: 100%|██████████| 83/83 [00:00<00:00, 122.64it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 73.23it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 50.49it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 189.99it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 134.77it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 141.63it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches:  67%|██████▋   | 2/3 [00:00<00:00, 16.75it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 13.77it/s]
+Batches:   0%|          | 0/7 [00:00<?, ?it/s]Batches: 100%|██████████| 7/7 [00:00<00:00, 128.32it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 126.41it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 131.36it/s]
+Batches:   0%|          | 0/23 [00:00<?, ?it/s]Batches:  39%|███▉      | 9/23 [00:00<00:00, 88.66it/s]Batches:  87%|████████▋ | 20/23 [00:00<00:00, 100.69it/s]Batches: 100%|██████████| 23/23 [00:00<00:00, 101.26it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 25.25it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 71.91it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 155.33it/s]
+Batches:   0%|          | 0/7 [00:00<?, ?it/s]Batches: 100%|██████████| 7/7 [00:00<00:00, 137.50it/s]
+Batches:   0%|          | 0/11 [00:00<?, ?it/s]Batches:  91%|█████████ | 10/11 [00:00<00:00, 92.00it/s]Batches: 100%|██████████| 11/11 [00:00<00:00, 93.37it/s]
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:2101: UserWarning: Checkpoint uses legacy list-valued extra_special_tokens metadata; loading with compatibility normalization.
+  tokenizer = load_extractor_tokenizer(tokenizer_source)
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:1147: RuntimeWarning: Encoder rejected attn_implementation='sdpa'; falling back to 'eager' (DebertaV2Model does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet. Please request the support for this architecture: https://github.com/huggingface/transformers/issues/28005. If you believe this error is a bug, please open an issue in Transformers GitHub repository and load your model with the argument `attn_implementation="eager"` meanwhile. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="eager")`)
+  self.encoder = self._load_encoder(
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches:  67%|██████▋   | 2/3 [00:00<00:00, 16.89it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 13.81it/s]
+Batches:   0%|          | 0/7 [00:00<?, ?it/s]Batches: 100%|██████████| 7/7 [00:00<00:00, 135.00it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 128.55it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 138.38it/s]
+Batches:   0%|          | 0/23 [00:00<?, ?it/s]Batches:  39%|███▉      | 9/23 [00:00<00:00, 89.22it/s]Batches:  91%|█████████▏| 21/23 [00:00<00:00, 104.92it/s]Batches: 100%|██████████| 23/23 [00:00<00:00, 105.54it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 24.26it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 128.83it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 157.98it/s]
+Batches:   0%|          | 0/7 [00:00<?, ?it/s]Batches: 100%|██████████| 7/7 [00:00<00:00, 139.58it/s]
+Batches:   0%|          | 0/11 [00:00<?, ?it/s]Batches:  91%|█████████ | 10/11 [00:00<00:00, 92.01it/s]Batches: 100%|██████████| 11/11 [00:00<00:00, 93.41it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches:  67%|██████▋   | 2/3 [00:00<00:00, 15.73it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 14.48it/s]
+Batches:   0%|          | 0/49 [00:00<?, ?it/s]Batches:  27%|██▋       | 13/49 [00:00<00:00, 125.27it/s]Batches:  57%|█████▋    | 28/49 [00:00<00:00, 137.17it/s]Batches:  88%|████████▊ | 43/49 [00:00<00:00, 139.84it/s]Batches: 100%|██████████| 49/49 [00:00<00:00, 139.57it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 144.50it/s]
+Batches:   0%|          | 0/75 [00:00<?, ?it/s]Batches:  19%|█▊        | 14/75 [00:00<00:00, 129.35it/s]Batches:  36%|███▌      | 27/75 [00:00<00:00, 127.10it/s]Batches:  53%|█████▎    | 40/75 [00:00<00:00, 127.79it/s]Batches:  71%|███████   | 53/75 [00:00<00:00, 128.51it/s]Batches:  89%|████████▉ | 67/75 [00:00<00:00, 130.14it/s]Batches: 100%|██████████| 75/75 [00:00<00:00, 130.86it/s]
+Batches:   0%|          | 0/9 [00:00<?, ?it/s]Batches: 100%|██████████| 9/9 [00:00<00:00, 93.96it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 18.83it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 18.80it/s]
+Batches:   0%|          | 0/8 [00:00<?, ?it/s]Batches: 100%|██████████| 8/8 [00:00<00:00, 95.62it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 144.34it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 141.06it/s]
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:2101: UserWarning: Checkpoint uses legacy list-valued extra_special_tokens metadata; loading with compatibility normalization.
+  tokenizer = load_extractor_tokenizer(tokenizer_source)
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:1147: RuntimeWarning: Encoder rejected attn_implementation='sdpa'; falling back to 'eager' (DebertaV2Model does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet. Please request the support for this architecture: https://github.com/huggingface/transformers/issues/28005. If you believe this error is a bug, please open an issue in Transformers GitHub repository and load your model with the argument `attn_implementation="eager"` meanwhile. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="eager")`)
+  self.encoder = self._load_encoder(
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches:  67%|██████▋   | 2/3 [00:00<00:00, 16.93it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 14.28it/s]
+Batches:   0%|          | 0/49 [00:00<?, ?it/s]Batches:  29%|██▊       | 14/49 [00:00<00:00, 134.72it/s]Batches:  59%|█████▉    | 29/49 [00:00<00:00, 140.83it/s]Batches:  90%|████████▉ | 44/49 [00:00<00:00, 141.44it/s]Batches: 100%|██████████| 49/49 [00:00<00:00, 141.65it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 141.42it/s]
+Batches:   0%|          | 0/75 [00:00<?, ?it/s]Batches:  19%|█▊        | 14/75 [00:00<00:00, 129.24it/s]Batches:  36%|███▌      | 27/75 [00:00<00:00, 125.87it/s]Batches:  53%|█████▎    | 40/75 [00:00<00:00, 126.47it/s]Batches:  71%|███████   | 53/75 [00:00<00:00, 127.55it/s]Batches:  89%|████████▉ | 67/75 [00:00<00:00, 129.36it/s]Batches: 100%|██████████| 75/75 [00:00<00:00, 130.05it/s]
+Batches:   0%|          | 0/9 [00:00<?, ?it/s]Batches: 100%|██████████| 9/9 [00:00<00:00, 93.91it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 18.85it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 18.82it/s]
+Batches:   0%|          | 0/8 [00:00<?, ?it/s]Batches: 100%|██████████| 8/8 [00:00<00:00, 95.74it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 148.74it/s]
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 142.31it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 52.13it/s]
+Batches:   0%|          | 0/33 [00:00<?, ?it/s]Batches:  27%|██▋       | 9/33 [00:00<00:00, 81.46it/s]Batches:  64%|██████▎   | 21/33 [00:00<00:00, 102.07it/s]Batches: 100%|██████████| 33/33 [00:00<00:00, 112.01it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 146.05it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 135.58it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.30it/s]
+Batches:   0%|          | 0/33 [00:00<?, ?it/s]Batches:  45%|████▌     | 15/33 [00:00<00:00, 143.74it/s]Batches:  91%|█████████ | 30/33 [00:00<00:00, 144.90it/s]Batches: 100%|██████████| 33/33 [00:00<00:00, 146.01it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 145.14it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 136.31it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 68.59it/s]
+Batches:   0%|          | 0/17 [00:00<?, ?it/s]Batches:  88%|████████▊ | 15/17 [00:00<00:00, 144.96it/s]Batches: 100%|██████████| 17/17 [00:00<00:00, 145.65it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 176.74it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 140.21it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 164.89it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 79.05it/s]
+Batches:   0%|          | 0/15 [00:00<?, ?it/s]Batches: 100%|██████████| 15/15 [00:00<00:00, 145.34it/s]Batches: 100%|██████████| 15/15 [00:00<00:00, 145.07it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 170.18it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 30.60it/s]
+Batches:   0%|          | 0/33 [00:00<?, ?it/s]Batches:  42%|████▏     | 14/33 [00:00<00:00, 135.40it/s]Batches:  88%|████████▊ | 29/33 [00:00<00:00, 141.66it/s]Batches: 100%|██████████| 33/33 [00:00<00:00, 141.91it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 188.13it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 144.51it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 144.05it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 67.00it/s]
+Batches:   0%|          | 0/23 [00:00<?, ?it/s]Batches:  65%|██████▌   | 15/23 [00:00<00:00, 142.34it/s]Batches: 100%|██████████| 23/23 [00:00<00:00, 145.07it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 163.53it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 172.32it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 138.20it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 30.04it/s]
+Batches:   0%|          | 0/29 [00:00<?, ?it/s]Batches:  48%|████▊     | 14/29 [00:00<00:00, 138.63it/s]Batches:  97%|█████████▋| 28/29 [00:00<00:00, 139.30it/s]Batches: 100%|██████████| 29/29 [00:00<00:00, 139.28it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 193.16it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 143.83it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 141.06it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 64.56it/s]
+Batches:   0%|          | 0/99 [00:00<?, ?it/s]Batches:  14%|█▍        | 14/99 [00:00<00:00, 133.72it/s]Batches:  28%|██▊       | 28/99 [00:00<00:00, 135.69it/s]Batches:  43%|████▎     | 43/99 [00:00<00:00, 139.06it/s]Batches:  59%|█████▊    | 58/99 [00:00<00:00, 141.54it/s]Batches:  74%|███████▎  | 73/99 [00:00<00:00, 143.16it/s]Batches:  89%|████████▉ | 88/99 [00:00<00:00, 142.30it/s]Batches: 100%|██████████| 99/99 [00:00<00:00, 141.98it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 188.66it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 148.26it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.73it/s]
+Batches:   0%|          | 0/12 [00:00<?, ?it/s]Batches: 100%|██████████| 12/12 [00:00<00:00, 137.87it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 153.62it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 131.72it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 17.01it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 16.98it/s]
+Batches:   0%|          | 0/44 [00:00<?, ?it/s]Batches:  32%|███▏      | 14/44 [00:00<00:00, 135.23it/s]Batches:  66%|██████▌   | 29/44 [00:00<00:00, 141.13it/s]Batches: 100%|██████████| 44/44 [00:00<00:00, 143.61it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 159.34it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 94.86it/s]
+Batches:   0%|          | 0/7 [00:00<?, ?it/s]Batches: 100%|██████████| 7/7 [00:00<00:00, 96.10it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 59.61it/s]
+Batches:   0%|          | 0/16 [00:00<?, ?it/s]Batches:  38%|███▊      | 6/16 [00:00<00:00, 59.28it/s]Batches: 100%|██████████| 16/16 [00:00<00:00, 80.15it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 188.31it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 140.92it/s]
+Batches:   0%|          | 0/5 [00:00<?, ?it/s]Batches: 100%|██████████| 5/5 [00:00<00:00, 143.35it/s]
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:2101: UserWarning: Checkpoint uses legacy list-valued extra_special_tokens metadata; loading with compatibility normalization.
+  tokenizer = load_extractor_tokenizer(tokenizer_source)
+/home/nflandre/geoparser-venv/lib/python3.13/site-packages/gliner2/models/boundary/model.py:1147: RuntimeWarning: Encoder rejected attn_implementation='sdpa'; falling back to 'eager' (DebertaV2Model does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet. Please request the support for this architecture: https://github.com/huggingface/transformers/issues/28005. If you believe this error is a bug, please open an issue in Transformers GitHub repository and load your model with the argument `attn_implementation="eager"` meanwhile. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="eager")`)
+  self.encoder = self._load_encoder(
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 49.06it/s]
+Batches:   0%|          | 0/33 [00:00<?, ?it/s]Batches:  30%|███       | 10/33 [00:00<00:00, 94.69it/s]Batches:  73%|███████▎  | 24/33 [00:00<00:00, 117.52it/s]Batches: 100%|██████████| 33/33 [00:00<00:00, 121.35it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 145.88it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 146.84it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 59.58it/s]
+Batches:   0%|          | 0/33 [00:00<?, ?it/s]Batches:  45%|████▌     | 15/33 [00:00<00:00, 142.01it/s]Batches:  91%|█████████ | 30/33 [00:00<00:00, 143.96it/s]Batches: 100%|██████████| 33/33 [00:00<00:00, 145.04it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 144.55it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 134.42it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 68.53it/s]
+Batches:   0%|          | 0/17 [00:00<?, ?it/s]Batches:  88%|████████▊ | 15/17 [00:00<00:00, 143.69it/s]Batches: 100%|██████████| 17/17 [00:00<00:00, 144.45it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 175.49it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 143.12it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 162.24it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 79.23it/s]
+Batches:   0%|          | 0/15 [00:00<?, ?it/s]Batches: 100%|██████████| 15/15 [00:00<00:00, 144.82it/s]Batches: 100%|██████████| 15/15 [00:00<00:00, 144.55it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 165.63it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 29.64it/s]
+Batches:   0%|          | 0/33 [00:00<?, ?it/s]Batches:  45%|████▌     | 15/33 [00:00<00:00, 143.47it/s]Batches:  91%|█████████ | 30/33 [00:00<00:00, 145.25it/s]Batches: 100%|██████████| 33/33 [00:00<00:00, 145.67it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 190.54it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 146.73it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 149.24it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 65.90it/s]
+Batches:   0%|          | 0/23 [00:00<?, ?it/s]Batches:  65%|██████▌   | 15/23 [00:00<00:00, 141.91it/s]Batches: 100%|██████████| 23/23 [00:00<00:00, 144.48it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 164.90it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 187.61it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 146.42it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 29.31it/s]
+Batches:   0%|          | 0/29 [00:00<?, ?it/s]Batches:  52%|█████▏    | 15/29 [00:00<00:00, 142.72it/s]Batches: 100%|██████████| 29/29 [00:00<00:00, 144.86it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 193.82it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 145.57it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 147.91it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.69it/s]
+Batches:   0%|          | 0/99 [00:00<?, ?it/s]Batches:  14%|█▍        | 14/99 [00:00<00:00, 133.36it/s]Batches:  28%|██▊       | 28/99 [00:00<00:00, 135.75it/s]Batches:  43%|████▎     | 43/99 [00:00<00:00, 138.64it/s]Batches:  59%|█████▊    | 58/99 [00:00<00:00, 141.11it/s]Batches:  74%|███████▎  | 73/99 [00:00<00:00, 142.78it/s]Batches:  89%|████████▉ | 88/99 [00:00<00:00, 141.81it/s]Batches: 100%|██████████| 99/99 [00:00<00:00, 141.47it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 189.07it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 150.43it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 64.41it/s]
+Batches:   0%|          | 0/12 [00:00<?, ?it/s]Batches: 100%|██████████| 12/12 [00:00<00:00, 138.85it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 141.09it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 131.01it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 17.11it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 17.08it/s]
+Batches:   0%|          | 0/44 [00:00<?, ?it/s]Batches:  20%|██        | 9/44 [00:00<00:00, 83.61it/s]Batches:  55%|█████▍    | 24/44 [00:00<00:00, 117.56it/s]Batches:  89%|████████▊ | 39/44 [00:00<00:00, 130.57it/s]Batches: 100%|██████████| 44/44 [00:00<00:00, 126.42it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 160.37it/s]
+Batches:   0%|          | 0/3 [00:00<?, ?it/s]Batches: 100%|██████████| 3/3 [00:00<00:00, 98.06it/s]
+Batches:   0%|          | 0/7 [00:00<?, ?it/s]Batches: 100%|██████████| 7/7 [00:00<00:00, 96.79it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.23it/s]
+Batches:   0%|          | 0/16 [00:00<?, ?it/s]Batches:  38%|███▊      | 6/16 [00:00<00:00, 58.96it/s]Batches: 100%|██████████| 16/16 [00:00<00:00, 88.25it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 192.13it/s]
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches: 100%|██████████| 2/2 [00:00<00:00, 146.21it/s]
+Batches:   0%|          | 0/5 [00:00<?, ?it/s]Batches: 100%|██████████| 5/5 [00:00<00:00, 141.26it/s]
