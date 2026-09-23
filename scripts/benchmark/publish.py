@@ -100,7 +100,13 @@ MAIN_PIPELINES = tuple(PIPELINE_DESCRIPTIONS)
 
 # Hybrid, then each ablation variant; the factorial cells are the first four.
 ABLATION_PIPELINES = (HYBRID, "trim", "population", "prior")
-SWEEP_PIPELINES = ("population-0.05", "population-0.2")
+SWEEP_PIPELINES = (
+    "population-0.05",
+    "population-0.2",
+    "population-0.3",
+    "population-0.5",
+    "population-1.0",
+)
 ABLATION_CHART = "charts/ablation-acc161.svg"
 
 # Corpus-name prefix: (display name, one-line description).

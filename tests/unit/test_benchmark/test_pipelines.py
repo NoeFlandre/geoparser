@@ -131,6 +131,9 @@ ABLATIONS = {
     "population": (0.1, False),
     "population-0.05": (0.05, False),
     "population-0.2": (0.2, False),
+    "population-0.3": (0.3, False),
+    "population-0.5": (0.5, False),
+    "population-1.0": (1.0, False),
 }
 
 
