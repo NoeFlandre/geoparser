@@ -225,13 +225,28 @@ class TestAreaUnderErrorCurve:
 class TestMutationPins:
     """Edges of the arithmetic that a plausible slip would get wrong."""
 
-    def test_rounding_past_one_does_not_leave_the_asin_domain(self):
-        """This antipodal pair rounds the haversine term to 1 + 2e-16."""
-        latitude, longitude = 66.16849958870057, -92.19208432063249
+    def test_rounding_past_one_does_not_leave_the_asin_domain(self, monkeypatch):
+        """
+        A haversine term rounded just past 1 is clamped, not passed to asin.
 
-        distance = haversine_km(latitude, longitude, -latitude, longitude + 180)
+        Whether a real antipodal pair rounds past 1 depends on the platform's
+        libm, so the rounding is forced: sin is made to overshoot by 1e-15.
+        """
+        import types
 
-        assert distance == pytest.approx(math.pi * 6371.0088, rel=1e-9)
+        import geoparser.evaluation as evaluation
+
+        overshooting = types.SimpleNamespace(
+            **{
+                name: getattr(math, name) for name in ("radians", "cos", "asin", "sqrt")
+            },
+            sin=lambda x: math.sin(x) * (1 + 1e-15),
+        )
+        monkeypatch.setattr(evaluation, "math", overshooting)
+
+        assert haversine_km(0.0, 0.0, 0.0, 180.0) == pytest.approx(
+            math.pi * 6371.0088, rel=1e-9
+        )
 
     @pytest.mark.parametrize(
         ("metric", "expected"),
