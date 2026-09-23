@@ -67,14 +67,22 @@ class PriorResolver(SentenceTransformerResolver):
         self, name: str, method: str, tiers: int
     ) -> tuple[Feature, ...]:
         """Search as the parent does, retrying an exact miss with trimmed names."""
-        found = super()._search_candidates(name, method, tiers)
-        if found or method != "exact" or not self.inflection_fallback:
+        search = super()._search_candidates
+        found = search(name, method, tiers)
+        if found or not self._falls_back(method):
             return found
-        for variant in inflection_variants(name):
-            found = super()._search_candidates(variant, method, tiers)
-            if found:
-                return found
-        return found
+        return next(
+            (
+                variant_found
+                for variant in inflection_variants(name)
+                if (variant_found := search(variant, method, tiers))
+            ),
+            found,
+        )
+
+    def _falls_back(self, method: str) -> bool:
+        """Whether a miss by this search method is retried with trimmed names."""
+        return self.inflection_fallback and method == "exact"
 
     def _best_referent(
         self,
@@ -85,13 +93,7 @@ class PriorResolver(SentenceTransformerResolver):
     ) -> tuple[str, str] | None:
         """Pick the candidate with the best similarity plus population prior."""
         if similarities is None:
-            similarities = self._calculate_similarities(
-                self.context_embeddings[context],
-                [
-                    self.candidate_embeddings[candidate.id]
-                    for candidate in candidate_list
-                ],
-            )
+            similarities = self._context_similarities(context, candidate_list)
         scores = combined_scores(
             similarities,
             [(candidate.data or {}).get("population") for candidate in candidate_list],
@@ -101,3 +103,12 @@ class PriorResolver(SentenceTransformerResolver):
         if similarities[best] < min_similarity:
             return None
         return self.gazetteer_name, candidate_list[best].identifier
+
+    def _context_similarities(
+        self, context: str, candidate_list: list[Feature]
+    ) -> list[float]:
+        """Score each candidate against the context, from cached embeddings."""
+        return self._calculate_similarities(
+            self.context_embeddings[context],
+            [self.candidate_embeddings[candidate.id] for candidate in candidate_list],
+        )

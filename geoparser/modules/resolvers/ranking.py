@@ -84,8 +84,13 @@ def inflection_variants(name: str) -> list[str]:
         trim first, each at least MIN_STEM characters; empty for a phrase
     """
     stem = name.strip()
-    if not stem or any(character.isspace() for character in stem):
+    if not _is_single_word(stem):
         return []
     return [
         stem[:-trim] for trim in range(1, MAX_TRIM + 1) if len(stem) - trim >= MIN_STEM
     ]
+
+
+def _is_single_word(text: str) -> bool:
+    """Whether the text is one non-empty word, with no whitespace inside."""
+    return bool(text) and not any(character.isspace() for character in text)

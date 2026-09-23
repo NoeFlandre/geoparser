@@ -96,3 +96,35 @@ class TestRanking:
         city = _feature(2, 10_000_000)
 
         assert resolver._best_referent("ctx", [city], 0.6, [0.5]) is None
+
+
+@pytest.mark.unit
+class TestFallbackEdges:
+    """When the fallback has nothing to add."""
+
+    def test_every_variant_missing_returns_nothing(self, resolver):
+        """A name no trim can match still comes back empty."""
+        resolver.gazetteer.search.return_value = []
+
+        assert list(resolver._search_candidates("Xyzzyq", "exact", 1)) == []
+        assert resolver.gazetteer.search.call_count == 4
+
+    def test_the_fallback_can_be_switched_off(self, resolver):
+        """With the fallback off, an exact miss is not retried."""
+        resolver.inflection_fallback = False
+        resolver.gazetteer.search.return_value = []
+
+        assert list(resolver._search_candidates("Saksan", "exact", 1)) == []
+        assert resolver.gazetteer.search.call_count == 1
+
+
+@pytest.mark.unit
+def test_ranking_computes_similarities_when_none_are_given(resolver):
+    """Without precomputed scores, the parent's similarity is used."""
+    import torch
+
+    city = _feature(2, 1_000)
+    resolver.context_embeddings["ctx"] = torch.tensor([1.0, 0.0])
+    resolver.candidate_embeddings[2] = torch.tensor([1.0, 0.0])
+
+    assert resolver._best_referent("ctx", [city], 0.5) == (resolver.gazetteer_name, "2")
