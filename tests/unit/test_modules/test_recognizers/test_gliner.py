@@ -376,3 +376,15 @@ class TestLongDocuments:
             (spans,) = recognizer.predict([text])
 
             assert [text[start:end] for start, end in spans] == ["Paris"], position
+
+
+@pytest.mark.unit
+def test_the_window_fits_a_t4_and_keeps_ordinary_articles_whole():
+    """
+    The window is pinned by measurement, not taste.
+
+    20k characters of OCR ran a 15 GB T4 out of memory (OAR job 6937505),
+    and GeoVirus's longest article is 8,059 characters, which must still be
+    extracted in one piece so earlier results are unchanged.
+    """
+    assert 8_059 < GLiNER2Recognizer.WINDOW_CHARS < 20_000

@@ -40,11 +40,11 @@ class GLiNER2Recognizer(Recognizer):
 
     # GLiNER2 attends over its whole input at once, so memory grows with the
     # square of the text: a 133k-character newspaper page asked a 15 GB GPU
-    # for 12 GB in one allocation. Longer texts are split into overlapping
-    # windows. The limit sits well above ordinary documents (16k characters
-    # was measured to fit comfortably), so those are still passed whole and
-    # extracted exactly as before.
-    WINDOW_CHARS: t.ClassVar[int] = 20_000
+    # for 12 GB in one allocation, and 20k-character windows of dense OCR
+    # still filled it. Longer texts are split into overlapping windows. The
+    # limit sits above GeoVirus's longest article (8k characters), so
+    # ordinary documents are still passed whole and extracted as before.
+    WINDOW_CHARS: t.ClassVar[int] = 10_000
     # Wide enough that a toponym cut by one window's edge lies whole inside
     # the next; each window keeps only the spans starting in the half of the
     # overlap nearer to it, so one found in both is kept once.
