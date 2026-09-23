@@ -68,6 +68,20 @@ class RecognitionRepository(BaseRepository[Recognition]):
         return db.exec(statement).unique().first()
 
     @classmethod
+    def get_processed_document_ids(
+        cls, db: Session, document_ids: list[uuid.UUID], recognizer_id: str
+    ) -> set[uuid.UUID]:
+        """Return requested document IDs already processed by a recognizer."""
+        if not document_ids:
+            return set()
+
+        statement = select(Recognition.document_id).where(
+            Recognition.recognizer_id == recognizer_id,
+            Recognition.document_id.in_(document_ids),  # ty: ignore[unresolved-attribute]
+        )
+        return set(db.exec(statement).all())
+
+    @classmethod
     def get_unprocessed_documents(
         cls, db: Session, project_id: uuid.UUID, recognizer_id: str
     ) -> list[Document]:

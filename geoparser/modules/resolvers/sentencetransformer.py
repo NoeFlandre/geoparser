@@ -1,3 +1,5 @@
+import itertools
+import re
 import typing as t
 from pathlib import Path
 
@@ -138,6 +140,15 @@ class SentenceTransformerResolver(Resolver):
         self.candidate_embeddings: dict[
             int, torch.Tensor
         ] = {}  # feature_id -> embedding
+
+        # Caches for deterministic, resolver-local preprocessing.  The
+        # resolver owns these because the values depend on its gazetteer and
+        # attribute map.
+        self.candidate_search_cache: dict[
+            tuple[str, str, int], tuple[Feature, ...]
+        ] = {}
+        self.candidate_descriptions: dict[int, str] = {}
+        self.measured_sentences: dict[str, tuple[Sentence, ...]] = {}
 
     def _load_transformer(self, model_name: str, **kwargs) -> SentenceTransformer:
         """
@@ -486,11 +497,25 @@ class SentenceTransformerResolver(Resolver):
                 if result is not None:
                     continue
 
-                found = self.gazetteer.search(text[start:end], method, tiers=tiers)
+                found = self._search_candidates(text[start:end], method, tiers)
                 self._merge_candidates(doc_candidates[ref_idx], found)
 
+    def _search_candidates(
+        self, name: str, method: str, tiers: int
+    ) -> tuple["Feature", ...]:
+        """Search the gazetteer once for each normalized query and tier."""
+        normalized_name = re.sub(r'"', "", name).strip()
+        key = (normalized_name, method, tiers)
+        if key not in self.candidate_search_cache:
+            self.candidate_search_cache[key] = tuple(
+                self.gazetteer.search(normalized_name, method, tiers=tiers)
+            )
+        return self.candidate_search_cache[key]
+
     @staticmethod
-    def _merge_candidates(existing: list["Feature"], found: list["Feature"]) -> None:
+    def _merge_candidates(
+        existing: list["Feature"], found: t.Iterable["Feature"]
+    ) -> None:
         """
         Append newly found candidates, skipping ones already present.
 
@@ -563,7 +588,7 @@ class SentenceTransformerResolver(Resolver):
         if not pending:
             return
 
-        descriptions = [self._generate_description(candidate) for candidate in pending]
+        descriptions = [self._candidate_description(candidate) for candidate in pending]
         # As with contexts, the encoder's output length is its own contract.
         embeddings = self._encode(descriptions, role="candidate")
         # As above: one embedding per description, so strict= is immaterial.
@@ -587,12 +612,76 @@ class SentenceTransformerResolver(Resolver):
             results: Nested list of current results (modified in-place)
             min_similarity: Similarity a candidate must reach to be accepted
         """
+        pending = self._pending_pairs(contexts, candidates, results)
+        pending_similarities = iter(
+            self._calculate_similarity_batches(
+                [context for context, _ in pending],
+                [candidate_list for _, candidate_list in pending],
+            )
+        )
         for doc_contexts, doc_candidates, doc_results in zip(
             contexts, candidates, results, strict=True
         ):
             self._evaluate_document(
-                doc_contexts, doc_candidates, doc_results, min_similarity
+                doc_contexts,
+                doc_candidates,
+                doc_results,
+                min_similarity,
+                self._document_similarities(
+                    doc_candidates, doc_results, pending_similarities
+                ),
             )
+
+    @staticmethod
+    def _is_pending(
+        result: tuple[str, str] | None, candidate_list: list["Feature"]
+    ) -> bool:
+        """Whether a reference is unresolved and has candidates to rank."""
+        return result is None and bool(candidate_list)
+
+    @classmethod
+    def _pending_pairs(
+        cls,
+        contexts: list[list[str]],
+        candidates: list[list[list["Feature"]]],
+        results: list[list[tuple[str, str] | None]],
+    ) -> list[tuple[str, list["Feature"]]]:
+        """Return (context, candidates) for every pending reference, in order."""
+        return [
+            (context, candidate_list)
+            for doc_contexts, doc_candidates, doc_results in zip(
+                contexts, candidates, results, strict=True
+            )
+            for context, candidate_list, result in zip(
+                doc_contexts, doc_candidates, doc_results, strict=True
+            )
+            if cls._is_pending(result, candidate_list)
+        ]
+
+    @classmethod
+    def _document_similarities(
+        cls,
+        doc_candidates: list[list["Feature"]],
+        doc_results: list[tuple[str, str] | None],
+        pending_similarities: t.Iterator[list[float]],
+    ) -> list[list[float] | None]:
+        """
+        Take one document's share of the batched similarities, in order.
+
+        Args:
+            doc_candidates: Candidate list per reference
+            doc_results: Result slot per reference
+            pending_similarities: The batch's scores, consumed as they are used
+
+        Returns:
+            Scores per reference, or None for one that was not scored
+        """
+        return [
+            next(pending_similarities)
+            if cls._is_pending(result, candidate_list)
+            else None
+            for candidate_list, result in zip(doc_candidates, doc_results, strict=True)
+        ]
 
     def _evaluate_document(
         self,
@@ -600,6 +689,7 @@ class SentenceTransformerResolver(Resolver):
         doc_candidates: list[list["Feature"]],
         doc_results: list[tuple[str, str] | None],
         min_similarity: float,
+        similarities: list[list[float] | None] | None = None,
     ) -> None:
         """
         Resolve one document's still-unresolved references, in place.
@@ -614,10 +704,15 @@ class SentenceTransformerResolver(Resolver):
             zip(doc_contexts, doc_candidates, doc_results, strict=True)
         ):
             # Skip references that are already resolved or have nothing to rank
-            if result is not None or not candidate_list:
+            if not self._is_pending(result, candidate_list):
                 continue
 
-            referent = self._best_referent(context, candidate_list, min_similarity)
+            referent = self._best_referent(
+                context,
+                candidate_list,
+                min_similarity,
+                None if similarities is None else similarities[ref_idx],
+            )
             if referent is not None:
                 doc_results[ref_idx] = referent
 
@@ -626,6 +721,7 @@ class SentenceTransformerResolver(Resolver):
         context: str,
         candidate_list: list["Feature"],
         min_similarity: float,
+        similarities: list[float] | None = None,
     ) -> tuple[str, str] | None:
         """
         Pick the candidate most similar to a reference's context.
@@ -639,10 +735,14 @@ class SentenceTransformerResolver(Resolver):
             A (gazetteer_name, identifier) pair, or None when the best
             candidate is not similar enough
         """
-        similarities = self._calculate_similarities(
-            self.context_embeddings[context],
-            [self.candidate_embeddings[candidate.id] for candidate in candidate_list],
-        )
+        if similarities is None:
+            similarities = self._calculate_similarities(
+                self.context_embeddings[context],
+                [
+                    self.candidate_embeddings[candidate.id]
+                    for candidate in candidate_list
+                ],
+            )
         best_idx = max(range(len(similarities)), key=lambda j: similarities[j])
         if similarities[best_idx] < min_similarity:
             return None
@@ -671,7 +771,7 @@ class SentenceTransformerResolver(Resolver):
 
         return select_context(self._measured_sentences(text), start, end, token_limit)
 
-    def _measured_sentences(self, text: str) -> list[Sentence]:
+    def _measured_sentences(self, text: str) -> tuple[Sentence, ...]:
         """
         The document's sentences, priced in encoder tokens.
 
@@ -685,15 +785,17 @@ class SentenceTransformerResolver(Resolver):
         Returns:
             One Sentence per sentence of the document, in order
         """
-        return [
-            Sentence(
-                text=sent.text,
-                start=sent.start_char,
-                end=sent.end_char,
-                cost=self._sentence_tokens(sent),
+        if text not in self.measured_sentences:
+            self.measured_sentences[text] = tuple(
+                Sentence(
+                    text=sent.text,
+                    start=sent.start_char,
+                    end=sent.end_char,
+                    cost=self._sentence_tokens(sent),
+                )
+                for sent in self._sentences(text)
             )
-            for sent in self._sentences(text)
-        ]
+        return self.measured_sentences[text]
 
     def _token_limit(self) -> int:
         """
@@ -804,6 +906,14 @@ class SentenceTransformerResolver(Resolver):
 
         return " ".join(description_parts).strip()
 
+    def _candidate_description(self, candidate: "Feature") -> str:
+        """Return a cached textual description for one gazetteer feature."""
+        if candidate.id not in self.candidate_descriptions:
+            self.candidate_descriptions[candidate.id] = self._generate_description(
+                candidate
+            )
+        return self.candidate_descriptions[candidate.id]
+
     def _calculate_similarities(
         self,
         context_embedding: torch.Tensor,
@@ -834,6 +944,74 @@ class SentenceTransformerResolver(Resolver):
         # pragma: no mutate end
 
         return similarities.tolist()
+
+    def _calculate_similarity_batches(
+        self,
+        contexts: list[str],
+        candidate_lists: list[list["Feature"]],
+    ) -> list[list[float]]:
+        """Score every candidate list with one flattened cosine operation."""
+        scores: list[list[float]] = [[] for _ in candidate_lists]
+        pending = self._non_empty(contexts, candidate_lists)
+        if not pending:
+            return scores
+
+        lengths = [len(candidate_list) for _, _, candidate_list in pending]
+        similarities = self._flat_similarities(pending, lengths)
+        offsets = [0, *itertools.accumulate(lengths)]
+        for (index, _, _), start, end in zip(
+            pending, offsets, offsets[1:], strict=False
+        ):
+            scores[index] = similarities[start:end]
+        return scores
+
+    @staticmethod
+    def _non_empty(
+        contexts: list[str], candidate_lists: list[list["Feature"]]
+    ) -> list[tuple[int, str, list["Feature"]]]:
+        """Return (index, context, candidates) for every non-empty list."""
+        return [
+            (index, context, candidate_list)
+            for index, (context, candidate_list) in enumerate(
+                zip(contexts, candidate_lists, strict=True)
+            )
+            if candidate_list
+        ]
+
+    def _flat_similarities(
+        self,
+        pending: list[tuple[int, str, list["Feature"]]],
+        lengths: list[int],
+    ) -> list[float]:
+        """
+        Score every (context, candidate) pair of a batch in one cosine call.
+
+        Args:
+            pending: (index, context, candidates) for each non-empty list
+            lengths: How many candidates each entry of ``pending`` has
+
+        Returns:
+            One similarity per candidate, in the order of ``pending``
+        """
+        context_tensor = torch.stack(
+            [self.context_embeddings[context] for _, context, _ in pending]
+        )
+        candidate_tensor = torch.cat(
+            [
+                torch.stack(
+                    [self.candidate_embeddings[candidate.id] for candidate in items]
+                )
+                for _, _, items in pending
+            ]
+        )
+        repeated_contexts = torch.repeat_interleave(
+            context_tensor,
+            torch.tensor(lengths, device=context_tensor.device),
+            dim=0,
+        )
+        return torch.nn.functional.cosine_similarity(
+            repeated_contexts, candidate_tensor, dim=1
+        ).tolist()
 
     def fit(
         self,

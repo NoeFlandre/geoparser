@@ -1,0 +1,160 @@
+=== job 6937400 on grue-4.nancy.grid5000.fr at 2026-09-23T07:17:56+02:00 ===
+=== environment ===
+torch 2.14.0+cu130
+cuda available: True
+gpu: Tesla T4
+Tesla T4, 15360 MiB
+/dev/sda5       375G  2.1M  356G   1% /tmp
+=== building gazetteer on node-local disk ===
+geonames  (9733.6 MB)
+=== running benchmark ===
+229 documents, 2167 gold toponyms, corpus 2f8a928b9af4a442, commit 4c43428
+device: cuda (Tesla T4)
+  upstream/recognition: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+  upstream/resolution: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+  hybrid/recognition: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+  hybrid/resolution: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+# GeoVirus benchmark
+
+- Documents: 229
+- Gold toponyms: 2167
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+| upstream | cuda | 0.837 | 0.784 | 0.810 |
+| hybrid | cuda | 0.826 | 0.832 | 0.829 |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| upstream | cuda | 0.834 | 262.7 | 30.5 | 0.300 | 68.4 |
+| hybrid | cuda | 0.834 | 262.7 | 30.5 | 0.300 | 51.2 |
+
+## Models
+
+- **upstream**: recognizer=en_core_web_sm, resolver=dguzh/geo-all-MiniLM-L6-v2
+- **hybrid**: recognizer=fastino/gliner2.5-multi-v1, resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+=== done at 2026-09-23T07:32:29+02:00 ===
+total 2024
+drwxr-xr-x   3 nflandre g5k-users    4096 Sep 23 07:32 .
+drwx--x---+ 28 nflandre g5k-users   12288 Sep 23 07:17 ..
+-rw-r--r--   1 nflandre g5k-users    1669 Sep 23 07:32 benchmark-report.json
+-rw-r--r--   1 nflandre g5k-users    1545 Sep 23 07:32 benchmark-report.md
+-rw-r--r--   1 nflandre g5k-users  491699 Sep 23 07:32 checkpoint-hybrid.json
+-rw-r--r--   1 nflandre g5k-users  475600 Sep 23 07:31 checkpoint-upstream.json
+-rw-r--r--   1 nflandre g5k-users 1066418 Sep 23 07:30 GeoVirus.xml
+drwxr-xr-x   2 nflandre g5k-users    4096 Sep 23 07:17 logs
+=== cleaning /tmp/geoparser-6937400 at 2026-09-23T07:32:29+02:00 ===
+/dev/sda5       375G  2.1M  356G   1% /tmp

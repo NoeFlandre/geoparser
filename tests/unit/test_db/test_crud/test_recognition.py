@@ -280,3 +280,81 @@ class TestRecognitionRepositoryGetUnprocessedDocuments:
         # Assert - Should only contain doc from project1
         assert len(unprocessed) == 1
         assert unprocessed[0].id == doc1_proj1.id
+
+
+@pytest.mark.unit
+class TestRecognitionRepositoryProcessedDocumentIds:
+    """Test the set-based processed-document lookup."""
+
+    def test_returns_processed_ids_for_requested_documents(
+        self,
+        test_session: Session,
+        document_factory,
+        recognizer_factory,
+    ):
+        """The lookup scopes one recognizer to the requested document IDs."""
+        # Arrange
+        recognizer_factory(id="test_rec")
+        processed = document_factory()
+        unprocessed = document_factory()
+        RecognitionRepository.create(
+            test_session,
+            RecognitionCreate(document_id=processed.id, recognizer_id="test_rec"),
+        )
+
+        # Act
+        ids = RecognitionRepository.get_processed_document_ids(
+            test_session, [unprocessed.id, processed.id], "test_rec"
+        )
+
+        # Assert
+        assert ids == {processed.id}
+
+    def test_returns_empty_set_for_no_requested_documents(self, test_session: Session):
+        """An empty batch does not issue an invalid empty IN query."""
+        assert (
+            RecognitionRepository.get_processed_document_ids(
+                test_session, [], "test_rec"
+            )
+            == set()
+        )
+
+
+@pytest.mark.unit
+class TestGetProcessedDocumentIdsScope:
+    """Both filters of the processed-ID lookup matter."""
+
+    def test_ignores_another_recognizers_work(
+        self, test_session: Session, document_factory, recognizer_factory
+    ):
+        """A document another recognizer processed is still to do."""
+        recognizer_factory(id="mine")
+        recognizer_factory(id="other")
+        document = document_factory()
+        RecognitionRepository.create(
+            test_session,
+            RecognitionCreate(document_id=document.id, recognizer_id="other"),
+        )
+
+        assert (
+            RecognitionRepository.get_processed_document_ids(
+                test_session, [document.id], "mine"
+            )
+            == set()
+        )
+
+    def test_ignores_documents_that_were_not_asked_about(
+        self, test_session: Session, document_factory, recognizer_factory
+    ):
+        """Only the requested IDs are reported, even if others were processed."""
+        recognizer_factory(id="mine")
+        asked, other = document_factory(), document_factory()
+        for document in (asked, other):
+            RecognitionRepository.create(
+                test_session,
+                RecognitionCreate(document_id=document.id, recognizer_id="mine"),
+            )
+
+        assert RecognitionRepository.get_processed_document_ids(
+            test_session, [asked.id], "mine"
+        ) == {asked.id}

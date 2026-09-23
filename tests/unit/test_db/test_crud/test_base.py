@@ -43,6 +43,18 @@ class TestBaseRepositoryCreate:
         assert retrieved_project.id == created_project.id
         assert retrieved_project.name == "Persistent Project"
 
+    def test_creates_many_records_with_one_batch(self, test_session: Session):
+        """A batch is persisted together and keeps its input order."""
+        projects = [
+            ProjectCreate(name="First"),
+            ProjectCreate(name="Second"),
+        ]
+
+        created = ProjectRepository.create_many(test_session, projects)
+
+        assert [project.name for project in created] == ["First", "Second"]
+        assert all(project.id is not None for project in created)
+
 
 @pytest.mark.unit
 class TestBaseRepositoryGet:
@@ -220,3 +232,29 @@ class TestBaseRepositoryDelete:
         remaining_doc2 = DocumentRepository.get(test_session, doc2_id)
         assert remaining_doc1 is None
         assert remaining_doc2 is None
+
+
+@pytest.mark.unit
+class TestBaseRepositoryCreateManyFailure:
+    """A failed batch leaves the session usable."""
+
+    def test_rolls_back_and_reraises_when_the_commit_fails(self):
+        """A commit error is not swallowed, and the transaction is undone."""
+        from unittest.mock import Mock
+
+        session = Mock()
+        session.commit.side_effect = RuntimeError("disk full")
+
+        with pytest.raises(RuntimeError, match="disk full"):
+            ProjectRepository.create_many(session, [ProjectCreate(name="x")])
+
+        session.rollback.assert_called_once_with()
+
+    def test_an_empty_batch_touches_nothing(self):
+        """Nothing is added or committed for no objects."""
+        from unittest.mock import Mock
+
+        session = Mock()
+
+        assert ProjectRepository.create_many(session, []) == []
+        session.add_all.assert_not_called()

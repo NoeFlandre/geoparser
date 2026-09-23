@@ -72,10 +72,11 @@ class TestProjectCreateDocuments:
         project.create_documents(["Test document text"])
 
         # Assert
-        mock_doc_repo.create.assert_called_once()
-        call_args = mock_doc_repo.create.call_args[0]
-        assert call_args[1].text == "Test document text"
-        assert call_args[1].project_id == project.id
+        mock_doc_repo.create_many.assert_called_once()
+        document_creates = mock_doc_repo.create_many.call_args.args[1]
+        assert len(document_creates) == 1
+        assert document_creates[0].text == "Test document text"
+        assert document_creates[0].project_id == project.id
 
     @patch("geoparser.project.project.ProjectRepository")
     @patch("geoparser.project.project.DocumentRepository")
@@ -93,7 +94,7 @@ class TestProjectCreateDocuments:
         with pytest.raises(TypeError, match="expects a sequence of texts"):
             project.create_documents("Test document text")
 
-        mock_doc_repo.create.assert_not_called()
+        mock_doc_repo.create_many.assert_not_called()
 
     @patch("geoparser.project.project.ProjectRepository")
     @patch("geoparser.project.project.DocumentRepository")
@@ -111,10 +112,9 @@ class TestProjectCreateDocuments:
         project.create_documents(["Doc 1", "Doc 2", "Doc 3"])
 
         # Assert
-        assert mock_doc_repo.create.call_count == 3
-        call_args_list = [
-            call[0][1].text for call in mock_doc_repo.create.call_args_list
-        ]
+        mock_doc_repo.create_many.assert_called_once()
+        document_creates = mock_doc_repo.create_many.call_args.args[1]
+        call_args_list = [document_create.text for document_create in document_creates]
         assert "Doc 1" in call_args_list
         assert "Doc 2" in call_args_list
         assert "Doc 3" in call_args_list
@@ -132,7 +132,7 @@ class TestProjectCreateDocuments:
         mock_project_repo.get_by_name.return_value = mock_existing_project
 
         created_ids = [uuid4(), uuid4(), uuid4()]
-        mock_doc_repo.create.side_effect = [Mock(id=id) for id in created_ids]
+        mock_doc_repo.create_many.return_value = [Mock(id=id) for id in created_ids]
 
         project = Project("TestProject")
 

@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Iterable
 from typing import Generic, TypeVar
 
 from sqlmodel import Session, SQLModel, select
@@ -35,6 +36,21 @@ class BaseRepository(Generic[T]):
         db.commit()
         db.refresh(db_obj)
         return db_obj
+
+    @classmethod
+    def create_many(cls, db: Session, objects: Iterable[SQLModel]) -> list[T]:
+        """Create and commit a batch without one transaction per row."""
+        db_objects = [cls.model(**obj.model_dump()) for obj in objects]
+        if not db_objects:
+            return []
+
+        try:
+            db.add_all(db_objects)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        return db_objects
 
     @classmethod
     def get(cls, db: Session, id: uuid.UUID | str) -> T | None:

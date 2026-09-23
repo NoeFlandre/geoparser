@@ -160,6 +160,7 @@ class JinaResolver(SentenceTransformerResolver):
         context: str,
         candidate_list: list["Feature"],
         min_similarity: float,
+        similarities: list[float] | None = None,
     ) -> tuple[str, str] | None:
         """
         Pick a referent by shortlisting on embeddings and reranking.
@@ -173,10 +174,14 @@ class JinaResolver(SentenceTransformerResolver):
             A (gazetteer_name, identifier) pair, or None when no candidate is
             similar enough
         """
-        similarities = self._calculate_similarities(
-            self.context_embeddings[context],
-            [self.candidate_embeddings[candidate.id] for candidate in candidate_list],
-        )
+        if similarities is None:
+            similarities = self._calculate_similarities(
+                self.context_embeddings[context],
+                [
+                    self.candidate_embeddings[candidate.id]
+                    for candidate in candidate_list
+                ],
+            )
         if not similarities:
             return None
 
@@ -219,7 +224,7 @@ class JinaResolver(SentenceTransformerResolver):
             the reranker returns no ranking at all
         """
         descriptions = [
-            self._generate_description(candidate) for candidate in shortlist
+            self._candidate_description(candidate) for candidate in shortlist
         ]
         ranking = self.reranker.rerank(context, descriptions, top_n=1)
         if not ranking:

@@ -4,6 +4,9 @@ Unit tests for geoparser/services/recognition.py
 Tests the RecognitionService class with mocked recognizers.
 """
 
+import uuid
+from unittest.mock import patch
+
 import pytest
 
 from geoparser.services.recognition import RecognitionService
@@ -203,3 +206,50 @@ class TestRecognitionServicePredict:
         statement2 = select(Reference).where(Reference.document_id == doc2.id)
         refs2 = test_session.exec(statement2).unique().all()
         assert len(refs2) == 1
+
+
+@pytest.mark.unit
+class TestRecognitionFailures:
+    """What happens when persisting predictions fails, and on cache misses."""
+
+    def test_rolls_back_and_reraises_when_recording_fails(
+        self, mock_spacy_recognizer, document_factory
+    ):
+        """A failure while recording leaves no partial batch behind."""
+        document = document_factory(text="New York is a city.")
+        mock_spacy_recognizer.predict.return_value = [[(0, 8)]]
+        service = RecognitionService(mock_spacy_recognizer)
+
+        with (
+            patch.object(
+                service,
+                "_record_reference_predictions",
+                side_effect=RuntimeError("boom"),
+            ),
+            pytest.raises(RuntimeError, match="boom"),
+        ):
+            service.predict([document])
+
+    def test_cuts_the_reference_text_from_the_document(self, mock_spacy_recognizer):
+        """The span's text comes from the document, with no query."""
+        from types import SimpleNamespace
+
+        document = SimpleNamespace(id=uuid.uuid4(), text="New York is a city.")
+        service = RecognitionService(mock_spacy_recognizer)
+
+        reference = service._create_reference_record(document, 0, 8, "recognizer")
+
+        assert reference.text == "New York"
+        assert reference.document_id == document.id
+        assert reference.recognizer_id == "recognizer"
+
+    def test_leaves_the_text_empty_for_a_document_without_one(
+        self, mock_spacy_recognizer
+    ):
+        """A document with no string text yields a reference without text."""
+        from types import SimpleNamespace
+
+        document = SimpleNamespace(id=uuid.uuid4())
+        service = RecognitionService(mock_spacy_recognizer)
+
+        assert service._create_reference_record(document, 0, 8, "r").text is None
