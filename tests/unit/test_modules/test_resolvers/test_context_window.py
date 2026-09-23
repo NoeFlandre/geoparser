@@ -85,10 +85,10 @@ class TestMeasuredSentences:
         sentences = parsing_resolver._measured_sentences("aa bb. cc dd ee.")
 
         # Assert
-        assert sentences == [
+        assert sentences == (
             Sentence(text="aa bb.", start=0, end=6, cost=2),
             Sentence(text="cc dd ee.", start=7, end=16, cost=3),
-        ]
+        )
 
     def test_keeps_spacys_own_character_offsets(self, resolver):
         """
