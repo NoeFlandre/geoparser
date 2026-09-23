@@ -113,25 +113,36 @@ class ResolutionService:
         texts: list[str] = []
         boundaries: list[list[tuple[int, int]]] = []
         objects: list[list[Reference]] = []
-        all_references = [
-            reference for doc in documents for reference in doc.references
-        ]
-        processed_ids = ResolutionRepository.get_processed_reference_ids(
-            session, [reference.id for reference in all_references], resolver_id
-        )
+        processed_ids = self._processed_reference_ids(session, documents, resolver_id)
 
         for doc in documents:
-            unprocessed = [
-                reference
-                for reference in doc.references
-                if reference.id not in processed_ids
-            ]
+            unprocessed = self._unprocessed(doc, processed_ids)
             if unprocessed:
                 texts.append(doc.text)
                 boundaries.append([(ref.start, ref.end) for ref in unprocessed])
                 objects.append(unprocessed)
 
         return texts, boundaries, objects
+
+    @staticmethod
+    def _unprocessed(doc: "Document", processed_ids: set[uuid.UUID]) -> list:
+        """Return the document's references not in ``processed_ids``."""
+        return [
+            reference
+            for reference in doc.references
+            if reference.id not in processed_ids
+        ]
+
+    @staticmethod
+    def _processed_reference_ids(
+        session: Session, documents: list["Document"], resolver_id: str
+    ) -> set[uuid.UUID]:
+        """Return the IDs of the documents' references this resolver has seen."""
+        return ResolutionRepository.get_processed_reference_ids(
+            session,
+            [reference.id for doc in documents for reference in doc.references],
+            resolver_id,
+        )
 
     def fit(self, documents: list["Document"], **kwargs) -> None:
         """
@@ -249,24 +260,41 @@ class ResolutionService:
             for reference, referent in pairs:
                 # Skip references where predictions are not available
                 # (None indicates the resolver couldn't process this reference)
-                if referent is None:
-                    continue
-
-                gazetteer_name, identifier = referent
-                referent_record = self._create_referent_record(
-                    session, reference.id, gazetteer_name, identifier, resolver_id
-                )
-                if referent_record is not None:
-                    pending.append(referent_record)
-
-                resolution_record = self._create_resolution_record(
-                    session, reference.id, resolver_id
-                )
-                if resolution_record is not None:
-                    pending.append(resolution_record)
+                if referent is not None:
+                    pending += self._reference_records(
+                        session, reference, referent, resolver_id
+                    )
 
         if pending:
             session.add_all(pending)
+
+    def _reference_records(
+        self,
+        session: Session,
+        reference: "Reference",
+        referent: tuple[str, str],
+        resolver_id: str,
+    ) -> list[Referent | Resolution]:
+        """
+        Build one reference's referent record and its processed marker.
+
+        Args:
+            session: Database session
+            reference: The reference that was resolved
+            referent: The (gazetteer name, identifier) it was resolved to
+            resolver_id: ID of the resolver that made the prediction
+
+        Returns:
+            The records to stage, referent first
+        """
+        gazetteer_name, identifier = referent
+        records = [
+            self._create_referent_record(
+                session, reference.id, gazetteer_name, identifier, resolver_id
+            ),
+            self._create_resolution_record(session, reference.id, resolver_id),
+        ]
+        return [record for record in records if record is not None]
 
     def _create_referent_record(
         self,
@@ -320,24 +348,3 @@ class ResolutionService:
             reference_id=reference_id,
             resolver_id=resolver_id,
         )
-
-    def _filter_unprocessed_references(
-        self, session: Session, references: list["Reference"], resolver_id: str
-    ) -> list["Reference"]:
-        """
-        Filter out references that have already been processed by this resolver.
-
-        Args:
-            session: Database session
-            references: List of references to check
-            resolver_id: ID of the resolver to check for
-
-        Returns:
-            List of references that haven't been processed by this resolver.
-        """
-        processed_ids = ResolutionRepository.get_processed_reference_ids(
-            session, [reference.id for reference in references], resolver_id
-        )
-        return [
-            reference for reference in references if reference.id not in processed_ids
-        ]

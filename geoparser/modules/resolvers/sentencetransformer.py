@@ -1,3 +1,4 @@
+import itertools
 import re
 import typing as t
 from pathlib import Path
@@ -611,40 +612,76 @@ class SentenceTransformerResolver(Resolver):
             results: Nested list of current results (modified in-place)
             min_similarity: Similarity a candidate must reach to be accepted
         """
-        pending_contexts = []
-        pending_candidates = []
-        for doc_contexts, doc_candidates, doc_results in zip(
-            contexts, candidates, results, strict=True
-        ):
-            for context, candidate_list, result in zip(
-                doc_contexts, doc_candidates, doc_results, strict=True
-            ):
-                if result is None and candidate_list:
-                    pending_contexts.append(context)
-                    pending_candidates.append(candidate_list)
-
-        pending_similarities = self._calculate_similarity_batches(
-            pending_contexts, pending_candidates
+        pending = self._pending_pairs(contexts, candidates, results)
+        pending_similarities = iter(
+            self._calculate_similarity_batches(
+                [context for context, _ in pending],
+                [candidate_list for _, candidate_list in pending],
+            )
         )
-        pending_index = 0
-
         for doc_contexts, doc_candidates, doc_results in zip(
             contexts, candidates, results, strict=True
         ):
-            doc_similarities: list[list[float] | None] = []
-            for candidate_list, result in zip(doc_candidates, doc_results, strict=True):
-                if result is None and candidate_list:
-                    doc_similarities.append(pending_similarities[pending_index])
-                    pending_index += 1
-                else:
-                    doc_similarities.append(None)
             self._evaluate_document(
                 doc_contexts,
                 doc_candidates,
                 doc_results,
                 min_similarity,
-                doc_similarities,
+                self._document_similarities(
+                    doc_candidates, doc_results, pending_similarities
+                ),
             )
+
+    @staticmethod
+    def _is_pending(
+        result: tuple[str, str] | None, candidate_list: list["Feature"]
+    ) -> bool:
+        """Whether a reference is unresolved and has candidates to rank."""
+        return result is None and bool(candidate_list)
+
+    @classmethod
+    def _pending_pairs(
+        cls,
+        contexts: list[list[str]],
+        candidates: list[list[list["Feature"]]],
+        results: list[list[tuple[str, str] | None]],
+    ) -> list[tuple[str, list["Feature"]]]:
+        """Return (context, candidates) for every pending reference, in order."""
+        return [
+            (context, candidate_list)
+            for doc_contexts, doc_candidates, doc_results in zip(
+                contexts, candidates, results, strict=True
+            )
+            for context, candidate_list, result in zip(
+                doc_contexts, doc_candidates, doc_results, strict=True
+            )
+            if cls._is_pending(result, candidate_list)
+        ]
+
+    @classmethod
+    def _document_similarities(
+        cls,
+        doc_candidates: list[list["Feature"]],
+        doc_results: list[tuple[str, str] | None],
+        pending_similarities: t.Iterator[list[float]],
+    ) -> list[list[float] | None]:
+        """
+        Take one document's share of the batched similarities, in order.
+
+        Args:
+            doc_candidates: Candidate list per reference
+            doc_results: Result slot per reference
+            pending_similarities: The batch's scores, consumed as they are used
+
+        Returns:
+            Scores per reference, or None for one that was not scored
+        """
+        return [
+            next(pending_similarities)
+            if cls._is_pending(result, candidate_list)
+            else None
+            for candidate_list, result in zip(doc_candidates, doc_results, strict=True)
+        ]
 
     def _evaluate_document(
         self,
@@ -667,18 +704,15 @@ class SentenceTransformerResolver(Resolver):
             zip(doc_contexts, doc_candidates, doc_results, strict=True)
         ):
             # Skip references that are already resolved or have nothing to rank
-            if result is not None or not candidate_list:
+            if not self._is_pending(result, candidate_list):
                 continue
 
-            if similarities is None:
-                referent = self._best_referent(context, candidate_list, min_similarity)
-            else:
-                referent = self._best_referent(
-                    context,
-                    candidate_list,
-                    min_similarity,
-                    similarities[ref_idx],
-                )
+            referent = self._best_referent(
+                context,
+                candidate_list,
+                min_similarity,
+                None if similarities is None else similarities[ref_idx],
+            )
             if referent is not None:
                 doc_results[ref_idx] = referent
 
@@ -917,31 +951,57 @@ class SentenceTransformerResolver(Resolver):
         candidate_lists: list[list["Feature"]],
     ) -> list[list[float]]:
         """Score every candidate list with one flattened cosine operation."""
-        if not candidate_lists:
-            return []
+        scores: list[list[float]] = [[] for _ in candidate_lists]
+        pending = self._non_empty(contexts, candidate_lists)
+        if not pending:
+            return scores
 
-        scores = [[] for _ in candidate_lists]
-        pending = [
+        lengths = [len(candidate_list) for _, _, candidate_list in pending]
+        similarities = self._flat_similarities(pending, lengths)
+        offsets = [0, *itertools.accumulate(lengths)]
+        for (index, _, _), start, end in zip(
+            pending, offsets, offsets[1:], strict=False
+        ):
+            scores[index] = similarities[start:end]
+        return scores
+
+    @staticmethod
+    def _non_empty(
+        contexts: list[str], candidate_lists: list[list["Feature"]]
+    ) -> list[tuple[int, str, list["Feature"]]]:
+        """Return (index, context, candidates) for every non-empty list."""
+        return [
             (index, context, candidate_list)
             for index, (context, candidate_list) in enumerate(
                 zip(contexts, candidate_lists, strict=True)
             )
             if candidate_list
         ]
-        if not pending:
-            return scores
 
-        pending_indices = [item[0] for item in pending]
-        lengths = [len(item[2]) for item in pending]
+    def _flat_similarities(
+        self,
+        pending: list[tuple[int, str, list["Feature"]]],
+        lengths: list[int],
+    ) -> list[float]:
+        """
+        Score every (context, candidate) pair of a batch in one cosine call.
+
+        Args:
+            pending: (index, context, candidates) for each non-empty list
+            lengths: How many candidates each entry of ``pending`` has
+
+        Returns:
+            One similarity per candidate, in the order of ``pending``
+        """
         context_tensor = torch.stack(
-            [self.context_embeddings[item[1]] for item in pending]
+            [self.context_embeddings[context] for _, context, _ in pending]
         )
         candidate_tensor = torch.cat(
             [
                 torch.stack(
-                    [self.candidate_embeddings[candidate.id] for candidate in item[2]]
+                    [self.candidate_embeddings[candidate.id] for candidate in items]
                 )
-                for item in pending
+                for _, _, items in pending
             ]
         )
         repeated_contexts = torch.repeat_interleave(
@@ -949,15 +1009,9 @@ class SentenceTransformerResolver(Resolver):
             torch.tensor(lengths, device=context_tensor.device),
             dim=0,
         )
-        similarities = torch.nn.functional.cosine_similarity(
+        return torch.nn.functional.cosine_similarity(
             repeated_contexts, candidate_tensor, dim=1
         ).tolist()
-
-        offset = 0
-        for index, length in zip(pending_indices, lengths, strict=True):
-            scores[index] = similarities[offset : offset + length]
-            offset += length
-        return scores
 
     def fit(
         self,

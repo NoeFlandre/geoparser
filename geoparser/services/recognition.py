@@ -81,33 +81,38 @@ class RecognitionService:
                 unprocessed_documents = self._filter_unprocessed_documents(
                     session, documents, recognizer_id
                 )
-
-                if not unprocessed_documents:
-                    return
-
-                # Extract text from documents for prediction
-                texts = [doc.text for doc in unprocessed_documents]
-
-                # Only call predict if there are texts to process
-                if texts:
-                    # Get predictions from recognizer using raw text
-                    predicted_references = self.recognizer.predict(texts)
-
-                    # The reference text is already available in this batch, so
-                    # builders do not need one document query per predicted span.
-                    self._document_texts = {
-                        document.id: document.text for document in unprocessed_documents
-                    }
-                    self._record_reference_predictions(
-                        session,
-                        unprocessed_documents,
-                        predicted_references,
-                        recognizer_id,
+                if unprocessed_documents:
+                    self._predict_and_record(
+                        session, unprocessed_documents, recognizer_id
                     )
                     session.commit()
             except Exception:
                 session.rollback()
                 raise
+
+    def _predict_and_record(
+        self,
+        session: Session,
+        documents: list["Document"],
+        recognizer_id: str,
+    ) -> None:
+        """
+        Predict references for documents not yet seen and stage the records.
+
+        Args:
+            session: Database session the records are staged in
+            documents: Documents this recognizer has not processed
+            recognizer_id: ID of the recognizer making the predictions
+        """
+        predicted_references = self.recognizer.predict(
+            [document.text for document in documents]
+        )
+        # The reference text is already available in this batch, so builders
+        # do not need one document query per predicted span.
+        self._document_texts = {document.id: document.text for document in documents}
+        self._record_reference_predictions(
+            session, documents, predicted_references, recognizer_id
+        )
 
     def fit(self, documents: list["Document"], **kwargs) -> None:
         """
@@ -174,26 +179,44 @@ class RecognitionService:
         for document, references in pairs:
             # Skip documents where predictions are not available
             # (None indicates the recognizer couldn't process this document)
-            if references is None:
-                continue
-
-            # Create references with recognizer ID
-            for start, end in references:
-                reference = self._create_reference_record(
-                    session, document.id, start, end, recognizer_id
+            if references is not None:
+                pending += self._document_records(
+                    session, document, references, recognizer_id
                 )
-                if reference is not None:
-                    pending.append(reference)
-
-            # Mark document as processed
-            recognition = self._create_recognition_record(
-                session, document.id, recognizer_id
-            )
-            if recognition is not None:
-                pending.append(recognition)
 
         if pending:
             session.add_all(pending)
+
+    def _document_records(
+        self,
+        session: Session,
+        document: "Document",
+        references: list[tuple[int, int]],
+        recognizer_id: str,
+    ) -> list[Reference | Recognition]:
+        """
+        Build one document's reference records and its processed marker.
+
+        Args:
+            session: Database session
+            document: The document the references were predicted for
+            references: Predicted (start, end) spans
+            recognizer_id: ID of the recognizer that made the predictions
+
+        Returns:
+            The records to stage, references first
+        """
+        records: list[Reference | Recognition | None] = [
+            self._create_reference_record(
+                session, document.id, start, end, recognizer_id
+            )
+            for start, end in references
+        ]
+        # Mark document as processed
+        records.append(
+            self._create_recognition_record(session, document.id, recognizer_id)
+        )
+        return [record for record in records if record is not None]
 
     def _create_reference_record(
         self,
