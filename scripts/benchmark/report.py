@@ -171,3 +171,40 @@ def render_markdown(
         "",
     ]
     return "\n".join(lines)
+
+
+def render_summary(rows: Sequence[dict[str, t.Any]]) -> str:
+    """
+    Render one table across every corpus and pipeline that ran.
+
+    Args:
+        rows: One entry per corpus and pipeline, as written to summary.json
+
+    Returns:
+        The summary as Markdown
+    """
+    lines = [
+        "# Benchmark summary",
+        "",
+        "Recognition is exact-match F1 on each pipeline's own spans; resolution",
+        "is scored on the gold spans. Each corpus's own report has the detail.",
+        "",
+        "| Corpus | Lang | Docs | Gold | Pipeline | Rec F1 | Acc@161km | AUC "
+        "| Seconds |",
+        "| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: |",
+    ]
+    for row in rows:
+        f1 = row["recognition"].get("f1") if row["recognition"] else None
+        resolution = row["resolution"] or {}
+        lines.append(
+            f"| {row['corpus']} | {row['language']} | {row['documents']} "
+            f"| {row['gold_toponyms']} | {row['pipeline']} "
+            f"| {_number(f1)} | {_number(resolution.get('accuracy_at_161km'))} "
+            f"| {_number(resolution.get('auc'))} | {row['elapsed_seconds']:.1f} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _number(value: float | None) -> str:
+    """Format a score, or a dash for a phase that did not run."""
+    return "-" if value is None else f"{value:.3f}"

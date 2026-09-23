@@ -163,3 +163,31 @@ class TestRenderMarkdown:
         text = self.render([self.result()])
 
         assert "gold spans" in text
+
+
+class TestRenderSummary:
+    """One table across every corpus that ran."""
+
+    def test_lists_each_corpus_and_pipeline(self):
+        """Test that the summary names the corpus, language and scores."""
+        from scripts.benchmark.report import render_summary
+
+        rows = [
+            {
+                "corpus": "hipe2020-de",
+                "language": "de",
+                "documents": 3,
+                "gold_toponyms": 7,
+                "pipeline": "hybrid",
+                "recognition": {"f1": 0.5},
+                "resolution": {"accuracy_at_161km": 0.75, "auc": 0.25},
+                "elapsed_seconds": 12.0,
+            }
+        ]
+
+        text = render_summary(rows)
+
+        assert (
+            "| hipe2020-de | de | 3 | 7 | hybrid | 0.500 | 0.750 | 0.250 | 12.0 |"
+            in text
+        )

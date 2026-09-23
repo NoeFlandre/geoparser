@@ -77,6 +77,12 @@ if [[ -n "${PIPELINES:-}" ]]; then
         ARGS+=(--pipeline "$pipeline")
     done
 fi
+if [[ -n "${CORPORA:-}" ]]; then
+    IFS=',' read -r -a selected_corpora <<< "$CORPORA"
+    for corpus_name in "${selected_corpora[@]}"; do
+        ARGS+=(--corpus "$corpus_name")
+    done
+fi
 if [[ -n "$LIMIT" ]]; then
     ARGS+=(--limit "$LIMIT")
 fi
