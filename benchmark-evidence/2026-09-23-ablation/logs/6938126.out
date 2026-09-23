@@ -1,0 +1,4073 @@
+=== job 6938126 on grue-1.nancy.grid5000.fr at 2026-09-23T19:05:44+02:00 ===
+=== environment ===
+torch 2.14.0+cu130
+cuda available: True
+gpu: Tesla T4
+Tesla T4, 15360 MiB
+/dev/sda5       375G  2.2M  356G   1% /tmp
+=== building gazetteer on node-local disk ===
+geonames  (9733.6 MB)
+=== running benchmark ===
+device: cuda (Tesla T4)
+geovirus (en): 229 documents, 2167 gold toponyms, corpus 2f8a928b9af4a442, commit b807fbd
+  hybrid/resolution: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+  trim/resolution: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+  population/resolution: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+  prior/resolution: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+  population-0.05/resolution: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+  population-0.2/resolution: 229 of 229 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/229 done
+    chunk 2/23 (10 docs) saved; 20/229 done
+    chunk 3/23 (10 docs) saved; 30/229 done
+    chunk 4/23 (10 docs) saved; 40/229 done
+    chunk 5/23 (10 docs) saved; 50/229 done
+    chunk 6/23 (10 docs) saved; 60/229 done
+    chunk 7/23 (10 docs) saved; 70/229 done
+    chunk 8/23 (10 docs) saved; 80/229 done
+    chunk 9/23 (10 docs) saved; 90/229 done
+    chunk 10/23 (10 docs) saved; 100/229 done
+    chunk 11/23 (10 docs) saved; 110/229 done
+    chunk 12/23 (10 docs) saved; 120/229 done
+    chunk 13/23 (10 docs) saved; 130/229 done
+    chunk 14/23 (10 docs) saved; 140/229 done
+    chunk 15/23 (10 docs) saved; 150/229 done
+    chunk 16/23 (10 docs) saved; 160/229 done
+    chunk 17/23 (10 docs) saved; 170/229 done
+    chunk 18/23 (10 docs) saved; 180/229 done
+    chunk 19/23 (10 docs) saved; 190/229 done
+    chunk 20/23 (10 docs) saved; 200/229 done
+    chunk 21/23 (10 docs) saved; 210/229 done
+    chunk 22/23 (10 docs) saved; 220/229 done
+    chunk 23/23 (9 docs) saved; 229/229 done
+# geovirus benchmark
+
+- Documents: 229
+- Gold toponyms: 2167
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.834 | 262.7 | 30.5 | 0.300 | 63.6 |
+| trim | cuda | 0.833 | 269.5 | 30.6 | 0.301 | 18.7 |
+| population | cuda | 0.838 | 257.0 | 28.2 | 0.298 | 18.8 |
+| prior | cuda | 0.837 | 263.8 | 28.2 | 0.298 | 19.0 |
+| population-0.05 | cuda | 0.836 | 263.4 | 30.1 | 0.299 | 19.2 |
+| population-0.2 | cuda | 0.841 | 244.8 | 27.9 | 0.296 | 19.1 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+hipe2020-de (de): 48 documents, 558 gold toponyms, corpus 4d90055cddb45a7f, commit b807fbd
+  hybrid/resolution: 48 of 48 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/48 done
+    chunk 2/5 (10 docs) saved; 20/48 done
+    chunk 3/5 (10 docs) saved; 30/48 done
+    chunk 4/5 (10 docs) saved; 40/48 done
+    chunk 5/5 (8 docs) saved; 48/48 done
+  trim/resolution: 48 of 48 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/48 done
+    chunk 2/5 (10 docs) saved; 20/48 done
+    chunk 3/5 (10 docs) saved; 30/48 done
+    chunk 4/5 (10 docs) saved; 40/48 done
+    chunk 5/5 (8 docs) saved; 48/48 done
+  population/resolution: 48 of 48 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/48 done
+    chunk 2/5 (10 docs) saved; 20/48 done
+    chunk 3/5 (10 docs) saved; 30/48 done
+    chunk 4/5 (10 docs) saved; 40/48 done
+    chunk 5/5 (8 docs) saved; 48/48 done
+  prior/resolution: 48 of 48 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/48 done
+    chunk 2/5 (10 docs) saved; 20/48 done
+    chunk 3/5 (10 docs) saved; 30/48 done
+    chunk 4/5 (10 docs) saved; 40/48 done
+    chunk 5/5 (8 docs) saved; 48/48 done
+  population-0.05/resolution: 48 of 48 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/48 done
+    chunk 2/5 (10 docs) saved; 20/48 done
+    chunk 3/5 (10 docs) saved; 30/48 done
+    chunk 4/5 (10 docs) saved; 40/48 done
+    chunk 5/5 (8 docs) saved; 48/48 done
+  population-0.2/resolution: 48 of 48 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/48 done
+    chunk 2/5 (10 docs) saved; 20/48 done
+    chunk 3/5 (10 docs) saved; 30/48 done
+    chunk 4/5 (10 docs) saved; 40/48 done
+    chunk 5/5 (8 docs) saved; 48/48 done
+# hipe2020-de benchmark
+
+- Documents: 48
+- Gold toponyms: 558
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.640 | 1147.4 | 35.9 | 0.371 | 16.7 |
+| trim | cuda | 0.656 | 1160.0 | 27.9 | 0.365 | 15.4 |
+| population | cuda | 0.645 | 1131.7 | 28.3 | 0.369 | 16.9 |
+| prior | cuda | 0.661 | 1160.0 | 27.9 | 0.364 | 15.3 |
+| population-0.05 | cuda | 0.642 | 1147.7 | 35.9 | 0.371 | 16.9 |
+| population-0.2 | cuda | 0.654 | 1136.2 | 27.9 | 0.366 | 16.7 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+hipe2020-fr (fr): 43 documents, 800 gold toponyms, corpus 7e756f77b368ec9a, commit b807fbd
+  hybrid/resolution: 43 of 43 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/43 done
+    chunk 2/5 (10 docs) saved; 20/43 done
+    chunk 3/5 (10 docs) saved; 30/43 done
+    chunk 4/5 (10 docs) saved; 40/43 done
+    chunk 5/5 (3 docs) saved; 43/43 done
+  trim/resolution: 43 of 43 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/43 done
+    chunk 2/5 (10 docs) saved; 20/43 done
+    chunk 3/5 (10 docs) saved; 30/43 done
+    chunk 4/5 (10 docs) saved; 40/43 done
+    chunk 5/5 (3 docs) saved; 43/43 done
+  population/resolution: 43 of 43 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/43 done
+    chunk 2/5 (10 docs) saved; 20/43 done
+    chunk 3/5 (10 docs) saved; 30/43 done
+    chunk 4/5 (10 docs) saved; 40/43 done
+    chunk 5/5 (3 docs) saved; 43/43 done
+  prior/resolution: 43 of 43 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/43 done
+    chunk 2/5 (10 docs) saved; 20/43 done
+    chunk 3/5 (10 docs) saved; 30/43 done
+    chunk 4/5 (10 docs) saved; 40/43 done
+    chunk 5/5 (3 docs) saved; 43/43 done
+  population-0.05/resolution: 43 of 43 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/43 done
+    chunk 2/5 (10 docs) saved; 20/43 done
+    chunk 3/5 (10 docs) saved; 30/43 done
+    chunk 4/5 (10 docs) saved; 40/43 done
+    chunk 5/5 (3 docs) saved; 43/43 done
+  population-0.2/resolution: 43 of 43 documents to do on cuda
+    chunk 1/5 (10 docs) saved; 10/43 done
+    chunk 2/5 (10 docs) saved; 20/43 done
+    chunk 3/5 (10 docs) saved; 30/43 done
+    chunk 4/5 (10 docs) saved; 40/43 done
+    chunk 5/5 (3 docs) saved; 43/43 done
+# hipe2020-fr benchmark
+
+- Documents: 43
+- Gold toponyms: 800
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.766 | 652.8 | 6.0 | 0.294 | 38.2 |
+| trim | cuda | 0.759 | 694.3 | 7.0 | 0.301 | 37.2 |
+| population | cuda | 0.772 | 648.6 | 6.0 | 0.292 | 38.2 |
+| prior | cuda | 0.765 | 691.5 | 6.4 | 0.299 | 37.1 |
+| population-0.05 | cuda | 0.769 | 647.6 | 6.0 | 0.291 | 38.1 |
+| population-0.2 | cuda | 0.781 | 643.5 | 5.8 | 0.288 | 38.6 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+hipe2020-en (en): 38 documents, 158 gold toponyms, corpus 745da3aa1fce5f24, commit b807fbd
+  hybrid/resolution: 38 of 38 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/38 done
+    chunk 2/4 (10 docs) saved; 20/38 done
+    chunk 3/4 (10 docs) saved; 30/38 done
+    chunk 4/4 (8 docs) saved; 38/38 done
+  trim/resolution: 38 of 38 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/38 done
+    chunk 2/4 (10 docs) saved; 20/38 done
+    chunk 3/4 (10 docs) saved; 30/38 done
+    chunk 4/4 (8 docs) saved; 38/38 done
+  population/resolution: 38 of 38 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/38 done
+    chunk 2/4 (10 docs) saved; 20/38 done
+    chunk 3/4 (10 docs) saved; 30/38 done
+    chunk 4/4 (8 docs) saved; 38/38 done
+  prior/resolution: 38 of 38 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/38 done
+    chunk 2/4 (10 docs) saved; 20/38 done
+    chunk 3/4 (10 docs) saved; 30/38 done
+    chunk 4/4 (8 docs) saved; 38/38 done
+  population-0.05/resolution: 38 of 38 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/38 done
+    chunk 2/4 (10 docs) saved; 20/38 done
+    chunk 3/4 (10 docs) saved; 30/38 done
+    chunk 4/4 (8 docs) saved; 38/38 done
+  population-0.2/resolution: 38 of 38 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/38 done
+    chunk 2/4 (10 docs) saved; 20/38 done
+    chunk 3/4 (10 docs) saved; 30/38 done
+    chunk 4/4 (8 docs) saved; 38/38 done
+# hipe2020-en benchmark
+
+- Documents: 38
+- Gold toponyms: 158
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.620 | 1302.5 | 40.2 | 0.400 | 8.8 |
+| trim | cuda | 0.614 | 1390.7 | 44.3 | 0.406 | 9.4 |
+| population | cuda | 0.639 | 1290.3 | 31.8 | 0.389 | 8.8 |
+| prior | cuda | 0.633 | 1378.5 | 36.4 | 0.395 | 8.8 |
+| population-0.05 | cuda | 0.620 | 1304.1 | 40.2 | 0.401 | 8.8 |
+| population-0.2 | cuda | 0.633 | 1387.6 | 36.4 | 0.395 | 8.8 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newseye-de (de): 8 documents, 628 gold toponyms, corpus 6be58effb319164f, commit b807fbd
+  hybrid/resolution: 8 of 8 documents to do on cuda
+    chunk 1/1 (8 docs) saved; 8/8 done
+  trim/resolution: 8 of 8 documents to do on cuda
+    chunk 1/1 (8 docs) saved; 8/8 done
+  population/resolution: 8 of 8 documents to do on cuda
+    chunk 1/1 (8 docs) saved; 8/8 done
+  prior/resolution: 8 of 8 documents to do on cuda
+    chunk 1/1 (8 docs) saved; 8/8 done
+  population-0.05/resolution: 8 of 8 documents to do on cuda
+    chunk 1/1 (8 docs) saved; 8/8 done
+  population-0.2/resolution: 8 of 8 documents to do on cuda
+    chunk 1/1 (8 docs) saved; 8/8 done
+# newseye-de benchmark
+
+- Documents: 8
+- Gold toponyms: 628
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.646 | 705.2 | 5.6 | 0.321 | 14.2 |
+| trim | cuda | 0.643 | 686.5 | 5.6 | 0.319 | 13.3 |
+| population | cuda | 0.651 | 685.7 | 5.1 | 0.318 | 14.2 |
+| prior | cuda | 0.650 | 669.6 | 4.5 | 0.315 | 13.4 |
+| population-0.05 | cuda | 0.651 | 689.6 | 5.6 | 0.319 | 14.5 |
+| population-0.2 | cuda | 0.664 | 655.1 | 3.2 | 0.310 | 14.2 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newseye-fr (fr): 33 documents, 665 gold toponyms, corpus 9f7e02ad02a29b0f, commit b807fbd
+  hybrid/resolution: 33 of 33 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/33 done
+    chunk 2/4 (10 docs) saved; 20/33 done
+    chunk 3/4 (10 docs) saved; 30/33 done
+    chunk 4/4 (3 docs) saved; 33/33 done
+  trim/resolution: 33 of 33 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/33 done
+    chunk 2/4 (10 docs) saved; 20/33 done
+    chunk 3/4 (10 docs) saved; 30/33 done
+    chunk 4/4 (3 docs) saved; 33/33 done
+  population/resolution: 33 of 33 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/33 done
+    chunk 2/4 (10 docs) saved; 20/33 done
+    chunk 3/4 (10 docs) saved; 30/33 done
+    chunk 4/4 (3 docs) saved; 33/33 done
+  prior/resolution: 33 of 33 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/33 done
+    chunk 2/4 (10 docs) saved; 20/33 done
+    chunk 3/4 (10 docs) saved; 30/33 done
+    chunk 4/4 (3 docs) saved; 33/33 done
+  population-0.05/resolution: 33 of 33 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/33 done
+    chunk 2/4 (10 docs) saved; 20/33 done
+    chunk 3/4 (10 docs) saved; 30/33 done
+    chunk 4/4 (3 docs) saved; 33/33 done
+  population-0.2/resolution: 33 of 33 documents to do on cuda
+    chunk 1/4 (10 docs) saved; 10/33 done
+    chunk 2/4 (10 docs) saved; 20/33 done
+    chunk 3/4 (10 docs) saved; 30/33 done
+    chunk 4/4 (3 docs) saved; 33/33 done
+# newseye-fr benchmark
+
+- Documents: 33
+- Gold toponyms: 665
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.686 | 990.2 | 17.5 | 0.332 | 31.2 |
+| trim | cuda | 0.669 | 960.6 | 22.6 | 0.339 | 30.5 |
+| population | cuda | 0.705 | 917.4 | 10.2 | 0.321 | 31.3 |
+| prior | cuda | 0.689 | 888.1 | 16.9 | 0.329 | 30.4 |
+| population-0.05 | cuda | 0.701 | 918.4 | 10.2 | 0.322 | 31.2 |
+| population-0.2 | cuda | 0.717 | 914.2 | 5.9 | 0.316 | 31.1 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newseye-fi (fi): 18 documents, 214 gold toponyms, corpus 25b3956789d0a741, commit b807fbd
+  hybrid/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+  trim/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+  population/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+  prior/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+  population-0.05/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+  population-0.2/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+# newseye-fi benchmark
+
+- Documents: 18
+- Gold toponyms: 214
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.313 | 3599.4 | 1288.4 | 0.625 | 10.7 |
+| trim | cuda | 0.388 | 2980.3 | 768.8 | 0.568 | 8.4 |
+| population | cuda | 0.346 | 3512.6 | 1114.5 | 0.611 | 11.1 |
+| prior | cuda | 0.458 | 2707.9 | 299.7 | 0.517 | 8.4 |
+| population-0.05 | cuda | 0.341 | 3442.8 | 1087.7 | 0.612 | 10.7 |
+| population-0.2 | cuda | 0.360 | 3355.9 | 1011.9 | 0.599 | 10.8 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newseye-sv (sv): 18 documents, 265 gold toponyms, corpus 1a63659c45bb2bc1, commit b807fbd
+  hybrid/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+  trim/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+  population/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+  prior/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+  population-0.05/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+  population-0.2/resolution: 18 of 18 documents to do on cuda
+    chunk 1/2 (10 docs) saved; 10/18 done
+    chunk 2/2 (8 docs) saved; 18/18 done
+# newseye-sv benchmark
+
+- Documents: 18
+- Gold toponyms: 265
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.555 | 859.4 | 107.3 | 0.386 | 9.4 |
+| trim | cuda | 0.528 | 983.1 | 107.3 | 0.399 | 8.3 |
+| population | cuda | 0.645 | 665.4 | 2.6 | 0.323 | 9.4 |
+| prior | cuda | 0.619 | 789.0 | 7.1 | 0.336 | 8.2 |
+| population-0.05 | cuda | 0.608 | 758.5 | 15.4 | 0.347 | 9.3 |
+| population-0.2 | cuda | 0.675 | 614.8 | 1.5 | 0.304 | 9.3 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+topres19th-en (en): 110 documents, 880 gold toponyms, corpus 87911185a99ddd56, commit b807fbd
+  hybrid/resolution: 110 of 110 documents to do on cuda
+    chunk 1/11 (10 docs) saved; 10/110 done
+    chunk 2/11 (10 docs) saved; 20/110 done
+    chunk 3/11 (10 docs) saved; 30/110 done
+    chunk 4/11 (10 docs) saved; 40/110 done
+    chunk 5/11 (10 docs) saved; 50/110 done
+    chunk 6/11 (10 docs) saved; 60/110 done
+    chunk 7/11 (10 docs) saved; 70/110 done
+    chunk 8/11 (10 docs) saved; 80/110 done
+    chunk 9/11 (10 docs) saved; 90/110 done
+    chunk 10/11 (10 docs) saved; 100/110 done
+    chunk 11/11 (10 docs) saved; 110/110 done
+  trim/resolution: 110 of 110 documents to do on cuda
+    chunk 1/11 (10 docs) saved; 10/110 done
+    chunk 2/11 (10 docs) saved; 20/110 done
+    chunk 3/11 (10 docs) saved; 30/110 done
+    chunk 4/11 (10 docs) saved; 40/110 done
+    chunk 5/11 (10 docs) saved; 50/110 done
+    chunk 6/11 (10 docs) saved; 60/110 done
+    chunk 7/11 (10 docs) saved; 70/110 done
+    chunk 8/11 (10 docs) saved; 80/110 done
+    chunk 9/11 (10 docs) saved; 90/110 done
+    chunk 10/11 (10 docs) saved; 100/110 done
+    chunk 11/11 (10 docs) saved; 110/110 done
+  population/resolution: 110 of 110 documents to do on cuda
+    chunk 1/11 (10 docs) saved; 10/110 done
+    chunk 2/11 (10 docs) saved; 20/110 done
+    chunk 3/11 (10 docs) saved; 30/110 done
+    chunk 4/11 (10 docs) saved; 40/110 done
+    chunk 5/11 (10 docs) saved; 50/110 done
+    chunk 6/11 (10 docs) saved; 60/110 done
+    chunk 7/11 (10 docs) saved; 70/110 done
+    chunk 8/11 (10 docs) saved; 80/110 done
+    chunk 9/11 (10 docs) saved; 90/110 done
+    chunk 10/11 (10 docs) saved; 100/110 done
+    chunk 11/11 (10 docs) saved; 110/110 done
+  prior/resolution: 110 of 110 documents to do on cuda
+    chunk 1/11 (10 docs) saved; 10/110 done
+    chunk 2/11 (10 docs) saved; 20/110 done
+    chunk 3/11 (10 docs) saved; 30/110 done
+    chunk 4/11 (10 docs) saved; 40/110 done
+    chunk 5/11 (10 docs) saved; 50/110 done
+    chunk 6/11 (10 docs) saved; 60/110 done
+    chunk 7/11 (10 docs) saved; 70/110 done
+    chunk 8/11 (10 docs) saved; 80/110 done
+    chunk 9/11 (10 docs) saved; 90/110 done
+    chunk 10/11 (10 docs) saved; 100/110 done
+    chunk 11/11 (10 docs) saved; 110/110 done
+  population-0.05/resolution: 110 of 110 documents to do on cuda
+    chunk 1/11 (10 docs) saved; 10/110 done
+    chunk 2/11 (10 docs) saved; 20/110 done
+    chunk 3/11 (10 docs) saved; 30/110 done
+    chunk 4/11 (10 docs) saved; 40/110 done
+    chunk 5/11 (10 docs) saved; 50/110 done
+    chunk 6/11 (10 docs) saved; 60/110 done
+    chunk 7/11 (10 docs) saved; 70/110 done
+    chunk 8/11 (10 docs) saved; 80/110 done
+    chunk 9/11 (10 docs) saved; 90/110 done
+    chunk 10/11 (10 docs) saved; 100/110 done
+    chunk 11/11 (10 docs) saved; 110/110 done
+  population-0.2/resolution: 110 of 110 documents to do on cuda
+    chunk 1/11 (10 docs) saved; 10/110 done
+    chunk 2/11 (10 docs) saved; 20/110 done
+    chunk 3/11 (10 docs) saved; 30/110 done
+    chunk 4/11 (10 docs) saved; 40/110 done
+    chunk 5/11 (10 docs) saved; 50/110 done
+    chunk 6/11 (10 docs) saved; 60/110 done
+    chunk 7/11 (10 docs) saved; 70/110 done
+    chunk 8/11 (10 docs) saved; 80/110 done
+    chunk 9/11 (10 docs) saved; 90/110 done
+    chunk 10/11 (10 docs) saved; 100/110 done
+    chunk 11/11 (10 docs) saved; 110/110 done
+# topres19th-en benchmark
+
+- Documents: 110
+- Gold toponyms: 880
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.724 | 1306.0 | 1.4 | 0.303 | 21.9 |
+| trim | cuda | 0.716 | 1343.4 | 1.6 | 0.310 | 20.9 |
+| population | cuda | 0.727 | 1239.0 | 1.4 | 0.299 | 21.9 |
+| prior | cuda | 0.719 | 1276.4 | 1.6 | 0.305 | 20.9 |
+| population-0.05 | cuda | 0.723 | 1282.8 | 1.3 | 0.302 | 22.0 |
+| population-0.2 | cuda | 0.742 | 1170.0 | 1.2 | 0.286 | 21.9 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newsli-ar (ar): 500 documents, 3319 gold toponyms, corpus bce24ad1279bc71c, commit b807fbd
+  hybrid/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  trim/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  prior/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.05/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.2/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+# newsli-ar benchmark
+
+- Documents: 500
+- Gold toponyms: 3319
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.852 | 354.0 | 1.7 | 0.251 | 34.3 |
+| trim | cuda | 0.849 | 362.7 | 1.8 | 0.252 | 29.8 |
+| population | cuda | 0.859 | 368.0 | 1.5 | 0.248 | 34.1 |
+| prior | cuda | 0.856 | 372.8 | 1.5 | 0.249 | 29.8 |
+| population-0.05 | cuda | 0.856 | 362.4 | 1.5 | 0.249 | 34.5 |
+| population-0.2 | cuda | 0.862 | 365.9 | 1.5 | 0.247 | 34.5 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newsli-de (de): 500 documents, 1019 gold toponyms, corpus f892793167f8e8a0, commit b807fbd
+  hybrid/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  trim/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  prior/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.05/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.2/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+# newsli-de benchmark
+
+- Documents: 500
+- Gold toponyms: 1019
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.904 | 141.1 | 1.9 | 0.192 | 19.9 |
+| trim | cuda | 0.904 | 146.3 | 2.0 | 0.193 | 19.5 |
+| population | cuda | 0.909 | 138.8 | 1.7 | 0.188 | 19.5 |
+| prior | cuda | 0.909 | 144.0 | 1.7 | 0.189 | 19.2 |
+| population-0.05 | cuda | 0.906 | 139.9 | 1.9 | 0.190 | 19.6 |
+| population-0.2 | cuda | 0.910 | 130.3 | 1.7 | 0.187 | 19.4 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newsli-es (es): 500 documents, 1270 gold toponyms, corpus 1fd75cdc4954aa6d, commit b807fbd
+  hybrid/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  trim/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  prior/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.05/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.2/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+# newsli-es benchmark
+
+- Documents: 500
+- Gold toponyms: 1270
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.802 | 493.6 | 10.2 | 0.296 | 53.8 |
+| trim | cuda | 0.800 | 487.7 | 10.2 | 0.297 | 52.7 |
+| population | cuda | 0.822 | 405.6 | 10.2 | 0.283 | 53.5 |
+| prior | cuda | 0.820 | 403.0 | 10.2 | 0.283 | 52.9 |
+| population-0.05 | cuda | 0.812 | 456.0 | 10.2 | 0.290 | 53.3 |
+| population-0.2 | cuda | 0.831 | 370.8 | 10.2 | 0.277 | 53.2 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newsli-fa (fa): 71 documents, 326 gold toponyms, corpus 7e4fe252e65da859, commit b807fbd
+  hybrid/resolution: 71 of 71 documents to do on cuda
+    chunk 1/8 (10 docs) saved; 10/71 done
+    chunk 2/8 (10 docs) saved; 20/71 done
+    chunk 3/8 (10 docs) saved; 30/71 done
+    chunk 4/8 (10 docs) saved; 40/71 done
+    chunk 5/8 (10 docs) saved; 50/71 done
+    chunk 6/8 (10 docs) saved; 60/71 done
+    chunk 7/8 (10 docs) saved; 70/71 done
+    chunk 8/8 (1 docs) saved; 71/71 done
+  trim/resolution: 71 of 71 documents to do on cuda
+    chunk 1/8 (10 docs) saved; 10/71 done
+    chunk 2/8 (10 docs) saved; 20/71 done
+    chunk 3/8 (10 docs) saved; 30/71 done
+    chunk 4/8 (10 docs) saved; 40/71 done
+    chunk 5/8 (10 docs) saved; 50/71 done
+    chunk 6/8 (10 docs) saved; 60/71 done
+    chunk 7/8 (10 docs) saved; 70/71 done
+    chunk 8/8 (1 docs) saved; 71/71 done
+  population/resolution: 71 of 71 documents to do on cuda
+    chunk 1/8 (10 docs) saved; 10/71 done
+    chunk 2/8 (10 docs) saved; 20/71 done
+    chunk 3/8 (10 docs) saved; 30/71 done
+    chunk 4/8 (10 docs) saved; 40/71 done
+    chunk 5/8 (10 docs) saved; 50/71 done
+    chunk 6/8 (10 docs) saved; 60/71 done
+    chunk 7/8 (10 docs) saved; 70/71 done
+    chunk 8/8 (1 docs) saved; 71/71 done
+  prior/resolution: 71 of 71 documents to do on cuda
+    chunk 1/8 (10 docs) saved; 10/71 done
+    chunk 2/8 (10 docs) saved; 20/71 done
+    chunk 3/8 (10 docs) saved; 30/71 done
+    chunk 4/8 (10 docs) saved; 40/71 done
+    chunk 5/8 (10 docs) saved; 50/71 done
+    chunk 6/8 (10 docs) saved; 60/71 done
+    chunk 7/8 (10 docs) saved; 70/71 done
+    chunk 8/8 (1 docs) saved; 71/71 done
+  population-0.05/resolution: 71 of 71 documents to do on cuda
+    chunk 1/8 (10 docs) saved; 10/71 done
+    chunk 2/8 (10 docs) saved; 20/71 done
+    chunk 3/8 (10 docs) saved; 30/71 done
+    chunk 4/8 (10 docs) saved; 40/71 done
+    chunk 5/8 (10 docs) saved; 50/71 done
+    chunk 6/8 (10 docs) saved; 60/71 done
+    chunk 7/8 (10 docs) saved; 70/71 done
+    chunk 8/8 (1 docs) saved; 71/71 done
+  population-0.2/resolution: 71 of 71 documents to do on cuda
+    chunk 1/8 (10 docs) saved; 10/71 done
+    chunk 2/8 (10 docs) saved; 20/71 done
+    chunk 3/8 (10 docs) saved; 30/71 done
+    chunk 4/8 (10 docs) saved; 40/71 done
+    chunk 5/8 (10 docs) saved; 50/71 done
+    chunk 6/8 (10 docs) saved; 60/71 done
+    chunk 7/8 (10 docs) saved; 70/71 done
+    chunk 8/8 (1 docs) saved; 71/71 done
+# newsli-fa benchmark
+
+- Documents: 71
+- Gold toponyms: 326
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.732 | 488.1 | 75.1 | 0.376 | 7.3 |
+| trim | cuda | 0.709 | 613.4 | 86.4 | 0.389 | 6.7 |
+| population | cuda | 0.732 | 488.1 | 75.1 | 0.376 | 7.3 |
+| prior | cuda | 0.709 | 562.9 | 86.4 | 0.387 | 6.6 |
+| population-0.05 | cuda | 0.732 | 488.1 | 75.1 | 0.376 | 7.4 |
+| population-0.2 | cuda | 0.737 | 484.5 | 75.1 | 0.375 | 7.4 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newsli-ja (ja): 500 documents, 1577 gold toponyms, corpus fba4707aa24003ab, commit b807fbd
+  hybrid/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  trim/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  prior/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.05/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.2/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+# newsli-ja benchmark
+
+- Documents: 500
+- Gold toponyms: 1577
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.847 | 248.9 | 2.3 | 0.226 | 17.9 |
+| trim | cuda | 0.846 | 251.2 | 2.3 | 0.226 | 17.3 |
+| population | cuda | 0.849 | 244.9 | 2.2 | 0.225 | 18.0 |
+| prior | cuda | 0.849 | 247.2 | 2.2 | 0.225 | 17.0 |
+| population-0.05 | cuda | 0.847 | 249.3 | 2.3 | 0.226 | 18.0 |
+| population-0.2 | cuda | 0.851 | 246.3 | 2.2 | 0.224 | 18.0 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newsli-pl (pl): 186 documents, 196 gold toponyms, corpus 139fd34031005560, commit b807fbd
+  hybrid/resolution: 186 of 186 documents to do on cuda
+    chunk 1/19 (10 docs) saved; 10/186 done
+    chunk 2/19 (10 docs) saved; 20/186 done
+    chunk 3/19 (10 docs) saved; 30/186 done
+    chunk 4/19 (10 docs) saved; 40/186 done
+    chunk 5/19 (10 docs) saved; 50/186 done
+    chunk 6/19 (10 docs) saved; 60/186 done
+    chunk 7/19 (10 docs) saved; 70/186 done
+    chunk 8/19 (10 docs) saved; 80/186 done
+    chunk 9/19 (10 docs) saved; 90/186 done
+    chunk 10/19 (10 docs) saved; 100/186 done
+    chunk 11/19 (10 docs) saved; 110/186 done
+    chunk 12/19 (10 docs) saved; 120/186 done
+    chunk 13/19 (10 docs) saved; 130/186 done
+    chunk 14/19 (10 docs) saved; 140/186 done
+    chunk 15/19 (10 docs) saved; 150/186 done
+    chunk 16/19 (10 docs) saved; 160/186 done
+    chunk 17/19 (10 docs) saved; 170/186 done
+    chunk 18/19 (10 docs) saved; 180/186 done
+    chunk 19/19 (6 docs) saved; 186/186 done
+  trim/resolution: 186 of 186 documents to do on cuda
+    chunk 1/19 (10 docs) saved; 10/186 done
+    chunk 2/19 (10 docs) saved; 20/186 done
+    chunk 3/19 (10 docs) saved; 30/186 done
+    chunk 4/19 (10 docs) saved; 40/186 done
+    chunk 5/19 (10 docs) saved; 50/186 done
+    chunk 6/19 (10 docs) saved; 60/186 done
+    chunk 7/19 (10 docs) saved; 70/186 done
+    chunk 8/19 (10 docs) saved; 80/186 done
+    chunk 9/19 (10 docs) saved; 90/186 done
+    chunk 10/19 (10 docs) saved; 100/186 done
+    chunk 11/19 (10 docs) saved; 110/186 done
+    chunk 12/19 (10 docs) saved; 120/186 done
+    chunk 13/19 (10 docs) saved; 130/186 done
+    chunk 14/19 (10 docs) saved; 140/186 done
+    chunk 15/19 (10 docs) saved; 150/186 done
+    chunk 16/19 (10 docs) saved; 160/186 done
+    chunk 17/19 (10 docs) saved; 170/186 done
+    chunk 18/19 (10 docs) saved; 180/186 done
+    chunk 19/19 (6 docs) saved; 186/186 done
+  population/resolution: 186 of 186 documents to do on cuda
+    chunk 1/19 (10 docs) saved; 10/186 done
+    chunk 2/19 (10 docs) saved; 20/186 done
+    chunk 3/19 (10 docs) saved; 30/186 done
+    chunk 4/19 (10 docs) saved; 40/186 done
+    chunk 5/19 (10 docs) saved; 50/186 done
+    chunk 6/19 (10 docs) saved; 60/186 done
+    chunk 7/19 (10 docs) saved; 70/186 done
+    chunk 8/19 (10 docs) saved; 80/186 done
+    chunk 9/19 (10 docs) saved; 90/186 done
+    chunk 10/19 (10 docs) saved; 100/186 done
+    chunk 11/19 (10 docs) saved; 110/186 done
+    chunk 12/19 (10 docs) saved; 120/186 done
+    chunk 13/19 (10 docs) saved; 130/186 done
+    chunk 14/19 (10 docs) saved; 140/186 done
+    chunk 15/19 (10 docs) saved; 150/186 done
+    chunk 16/19 (10 docs) saved; 160/186 done
+    chunk 17/19 (10 docs) saved; 170/186 done
+    chunk 18/19 (10 docs) saved; 180/186 done
+    chunk 19/19 (6 docs) saved; 186/186 done
+  prior/resolution: 186 of 186 documents to do on cuda
+    chunk 1/19 (10 docs) saved; 10/186 done
+    chunk 2/19 (10 docs) saved; 20/186 done
+    chunk 3/19 (10 docs) saved; 30/186 done
+    chunk 4/19 (10 docs) saved; 40/186 done
+    chunk 5/19 (10 docs) saved; 50/186 done
+    chunk 6/19 (10 docs) saved; 60/186 done
+    chunk 7/19 (10 docs) saved; 70/186 done
+    chunk 8/19 (10 docs) saved; 80/186 done
+    chunk 9/19 (10 docs) saved; 90/186 done
+    chunk 10/19 (10 docs) saved; 100/186 done
+    chunk 11/19 (10 docs) saved; 110/186 done
+    chunk 12/19 (10 docs) saved; 120/186 done
+    chunk 13/19 (10 docs) saved; 130/186 done
+    chunk 14/19 (10 docs) saved; 140/186 done
+    chunk 15/19 (10 docs) saved; 150/186 done
+    chunk 16/19 (10 docs) saved; 160/186 done
+    chunk 17/19 (10 docs) saved; 170/186 done
+    chunk 18/19 (10 docs) saved; 180/186 done
+    chunk 19/19 (6 docs) saved; 186/186 done
+  population-0.05/resolution: 186 of 186 documents to do on cuda
+    chunk 1/19 (10 docs) saved; 10/186 done
+    chunk 2/19 (10 docs) saved; 20/186 done
+    chunk 3/19 (10 docs) saved; 30/186 done
+    chunk 4/19 (10 docs) saved; 40/186 done
+    chunk 5/19 (10 docs) saved; 50/186 done
+    chunk 6/19 (10 docs) saved; 60/186 done
+    chunk 7/19 (10 docs) saved; 70/186 done
+    chunk 8/19 (10 docs) saved; 80/186 done
+    chunk 9/19 (10 docs) saved; 90/186 done
+    chunk 10/19 (10 docs) saved; 100/186 done
+    chunk 11/19 (10 docs) saved; 110/186 done
+    chunk 12/19 (10 docs) saved; 120/186 done
+    chunk 13/19 (10 docs) saved; 130/186 done
+    chunk 14/19 (10 docs) saved; 140/186 done
+    chunk 15/19 (10 docs) saved; 150/186 done
+    chunk 16/19 (10 docs) saved; 160/186 done
+    chunk 17/19 (10 docs) saved; 170/186 done
+    chunk 18/19 (10 docs) saved; 180/186 done
+    chunk 19/19 (6 docs) saved; 186/186 done
+  population-0.2/resolution: 186 of 186 documents to do on cuda
+    chunk 1/19 (10 docs) saved; 10/186 done
+    chunk 2/19 (10 docs) saved; 20/186 done
+    chunk 3/19 (10 docs) saved; 30/186 done
+    chunk 4/19 (10 docs) saved; 40/186 done
+    chunk 5/19 (10 docs) saved; 50/186 done
+    chunk 6/19 (10 docs) saved; 60/186 done
+    chunk 7/19 (10 docs) saved; 70/186 done
+    chunk 8/19 (10 docs) saved; 80/186 done
+    chunk 9/19 (10 docs) saved; 90/186 done
+    chunk 10/19 (10 docs) saved; 100/186 done
+    chunk 11/19 (10 docs) saved; 110/186 done
+    chunk 12/19 (10 docs) saved; 120/186 done
+    chunk 13/19 (10 docs) saved; 130/186 done
+    chunk 14/19 (10 docs) saved; 140/186 done
+    chunk 15/19 (10 docs) saved; 150/186 done
+    chunk 16/19 (10 docs) saved; 160/186 done
+    chunk 17/19 (10 docs) saved; 170/186 done
+    chunk 18/19 (10 docs) saved; 180/186 done
+    chunk 19/19 (6 docs) saved; 186/186 done
+# newsli-pl benchmark
+
+- Documents: 186
+- Gold toponyms: 196
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.648 | 700.3 | 8.7 | 0.322 | 13.4 |
+| trim | cuda | 0.648 | 860.8 | 3.6 | 0.325 | 10.6 |
+| population | cuda | 0.673 | 685.3 | 3.4 | 0.305 | 13.3 |
+| prior | cuda | 0.673 | 809.8 | 2.9 | 0.309 | 10.7 |
+| population-0.05 | cuda | 0.668 | 686.4 | 5.8 | 0.310 | 13.5 |
+| population-0.2 | cuda | 0.679 | 745.5 | 3.2 | 0.304 | 13.5 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newsli-ro (ro): 226 documents, 385 gold toponyms, corpus 39857cb6b9094388, commit b807fbd
+  hybrid/resolution: 226 of 226 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/226 done
+    chunk 2/23 (10 docs) saved; 20/226 done
+    chunk 3/23 (10 docs) saved; 30/226 done
+    chunk 4/23 (10 docs) saved; 40/226 done
+    chunk 5/23 (10 docs) saved; 50/226 done
+    chunk 6/23 (10 docs) saved; 60/226 done
+    chunk 7/23 (10 docs) saved; 70/226 done
+    chunk 8/23 (10 docs) saved; 80/226 done
+    chunk 9/23 (10 docs) saved; 90/226 done
+    chunk 10/23 (10 docs) saved; 100/226 done
+    chunk 11/23 (10 docs) saved; 110/226 done
+    chunk 12/23 (10 docs) saved; 120/226 done
+    chunk 13/23 (10 docs) saved; 130/226 done
+    chunk 14/23 (10 docs) saved; 140/226 done
+    chunk 15/23 (10 docs) saved; 150/226 done
+    chunk 16/23 (10 docs) saved; 160/226 done
+    chunk 17/23 (10 docs) saved; 170/226 done
+    chunk 18/23 (10 docs) saved; 180/226 done
+    chunk 19/23 (10 docs) saved; 190/226 done
+    chunk 20/23 (10 docs) saved; 200/226 done
+    chunk 21/23 (10 docs) saved; 210/226 done
+    chunk 22/23 (10 docs) saved; 220/226 done
+    chunk 23/23 (6 docs) saved; 226/226 done
+  trim/resolution: 226 of 226 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/226 done
+    chunk 2/23 (10 docs) saved; 20/226 done
+    chunk 3/23 (10 docs) saved; 30/226 done
+    chunk 4/23 (10 docs) saved; 40/226 done
+    chunk 5/23 (10 docs) saved; 50/226 done
+    chunk 6/23 (10 docs) saved; 60/226 done
+    chunk 7/23 (10 docs) saved; 70/226 done
+    chunk 8/23 (10 docs) saved; 80/226 done
+    chunk 9/23 (10 docs) saved; 90/226 done
+    chunk 10/23 (10 docs) saved; 100/226 done
+    chunk 11/23 (10 docs) saved; 110/226 done
+    chunk 12/23 (10 docs) saved; 120/226 done
+    chunk 13/23 (10 docs) saved; 130/226 done
+    chunk 14/23 (10 docs) saved; 140/226 done
+    chunk 15/23 (10 docs) saved; 150/226 done
+    chunk 16/23 (10 docs) saved; 160/226 done
+    chunk 17/23 (10 docs) saved; 170/226 done
+    chunk 18/23 (10 docs) saved; 180/226 done
+    chunk 19/23 (10 docs) saved; 190/226 done
+    chunk 20/23 (10 docs) saved; 200/226 done
+    chunk 21/23 (10 docs) saved; 210/226 done
+    chunk 22/23 (10 docs) saved; 220/226 done
+    chunk 23/23 (6 docs) saved; 226/226 done
+  population/resolution: 226 of 226 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/226 done
+    chunk 2/23 (10 docs) saved; 20/226 done
+    chunk 3/23 (10 docs) saved; 30/226 done
+    chunk 4/23 (10 docs) saved; 40/226 done
+    chunk 5/23 (10 docs) saved; 50/226 done
+    chunk 6/23 (10 docs) saved; 60/226 done
+    chunk 7/23 (10 docs) saved; 70/226 done
+    chunk 8/23 (10 docs) saved; 80/226 done
+    chunk 9/23 (10 docs) saved; 90/226 done
+    chunk 10/23 (10 docs) saved; 100/226 done
+    chunk 11/23 (10 docs) saved; 110/226 done
+    chunk 12/23 (10 docs) saved; 120/226 done
+    chunk 13/23 (10 docs) saved; 130/226 done
+    chunk 14/23 (10 docs) saved; 140/226 done
+    chunk 15/23 (10 docs) saved; 150/226 done
+    chunk 16/23 (10 docs) saved; 160/226 done
+    chunk 17/23 (10 docs) saved; 170/226 done
+    chunk 18/23 (10 docs) saved; 180/226 done
+    chunk 19/23 (10 docs) saved; 190/226 done
+    chunk 20/23 (10 docs) saved; 200/226 done
+    chunk 21/23 (10 docs) saved; 210/226 done
+    chunk 22/23 (10 docs) saved; 220/226 done
+    chunk 23/23 (6 docs) saved; 226/226 done
+  prior/resolution: 226 of 226 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/226 done
+    chunk 2/23 (10 docs) saved; 20/226 done
+    chunk 3/23 (10 docs) saved; 30/226 done
+    chunk 4/23 (10 docs) saved; 40/226 done
+    chunk 5/23 (10 docs) saved; 50/226 done
+    chunk 6/23 (10 docs) saved; 60/226 done
+    chunk 7/23 (10 docs) saved; 70/226 done
+    chunk 8/23 (10 docs) saved; 80/226 done
+    chunk 9/23 (10 docs) saved; 90/226 done
+    chunk 10/23 (10 docs) saved; 100/226 done
+    chunk 11/23 (10 docs) saved; 110/226 done
+    chunk 12/23 (10 docs) saved; 120/226 done
+    chunk 13/23 (10 docs) saved; 130/226 done
+    chunk 14/23 (10 docs) saved; 140/226 done
+    chunk 15/23 (10 docs) saved; 150/226 done
+    chunk 16/23 (10 docs) saved; 160/226 done
+    chunk 17/23 (10 docs) saved; 170/226 done
+    chunk 18/23 (10 docs) saved; 180/226 done
+    chunk 19/23 (10 docs) saved; 190/226 done
+    chunk 20/23 (10 docs) saved; 200/226 done
+    chunk 21/23 (10 docs) saved; 210/226 done
+    chunk 22/23 (10 docs) saved; 220/226 done
+    chunk 23/23 (6 docs) saved; 226/226 done
+  population-0.05/resolution: 226 of 226 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/226 done
+    chunk 2/23 (10 docs) saved; 20/226 done
+    chunk 3/23 (10 docs) saved; 30/226 done
+    chunk 4/23 (10 docs) saved; 40/226 done
+    chunk 5/23 (10 docs) saved; 50/226 done
+    chunk 6/23 (10 docs) saved; 60/226 done
+    chunk 7/23 (10 docs) saved; 70/226 done
+    chunk 8/23 (10 docs) saved; 80/226 done
+    chunk 9/23 (10 docs) saved; 90/226 done
+    chunk 10/23 (10 docs) saved; 100/226 done
+    chunk 11/23 (10 docs) saved; 110/226 done
+    chunk 12/23 (10 docs) saved; 120/226 done
+    chunk 13/23 (10 docs) saved; 130/226 done
+    chunk 14/23 (10 docs) saved; 140/226 done
+    chunk 15/23 (10 docs) saved; 150/226 done
+    chunk 16/23 (10 docs) saved; 160/226 done
+    chunk 17/23 (10 docs) saved; 170/226 done
+    chunk 18/23 (10 docs) saved; 180/226 done
+    chunk 19/23 (10 docs) saved; 190/226 done
+    chunk 20/23 (10 docs) saved; 200/226 done
+    chunk 21/23 (10 docs) saved; 210/226 done
+    chunk 22/23 (10 docs) saved; 220/226 done
+    chunk 23/23 (6 docs) saved; 226/226 done
+  population-0.2/resolution: 226 of 226 documents to do on cuda
+    chunk 1/23 (10 docs) saved; 10/226 done
+    chunk 2/23 (10 docs) saved; 20/226 done
+    chunk 3/23 (10 docs) saved; 30/226 done
+    chunk 4/23 (10 docs) saved; 40/226 done
+    chunk 5/23 (10 docs) saved; 50/226 done
+    chunk 6/23 (10 docs) saved; 60/226 done
+    chunk 7/23 (10 docs) saved; 70/226 done
+    chunk 8/23 (10 docs) saved; 80/226 done
+    chunk 9/23 (10 docs) saved; 90/226 done
+    chunk 10/23 (10 docs) saved; 100/226 done
+    chunk 11/23 (10 docs) saved; 110/226 done
+    chunk 12/23 (10 docs) saved; 120/226 done
+    chunk 13/23 (10 docs) saved; 130/226 done
+    chunk 14/23 (10 docs) saved; 140/226 done
+    chunk 15/23 (10 docs) saved; 150/226 done
+    chunk 16/23 (10 docs) saved; 160/226 done
+    chunk 17/23 (10 docs) saved; 170/226 done
+    chunk 18/23 (10 docs) saved; 180/226 done
+    chunk 19/23 (10 docs) saved; 190/226 done
+    chunk 20/23 (10 docs) saved; 200/226 done
+    chunk 21/23 (10 docs) saved; 210/226 done
+    chunk 22/23 (10 docs) saved; 220/226 done
+    chunk 23/23 (6 docs) saved; 226/226 done
+# newsli-ro benchmark
+
+- Documents: 226
+- Gold toponyms: 385
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.810 | 488.4 | 5.0 | 0.278 | 14.5 |
+| trim | cuda | 0.810 | 579.8 | 5.0 | 0.282 | 13.5 |
+| population | cuda | 0.826 | 460.0 | 5.0 | 0.270 | 14.4 |
+| prior | cuda | 0.826 | 551.4 | 5.0 | 0.273 | 13.5 |
+| population-0.05 | cuda | 0.818 | 472.5 | 5.0 | 0.276 | 14.6 |
+| population-0.2 | cuda | 0.829 | 458.1 | 5.0 | 0.268 | 14.4 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newsli-sr (sr): 500 documents, 985 gold toponyms, corpus adf8496feae09afa, commit b807fbd
+  hybrid/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  trim/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  prior/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.05/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.2/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+# newsli-sr benchmark
+
+- Documents: 500
+- Gold toponyms: 985
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.854 | 422.2 | 16.9 | 0.302 | 32.6 |
+| trim | cuda | 0.829 | 589.1 | 21.4 | 0.313 | 20.6 |
+| population | cuda | 0.858 | 404.8 | 15.5 | 0.299 | 32.6 |
+| prior | cuda | 0.832 | 573.7 | 20.7 | 0.311 | 20.7 |
+| population-0.05 | cuda | 0.858 | 398.9 | 15.5 | 0.299 | 32.6 |
+| population-0.2 | cuda | 0.858 | 402.2 | 15.5 | 0.299 | 32.7 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newsli-ta (ta): 500 documents, 1578 gold toponyms, corpus 4a227b75125b5d73, commit b807fbd
+  hybrid/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  trim/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  prior/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.05/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.2/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+# newsli-ta benchmark
+
+- Documents: 500
+- Gold toponyms: 1578
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.507 | 2330.7 | 149.8 | 0.515 | 16.9 |
+| trim | cuda | 0.512 | 2230.4 | 143.0 | 0.508 | 16.7 |
+| population | cuda | 0.508 | 2308.5 | 149.8 | 0.514 | 16.9 |
+| prior | cuda | 0.512 | 2231.5 | 143.0 | 0.508 | 16.6 |
+| population-0.05 | cuda | 0.508 | 2305.6 | 149.8 | 0.514 | 16.9 |
+| population-0.2 | cuda | 0.511 | 2296.8 | 145.5 | 0.513 | 16.9 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newsli-tr (tr): 500 documents, 1578 gold toponyms, corpus 8afdca7d96ab679e, commit b807fbd
+  hybrid/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  trim/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  prior/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.05/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+  population-0.2/resolution: 500 of 500 documents to do on cuda
+    chunk 1/50 (10 docs) saved; 10/500 done
+    chunk 2/50 (10 docs) saved; 20/500 done
+    chunk 3/50 (10 docs) saved; 30/500 done
+    chunk 4/50 (10 docs) saved; 40/500 done
+    chunk 5/50 (10 docs) saved; 50/500 done
+    chunk 6/50 (10 docs) saved; 60/500 done
+    chunk 7/50 (10 docs) saved; 70/500 done
+    chunk 8/50 (10 docs) saved; 80/500 done
+    chunk 9/50 (10 docs) saved; 90/500 done
+    chunk 10/50 (10 docs) saved; 100/500 done
+    chunk 11/50 (10 docs) saved; 110/500 done
+    chunk 12/50 (10 docs) saved; 120/500 done
+    chunk 13/50 (10 docs) saved; 130/500 done
+    chunk 14/50 (10 docs) saved; 140/500 done
+    chunk 15/50 (10 docs) saved; 150/500 done
+    chunk 16/50 (10 docs) saved; 160/500 done
+    chunk 17/50 (10 docs) saved; 170/500 done
+    chunk 18/50 (10 docs) saved; 180/500 done
+    chunk 19/50 (10 docs) saved; 190/500 done
+    chunk 20/50 (10 docs) saved; 200/500 done
+    chunk 21/50 (10 docs) saved; 210/500 done
+    chunk 22/50 (10 docs) saved; 220/500 done
+    chunk 23/50 (10 docs) saved; 230/500 done
+    chunk 24/50 (10 docs) saved; 240/500 done
+    chunk 25/50 (10 docs) saved; 250/500 done
+    chunk 26/50 (10 docs) saved; 260/500 done
+    chunk 27/50 (10 docs) saved; 270/500 done
+    chunk 28/50 (10 docs) saved; 280/500 done
+    chunk 29/50 (10 docs) saved; 290/500 done
+    chunk 30/50 (10 docs) saved; 300/500 done
+    chunk 31/50 (10 docs) saved; 310/500 done
+    chunk 32/50 (10 docs) saved; 320/500 done
+    chunk 33/50 (10 docs) saved; 330/500 done
+    chunk 34/50 (10 docs) saved; 340/500 done
+    chunk 35/50 (10 docs) saved; 350/500 done
+    chunk 36/50 (10 docs) saved; 360/500 done
+    chunk 37/50 (10 docs) saved; 370/500 done
+    chunk 38/50 (10 docs) saved; 380/500 done
+    chunk 39/50 (10 docs) saved; 390/500 done
+    chunk 40/50 (10 docs) saved; 400/500 done
+    chunk 41/50 (10 docs) saved; 410/500 done
+    chunk 42/50 (10 docs) saved; 420/500 done
+    chunk 43/50 (10 docs) saved; 430/500 done
+    chunk 44/50 (10 docs) saved; 440/500 done
+    chunk 45/50 (10 docs) saved; 450/500 done
+    chunk 46/50 (10 docs) saved; 460/500 done
+    chunk 47/50 (10 docs) saved; 470/500 done
+    chunk 48/50 (10 docs) saved; 480/500 done
+    chunk 49/50 (10 docs) saved; 490/500 done
+    chunk 50/50 (10 docs) saved; 500/500 done
+# newsli-tr benchmark
+
+- Documents: 500
+- Gold toponyms: 1578
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.709 | 807.4 | 48.0 | 0.364 | 29.3 |
+| trim | cuda | 0.740 | 678.7 | 43.7 | 0.344 | 26.5 |
+| population | cuda | 0.744 | 650.8 | 40.6 | 0.343 | 29.4 |
+| prior | cuda | 0.776 | 513.2 | 28.0 | 0.323 | 26.4 |
+| population-0.05 | cuda | 0.725 | 714.4 | 47.3 | 0.354 | 29.5 |
+| population-0.2 | cuda | 0.759 | 584.0 | 36.7 | 0.335 | 29.4 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+newsli-uk (uk): 164 documents, 258 gold toponyms, corpus 5757f00bb2c9be45, commit b807fbd
+  hybrid/resolution: 164 of 164 documents to do on cuda
+    chunk 1/17 (10 docs) saved; 10/164 done
+    chunk 2/17 (10 docs) saved; 20/164 done
+    chunk 3/17 (10 docs) saved; 30/164 done
+    chunk 4/17 (10 docs) saved; 40/164 done
+    chunk 5/17 (10 docs) saved; 50/164 done
+    chunk 6/17 (10 docs) saved; 60/164 done
+    chunk 7/17 (10 docs) saved; 70/164 done
+    chunk 8/17 (10 docs) saved; 80/164 done
+    chunk 9/17 (10 docs) saved; 90/164 done
+    chunk 10/17 (10 docs) saved; 100/164 done
+    chunk 11/17 (10 docs) saved; 110/164 done
+    chunk 12/17 (10 docs) saved; 120/164 done
+    chunk 13/17 (10 docs) saved; 130/164 done
+    chunk 14/17 (10 docs) saved; 140/164 done
+    chunk 15/17 (10 docs) saved; 150/164 done
+    chunk 16/17 (10 docs) saved; 160/164 done
+    chunk 17/17 (4 docs) saved; 164/164 done
+  trim/resolution: 164 of 164 documents to do on cuda
+    chunk 1/17 (10 docs) saved; 10/164 done
+    chunk 2/17 (10 docs) saved; 20/164 done
+    chunk 3/17 (10 docs) saved; 30/164 done
+    chunk 4/17 (10 docs) saved; 40/164 done
+    chunk 5/17 (10 docs) saved; 50/164 done
+    chunk 6/17 (10 docs) saved; 60/164 done
+    chunk 7/17 (10 docs) saved; 70/164 done
+    chunk 8/17 (10 docs) saved; 80/164 done
+    chunk 9/17 (10 docs) saved; 90/164 done
+    chunk 10/17 (10 docs) saved; 100/164 done
+    chunk 11/17 (10 docs) saved; 110/164 done
+    chunk 12/17 (10 docs) saved; 120/164 done
+    chunk 13/17 (10 docs) saved; 130/164 done
+    chunk 14/17 (10 docs) saved; 140/164 done
+    chunk 15/17 (10 docs) saved; 150/164 done
+    chunk 16/17 (10 docs) saved; 160/164 done
+    chunk 17/17 (4 docs) saved; 164/164 done
+  population/resolution: 164 of 164 documents to do on cuda
+    chunk 1/17 (10 docs) saved; 10/164 done
+    chunk 2/17 (10 docs) saved; 20/164 done
+    chunk 3/17 (10 docs) saved; 30/164 done
+    chunk 4/17 (10 docs) saved; 40/164 done
+    chunk 5/17 (10 docs) saved; 50/164 done
+    chunk 6/17 (10 docs) saved; 60/164 done
+    chunk 7/17 (10 docs) saved; 70/164 done
+    chunk 8/17 (10 docs) saved; 80/164 done
+    chunk 9/17 (10 docs) saved; 90/164 done
+    chunk 10/17 (10 docs) saved; 100/164 done
+    chunk 11/17 (10 docs) saved; 110/164 done
+    chunk 12/17 (10 docs) saved; 120/164 done
+    chunk 13/17 (10 docs) saved; 130/164 done
+    chunk 14/17 (10 docs) saved; 140/164 done
+    chunk 15/17 (10 docs) saved; 150/164 done
+    chunk 16/17 (10 docs) saved; 160/164 done
+    chunk 17/17 (4 docs) saved; 164/164 done
+  prior/resolution: 164 of 164 documents to do on cuda
+    chunk 1/17 (10 docs) saved; 10/164 done
+    chunk 2/17 (10 docs) saved; 20/164 done
+    chunk 3/17 (10 docs) saved; 30/164 done
+    chunk 4/17 (10 docs) saved; 40/164 done
+    chunk 5/17 (10 docs) saved; 50/164 done
+    chunk 6/17 (10 docs) saved; 60/164 done
+    chunk 7/17 (10 docs) saved; 70/164 done
+    chunk 8/17 (10 docs) saved; 80/164 done
+    chunk 9/17 (10 docs) saved; 90/164 done
+    chunk 10/17 (10 docs) saved; 100/164 done
+    chunk 11/17 (10 docs) saved; 110/164 done
+    chunk 12/17 (10 docs) saved; 120/164 done
+    chunk 13/17 (10 docs) saved; 130/164 done
+    chunk 14/17 (10 docs) saved; 140/164 done
+    chunk 15/17 (10 docs) saved; 150/164 done
+    chunk 16/17 (10 docs) saved; 160/164 done
+    chunk 17/17 (4 docs) saved; 164/164 done
+  population-0.05/resolution: 164 of 164 documents to do on cuda
+    chunk 1/17 (10 docs) saved; 10/164 done
+    chunk 2/17 (10 docs) saved; 20/164 done
+    chunk 3/17 (10 docs) saved; 30/164 done
+    chunk 4/17 (10 docs) saved; 40/164 done
+    chunk 5/17 (10 docs) saved; 50/164 done
+    chunk 6/17 (10 docs) saved; 60/164 done
+    chunk 7/17 (10 docs) saved; 70/164 done
+    chunk 8/17 (10 docs) saved; 80/164 done
+    chunk 9/17 (10 docs) saved; 90/164 done
+    chunk 10/17 (10 docs) saved; 100/164 done
+    chunk 11/17 (10 docs) saved; 110/164 done
+    chunk 12/17 (10 docs) saved; 120/164 done
+    chunk 13/17 (10 docs) saved; 130/164 done
+    chunk 14/17 (10 docs) saved; 140/164 done
+    chunk 15/17 (10 docs) saved; 150/164 done
+    chunk 16/17 (10 docs) saved; 160/164 done
+    chunk 17/17 (4 docs) saved; 164/164 done
+  population-0.2/resolution: 164 of 164 documents to do on cuda
+    chunk 1/17 (10 docs) saved; 10/164 done
+    chunk 2/17 (10 docs) saved; 20/164 done
+    chunk 3/17 (10 docs) saved; 30/164 done
+    chunk 4/17 (10 docs) saved; 40/164 done
+    chunk 5/17 (10 docs) saved; 50/164 done
+    chunk 6/17 (10 docs) saved; 60/164 done
+    chunk 7/17 (10 docs) saved; 70/164 done
+    chunk 8/17 (10 docs) saved; 80/164 done
+    chunk 9/17 (10 docs) saved; 90/164 done
+    chunk 10/17 (10 docs) saved; 100/164 done
+    chunk 11/17 (10 docs) saved; 110/164 done
+    chunk 12/17 (10 docs) saved; 120/164 done
+    chunk 13/17 (10 docs) saved; 130/164 done
+    chunk 14/17 (10 docs) saved; 140/164 done
+    chunk 15/17 (10 docs) saved; 150/164 done
+    chunk 16/17 (10 docs) saved; 160/164 done
+    chunk 17/17 (4 docs) saved; 164/164 done
+# newsli-uk benchmark
+
+- Documents: 164
+- Gold toponyms: 258
+- Gazetteer: geonames
+- Shared abstention threshold: 0.0
+
+## Recognition (each pipeline's own spans, exact match)
+
+| Pipeline | Device | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: |
+
+## Resolution (gold spans supplied, distance scored)
+
+| Pipeline | Device | Acc@161km | Mean err (km) | Median err (km) | AUC | Seconds |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| hybrid | cuda | 0.643 | 670.4 | 42.7 | 0.360 | 33.5 |
+| trim | cuda | 0.589 | 1217.0 | 51.7 | 0.393 | 20.2 |
+| population | cuda | 0.643 | 698.5 | 42.7 | 0.361 | 33.3 |
+| prior | cuda | 0.589 | 1234.4 | 51.7 | 0.393 | 20.0 |
+| population-0.05 | cuda | 0.643 | 675.0 | 42.7 | 0.361 | 33.2 |
+| population-0.2 | cuda | 0.647 | 704.3 | 38.7 | 0.358 | 33.4 |
+
+## Models
+
+- **hybrid**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **trim**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **prior**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.05**: resolver=dguzh/geo-all-MiniLM-L6-v2
+- **population-0.2**: resolver=dguzh/geo-all-MiniLM-L6-v2
+
+Resolution is scored on the gold spans, supplied to both pipelines
+through ManualRecognizer, so the resolvers are judged on the same
+toponyms and a difference cannot be an artefact of recognition.
+
+A gold toponym a pipeline did not place is charged the maximum
+possible error rather than dropped, so resolving less cannot improve
+a score. The shared abstention threshold is stated above. Models
+can have different similarity scales, so the threshold is part of
+the experiment and should be considered when comparing resolvers.
+
+AUC is a log-scaled summary of the whole error distribution, lower
+being better. Its normalization is this harness's own, so compare
+runs of this harness rather than published AUC figures.
+
+# Benchmark summary
+
+Recognition is exact-match F1 on each pipeline's own spans; resolution
+is scored on the gold spans. Each corpus's own report has the detail.
+
+| Corpus | Lang | Docs | Gold | Pipeline | Rec F1 | Acc@161km | AUC | Seconds |
+| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: |
+| geovirus | en | 229 | 2167 | hybrid | - | 0.834 | 0.300 | 63.6 |
+| geovirus | en | 229 | 2167 | trim | - | 0.833 | 0.301 | 18.7 |
+| geovirus | en | 229 | 2167 | population | - | 0.838 | 0.298 | 18.8 |
+| geovirus | en | 229 | 2167 | prior | - | 0.837 | 0.298 | 19.0 |
+| geovirus | en | 229 | 2167 | population-0.05 | - | 0.836 | 0.299 | 19.2 |
+| geovirus | en | 229 | 2167 | population-0.2 | - | 0.841 | 0.296 | 19.1 |
+| hipe2020-de | de | 48 | 558 | hybrid | - | 0.640 | 0.371 | 16.7 |
+| hipe2020-de | de | 48 | 558 | trim | - | 0.656 | 0.365 | 15.4 |
+| hipe2020-de | de | 48 | 558 | population | - | 0.645 | 0.369 | 16.9 |
+| hipe2020-de | de | 48 | 558 | prior | - | 0.661 | 0.364 | 15.3 |
+| hipe2020-de | de | 48 | 558 | population-0.05 | - | 0.642 | 0.371 | 16.9 |
+| hipe2020-de | de | 48 | 558 | population-0.2 | - | 0.654 | 0.366 | 16.7 |
+| hipe2020-fr | fr | 43 | 800 | hybrid | - | 0.766 | 0.294 | 38.2 |
+| hipe2020-fr | fr | 43 | 800 | trim | - | 0.759 | 0.301 | 37.2 |
+| hipe2020-fr | fr | 43 | 800 | population | - | 0.772 | 0.292 | 38.2 |
+| hipe2020-fr | fr | 43 | 800 | prior | - | 0.765 | 0.299 | 37.1 |
+| hipe2020-fr | fr | 43 | 800 | population-0.05 | - | 0.769 | 0.291 | 38.1 |
+| hipe2020-fr | fr | 43 | 800 | population-0.2 | - | 0.781 | 0.288 | 38.6 |
+| hipe2020-en | en | 38 | 158 | hybrid | - | 0.620 | 0.400 | 8.8 |
+| hipe2020-en | en | 38 | 158 | trim | - | 0.614 | 0.406 | 9.4 |
+| hipe2020-en | en | 38 | 158 | population | - | 0.639 | 0.389 | 8.8 |
+| hipe2020-en | en | 38 | 158 | prior | - | 0.633 | 0.395 | 8.8 |
+| hipe2020-en | en | 38 | 158 | population-0.05 | - | 0.620 | 0.401 | 8.8 |
+| hipe2020-en | en | 38 | 158 | population-0.2 | - | 0.633 | 0.395 | 8.8 |
+| newseye-de | de | 8 | 628 | hybrid | - | 0.646 | 0.321 | 14.2 |
+| newseye-de | de | 8 | 628 | trim | - | 0.643 | 0.319 | 13.3 |
+| newseye-de | de | 8 | 628 | population | - | 0.651 | 0.318 | 14.2 |
+| newseye-de | de | 8 | 628 | prior | - | 0.650 | 0.315 | 13.4 |
+| newseye-de | de | 8 | 628 | population-0.05 | - | 0.651 | 0.319 | 14.5 |
+| newseye-de | de | 8 | 628 | population-0.2 | - | 0.664 | 0.310 | 14.2 |
+| newseye-fr | fr | 33 | 665 | hybrid | - | 0.686 | 0.332 | 31.2 |
+| newseye-fr | fr | 33 | 665 | trim | - | 0.669 | 0.339 | 30.5 |
+| newseye-fr | fr | 33 | 665 | population | - | 0.705 | 0.321 | 31.3 |
+| newseye-fr | fr | 33 | 665 | prior | - | 0.689 | 0.329 | 30.4 |
+| newseye-fr | fr | 33 | 665 | population-0.05 | - | 0.701 | 0.322 | 31.2 |
+| newseye-fr | fr | 33 | 665 | population-0.2 | - | 0.717 | 0.316 | 31.1 |
+| newseye-fi | fi | 18 | 214 | hybrid | - | 0.313 | 0.625 | 10.7 |
+| newseye-fi | fi | 18 | 214 | trim | - | 0.388 | 0.568 | 8.4 |
+| newseye-fi | fi | 18 | 214 | population | - | 0.346 | 0.611 | 11.1 |
+| newseye-fi | fi | 18 | 214 | prior | - | 0.458 | 0.517 | 8.4 |
+| newseye-fi | fi | 18 | 214 | population-0.05 | - | 0.341 | 0.612 | 10.7 |
+| newseye-fi | fi | 18 | 214 | population-0.2 | - | 0.360 | 0.599 | 10.8 |
+| newseye-sv | sv | 18 | 265 | hybrid | - | 0.555 | 0.386 | 9.4 |
+| newseye-sv | sv | 18 | 265 | trim | - | 0.528 | 0.399 | 8.3 |
+| newseye-sv | sv | 18 | 265 | population | - | 0.645 | 0.323 | 9.4 |
+| newseye-sv | sv | 18 | 265 | prior | - | 0.619 | 0.336 | 8.2 |
+| newseye-sv | sv | 18 | 265 | population-0.05 | - | 0.608 | 0.347 | 9.3 |
+| newseye-sv | sv | 18 | 265 | population-0.2 | - | 0.675 | 0.304 | 9.3 |
+| topres19th-en | en | 110 | 880 | hybrid | - | 0.724 | 0.303 | 21.9 |
+| topres19th-en | en | 110 | 880 | trim | - | 0.716 | 0.310 | 20.9 |
+| topres19th-en | en | 110 | 880 | population | - | 0.727 | 0.299 | 21.9 |
+| topres19th-en | en | 110 | 880 | prior | - | 0.719 | 0.305 | 20.9 |
+| topres19th-en | en | 110 | 880 | population-0.05 | - | 0.723 | 0.302 | 22.0 |
+| topres19th-en | en | 110 | 880 | population-0.2 | - | 0.742 | 0.286 | 21.9 |
+| newsli-ar | ar | 500 | 3319 | hybrid | - | 0.852 | 0.251 | 34.3 |
+| newsli-ar | ar | 500 | 3319 | trim | - | 0.849 | 0.252 | 29.8 |
+| newsli-ar | ar | 500 | 3319 | population | - | 0.859 | 0.248 | 34.1 |
+| newsli-ar | ar | 500 | 3319 | prior | - | 0.856 | 0.249 | 29.8 |
+| newsli-ar | ar | 500 | 3319 | population-0.05 | - | 0.856 | 0.249 | 34.5 |
+| newsli-ar | ar | 500 | 3319 | population-0.2 | - | 0.862 | 0.247 | 34.5 |
+| newsli-de | de | 500 | 1019 | hybrid | - | 0.904 | 0.192 | 19.9 |
+| newsli-de | de | 500 | 1019 | trim | - | 0.904 | 0.193 | 19.5 |
+| newsli-de | de | 500 | 1019 | population | - | 0.909 | 0.188 | 19.5 |
+| newsli-de | de | 500 | 1019 | prior | - | 0.909 | 0.189 | 19.2 |
+| newsli-de | de | 500 | 1019 | population-0.05 | - | 0.906 | 0.190 | 19.6 |
+| newsli-de | de | 500 | 1019 | population-0.2 | - | 0.910 | 0.187 | 19.4 |
+| newsli-es | es | 500 | 1270 | hybrid | - | 0.802 | 0.296 | 53.8 |
+| newsli-es | es | 500 | 1270 | trim | - | 0.800 | 0.297 | 52.7 |
+| newsli-es | es | 500 | 1270 | population | - | 0.822 | 0.283 | 53.5 |
+| newsli-es | es | 500 | 1270 | prior | - | 0.820 | 0.283 | 52.9 |
+| newsli-es | es | 500 | 1270 | population-0.05 | - | 0.812 | 0.290 | 53.3 |
+| newsli-es | es | 500 | 1270 | population-0.2 | - | 0.831 | 0.277 | 53.2 |
+| newsli-fa | fa | 71 | 326 | hybrid | - | 0.732 | 0.376 | 7.3 |
+| newsli-fa | fa | 71 | 326 | trim | - | 0.709 | 0.389 | 6.7 |
+| newsli-fa | fa | 71 | 326 | population | - | 0.732 | 0.376 | 7.3 |
+| newsli-fa | fa | 71 | 326 | prior | - | 0.709 | 0.387 | 6.6 |
+| newsli-fa | fa | 71 | 326 | population-0.05 | - | 0.732 | 0.376 | 7.4 |
+| newsli-fa | fa | 71 | 326 | population-0.2 | - | 0.737 | 0.375 | 7.4 |
+| newsli-ja | ja | 500 | 1577 | hybrid | - | 0.847 | 0.226 | 17.9 |
+| newsli-ja | ja | 500 | 1577 | trim | - | 0.846 | 0.226 | 17.3 |
+| newsli-ja | ja | 500 | 1577 | population | - | 0.849 | 0.225 | 18.0 |
+| newsli-ja | ja | 500 | 1577 | prior | - | 0.849 | 0.225 | 17.0 |
+| newsli-ja | ja | 500 | 1577 | population-0.05 | - | 0.847 | 0.226 | 18.0 |
+| newsli-ja | ja | 500 | 1577 | population-0.2 | - | 0.851 | 0.224 | 18.0 |
+| newsli-pl | pl | 186 | 196 | hybrid | - | 0.648 | 0.322 | 13.4 |
+| newsli-pl | pl | 186 | 196 | trim | - | 0.648 | 0.325 | 10.6 |
+| newsli-pl | pl | 186 | 196 | population | - | 0.673 | 0.305 | 13.3 |
+| newsli-pl | pl | 186 | 196 | prior | - | 0.673 | 0.309 | 10.7 |
+| newsli-pl | pl | 186 | 196 | population-0.05 | - | 0.668 | 0.310 | 13.5 |
+| newsli-pl | pl | 186 | 196 | population-0.2 | - | 0.679 | 0.304 | 13.5 |
+| newsli-ro | ro | 226 | 385 | hybrid | - | 0.810 | 0.278 | 14.5 |
+| newsli-ro | ro | 226 | 385 | trim | - | 0.810 | 0.282 | 13.5 |
+| newsli-ro | ro | 226 | 385 | population | - | 0.826 | 0.270 | 14.4 |
+| newsli-ro | ro | 226 | 385 | prior | - | 0.826 | 0.273 | 13.5 |
+| newsli-ro | ro | 226 | 385 | population-0.05 | - | 0.818 | 0.276 | 14.6 |
+| newsli-ro | ro | 226 | 385 | population-0.2 | - | 0.829 | 0.268 | 14.4 |
+| newsli-sr | sr | 500 | 985 | hybrid | - | 0.854 | 0.302 | 32.6 |
+| newsli-sr | sr | 500 | 985 | trim | - | 0.829 | 0.313 | 20.6 |
+| newsli-sr | sr | 500 | 985 | population | - | 0.858 | 0.299 | 32.6 |
+| newsli-sr | sr | 500 | 985 | prior | - | 0.832 | 0.311 | 20.7 |
+| newsli-sr | sr | 500 | 985 | population-0.05 | - | 0.858 | 0.299 | 32.6 |
+| newsli-sr | sr | 500 | 985 | population-0.2 | - | 0.858 | 0.299 | 32.7 |
+| newsli-ta | ta | 500 | 1578 | hybrid | - | 0.507 | 0.515 | 16.9 |
+| newsli-ta | ta | 500 | 1578 | trim | - | 0.512 | 0.508 | 16.7 |
+| newsli-ta | ta | 500 | 1578 | population | - | 0.508 | 0.514 | 16.9 |
+| newsli-ta | ta | 500 | 1578 | prior | - | 0.512 | 0.508 | 16.6 |
+| newsli-ta | ta | 500 | 1578 | population-0.05 | - | 0.508 | 0.514 | 16.9 |
+| newsli-ta | ta | 500 | 1578 | population-0.2 | - | 0.511 | 0.513 | 16.9 |
+| newsli-tr | tr | 500 | 1578 | hybrid | - | 0.709 | 0.364 | 29.3 |
+| newsli-tr | tr | 500 | 1578 | trim | - | 0.740 | 0.344 | 26.5 |
+| newsli-tr | tr | 500 | 1578 | population | - | 0.744 | 0.343 | 29.4 |
+| newsli-tr | tr | 500 | 1578 | prior | - | 0.776 | 0.323 | 26.4 |
+| newsli-tr | tr | 500 | 1578 | population-0.05 | - | 0.725 | 0.354 | 29.5 |
+| newsli-tr | tr | 500 | 1578 | population-0.2 | - | 0.759 | 0.335 | 29.4 |
+| newsli-uk | uk | 164 | 258 | hybrid | - | 0.643 | 0.360 | 33.5 |
+| newsli-uk | uk | 164 | 258 | trim | - | 0.589 | 0.393 | 20.2 |
+| newsli-uk | uk | 164 | 258 | population | - | 0.643 | 0.361 | 33.3 |
+| newsli-uk | uk | 164 | 258 | prior | - | 0.589 | 0.393 | 20.0 |
+| newsli-uk | uk | 164 | 258 | population-0.05 | - | 0.643 | 0.361 | 33.2 |
+| newsli-uk | uk | 164 | 258 | population-0.2 | - | 0.647 | 0.358 | 33.4 |
+
+=== done at 2026-09-23T20:03:27+02:00 ===
+total 62036
+drwxr-xr-x  23 nflandre g5k-users     4096 Sep 23 20:00 .
+drwx--x---+ 37 nflandre g5k-users    12288 Sep 23 19:05 ..
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:21 geovirus
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:22 hipe2020-de
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:27 hipe2020-en
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:26 hipe2020-fr
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:05 logs
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:29 newseye-de
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:33 newseye-fi
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:32 newseye-fr
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:34 newseye-sv
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:40 newsli-ar
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:42 newsli-de
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:47 newsli-es
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:48 newsli-fa
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:50 newsli-ja
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:51 newsli-pl
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:52 newsli-ro
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:55 newsli-sr
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:57 newsli-ta
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 20:00 newsli-tr
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 20:03 newsli-uk
+-rw-r--r--   1 nflandre g5k-users    51035 Sep 23 20:03 summary.json
+-rw-r--r--   1 nflandre g5k-users     8751 Sep 23 20:03 summary.md
+drwxr-xr-x   2 nflandre g5k-users     4096 Sep 23 19:36 topres19th-en
+-rw-r--r--   1 nflandre g5k-users 63356728 Sep 23 19:36 unitoprank-data.zip
+=== cleaning /tmp/geoparser-6938126 at 2026-09-23T20:03:27+02:00 ===
+/dev/sda5       375G  2.2M  356G   1% /tmp

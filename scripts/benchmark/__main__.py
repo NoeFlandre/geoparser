@@ -37,7 +37,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--pipeline",
         action="append",
         choices=list(pipelines.PIPELINES),
-        help="Pipeline to run; repeat for several. Defaults to both.",
+        help=(
+            "Pipeline to run; repeat for several. Defaults to all but the ablations."
+        ),
     )
     parser.add_argument(
         "--corpus",
@@ -115,7 +117,7 @@ def run_corpus(
 
     phases = arguments.phase or [runner.RECOGNITION, runner.RESOLUTION]
     results = []
-    for pipeline in arguments.pipeline or list(pipelines.PIPELINES):
+    for pipeline in arguments.pipeline or list(pipelines.DEFAULT_PIPELINES):
         identity = ckpt.RunIdentity(
             pipeline=pipeline,
             corpus_digest=loaded.digest,

@@ -1,0 +1,112 @@
+{
+  "corpus": "hipe2020-fr",
+  "language": "fr",
+  "corpus_digest": "7e756f77b368ec9a",
+  "documents": 43,
+  "gold_toponyms": 800,
+  "gazetteer": "geonames",
+  "min_similarity": 0.0,
+  "commit": "b807fbd",
+  "environment": {
+    "hostname": "grue-1.nancy.grid5000.fr",
+    "platform": "Linux-6.12.107+deb13-amd64-x86_64-with-glibc2.41",
+    "python": "3.13.5",
+    "started_at": "2026-09-23T17:18:34+00:00",
+    "job_id": "6938126",
+    "torch": "2.14.0+cu130",
+    "cuda_available": true,
+    "gpu": "Tesla T4"
+  },
+  "pipelines": [
+    {
+      "name": "hybrid",
+      "device": "cuda",
+      "models": {
+        "resolver": "dguzh/geo-all-MiniLM-L6-v2"
+      },
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.76625,
+        "mean_error_km": 652.8315776465927,
+        "median_error_km": 5.955797451964738,
+        "auc": 0.29404826300193193
+      },
+      "elapsed_seconds": 38.18582666500879
+    },
+    {
+      "name": "trim",
+      "device": "cuda",
+      "models": {
+        "resolver": "dguzh/geo-all-MiniLM-L6-v2"
+      },
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.75875,
+        "mean_error_km": 694.2537574651453,
+        "median_error_km": 6.984016252532837,
+        "auc": 0.30076610264665954
+      },
+      "elapsed_seconds": 37.15675061001821
+    },
+    {
+      "name": "population",
+      "device": "cuda",
+      "models": {
+        "resolver": "dguzh/geo-all-MiniLM-L6-v2"
+      },
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7725,
+        "mean_error_km": 648.6274723924948,
+        "median_error_km": 5.955797451964738,
+        "auc": 0.29202477806225013
+      },
+      "elapsed_seconds": 38.17619067701162
+    },
+    {
+      "name": "prior",
+      "device": "cuda",
+      "models": {
+        "resolver": "dguzh/geo-all-MiniLM-L6-v2"
+      },
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.765,
+        "mean_error_km": 691.4717925144089,
+        "median_error_km": 6.365287421989402,
+        "auc": 0.2985534870731215
+      },
+      "elapsed_seconds": 37.101198725998984
+    },
+    {
+      "name": "population-0.05",
+      "device": "cuda",
+      "models": {
+        "resolver": "dguzh/geo-all-MiniLM-L6-v2"
+      },
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.76875,
+        "mean_error_km": 647.6085713369584,
+        "median_error_km": 5.955797451964738,
+        "auc": 0.2913853890464159
+      },
+      "elapsed_seconds": 38.13554491400282
+    },
+    {
+      "name": "population-0.2",
+      "device": "cuda",
+      "models": {
+        "resolver": "dguzh/geo-all-MiniLM-L6-v2"
+      },
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.78125,
+        "mean_error_km": 643.5036564276206,
+        "median_error_km": 5.774491042556125,
+        "auc": 0.28790732077567216
+      },
+      "elapsed_seconds": 38.56047001101251
+    }
+  ]
+}

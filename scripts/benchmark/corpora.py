@@ -20,6 +20,7 @@ from pathlib import Path
 from scripts.benchmark import corpus
 from scripts.benchmark.corpus import Document
 from scripts.benchmark.hipe import hipe_qids, parse_hipe
+from scripts.benchmark.newsli import parse_newsli
 from scripts.benchmark.wikidata import load_coordinates
 
 HIPE_BASE_URL = (
@@ -29,6 +30,12 @@ COORDINATE_CACHE = Path(__file__).with_name("data") / "wikidata-coordinates.json
 
 GEOVIRUS = "geovirus"
 HIPE = "hipe"
+NEWSLI = "newsli"
+# The UniTopRank data release, which carries NewsLi (Apache-2.0). One file
+# serves every language, so it is cached once beside the corpus folders.
+NEWSLI_URL = "https://ndownloader.figshare.com/files/59465342"
+NEWSLI_RELEASE = "unitoprank-data.zip"
+NEWSLI_LANGUAGES = ("ar", "de", "es", "fa", "ja", "pl", "ro", "sr", "ta", "tr", "uk")
 
 
 @dataclass(frozen=True)
@@ -81,6 +88,10 @@ CORPORA: dict[str, CorpusSpec] = {
         _hipe("newseye", "fi"),
         _hipe("newseye", "sv"),
         _hipe("topres19th", "en"),
+        *(
+            CorpusSpec(f"newsli-{language}", language, NEWSLI_URL, NEWSLI)
+            for language in NEWSLI_LANGUAGES
+        ),
     )
 }
 DEFAULT = (GEOVIRUS,)
@@ -109,6 +120,8 @@ def load(
         KeyError: When the name is not registered
     """
     spec = CORPORA[name]
+    if spec.kind == NEWSLI:
+        return _load_newsli(spec, cache_dir, limit)
     path = corpus.download_corpus(cache_dir / spec.filename, url=spec.url)
     if spec.kind == GEOVIRUS:
         return LoadedCorpus(
@@ -124,5 +137,18 @@ def load(
         spec.name,
         spec.language,
         parse_hipe(path, coordinates, limit=limit),
+        digest.hexdigest()[:16],
+    )
+
+
+def _load_newsli(spec: CorpusSpec, cache_dir: Path, limit: int | None) -> LoadedCorpus:
+    """Load one NewsLi language from the shared release zip."""
+    release = corpus.download_corpus(cache_dir.parent / NEWSLI_RELEASE, url=spec.url)
+    digest = hashlib.sha256(release.read_bytes())
+    digest.update(spec.language.encode())
+    return LoadedCorpus(
+        spec.name,
+        spec.language,
+        parse_newsli(release, spec.language, limit=limit),
         digest.hexdigest()[:16],
     )

@@ -1,0 +1,1215 @@
+{
+  "commit": "bc8e345",
+  "environment": {
+    "hostname": "grue-1.nancy.grid5000.fr",
+    "platform": "Linux-6.12.107+deb13-amd64-x86_64-with-glibc2.41",
+    "python": "3.13.5",
+    "started_at": "2026-09-23T18:25:47+00:00",
+    "job_id": "6938172",
+    "torch": "2.14.0+cu130",
+    "cuda_available": true,
+    "gpu": "Tesla T4"
+  },
+  "rows": [
+    {
+      "corpus": "geovirus",
+      "language": "en",
+      "documents": 229,
+      "gold_toponyms": 2167,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8343331795108445,
+        "mean_error_km": 262.7335920628963,
+        "median_error_km": 30.54678378367943,
+        "auc": 0.30016913800836115
+      },
+      "elapsed_seconds": 45.15139980002277
+    },
+    {
+      "corpus": "geovirus",
+      "language": "en",
+      "documents": 229,
+      "gold_toponyms": 2167,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8463313336409783,
+        "mean_error_km": 216.50279035026307,
+        "median_error_km": 27.75207321562148,
+        "auc": 0.29110926471608317
+      },
+      "elapsed_seconds": 18.928025820991024
+    },
+    {
+      "corpus": "geovirus",
+      "language": "en",
+      "documents": 229,
+      "gold_toponyms": 2167,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8477157360406091,
+        "mean_error_km": 214.50429701011282,
+        "median_error_km": 27.75207321562148,
+        "auc": 0.2904430006145148
+      },
+      "elapsed_seconds": 18.842787724002847
+    },
+    {
+      "corpus": "geovirus",
+      "language": "en",
+      "documents": 229,
+      "gold_toponyms": 2167,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8472542685740655,
+        "mean_error_km": 221.05816963995633,
+        "median_error_km": 26.03756454118939,
+        "auc": 0.29013408610699937
+      },
+      "elapsed_seconds": 19.011513111021486
+    },
+    {
+      "corpus": "hipe2020-de",
+      "language": "de",
+      "documents": 48,
+      "gold_toponyms": 558,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6397849462365591,
+        "mean_error_km": 1147.3784852959961,
+        "median_error_km": 35.85962903121796,
+        "auc": 0.3710626562066003
+      },
+      "elapsed_seconds": 17.087145238008816
+    },
+    {
+      "corpus": "hipe2020-de",
+      "language": "de",
+      "documents": 48,
+      "gold_toponyms": 558,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6577060931899642,
+        "mean_error_km": 1143.3789998498717,
+        "median_error_km": 27.85851802265192,
+        "auc": 0.3634005611678756
+      },
+      "elapsed_seconds": 17.032792573001643
+    },
+    {
+      "corpus": "hipe2020-de",
+      "language": "de",
+      "documents": 48,
+      "gold_toponyms": 558,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6577060931899642,
+        "mean_error_km": 1172.7381724385202,
+        "median_error_km": 27.85851802265192,
+        "auc": 0.36385225580750996
+      },
+      "elapsed_seconds": 16.849137425000663
+    },
+    {
+      "corpus": "hipe2020-de",
+      "language": "de",
+      "documents": 48,
+      "gold_toponyms": 558,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6594982078853047,
+        "mean_error_km": 1221.560081314631,
+        "median_error_km": 27.85851802265192,
+        "auc": 0.36426157151752947
+      },
+      "elapsed_seconds": 16.967380352019973
+    },
+    {
+      "corpus": "hipe2020-fr",
+      "language": "fr",
+      "documents": 43,
+      "gold_toponyms": 800,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.76625,
+        "mean_error_km": 652.8315776465927,
+        "median_error_km": 5.955797451964738,
+        "auc": 0.29404826300193193
+      },
+      "elapsed_seconds": 39.03212020900537
+    },
+    {
+      "corpus": "hipe2020-fr",
+      "language": "fr",
+      "documents": 43,
+      "gold_toponyms": 800,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.78625,
+        "mean_error_km": 641.63655751834,
+        "median_error_km": 5.442919495974803,
+        "auc": 0.28543855031438997
+      },
+      "elapsed_seconds": 38.97804040199844
+    },
+    {
+      "corpus": "hipe2020-fr",
+      "language": "fr",
+      "documents": 43,
+      "gold_toponyms": 800,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.785,
+        "mean_error_km": 677.0380193200554,
+        "median_error_km": 5.955797451964738,
+        "auc": 0.289104324323025
+      },
+      "elapsed_seconds": 38.833581974999106
+    },
+    {
+      "corpus": "hipe2020-fr",
+      "language": "fr",
+      "documents": 43,
+      "gold_toponyms": 800,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.78625,
+        "mean_error_km": 694.7766931171072,
+        "median_error_km": 5.955797451964738,
+        "auc": 0.2906972527747256
+      },
+      "elapsed_seconds": 38.80892786299955
+    },
+    {
+      "corpus": "hipe2020-en",
+      "language": "en",
+      "documents": 38,
+      "gold_toponyms": 158,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.620253164556962,
+        "mean_error_km": 1302.545969622171,
+        "median_error_km": 40.17026509575142,
+        "auc": 0.4001850500246946
+      },
+      "elapsed_seconds": 9.054601497999101
+    },
+    {
+      "corpus": "hipe2020-en",
+      "language": "en",
+      "documents": 38,
+      "gold_toponyms": 158,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6265822784810127,
+        "mean_error_km": 1477.0190968857491,
+        "median_error_km": 36.39504884417806,
+        "auc": 0.39899445654074817
+      },
+      "elapsed_seconds": 8.937342688004719
+    },
+    {
+      "corpus": "hipe2020-en",
+      "language": "en",
+      "documents": 38,
+      "gold_toponyms": 158,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6139240506329114,
+        "mean_error_km": 1659.7397229779785,
+        "median_error_km": 38.356547073750335,
+        "auc": 0.4097542414323877
+      },
+      "elapsed_seconds": 8.860692612004641
+    },
+    {
+      "corpus": "hipe2020-en",
+      "language": "en",
+      "documents": 38,
+      "gold_toponyms": 158,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6012658227848101,
+        "mean_error_km": 1691.02612086012,
+        "median_error_km": 40.17026509575142,
+        "auc": 0.4136751898105683
+      },
+      "elapsed_seconds": 8.977751228012494
+    },
+    {
+      "corpus": "newseye-de",
+      "language": "de",
+      "documents": 8,
+      "gold_toponyms": 628,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6464968152866242,
+        "mean_error_km": 705.2209711496912,
+        "median_error_km": 5.559754011676299,
+        "auc": 0.3206756943912987
+      },
+      "elapsed_seconds": 14.403919601994858
+    },
+    {
+      "corpus": "newseye-de",
+      "language": "de",
+      "documents": 8,
+      "gold_toponyms": 628,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6671974522292994,
+        "mean_error_km": 643.3426897254934,
+        "median_error_km": 2.53514768808523,
+        "auc": 0.30808372470084766
+      },
+      "elapsed_seconds": 14.477920238998195
+    },
+    {
+      "corpus": "newseye-de",
+      "language": "de",
+      "documents": 8,
+      "gold_toponyms": 628,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6719745222929936,
+        "mean_error_km": 636.4399928855464,
+        "median_error_km": 2.3868329620143642,
+        "auc": 0.3031874993027937
+      },
+      "elapsed_seconds": 14.552185232998454
+    },
+    {
+      "corpus": "newseye-de",
+      "language": "de",
+      "documents": 8,
+      "gold_toponyms": 628,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6767515923566879,
+        "mean_error_km": 651.9484879845072,
+        "median_error_km": 2.841238277929296,
+        "auc": 0.30275271532085757
+      },
+      "elapsed_seconds": 14.377105755003868
+    },
+    {
+      "corpus": "newseye-fr",
+      "language": "fr",
+      "documents": 33,
+      "gold_toponyms": 665,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6857142857142857,
+        "mean_error_km": 990.2136817393554,
+        "median_error_km": 17.5096334722876,
+        "auc": 0.33214646653977414
+      },
+      "elapsed_seconds": 31.75323848399421
+    },
+    {
+      "corpus": "newseye-fr",
+      "language": "fr",
+      "documents": 33,
+      "gold_toponyms": 665,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7172932330827068,
+        "mean_error_km": 916.7344608681447,
+        "median_error_km": 5.65840699817928,
+        "auc": 0.315274498230391
+      },
+      "elapsed_seconds": 31.75408804300241
+    },
+    {
+      "corpus": "newseye-fr",
+      "language": "fr",
+      "documents": 33,
+      "gold_toponyms": 665,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.718796992481203,
+        "mean_error_km": 897.0356753857194,
+        "median_error_km": 5.65840699817928,
+        "auc": 0.31433566444062644
+      },
+      "elapsed_seconds": 31.694609568003216
+    },
+    {
+      "corpus": "newseye-fr",
+      "language": "fr",
+      "documents": 33,
+      "gold_toponyms": 665,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7233082706766917,
+        "mean_error_km": 881.8445267596568,
+        "median_error_km": 5.65840699817928,
+        "auc": 0.31191584147518675
+      },
+      "elapsed_seconds": 31.697925802996906
+    },
+    {
+      "corpus": "newseye-fi",
+      "language": "fi",
+      "documents": 18,
+      "gold_toponyms": 214,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.3130841121495327,
+        "mean_error_km": 3599.43904181557,
+        "median_error_km": 1288.4025177119993,
+        "auc": 0.6252656811044363
+      },
+      "elapsed_seconds": 11.009904120997817
+    },
+    {
+      "corpus": "newseye-fi",
+      "language": "fi",
+      "documents": 18,
+      "gold_toponyms": 214,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.3598130841121495,
+        "mean_error_km": 3333.38416821165,
+        "median_error_km": 1011.8520777846891,
+        "auc": 0.596979912224779
+      },
+      "elapsed_seconds": 10.862990452988015
+    },
+    {
+      "corpus": "newseye-fi",
+      "language": "fi",
+      "documents": 18,
+      "gold_toponyms": 214,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.3644859813084112,
+        "mean_error_km": 3340.7450574665013,
+        "median_error_km": 1054.1949460214391,
+        "auc": 0.6007136287762712
+      },
+      "elapsed_seconds": 10.862087463989155
+    },
+    {
+      "corpus": "newseye-fi",
+      "language": "fi",
+      "documents": 18,
+      "gold_toponyms": 214,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.3691588785046729,
+        "mean_error_km": 3321.876408630656,
+        "median_error_km": 1011.8520777846891,
+        "auc": 0.5986521452928573
+      },
+      "elapsed_seconds": 10.859026052006811
+    },
+    {
+      "corpus": "newseye-sv",
+      "language": "sv",
+      "documents": 18,
+      "gold_toponyms": 265,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.5547169811320755,
+        "mean_error_km": 859.4306749110738,
+        "median_error_km": 107.3337250098109,
+        "auc": 0.38556715405870867
+      },
+      "elapsed_seconds": 9.441442089009797
+    },
+    {
+      "corpus": "newseye-sv",
+      "language": "sv",
+      "documents": 18,
+      "gold_toponyms": 265,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6792452830188679,
+        "mean_error_km": 593.8715915345962,
+        "median_error_km": 1.4785360389206132,
+        "auc": 0.3014842580116484
+      },
+      "elapsed_seconds": 9.451258098990365
+    },
+    {
+      "corpus": "newseye-sv",
+      "language": "sv",
+      "documents": 18,
+      "gold_toponyms": 265,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6943396226415094,
+        "mean_error_km": 542.9927861722591,
+        "median_error_km": 1.4437593724343925,
+        "auc": 0.29109750246337074
+      },
+      "elapsed_seconds": 9.46614885199233
+    },
+    {
+      "corpus": "newseye-sv",
+      "language": "sv",
+      "documents": 18,
+      "gold_toponyms": 265,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7056603773584905,
+        "mean_error_km": 583.6667309910017,
+        "median_error_km": 1.3223314794636754,
+        "auc": 0.2859796196316674
+      },
+      "elapsed_seconds": 9.531547140999464
+    },
+    {
+      "corpus": "topres19th-en",
+      "language": "en",
+      "documents": 110,
+      "gold_toponyms": 880,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7238636363636364,
+        "mean_error_km": 1305.9885160706817,
+        "median_error_km": 1.3502670905137013,
+        "auc": 0.3034983462524829
+      },
+      "elapsed_seconds": 22.18439708099322
+    },
+    {
+      "corpus": "topres19th-en",
+      "language": "en",
+      "documents": 110,
+      "gold_toponyms": 880,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7477272727272727,
+        "mean_error_km": 1187.1081853389355,
+        "median_error_km": 1.1511114237373548,
+        "auc": 0.28284540329060975
+      },
+      "elapsed_seconds": 22.08144845996867
+    },
+    {
+      "corpus": "topres19th-en",
+      "language": "en",
+      "documents": 110,
+      "gold_toponyms": 880,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7522727272727273,
+        "mean_error_km": 1245.3819180533792,
+        "median_error_km": 0.9917655935336251,
+        "auc": 0.28235116619350153
+      },
+      "elapsed_seconds": 22.103486721985973
+    },
+    {
+      "corpus": "topres19th-en",
+      "language": "en",
+      "documents": 110,
+      "gold_toponyms": 880,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7534090909090909,
+        "mean_error_km": 1260.503693186739,
+        "median_error_km": 0.9961057616074447,
+        "auc": 0.28212113855104765
+      },
+      "elapsed_seconds": 22.127877092985727
+    },
+    {
+      "corpus": "newsli-ar",
+      "language": "ar",
+      "documents": 500,
+      "gold_toponyms": 3319,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8521769662921348,
+        "mean_error_km": 354.00411439162514,
+        "median_error_km": 1.653783321046991,
+        "auc": 0.2505795140776201
+      },
+      "elapsed_seconds": 34.470454960021016
+    },
+    {
+      "corpus": "newsli-ar",
+      "language": "ar",
+      "documents": 500,
+      "gold_toponyms": 3319,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.863061797752809,
+        "mean_error_km": 365.53104335196156,
+        "median_error_km": 1.4652636249408513,
+        "auc": 0.24684584534432535
+      },
+      "elapsed_seconds": 34.77208235897706
+    },
+    {
+      "corpus": "newsli-ar",
+      "language": "ar",
+      "documents": 500,
+      "gold_toponyms": 3319,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8641151685393258,
+        "mean_error_km": 366.7582373598975,
+        "median_error_km": 1.4652636249408513,
+        "auc": 0.24650943370767464
+      },
+      "elapsed_seconds": 35.46902040000714
+    },
+    {
+      "corpus": "newsli-ar",
+      "language": "ar",
+      "documents": 500,
+      "gold_toponyms": 3319,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8637640449438202,
+        "mean_error_km": 369.55636303911723,
+        "median_error_km": 2.2206042765651652,
+        "auc": 0.2505159562531704
+      },
+      "elapsed_seconds": 35.52175440800056
+    },
+    {
+      "corpus": "newsli-de",
+      "language": "de",
+      "documents": 500,
+      "gold_toponyms": 1019,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.9044334975369458,
+        "mean_error_km": 141.09061115208556,
+        "median_error_km": 1.937382438358066,
+        "auc": 0.19224306564064078
+      },
+      "elapsed_seconds": 19.762088212009985
+    },
+    {
+      "corpus": "newsli-de",
+      "language": "de",
+      "documents": 500,
+      "gold_toponyms": 1019,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.9113300492610837,
+        "mean_error_km": 125.54328092192202,
+        "median_error_km": 1.8601778211492233,
+        "auc": 0.1871085061525414
+      },
+      "elapsed_seconds": 19.748587837981177
+    },
+    {
+      "corpus": "newsli-de",
+      "language": "de",
+      "documents": 500,
+      "gold_toponyms": 1019,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.9113300492610837,
+        "mean_error_km": 133.13658784435265,
+        "median_error_km": 1.9106543261634377,
+        "auc": 0.18820276749767206
+      },
+      "elapsed_seconds": 19.637978833976376
+    },
+    {
+      "corpus": "newsli-de",
+      "language": "de",
+      "documents": 500,
+      "gold_toponyms": 1019,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.9113300492610837,
+        "mean_error_km": 139.03672715876598,
+        "median_error_km": 2.0297168349490633,
+        "auc": 0.19089467524528422
+      },
+      "elapsed_seconds": 19.566873669042252
+    },
+    {
+      "corpus": "newsli-es",
+      "language": "es",
+      "documents": 500,
+      "gold_toponyms": 1270,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8019169329073482,
+        "mean_error_km": 493.63108060253353,
+        "median_error_km": 10.178486042826716,
+        "auc": 0.2963160416547137
+      },
+      "elapsed_seconds": 55.126571766006236
+    },
+    {
+      "corpus": "newsli-es",
+      "language": "es",
+      "documents": 500,
+      "gold_toponyms": 1270,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8322683706070287,
+        "mean_error_km": 349.9281489006527,
+        "median_error_km": 10.178486042826716,
+        "auc": 0.27596036415351644
+      },
+      "elapsed_seconds": 54.1458014719974
+    },
+    {
+      "corpus": "newsli-es",
+      "language": "es",
+      "documents": 500,
+      "gold_toponyms": 1270,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8282747603833865,
+        "mean_error_km": 394.9753351995886,
+        "median_error_km": 10.178486042826716,
+        "auc": 0.27991934535079793
+      },
+      "elapsed_seconds": 54.51803501499671
+    },
+    {
+      "corpus": "newsli-es",
+      "language": "es",
+      "documents": 500,
+      "gold_toponyms": 1270,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8234824281150159,
+        "mean_error_km": 410.02759840050135,
+        "median_error_km": 10.178486042826716,
+        "auc": 0.2858924916778862
+      },
+      "elapsed_seconds": 54.123016030018334
+    },
+    {
+      "corpus": "newsli-fa",
+      "language": "fa",
+      "documents": 71,
+      "gold_toponyms": 326,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7318435754189944,
+        "mean_error_km": 488.14415564379243,
+        "median_error_km": 75.07463937296856,
+        "auc": 0.37595499500400137
+      },
+      "elapsed_seconds": 7.4243151169939665
+    },
+    {
+      "corpus": "newsli-fa",
+      "language": "fa",
+      "documents": 71,
+      "gold_toponyms": 326,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7486033519553073,
+        "mean_error_km": 482.01181416062536,
+        "median_error_km": 75.07463937296856,
+        "auc": 0.373186636360634
+      },
+      "elapsed_seconds": 7.431131890989491
+    },
+    {
+      "corpus": "newsli-fa",
+      "language": "fa",
+      "documents": 71,
+      "gold_toponyms": 326,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7541899441340782,
+        "mean_error_km": 467.5538857907254,
+        "median_error_km": 75.07463937296856,
+        "auc": 0.37239902368691624
+      },
+      "elapsed_seconds": 7.315803188001155
+    },
+    {
+      "corpus": "newsli-fa",
+      "language": "fa",
+      "documents": 71,
+      "gold_toponyms": 326,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7486033519553073,
+        "mean_error_km": 492.6286332463735,
+        "median_error_km": 75.07463937296856,
+        "auc": 0.37639412649017495
+      },
+      "elapsed_seconds": 7.436029892989609
+    },
+    {
+      "corpus": "newsli-ja",
+      "language": "ja",
+      "documents": 500,
+      "gold_toponyms": 1577,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8468586387434555,
+        "mean_error_km": 248.85422135150407,
+        "median_error_km": 2.2532903821640757,
+        "auc": 0.22647450948565143
+      },
+      "elapsed_seconds": 18.318248652991315
+    },
+    {
+      "corpus": "newsli-ja",
+      "language": "ja",
+      "documents": 500,
+      "gold_toponyms": 1577,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8520942408376964,
+        "mean_error_km": 247.61493939976737,
+        "median_error_km": 2.1584737338039375,
+        "auc": 0.22338824773072607
+      },
+      "elapsed_seconds": 18.12521063998429
+    },
+    {
+      "corpus": "newsli-ja",
+      "language": "ja",
+      "documents": 500,
+      "gold_toponyms": 1577,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8527486910994765,
+        "mean_error_km": 268.22467592111525,
+        "median_error_km": 2.190718879126718,
+        "auc": 0.22400813365184075
+      },
+      "elapsed_seconds": 17.973269034999248
+    },
+    {
+      "corpus": "newsli-ja",
+      "language": "ja",
+      "documents": 500,
+      "gold_toponyms": 1577,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8534031413612565,
+        "mean_error_km": 273.8783667803612,
+        "median_error_km": 2.190718879126718,
+        "auc": 0.22397475471624145
+      },
+      "elapsed_seconds": 18.010362361026637
+    },
+    {
+      "corpus": "newsli-pl",
+      "language": "pl",
+      "documents": 186,
+      "gold_toponyms": 196,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6479591836734694,
+        "mean_error_km": 700.3296792230203,
+        "median_error_km": 8.700721736253595,
+        "auc": 0.3223140615404036
+      },
+      "elapsed_seconds": 13.515892712995992
+    },
+    {
+      "corpus": "newsli-pl",
+      "language": "pl",
+      "documents": 186,
+      "gold_toponyms": 196,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6785714285714286,
+        "mean_error_km": 706.3657830660965,
+        "median_error_km": 2.94256303085405,
+        "auc": 0.3012357240847185
+      },
+      "elapsed_seconds": 13.504653386000427
+    },
+    {
+      "corpus": "newsli-pl",
+      "language": "pl",
+      "documents": 186,
+      "gold_toponyms": 196,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6785714285714286,
+        "mean_error_km": 701.6342298961978,
+        "median_error_km": 2.94256303085405,
+        "auc": 0.3004453288073089
+      },
+      "elapsed_seconds": 13.584376931001316
+    },
+    {
+      "corpus": "newsli-pl",
+      "language": "pl",
+      "documents": 186,
+      "gold_toponyms": 196,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6683673469387755,
+        "mean_error_km": 728.9558564703881,
+        "median_error_km": 6.113066503141148,
+        "auc": 0.30958947878071086
+      },
+      "elapsed_seconds": 13.474815558016417
+    },
+    {
+      "corpus": "newsli-ro",
+      "language": "ro",
+      "documents": 226,
+      "gold_toponyms": 385,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8103896103896104,
+        "mean_error_km": 488.38333724912445,
+        "median_error_km": 5.031676646990581,
+        "auc": 0.27843353603128745
+      },
+      "elapsed_seconds": 14.951002803019946
+    },
+    {
+      "corpus": "newsli-ro",
+      "language": "ro",
+      "documents": 226,
+      "gold_toponyms": 385,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8311688311688312,
+        "mean_error_km": 452.78081963734553,
+        "median_error_km": 5.031676646990581,
+        "auc": 0.26635566307149383
+      },
+      "elapsed_seconds": 14.833248929018737
+    },
+    {
+      "corpus": "newsli-ro",
+      "language": "ro",
+      "documents": 226,
+      "gold_toponyms": 385,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8311688311688312,
+        "mean_error_km": 452.7970288027015,
+        "median_error_km": 5.031676646990581,
+        "auc": 0.26633179629746634
+      },
+      "elapsed_seconds": 14.766676975996234
+    },
+    {
+      "corpus": "newsli-ro",
+      "language": "ro",
+      "documents": 226,
+      "gold_toponyms": 385,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8285714285714286,
+        "mean_error_km": 489.9266346556627,
+        "median_error_km": 5.031676646990581,
+        "auc": 0.2698525791394138
+      },
+      "elapsed_seconds": 14.651166665003984
+    },
+    {
+      "corpus": "newsli-sr",
+      "language": "sr",
+      "documents": 500,
+      "gold_toponyms": 985,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8538071065989847,
+        "mean_error_km": 422.1894251622714,
+        "median_error_km": 16.93273757002325,
+        "auc": 0.30194933012614916
+      },
+      "elapsed_seconds": 33.24145291100285
+    },
+    {
+      "corpus": "newsli-sr",
+      "language": "sr",
+      "documents": 500,
+      "gold_toponyms": 985,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8578680203045685,
+        "mean_error_km": 405.1210743574078,
+        "median_error_km": 15.493388830962717,
+        "auc": 0.29891597520011937
+      },
+      "elapsed_seconds": 33.19805285601615
+    },
+    {
+      "corpus": "newsli-sr",
+      "language": "sr",
+      "documents": 500,
+      "gold_toponyms": 985,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8578680203045685,
+        "mean_error_km": 405.10199863764933,
+        "median_error_km": 15.493388830962717,
+        "auc": 0.2986716176379677
+      },
+      "elapsed_seconds": 33.38248558501073
+    },
+    {
+      "corpus": "newsli-sr",
+      "language": "sr",
+      "documents": 500,
+      "gold_toponyms": 985,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.8598984771573605,
+        "mean_error_km": 403.32111701001327,
+        "median_error_km": 15.493388830962717,
+        "auc": 0.2983694346855766
+      },
+      "elapsed_seconds": 33.355854637993616
+    },
+    {
+      "corpus": "newsli-ta",
+      "language": "ta",
+      "documents": 500,
+      "gold_toponyms": 1578,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.5073746312684366,
+        "mean_error_km": 2330.704854838193,
+        "median_error_km": 149.78854656060065,
+        "auc": 0.5146891084466282
+      },
+      "elapsed_seconds": 17.609520672012877
+    },
+    {
+      "corpus": "newsli-ta",
+      "language": "ta",
+      "documents": 500,
+      "gold_toponyms": 1578,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.511307767944936,
+        "mean_error_km": 2287.8510820049432,
+        "median_error_km": 145.4601609761342,
+        "auc": 0.5123453594875987
+      },
+      "elapsed_seconds": 17.01372416500817
+    },
+    {
+      "corpus": "newsli-ta",
+      "language": "ta",
+      "documents": 500,
+      "gold_toponyms": 1578,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.5132743362831859,
+        "mean_error_km": 2281.7615897380897,
+        "median_error_km": 137.08177279507655,
+        "auc": 0.5112096481912664
+      },
+      "elapsed_seconds": 17.03264089098957
+    },
+    {
+      "corpus": "newsli-ta",
+      "language": "ta",
+      "documents": 500,
+      "gold_toponyms": 1578,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.5142576204523107,
+        "mean_error_km": 2273.3553014859854,
+        "median_error_km": 137.08177279507655,
+        "auc": 0.5106168436370692
+      },
+      "elapsed_seconds": 17.0424266830305
+    },
+    {
+      "corpus": "newsli-tr",
+      "language": "tr",
+      "documents": 500,
+      "gold_toponyms": 1578,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7085168869309838,
+        "mean_error_km": 807.3858908163261,
+        "median_error_km": 48.046306003586245,
+        "auc": 0.3639277248833506
+      },
+      "elapsed_seconds": 29.87592184003006
+    },
+    {
+      "corpus": "newsli-tr",
+      "language": "tr",
+      "documents": 500,
+      "gold_toponyms": 1578,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7716593245227606,
+        "mean_error_km": 584.9052923997765,
+        "median_error_km": 35.13826365782123,
+        "auc": 0.33074662912392094
+      },
+      "elapsed_seconds": 29.857130139047513
+    },
+    {
+      "corpus": "newsli-tr",
+      "language": "tr",
+      "documents": 500,
+      "gold_toponyms": 1578,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7701908957415565,
+        "mean_error_km": 625.8887074177414,
+        "median_error_km": 35.502895064478295,
+        "auc": 0.3345046019256454
+      },
+      "elapsed_seconds": 30.016478635036037
+    },
+    {
+      "corpus": "newsli-tr",
+      "language": "tr",
+      "documents": 500,
+      "gold_toponyms": 1578,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.7687224669603524,
+        "mean_error_km": 622.9539638648328,
+        "median_error_km": 37.53927708880525,
+        "auc": 0.3384521729629196
+      },
+      "elapsed_seconds": 29.755556500022067
+    },
+    {
+      "corpus": "newsli-uk",
+      "language": "uk",
+      "documents": 164,
+      "gold_toponyms": 258,
+      "pipeline": "hybrid",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6434108527131783,
+        "mean_error_km": 670.4462296756086,
+        "median_error_km": 42.65783745609902,
+        "auc": 0.36041338658273914
+      },
+      "elapsed_seconds": 34.32372222196864
+    },
+    {
+      "corpus": "newsli-uk",
+      "language": "uk",
+      "documents": 164,
+      "gold_toponyms": 258,
+      "pipeline": "population-0.3",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6472868217054264,
+        "mean_error_km": 699.5458246496061,
+        "median_error_km": 38.74642281973432,
+        "auc": 0.3574696499937219
+      },
+      "elapsed_seconds": 33.92182343899185
+    },
+    {
+      "corpus": "newsli-uk",
+      "language": "uk",
+      "documents": 164,
+      "gold_toponyms": 258,
+      "pipeline": "population-0.5",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6511627906976745,
+        "mean_error_km": 705.5574073207807,
+        "median_error_km": 35.78912457740688,
+        "auc": 0.3566064735738291
+      },
+      "elapsed_seconds": 33.916941019007936
+    },
+    {
+      "corpus": "newsli-uk",
+      "language": "uk",
+      "documents": 164,
+      "gold_toponyms": 258,
+      "pipeline": "population-1.0",
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6550387596899225,
+        "mean_error_km": 742.0783435625963,
+        "median_error_km": 33.39499670331688,
+        "auc": 0.35512755816515507
+      },
+      "elapsed_seconds": 34.077596206989256
+    }
+  ]
+}

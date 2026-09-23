@@ -1,0 +1,82 @@
+{
+  "corpus": "newsli-uk",
+  "language": "uk",
+  "corpus_digest": "5757f00bb2c9be45",
+  "documents": 164,
+  "gold_toponyms": 258,
+  "gazetteer": "geonames",
+  "min_similarity": 0.0,
+  "commit": "bc8e345",
+  "environment": {
+    "hostname": "grue-1.nancy.grid5000.fr",
+    "platform": "Linux-6.12.107+deb13-amd64-x86_64-with-glibc2.41",
+    "python": "3.13.5",
+    "started_at": "2026-09-23T18:25:47+00:00",
+    "job_id": "6938172",
+    "torch": "2.14.0+cu130",
+    "cuda_available": true,
+    "gpu": "Tesla T4"
+  },
+  "pipelines": [
+    {
+      "name": "hybrid",
+      "device": "cuda",
+      "models": {
+        "resolver": "dguzh/geo-all-MiniLM-L6-v2"
+      },
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6434108527131783,
+        "mean_error_km": 670.4462296756086,
+        "median_error_km": 42.65783745609902,
+        "auc": 0.36041338658273914
+      },
+      "elapsed_seconds": 34.32372222196864
+    },
+    {
+      "name": "population-0.3",
+      "device": "cuda",
+      "models": {
+        "resolver": "dguzh/geo-all-MiniLM-L6-v2"
+      },
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6472868217054264,
+        "mean_error_km": 699.5458246496061,
+        "median_error_km": 38.74642281973432,
+        "auc": 0.3574696499937219
+      },
+      "elapsed_seconds": 33.92182343899185
+    },
+    {
+      "name": "population-0.5",
+      "device": "cuda",
+      "models": {
+        "resolver": "dguzh/geo-all-MiniLM-L6-v2"
+      },
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6511627906976745,
+        "mean_error_km": 705.5574073207807,
+        "median_error_km": 35.78912457740688,
+        "auc": 0.3566064735738291
+      },
+      "elapsed_seconds": 33.916941019007936
+    },
+    {
+      "name": "population-1.0",
+      "device": "cuda",
+      "models": {
+        "resolver": "dguzh/geo-all-MiniLM-L6-v2"
+      },
+      "recognition": {},
+      "resolution": {
+        "accuracy_at_161km": 0.6550387596899225,
+        "mean_error_km": 742.0783435625963,
+        "median_error_km": 33.39499670331688,
+        "auc": 0.35512755816515507
+      },
+      "elapsed_seconds": 34.077596206989256
+    }
+  ]
+}

@@ -19,11 +19,38 @@ from xml.sax.saxutils import escape
 
 # Pipelines in the order they take colour slots. A pipeline outside this list
 # is appended after them, so a new one never repaints the existing ones.
-PIPELINE_ORDER = ("upstream", "swapped", "hybrid", "prior")
+PIPELINE_ORDER = (
+    "upstream",
+    "swapped",
+    "hybrid",
+    "prior",
+    "trim",
+    "population",
+    "population-0.05",
+    "population-0.2",
+)
 
 SERIES_COLORS = {
-    "light": ("#2a78d6", "#eb6834", "#1baf7a", "#eda100"),
-    "dark": ("#3987e5", "#d95926", "#199e70", "#c98500"),
+    "light": (
+        "#2a78d6",
+        "#eb6834",
+        "#1baf7a",
+        "#eda100",
+        "#e87ba4",
+        "#008300",
+        "#4a3aa7",
+        "#e34948",
+    ),
+    "dark": (
+        "#3987e5",
+        "#d95926",
+        "#199e70",
+        "#c98500",
+        "#d55181",
+        "#008300",
+        "#9085e9",
+        "#e66767",
+    ),
 }
 SURFACE = {"light": "#fcfcfb", "dark": "#1a1a19"}
 INK = {"light": ("#0b0b0b", "#52514e"), "dark": ("#ffffff", "#c3c2b7")}

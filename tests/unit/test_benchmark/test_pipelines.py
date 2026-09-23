@@ -32,7 +32,7 @@ def _patch_module_classes(monkeypatch, **classes):
 
 
 def test_hybrid_is_a_distinct_benchmark_pipeline():
-    assert pipelines.PIPELINES == ("upstream", "swapped", "hybrid", "prior")
+    assert pipelines.DEFAULT_PIPELINES == ("upstream", "swapped", "hybrid", "prior")
 
 
 def test_cli_accepts_the_hybrid_pipeline():
@@ -119,5 +119,56 @@ def test_prior_uses_the_prior_resolver_on_the_upstream_model(monkeypatch):
         model_name=pipelines.UPSTREAM_RESOLVER_MODEL,
         gazetteer_name="geonames",
         min_similarity=0.0,
+        population_weight=0.1,
+        inflection_fallback=True,
     )
     resolver.transformer.to.assert_called_once_with("cuda")
+
+
+# One factor at a time: every ablation is hybrid with the settings listed.
+ABLATIONS = {
+    "trim": (0.0, True),
+    "population": (0.1, False),
+    "population-0.05": (0.05, False),
+    "population-0.2": (0.2, False),
+    "population-0.3": (0.3, False),
+    "population-0.5": (0.5, False),
+    "population-1.0": (1.0, False),
+}
+
+
+def test_ablations_are_offered_but_not_run_by_default():
+    """The ablation pipelines are selectable and stay out of a default run."""
+    assert set(ABLATIONS) <= set(pipelines.PIPELINES)
+    assert not set(ABLATIONS) & set(pipelines.DEFAULT_PIPELINES)
+    assert build_parser().parse_args(["--pipeline", "trim"]).pipeline == ["trim"]
+
+
+@pytest.mark.parametrize(("pipeline", "settings"), sorted(ABLATIONS.items()))
+def test_each_ablation_changes_one_setting(monkeypatch, pipeline, settings):
+    """Each builds the prior resolver with exactly its settings."""
+    weight, fallback = settings
+    resolver = SimpleNamespace(transformer=Mock(), reranker=None)
+    prior_factory = Mock(return_value=resolver)
+    _patch_module_classes(monkeypatch, PriorResolver=prior_factory)
+    monkeypatch.setattr(pipelines, "GAZETTEER_NAME", "geonames")
+
+    pipelines.build_resolver(pipeline, device="cpu", min_similarity=0.0)
+
+    prior_factory.assert_called_once_with(
+        model_name=pipelines.UPSTREAM_RESOLVER_MODEL,
+        gazetteer_name="geonames",
+        min_similarity=0.0,
+        population_weight=weight,
+        inflection_fallback=fallback,
+    )
+
+
+@pytest.mark.parametrize("pipeline", sorted(ABLATIONS))
+def test_ablations_share_hybrids_recognizer(monkeypatch, pipeline):
+    """Only resolution varies, so recognition is GLiNER2 throughout."""
+    recognizer = SimpleNamespace(model=Mock())
+    gliner_factory = Mock(return_value=recognizer)
+    _patch_module_classes(monkeypatch, GLiNER2Recognizer=gliner_factory)
+
+    assert pipelines.build_recognizer(pipeline, device="cpu") is recognizer

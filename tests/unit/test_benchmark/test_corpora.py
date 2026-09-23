@@ -82,3 +82,49 @@ class TestLoad:
         )
 
         assert corpora.load("hipe2020-fr", tmp_path).digest != first
+
+
+class TestNewsliRegistry:
+    """NewsLi's eleven languages are registered."""
+
+    def test_registers_every_newsli_language(self):
+        """ar, de, es, fa, ja, pl, ro, sr, ta, tr and uk."""
+        newsli = {
+            spec.language
+            for name, spec in corpora.CORPORA.items()
+            if name.startswith("newsli-")
+        }
+
+        assert newsli == {
+            "ar",
+            "de",
+            "es",
+            "fa",
+            "ja",
+            "pl",
+            "ro",
+            "sr",
+            "ta",
+            "tr",
+            "uk",
+        }
+
+    def test_loads_newsli_from_one_shared_release(self, tmp_path, monkeypatch):
+        """Every language reads the same zip, cached beside the corpus folders."""
+        from tests.unit.test_benchmark.test_newsli import write_release
+
+        release = write_release(tmp_path)
+        fetched = []
+
+        def download(cache_path, *, url):
+            fetched.append(cache_path)
+            return release
+
+        monkeypatch.setattr(corpora.corpus, "download_corpus", download)
+
+        loaded = corpora.load("newsli-ro", tmp_path / "newsli-ro")
+
+        assert fetched == [tmp_path / corpora.NEWSLI_RELEASE]
+        assert loaded.language == "ro"
+        assert [d.identifier for d in loaded.documents] == ["ro-1", "ro-2"]
+        assert len(loaded.digest) == 16
