@@ -4,6 +4,8 @@ Unit tests for geoparser/services/recognition.py
 Tests the RecognitionService class with mocked recognizers.
 """
 
+from unittest.mock import patch
+
 import pytest
 
 from geoparser.services.recognition import RecognitionService
@@ -203,3 +205,40 @@ class TestRecognitionServicePredict:
         statement2 = select(Reference).where(Reference.document_id == doc2.id)
         refs2 = test_session.exec(statement2).unique().all()
         assert len(refs2) == 1
+
+
+@pytest.mark.unit
+class TestRecognitionFailures:
+    """What happens when persisting predictions fails, and on cache misses."""
+
+    def test_rolls_back_and_reraises_when_recording_fails(
+        self, mock_spacy_recognizer, document_factory
+    ):
+        """A failure while recording leaves no partial batch behind."""
+        document = document_factory(text="New York is a city.")
+        mock_spacy_recognizer.predict.return_value = [[(0, 8)]]
+        service = RecognitionService(mock_spacy_recognizer)
+
+        with (
+            patch.object(
+                service,
+                "_record_reference_predictions",
+                side_effect=RuntimeError("boom"),
+            ),
+            pytest.raises(RuntimeError, match="boom"),
+        ):
+            service.predict([document])
+
+    def test_reads_the_document_when_its_text_was_not_batched(
+        self, test_session, mock_spacy_recognizer, document_factory
+    ):
+        """A reference for a document outside the batch still gets its text."""
+        document = document_factory(text="New York is a city.")
+        service = RecognitionService(mock_spacy_recognizer)
+        service._document_texts = {}
+
+        reference = service._create_reference_record(
+            test_session, document.id, 0, 8, "recognizer"
+        )
+
+        assert reference.text == "New York"

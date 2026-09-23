@@ -195,7 +195,7 @@ class TestEvaluateDocument:
         """Run _evaluate_document with _best_referent stubbed."""
         seen = []
 
-        def _best(context, candidate_list, min_similarity):
+        def _best(context, candidate_list, min_similarity, similarities=None):
             seen.append(context)
             return ("geonames", best) if best else None
 
