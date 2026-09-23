@@ -82,3 +82,33 @@ class TestInflectionVariants:
     def test_ignores_surrounding_whitespace(self):
         """The query is stripped before trimming."""
         assert inflection_variants(" Chinas ") == ["China", "Chin", "Chi"]
+
+
+@pytest.mark.unit
+class TestExactValues:
+    """Values a plausible slip in the arithmetic would change."""
+
+    def test_nine_people_give_exactly_a_tenth(self):
+        """log10(1 + 9) / 10 is 0.1, so the offset and scale are both pinned."""
+        assert population_prior(9) == pytest.approx(0.1, abs=1e-12)
+
+    def test_a_population_below_one_still_counts(self):
+        """Only non-positive values are unknown; 0.5 is a (tiny) population."""
+        assert population_prior(0.5) == pytest.approx(math.log10(1.5) / 10)
+
+    def test_nan_is_unknown(self):
+        """A NaN population must not poison the score."""
+        assert population_prior(float("nan")) == 0.0
+
+    def test_mismatched_lengths_are_an_error(self):
+        """A population list out of step with the candidates is a bug."""
+        with pytest.raises(ValueError):
+            combined_scores([0.5, 0.4], [10], 0.1)
+
+    def test_never_trims_more_than_three_characters(self):
+        """A long word yields exactly three variants."""
+        assert inflection_variants("Stockholmissa") == [
+            "Stockholmiss",
+            "Stockholmis",
+            "Stockholmi",
+        ]

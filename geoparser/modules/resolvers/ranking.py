@@ -45,8 +45,11 @@ def population_prior(population: t.Any) -> float:
         value = float(population)
     except (TypeError, ValueError):
         return 0.0
+    # pragma: no mutate start - at 0 both branches give log10(1) = 0, so
+    # ">= 0" is an equivalent mutant; the test for NaN pins "not ... > 0".
     if not value > 0:
         return 0.0
+    # pragma: no mutate end
     return math.log10(1 + value) / PRIOR_SCALE
 
 

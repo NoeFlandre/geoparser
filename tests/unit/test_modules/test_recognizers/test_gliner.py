@@ -347,3 +347,14 @@ class TestLongDocuments:
 def test_the_limit_keeps_ordinary_articles_whole():
     """GeoVirus's longest article (8,059 characters) is still passed whole."""
     assert GLiNER2Recognizer.WINDOW_CHARS > 8_059
+
+
+@pytest.mark.unit
+def test_a_text_exactly_at_the_limit_is_passed_whole(extractor):
+    """The long-document mode starts strictly above WINDOW_CHARS."""
+    recognizer = GLiNER2Recognizer()
+    recognizer.model.extract_entities.return_value = _entities()
+
+    recognizer.predict(["x" * GLiNER2Recognizer.WINDOW_CHARS])
+
+    recognizer.model.extract_entities_long.assert_not_called()
