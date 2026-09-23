@@ -304,3 +304,75 @@ class TestPartialOffsets:
 
         # Act & Assert
         assert recognizer.predict(["x"]) == [[]]
+
+
+def _finder(word):
+    """A fake extract_entities that reports every occurrence of one word."""
+
+    def extract(text, entity_types, include_spans):
+        spans, start = [], text.find(word)
+        while start != -1:
+            spans.append({"text": word, "start": start, "end": start + len(word)})
+            start = text.find(word, start + 1)
+        return _entities(location=spans)
+
+    return extract
+
+
+@pytest.mark.unit
+class TestLongDocuments:
+    """
+    Texts beyond the window are split, so memory stays bounded.
+
+    GLiNER2 attends over the whole input at once, and a 133k-character page
+    asks a 15 GB GPU for 12 GB in one allocation. Below the window a text is
+    passed whole, exactly as before.
+    """
+
+    def test_a_short_text_is_passed_whole(self, extractor):
+        """A text within the window is extracted in one call."""
+        recognizer = GLiNER2Recognizer()
+        recognizer.model.extract_entities.side_effect = _finder("Paris")
+
+        recognizer.predict(["in Paris"])
+
+        assert recognizer.model.extract_entities.call_count == 1
+
+    def test_no_window_exceeds_the_limit(self, extractor):
+        """Every call the model sees is at most WINDOW_CHARS long."""
+        recognizer = GLiNER2Recognizer()
+        recognizer.model.extract_entities.side_effect = _finder("Paris")
+        text = "word " * (GLiNER2Recognizer.WINDOW_CHARS // 2)
+
+        recognizer.predict([text])
+
+        lengths = [
+            len(call.args[0])
+            for call in recognizer.model.extract_entities.call_args_list
+        ]
+        assert len(lengths) > 1
+        assert max(lengths) <= GLiNER2Recognizer.WINDOW_CHARS
+
+    def test_offsets_are_relative_to_the_whole_text(self, extractor):
+        """Spans found in a later window are shifted back into the document."""
+        recognizer = GLiNER2Recognizer()
+        recognizer.model.extract_entities.side_effect = _finder("Paris")
+        filler = "word " * GLiNER2Recognizer.WINDOW_CHARS
+        text = "Paris " + filler + "Paris " + filler + "Paris"
+
+        (spans,) = recognizer.predict([text])
+
+        assert [text[start:end] for start, end in spans] == ["Paris"] * 3
+        assert spans == sorted(set(spans))
+
+    def test_an_entity_in_the_overlap_is_found_once(self, extractor):
+        """A toponym near a window edge is neither lost nor duplicated."""
+        recognizer = GLiNER2Recognizer()
+        recognizer.model.extract_entities.side_effect = _finder("Paris")
+        window = GLiNER2Recognizer.WINDOW_CHARS
+        for position in range(window - 300, window + 50, 37):
+            text = "x " * (position // 2) + "Paris " + "y " * window
+
+            (spans,) = recognizer.predict([text])
+
+            assert [text[start:end] for start, end in spans] == ["Paris"], position
