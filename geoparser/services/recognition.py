@@ -198,13 +198,13 @@ class RecognitionService:
         Returns:
             The records to stage, references first
         """
-        records: list[Reference | Recognition | None] = [
+        records: list[Reference | Recognition] = [
             self._create_reference_record(document, start, end, recognizer_id)
             for start, end in references
         ]
         # Mark document as processed
         records.append(self._create_recognition_record(document.id, recognizer_id))
-        return [record for record in records if record is not None]
+        return records
 
     def _create_reference_record(
         self,

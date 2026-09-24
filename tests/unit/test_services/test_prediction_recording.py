@@ -173,10 +173,7 @@ class TestReferentValidation:
         """Run the record creation, returning the Gazetteer mock."""
         service = ResolutionService(Mock())
         feature = SimpleNamespace(identifier=identifier) if found else None
-        with (
-            patch("geoparser.services.resolution.Gazetteer") as gazetteer,
-            patch("geoparser.services.resolution.ReferentRepository"),
-        ):
+        with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
             gazetteer.return_value.find.return_value = feature
             service._create_referent_record(
                 uuid.uuid4(), gazetteer_name, identifier, "res"

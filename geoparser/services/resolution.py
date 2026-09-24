@@ -4,7 +4,6 @@ import uuid
 from sqlmodel import Session
 
 from geoparser.db.crud import (
-    ReferentRepository,  # noqa: F401 - retained as a patch/extension seam
     ResolutionRepository,
     ResolverRepository,
 )
@@ -84,7 +83,7 @@ class ResolutionService:
                 predicted_referents = self.resolver.predict(texts, reference_boundaries)
 
                 # Validate and stage every row before one atomic commit.
-                self._record_all_referent_predictions(
+                self._record_referent_prediction_groups(
                     session, reference_objects, predicted_referents, resolver_id
                 )
                 session.commit()
@@ -210,18 +209,6 @@ class ResolutionService:
         ]
         return spans, pairs
 
-    def _record_all_referent_predictions(
-        self,
-        session: Session,
-        reference_groups: list[list["Reference"]],
-        predicted_groups: list[list[tuple[str, str] | None]],
-        resolver_id: str,
-    ) -> None:
-        """Stage all document resolution rows with one database write."""
-        self._record_referent_prediction_groups(
-            session, reference_groups, predicted_groups, resolver_id
-        )
-
     def _record_referent_prediction_groups(
         self,
         session: Session,
@@ -268,13 +255,12 @@ class ResolutionService:
             The records to stage, referent first
         """
         gazetteer_name, identifier = referent
-        records = [
+        return [
             self._create_referent_record(
                 reference.id, gazetteer_name, identifier, resolver_id
             ),
             self._create_resolution_record(reference.id, resolver_id),
         ]
-        return [record for record in records if record is not None]
 
     def _create_referent_record(
         self,
