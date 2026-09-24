@@ -119,18 +119,6 @@ class TestFallbackEdges:
 
 
 @pytest.mark.unit
-def test_ranking_computes_similarities_when_none_are_given(resolver):
-    """Without precomputed scores, the parent's similarity is used."""
-    import torch
-
-    city = _feature(2, 1_000)
-    resolver.context_embeddings["ctx"] = torch.tensor([1.0, 0.0])
-    resolver.candidate_embeddings[2] = torch.tensor([1.0, 0.0])
-
-    assert resolver._best_referent("ctx", [city], 0.5) == (resolver.gazetteer_name, "2")
-
-
-@pytest.mark.unit
 class TestParentSettings:
     """Every setting reaches the parent resolver, unchanged."""
 

@@ -706,7 +706,7 @@ class SentenceTransformerResolver(Resolver):
         doc_candidates: list[list["Feature"]],
         doc_results: list[tuple[str, str] | None],
         min_similarity: float,
-        similarities: list[list[float] | None] | None = None,
+        similarities: list[list[float] | None],
     ) -> None:
         """
         Resolve one document's still-unresolved references, in place.
@@ -716,6 +716,8 @@ class SentenceTransformerResolver(Resolver):
             doc_candidates: Candidate list per reference
             doc_results: Result slot per reference, filled in place
             min_similarity: Similarity a candidate must reach to be accepted
+            similarities: Precomputed scores per reference, None where the
+                reference was not pending
         """
         for ref_idx, (context, candidate_list, result) in enumerate(
             zip(doc_contexts, doc_candidates, doc_results, strict=True)
@@ -728,7 +730,7 @@ class SentenceTransformerResolver(Resolver):
                 context,
                 candidate_list,
                 min_similarity,
-                None if similarities is None else similarities[ref_idx],
+                similarities[ref_idx],
             )
             if referent is not None:
                 doc_results[ref_idx] = referent
@@ -738,28 +740,21 @@ class SentenceTransformerResolver(Resolver):
         context: str,
         candidate_list: list["Feature"],
         min_similarity: float,
-        similarities: list[float] | None = None,
+        similarities: list[float],
     ) -> tuple[str, str] | None:
         """
         Pick the candidate most similar to a reference's context.
 
         Args:
             context: The reference's context string
-            candidate_list: Candidates to rank, all already embedded
+            candidate_list: Candidates to rank
             min_similarity: Similarity a candidate must reach to be accepted
+            similarities: Each candidate's precomputed similarity
 
         Returns:
             A (gazetteer_name, identifier) pair, or None when the best
             candidate is not similar enough
         """
-        if similarities is None:
-            similarities = self._calculate_similarities(
-                self.context_embeddings[context],
-                [
-                    self.candidate_embeddings[candidate.id]
-                    for candidate in candidate_list
-                ],
-            )
         best_idx = max(range(len(similarities)), key=lambda j: similarities[j])
         if similarities[best_idx] < min_similarity:
             return None
@@ -931,37 +926,6 @@ class SentenceTransformerResolver(Resolver):
                 candidate
             )
         return self.candidate_descriptions[candidate.id]
-
-    def _calculate_similarities(
-        self,
-        context_embedding: torch.Tensor,
-        candidate_embeddings: list[torch.Tensor],
-    ) -> list[float]:
-        """
-        Calculate cosine similarities between context and candidate embeddings.
-
-        Args:
-            context_embedding: Embedding tensor for the reference context
-            candidate_embeddings: List of embedding tensors for candidates
-
-        Returns:
-            List of similarity scores
-        """
-        if not candidate_embeddings:
-            return []
-
-        # Stack candidate embeddings
-        candidate_tensor = torch.stack(candidate_embeddings)
-
-        # Calculate cosine similarities
-        # pragma: no mutate start - dim=1 is also torch's default, so a
-        # mutant that drops it computes exactly the same similarities.
-        similarities = torch.nn.functional.cosine_similarity(
-            context_embedding.unsqueeze(0), candidate_tensor, dim=1
-        )
-        # pragma: no mutate end
-
-        return similarities.tolist()
 
     def _calculate_similarity_batches(
         self,

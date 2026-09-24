@@ -89,11 +89,9 @@ class PriorResolver(SentenceTransformerResolver):
         context: str,
         candidate_list: list[Feature],
         min_similarity: float,
-        similarities: list[float] | None = None,
+        similarities: list[float],
     ) -> tuple[str, str] | None:
         """Pick the candidate with the best similarity plus population prior."""
-        if similarities is None:
-            similarities = self._context_similarities(context, candidate_list)
         scores = combined_scores(
             similarities,
             [(candidate.data or {}).get("population") for candidate in candidate_list],
@@ -103,12 +101,3 @@ class PriorResolver(SentenceTransformerResolver):
         if similarities[best] < min_similarity:
             return None
         return self.gazetteer_name, candidate_list[best].identifier
-
-    def _context_similarities(
-        self, context: str, candidate_list: list[Feature]
-    ) -> list[float]:
-        """Score each candidate against the context, from cached embeddings."""
-        return self._calculate_similarities(
-            self.context_embeddings[context],
-            [self.candidate_embeddings[candidate.id] for candidate in candidate_list],
-        )

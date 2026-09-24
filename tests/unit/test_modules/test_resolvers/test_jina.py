@@ -13,7 +13,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-import torch
 
 from geoparser.modules.resolvers.jina import JinaResolver
 
@@ -158,12 +157,9 @@ class TestReranking:
 
     @staticmethod
     def _prepare(resolver, candidates, similarities, ranking):
-        """Wire up the embedding scores and the reranker's verdict."""
-        resolver.context_embeddings["ctx"] = torch.zeros(2)
-        for candidate in candidates:
-            resolver.candidate_embeddings[candidate.id] = torch.zeros(2)
-        resolver._calculate_similarities = Mock(return_value=similarities)
+        """Wire up the reranker's verdict; returns the embedding scores."""
         resolver.reranker.rerank = Mock(return_value=ranking)
+        return similarities
 
     def test_the_reranker_can_overturn_the_embedding_ranking(self, resolver):
         """
@@ -175,7 +171,7 @@ class TestReranking:
         """
         # Arrange
         candidates = [_feature(1, "A", "Paris"), _feature(2, "B", "Paris, Texas")]
-        self._prepare(
+        similarities = self._prepare(
             resolver,
             candidates,
             similarities=[0.9, 0.7],
@@ -183,7 +179,7 @@ class TestReranking:
         )
 
         # Act
-        referent = resolver._best_referent("ctx", candidates, 0.0)
+        referent = resolver._best_referent("ctx", candidates, 0.0, similarities)
 
         # Assert
         assert referent == (resolver.gazetteer_name, "B")
@@ -192,7 +188,7 @@ class TestReranking:
         """It scores the candidate descriptions against the context text."""
         # Arrange
         candidates = [_feature(1, "A", "Paris"), _feature(2, "B", "Berlin")]
-        self._prepare(
+        similarities = self._prepare(
             resolver,
             candidates,
             similarities=[0.9, 0.7],
@@ -200,7 +196,7 @@ class TestReranking:
         )
 
         # Act
-        resolver._best_referent("ctx", candidates, 0.0)
+        resolver._best_referent("ctx", candidates, 0.0, similarities)
 
         # Assert
         resolver.reranker.rerank.assert_called_once_with(
@@ -222,7 +218,7 @@ class TestReranking:
             _feature(2, "B", "Beta"),
             _feature(3, "C", "Gamma"),
         ]
-        self._prepare(
+        similarities = self._prepare(
             resolver,
             candidates,
             similarities=[0.1, 0.9, 0.5],
@@ -230,7 +226,7 @@ class TestReranking:
         )
 
         # Act
-        referent = resolver._best_referent("ctx", candidates, 0.0)
+        referent = resolver._best_referent("ctx", candidates, 0.0, similarities)
 
         # Assert
         resolver.reranker.rerank.assert_called_once_with(
@@ -242,7 +238,7 @@ class TestReranking:
         """The embedding stage still gates on min_similarity."""
         # Arrange
         candidates = [_feature(1, "A", "Paris")]
-        self._prepare(
+        similarities = self._prepare(
             resolver,
             candidates,
             similarities=[0.2],
@@ -250,18 +246,16 @@ class TestReranking:
         )
 
         # Act & Assert
-        assert resolver._best_referent("ctx", candidates, 0.6) is None
+        assert resolver._best_referent("ctx", candidates, 0.6, similarities) is None
         resolver.reranker.rerank.assert_not_called()
 
     def test_no_candidates_means_no_referent(self, resolver):
         """Nothing to rank is not an error."""
         # Arrange
-        resolver.context_embeddings["ctx"] = torch.zeros(2)
-        resolver._calculate_similarities = Mock(return_value=[])
         resolver.reranker.rerank = Mock()
 
         # Act & Assert
-        assert resolver._best_referent("ctx", [], 0.0) is None
+        assert resolver._best_referent("ctx", [], 0.0, []) is None
         resolver.reranker.rerank.assert_not_called()
 
     def test_an_empty_ranking_falls_back_to_the_embedding_choice(self, resolver):
@@ -273,10 +267,12 @@ class TestReranking:
         """
         # Arrange
         candidates = [_feature(1, "A", "Paris"), _feature(2, "B", "Berlin")]
-        self._prepare(resolver, candidates, similarities=[0.3, 0.9], ranking=[])
+        similarities = self._prepare(
+            resolver, candidates, similarities=[0.3, 0.9], ranking=[]
+        )
 
         # Act & Assert
-        assert resolver._best_referent("ctx", candidates, 0.0) == (
+        assert resolver._best_referent("ctx", candidates, 0.0, similarities) == (
             resolver.gazetteer_name,
             "B",
         )
@@ -414,34 +410,7 @@ class TestEncodeArguments:
 
 @pytest.mark.unit
 class TestSimilarityInputs:
-    """Which embeddings the comparison is given."""
-
-    def test_the_context_and_candidate_embeddings_are_compared(self, resolver):
-        """
-        Both sides come from the caches, keyed correctly.
-
-        Handing the comparison the wrong tensors -- or none -- would rank
-        candidates against something other than the reference's context.
-        """
-        # Arrange
-        candidates = [_feature(1, "A", "Paris"), _feature(2, "B", "Berlin")]
-        context_embedding = torch.tensor([1.0, 0.0])
-        resolver.context_embeddings["ctx"] = context_embedding
-        first, second = torch.tensor([1.0, 0.0]), torch.tensor([0.0, 1.0])
-        resolver.candidate_embeddings[1] = first
-        resolver.candidate_embeddings[2] = second
-        resolver._calculate_similarities = Mock(return_value=[0.9, 0.1])
-        resolver.reranker.rerank = Mock(return_value=[{"index": 0}])
-
-        # Act
-        resolver._best_referent("ctx", candidates, 0.0)
-
-        # Assert
-        passed_context, passed_candidates = (
-            resolver._calculate_similarities.call_args.args
-        )
-        assert passed_context is context_embedding
-        assert passed_candidates == [first, second]
+    """How the given similarities gate the referent."""
 
     def test_a_candidate_exactly_at_the_threshold_is_accepted(self, resolver):
         """
@@ -452,13 +421,10 @@ class TestSimilarityInputs:
         """
         # Arrange
         candidates = [_feature(1, "A", "Paris")]
-        resolver.context_embeddings["ctx"] = torch.zeros(2)
-        resolver.candidate_embeddings[1] = torch.zeros(2)
-        resolver._calculate_similarities = Mock(return_value=[0.6])
         resolver.reranker.rerank = Mock(return_value=[{"index": 0}])
 
         # Act & Assert
-        assert resolver._best_referent("ctx", candidates, 0.6) == (
+        assert resolver._best_referent("ctx", candidates, 0.6, [0.6]) == (
             resolver.gazetteer_name,
             "A",
         )
