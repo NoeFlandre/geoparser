@@ -358,3 +358,21 @@ class TestResolutionServiceFit:
         # For now, we just test that it doesn't error with empty documents
         # Act & Assert - Should not raise error
         service.fit([], output_path="/tmp/model")
+
+
+@pytest.mark.unit
+def test_training_reads_each_toponyms_location_once(mock_sentencetransformer_resolver):
+    """A referent's location opens the gazetteer, so it is read only once."""
+    from types import SimpleNamespace
+    from unittest.mock import PropertyMock
+
+    location = SimpleNamespace(gazetteer_name="geonames", identifier="1")
+    reads = PropertyMock(return_value=location)
+    reference_type = type("Ref", (), {"location": reads, "start": 0, "end": 5})
+    document = SimpleNamespace(toponyms=[reference_type()])
+    service = ResolutionService(mock_sentencetransformer_resolver)
+
+    spans, pairs = service._annotated_pairs(document)
+
+    assert (spans, pairs) == ([(0, 5)], [("geonames", "1")])
+    assert reads.call_count == 1

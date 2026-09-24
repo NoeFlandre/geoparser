@@ -200,7 +200,10 @@ class ResolutionService:
         Returns:
             The reference spans and their (gazetteer, identifier) referents
         """
-        annotated = [(ref, ref.location) for ref in doc.toponyms if ref.location]
+        # location opens the gazetteer, so it is read once per toponym
+        annotated = [
+            (ref, location) for ref in doc.toponyms if (location := ref.location)
+        ]
         spans = [(ref.start, ref.end) for ref, _ in annotated]
         pairs = [
             (location.gazetteer_name, location.identifier) for _, location in annotated

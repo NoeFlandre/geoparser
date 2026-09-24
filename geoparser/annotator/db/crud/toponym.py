@@ -17,7 +17,7 @@ from geoparser.annotator.exceptions import (
     ToponymOverlapException,
 )
 from geoparser.annotator.models.api import CandidatesGet
-from geoparser.gazetteer.gazetteer import Gazetteer
+from geoparser.gazetteer.gazetteer import get_gazetteer
 
 if t.TYPE_CHECKING:
     from geoparser.annotator.db.models.document import AnnotatorDocument
@@ -213,7 +213,7 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         query_text: str,
     ) -> tuple[list[dict], bool]:
         # Initialize gazetteer
-        gazetteer = Gazetteer(gazetteer_name)
+        gazetteer = get_gazetteer(gazetteer_name)
 
         # Use query_text if provided, else use toponym_text
         search_text = query_text if query_text else toponym_text

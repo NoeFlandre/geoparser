@@ -172,3 +172,36 @@ class TestGazetteerFind:
         make_artifact()
 
         assert Gazetteer("testgaz").find("999999") is None
+
+
+@pytest.mark.unit
+class TestGetGazetteer:
+    """One shared Gazetteer per installed artifact."""
+
+    def test_returns_the_same_instance_for_the_same_artifact(self, make_artifact):
+        """Repeated lookups reuse one open artifact instead of opening more."""
+        from geoparser.gazetteer.gazetteer import get_gazetteer
+
+        make_artifact(name="testgaz")
+
+        assert get_gazetteer("testgaz") is get_gazetteer("testgaz")
+
+    def test_reopens_when_the_artifact_is_replaced(self, make_artifact):
+        """A reinstall replaces the file, so the cached instance is dropped."""
+        import os
+
+        from geoparser.gazetteer.gazetteer import get_gazetteer
+
+        path = make_artifact(name="testgaz")
+        first = get_gazetteer("testgaz")
+        stat = path.stat()
+        os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+
+        assert get_gazetteer("testgaz") is not first
+
+    def test_an_uninstalled_gazetteer_still_raises(self, make_artifact):
+        """A missing artifact is reported every time, never cached."""
+        from geoparser.gazetteer.gazetteer import get_gazetteer
+
+        with pytest.raises(ValueError, match="not installed"):
+            get_gazetteer("not-installed-gazetteer")
