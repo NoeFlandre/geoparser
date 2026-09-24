@@ -133,7 +133,6 @@ class SentenceTransformerResolver(Resolver):
 
         # Caches for document processing to avoid recomputation
         self.doc_tokens: dict[str, int] = {}  # text -> token count
-        self.doc_objects: dict[str, spacy.tokens.Doc] = {}  # text -> spaCy doc object
 
         # Caches for embeddings to avoid recomputation
         self.context_embeddings: dict[str, torch.Tensor] = {}  # context -> embedding
@@ -149,6 +148,24 @@ class SentenceTransformerResolver(Resolver):
         ] = {}
         self.candidate_descriptions: dict[int, str] = {}
         self.measured_sentences: dict[str, tuple[Sentence, ...]] = {}
+
+    def clear_caches(self) -> None:
+        """
+        Release everything this resolver has cached.
+
+        Caches grow with every document and candidate seen, embeddings
+        included, so a long-lived resolver can call this between batches.
+        Nothing is lost but speed: every value is recomputed on demand.
+        """
+        for cache in (
+            self.doc_tokens,
+            self.measured_sentences,
+            self.context_embeddings,
+            self.candidate_embeddings,
+            self.candidate_search_cache,
+            self.candidate_descriptions,
+        ):
+            cache.clear()
 
     def _load_transformer(self, model_name: str, **kwargs) -> SentenceTransformer:
         """
@@ -835,7 +852,10 @@ class SentenceTransformerResolver(Resolver):
 
     def _sentences(self, text: str) -> list["spacy.tokens.Span"]:
         """
-        The document's sentences, parsed once per document.
+        The document's sentences.
+
+        Parsed on every call; callers go through _measured_sentences, which
+        caches the result per document.
 
         Args:
             text: Full document text
@@ -843,9 +863,7 @@ class SentenceTransformerResolver(Resolver):
         Returns:
             The document's sentence spans, in order
         """
-        if text not in self.doc_objects:
-            self.doc_objects[text] = self.nlp(text)
-        return list(self.doc_objects[text].sents)
+        return list(self.nlp(text).sents)
 
     def _sentence_tokens(self, sentence: "spacy.tokens.Span") -> int:
         """

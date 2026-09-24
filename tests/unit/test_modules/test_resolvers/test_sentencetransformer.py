@@ -230,7 +230,6 @@ class TestSentenceTransformerResolverInitialization:
 
         # Assert
         assert resolver.doc_tokens == {}
-        assert resolver.doc_objects == {}
         assert resolver.context_embeddings == {}
         assert resolver.candidate_embeddings == {}
         assert resolver.candidate_search_cache == {}
@@ -708,10 +707,10 @@ class TestSentenceTransformerResolverPredict:
     )
     @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
     @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_caches_doc_objects(
+    def test_parses_each_document_once(
         self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
     ):
-        """Test that spaCy doc objects are cached to avoid recomputation."""
+        """Test that a document's sentences are measured once and reused."""
         # Arrange
         from geoparser.modules.resolvers.sentencetransformer import (
             SentenceTransformerResolver,
@@ -754,8 +753,8 @@ class TestSentenceTransformerResolverPredict:
         text = "Test text"
         resolver.predict(texts=[text], references=[[(0, 4), (5, 9)]])
 
-        # Assert - spaCy doc for text should be cached
-        assert text in resolver.doc_objects
+        # Assert - the document's sentences are cached
+        assert text in resolver.measured_sentences
 
         # Act - Count spaCy calls before second predict
         nlp_call_count_first = mock_nlp_instance.call_count
@@ -766,7 +765,7 @@ class TestSentenceTransformerResolverPredict:
 
         # Assert - spaCy should not be called again for the same text
         assert nlp_call_count_second == nlp_call_count_first
-        assert text in resolver.doc_objects
+        assert not hasattr(resolver, "doc_objects")
 
 
 @pytest.mark.unit
@@ -1753,3 +1752,34 @@ class TestConfigIdentity:
         assert customized.config["attribute_map"] == custom_map
         assert default.config["attribute_map"] is None
         assert customized.id != default.id
+
+
+@pytest.mark.unit
+@patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+@patch("geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained")
+@patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
+@patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
+def test_clear_caches_empties_every_cache(
+    mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
+):
+    """A long-lived resolver can release everything it has cached."""
+    from geoparser.modules.resolvers.sentencetransformer import (
+        SentenceTransformerResolver,
+    )
+
+    resolver = SentenceTransformerResolver()
+    caches = (
+        "doc_tokens",
+        "measured_sentences",
+        "context_embeddings",
+        "candidate_embeddings",
+        "candidate_search_cache",
+        "candidate_descriptions",
+    )
+    for name in caches:
+        getattr(resolver, name)["key"] = "value"
+
+    resolver.clear_caches()
+
+    for name in caches:
+        assert getattr(resolver, name) == {}, name
