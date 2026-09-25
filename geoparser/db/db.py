@@ -6,18 +6,18 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from appdirs import user_data_dir
 from sqlalchemy import Engine, event, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine
 
 import geoparser.db.models  # noqa: F401
+from geoparser.paths import geoparser_data_dir
 
 # Database URL configuration (SQLite)
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    f"sqlite:///{Path(user_data_dir('geoparser', '')) / 'geoparser.db'}",
+    f"sqlite:///{geoparser_data_dir() / 'geoparser.db'}",
 )
 
 # Ensure parent directory exists

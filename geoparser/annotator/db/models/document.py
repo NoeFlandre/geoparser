@@ -5,7 +5,7 @@ from pydantic import AfterValidator
 from sqlalchemy import UUID, Column, ForeignKey
 from sqlmodel import Field, Relationship, SQLModel
 
-from geoparser.annotator.db.models.validators import normalize_newlines
+from geoparser.db.models.validators import normalize_newlines
 
 if t.TYPE_CHECKING:
     from geoparser.annotator.db.models.session import AnnotatorSession
