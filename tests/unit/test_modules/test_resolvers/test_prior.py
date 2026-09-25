@@ -31,7 +31,7 @@ def resolver():
         patch(f"{PARENT}.Gazetteer"),
         patch(f"{PARENT}.SentenceTransformer"),
         patch(f"{PARENT}.AutoTokenizer.from_pretrained"),
-        patch(f"{PARENT}.spacy.load"),
+        patch(f"{PARENT}.load_spacy_model"),
     ):
         yield PriorResolver(attribute_map={"name": "name", "type": "type"})
 
@@ -147,7 +147,7 @@ class TestParentSettings:
             patch(f"{PARENT}.Gazetteer"),
             patch(f"{PARENT}.SentenceTransformer"),
             patch(f"{PARENT}.AutoTokenizer.from_pretrained"),
-            patch(f"{PARENT}.spacy.load"),
+            patch(f"{PARENT}.load_spacy_model"),
         ):
             resolver = PriorResolver(
                 model_name="other/model",

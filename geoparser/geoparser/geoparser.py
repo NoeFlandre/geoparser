@@ -2,10 +2,13 @@ import uuid
 from collections.abc import Sequence
 from typing import overload
 
+from geoparser._logging import get_logger
 from geoparser.db.models import Document
 from geoparser.modules.recognizers import Recognizer
 from geoparser.modules.resolvers import Resolver
 from geoparser.project import Project
+
+logger = get_logger(__name__)
 
 
 class Geoparser:
@@ -106,7 +109,7 @@ class Geoparser:
 
             # If save is True, inform the user about the project name
             if save:
-                print(f"Results saved under project name: {project_name}")
+                logger.info(f"Results saved under project name: {project_name}")
 
             return documents[0] if single_text else documents
 

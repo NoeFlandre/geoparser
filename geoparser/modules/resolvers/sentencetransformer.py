@@ -14,13 +14,17 @@ from sentence_transformers.sentence_transformer.training_args import (
 )
 from transformers import AutoTokenizer, PreTrainedTokenizerBase, logging
 
+from geoparser._logging import get_logger
 from geoparser.gazetteer.description import (
     GAZETTEER_ATTRIBUTE_MAP as SHARED_ATTRIBUTE_MAP,
 )
 from geoparser.gazetteer.description import admin_levels, describe_feature
 from geoparser.gazetteer.gazetteer import Gazetteer
+from geoparser.modules._spacy import load_spacy_model
 from geoparser.modules.resolvers import Resolver
 from geoparser.modules.resolvers.context import Sentence, select_context
+
+logger = get_logger(__name__)
 
 if t.TYPE_CHECKING:
     from geoparser.gazetteer.feature import Feature
@@ -200,17 +204,7 @@ class SentenceTransformerResolver(Resolver):
         Returns:
             Loaded spaCy Language model
         """
-        try:
-            nlp = spacy.load(model_name)
-        except OSError:
-            # Model not found, download it
-            # pragma: no mutate start - progress prose, not behaviour; the
-            # download and the reload below are what the tests pin.
-            print(f"Downloading spaCy model '{model_name}'...")
-            # pragma: no mutate end
-            spacy.cli.download(model_name)
-            nlp = spacy.load(model_name)
-        return nlp
+        return load_spacy_model(model_name)
 
     def predict(
         self, texts: list[str], references: list[list[tuple[int, int]]]
@@ -1007,7 +1001,7 @@ class SentenceTransformerResolver(Resolver):
         Raises:
             ValueError: If no training examples can be created from the provided documents
         """
-        print("Preparing training data from referent annotations...")
+        logger.info("Preparing training data from referent annotations...")
 
         # Step 1: Gather training data from resolved references
         training_data = self._prepare_training_data(texts, references, referents)
@@ -1017,7 +1011,7 @@ class SentenceTransformerResolver(Resolver):
                 "No training examples found. Ensure documents contain references with referent annotations."
             )
 
-        print(f"Created {len(training_data['sentence1'])} training examples")
+        logger.info(f"Created {len(training_data['sentence1'])} training examples")
 
         # Step 2: Create training dataset
         train_dataset = Dataset.from_dict(training_data)
@@ -1048,7 +1042,7 @@ class SentenceTransformerResolver(Resolver):
             loss=train_loss,
         )
 
-        print("Starting model fine-tuning...")
+        logger.info("Starting model fine-tuning...")
 
         # Step 6: Train the model
         trainer.train()
@@ -1056,7 +1050,7 @@ class SentenceTransformerResolver(Resolver):
         # Step 7: Save the final model
         self.transformer.save_pretrained(str(output_path))
 
-        print(f"Model fine-tuning completed and saved to: {output_path}")
+        logger.info(f"Model fine-tuning completed and saved to: {output_path}")
 
     def _prepare_training_data(
         self,

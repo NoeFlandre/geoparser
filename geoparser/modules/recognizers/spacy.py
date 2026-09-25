@@ -7,7 +7,11 @@ import spacy
 import spacy.tokens
 from spacy.training import Example
 
+from geoparser._logging import get_logger
+from geoparser.modules._spacy import load_spacy_model
 from geoparser.modules.recognizers import Recognizer
+
+logger = get_logger(__name__)
 
 # spaCy's transformer pipelines build their first component from this factory,
 # which lives in the spacy-curated-transformers plugin rather than in spaCy.
@@ -108,18 +112,7 @@ class SpacyRecognizer(Recognizer):
 
     def _load_or_download(self) -> spacy.language.Language:
         """Load the configured model, downloading it when necessary."""
-        try:
-            return spacy.load(self.model_name)
-        except OSError:
-            # Model not found, download it
-            # Progress text, not behaviour; the download and reload below are
-            # what the tests pin.
-            # pragma: no mutate start - progress prose, not behaviour; the
-            # download and reload below are what the tests pin.
-            print(f"Downloading spaCy model '{self.model_name}'...")
-            # pragma: no mutate end
-            spacy.cli.download(self.model_name)
-            return spacy.load(self.model_name)
+        return load_spacy_model(self.model_name)
 
     def _missing_plugin_hint(self, error: ValueError) -> str | None:
         """Return an actionable hint only for the missing transformer factory."""
@@ -208,7 +201,7 @@ class SpacyRecognizer(Recognizer):
         Raises:
             ValueError: If no training examples can be created from the provided documents
         """
-        print("Preparing training data from reference annotations...")
+        logger.info("Preparing training data from reference annotations...")
 
         # Prepare training data
         examples = self._prepare_training_data(texts, references)
@@ -218,13 +211,13 @@ class SpacyRecognizer(Recognizer):
                 "No training examples found. Ensure documents contain reference annotations."
             )
 
-        print(f"Created {len(examples)} training examples")
+        logger.info(f"Created {len(examples)} training examples")
 
         # Initialize optimizer
         optimizer = self.nlp.resume_training()
         optimizer.learn_rate = learning_rate
 
-        print("Starting model fine-tuning...")
+        logger.info("Starting model fine-tuning...")
 
         # Training loop
         losses = {}
@@ -242,7 +235,7 @@ class SpacyRecognizer(Recognizer):
         Path(output_path).mkdir(parents=True, exist_ok=True)
         self.nlp.to_disk(output_path)
 
-        print(f"Model fine-tuning completed and saved to: {output_path}")
+        logger.info(f"Model fine-tuning completed and saved to: {output_path}")
 
     def _get_distilled_label(
         self, start: int, end: int, base_doc: spacy.tokens.Doc

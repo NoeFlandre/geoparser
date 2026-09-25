@@ -320,9 +320,8 @@ class TestGeoparserParse:
         )
 
     @patch("geoparser.geoparser.geoparser.Project")
-    @patch("builtins.print")
-    def test_prints_project_name_when_saved(self, mock_print, mock_project_class):
-        """Test that parse prints the project name when save=True."""
+    def test_reports_project_name_when_saved(self, mock_project_class, caplog):
+        """Test that parse reports the project name when save=True."""
         # Arrange
         mock_recognizer = Mock()
         mock_recognizer.id = "test_rec"
@@ -336,12 +335,13 @@ class TestGeoparserParse:
         geoparser = Geoparser(mock_recognizer, mock_resolver)
 
         # Act
-        geoparser.parse("Test text", save=True)
+        with caplog.at_level("INFO", logger="geoparser"):
+            geoparser.parse("Test text", save=True)
 
         # Assert
-        mock_print.assert_called_once()
-        print_message = mock_print.call_args[0][0]
-        assert "Results saved under project name:" in print_message
+        messages = [record.getMessage() for record in caplog.records]
+        assert len(messages) == 1
+        assert "Results saved under project name:" in messages[0]
 
     @patch("geoparser.geoparser.geoparser.Project")
     def test_deletes_project_even_if_error_occurs(self, mock_project_class):
