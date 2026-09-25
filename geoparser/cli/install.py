@@ -24,6 +24,26 @@ def _get_builtin_gazetteers() -> dict[str, Path]:
     return gazetteers
 
 
+def _is_installed(config_path: Path) -> bool:
+    """
+    Report (and say) whether the gazetteer a config describes is installed.
+
+    Args:
+        config_path: Path to the gazetteer's YAML configuration.
+
+    Returns:
+        True if an artifact with the config's name already exists.
+    """
+    from geoparser.gazetteer.artifact import artifact_path
+    from geoparser.gazetteer.build.schema import GazetteerConfig
+
+    name = GazetteerConfig.from_yaml(config_path).name
+    if not artifact_path(name).exists():
+        return False
+    typer.echo(f"Gazetteer '{name}' is already installed. Use --force to rebuild it.")
+    return True
+
+
 def install_cli(
     config: t.Annotated[
         str,
@@ -31,6 +51,14 @@ def install_cli(
             help="A built-in gazetteer name (e.g. 'geonames') or a path to a YAML config."
         ),
     ],
+    keep_downloads: t.Annotated[
+        bool,
+        typer.Option(help="Keep the downloaded source files after the build."),
+    ] = False,
+    force: t.Annotated[
+        bool,
+        typer.Option(help="Rebuild the gazetteer even if it is already installed."),
+    ] = False,
     verbose: t.Annotated[
         bool,
         typer.Option("--verbose", "-v", help="Show the full traceback on failure."),
@@ -42,6 +70,8 @@ def install_cli(
     Args:
         config: Either a gazetteer name (e.g., 'geonames', 'swissnames3d') or
                 a path to a custom YAML configuration file.
+        keep_downloads: Keep the downloaded source files after the build.
+        force: Rebuild even when the gazetteer is already installed.
         verbose: Re-raise build failures with their traceback instead of
                  printing a one-line error.
     """
@@ -70,9 +100,10 @@ def install_cli(
     # `list` and `uninstall` have no reason to wait for it.
     from geoparser.gazetteer.build import GazetteerBuilder
 
-    builder = GazetteerBuilder()
     try:
-        builder.build(config_path)
+        if not force and _is_installed(config_path):
+            return
+        GazetteerBuilder().build(config_path, keep_downloads=keep_downloads)
     except Exception as error:
         # A failed download or a full disk is a user-facing condition, not a
         # bug report: one line by default, the traceback on request.
@@ -102,14 +133,26 @@ def list_cli():
         typer.echo(f"{name}  ({size / 1024 / 1024:.1f} MB)")
 
 
-def uninstall_cli(name: str):
+def uninstall_cli(
+    name: t.Annotated[str, typer.Argument(help="Name of the gazetteer to remove.")],
+    yes: t.Annotated[
+        bool, typer.Option("--yes", "-y", help="Remove without asking first.")
+    ] = False,
+):
     """
     Remove an installed gazetteer.
 
     Args:
         name: Name of the gazetteer to remove.
+        yes: Skip the confirmation prompt.
     """
+    from geoparser.gazetteer.artifact import artifact_path
     from geoparser.gazetteer.build.builder import uninstall
+
+    # Only ask when there is something to delete; a missing gazetteer is
+    # reported below either way.
+    if not yes and artifact_path(name).exists():
+        typer.confirm(f"Remove gazetteer '{name}'?", abort=True)
 
     if uninstall(name):
         typer.echo(f"Removed gazetteer '{name}'.")

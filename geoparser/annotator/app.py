@@ -525,24 +525,27 @@ def put_session_settings(
 
 
 def run(
-    use_reloader=False, host="0.0.0.0", port=5000, open_browser=True
+    use_reloader=False, host="127.0.0.1", port=5000, open_browser=True
 ):  # pragma: no cover
     """
     Run the annotator web application.
 
     Args:
         use_reloader: Enable auto-reload for development (default: False)
-        host: Host to bind the server to (default: "0.0.0.0")
+        host: Host to bind the server to (default: "127.0.0.1", local only)
         port: Port to run the server on (default: 5000)
         open_browser: Automatically open browser on startup (default: True)
     """
 
     def launch_browser():
-        webbrowser.open_new(f"http://127.0.0.1:{port}/")
+        browser_host = "127.0.0.1" if host in ("0.0.0.0", "::") else host
+        webbrowser.open_new(f"http://{browser_host}:{port}/")
 
     create_db_and_tables(engine)
 
     if open_browser:
         threading.Timer(1.0, launch_browser).start()
 
-    uvicorn.run(app, host=host, port=port, reload=use_reloader)
+    # uvicorn can only reload an application it imports itself.
+    target = "geoparser.annotator.app:app" if use_reloader else app
+    uvicorn.run(target, host=host, port=port, reload=use_reloader)

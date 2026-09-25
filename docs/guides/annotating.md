@@ -27,8 +27,17 @@ geoparser annotator
 
 It starts a local web server and opens `http://127.0.0.1:5000/` in your browser. Stop it with `Ctrl-C`.
 
+By default the server listens on `127.0.0.1` only, so it is reachable from your own machine and nowhere else. The command takes a few options:
+
+| Option | Default | Effect |
+|---|---|---|
+| `--host HOST` | `127.0.0.1` | Interface to bind to. |
+| `--port PORT` | `5000` | Port to listen on. |
+| `--no-browser` | off | Do not open a browser, e.g. on a headless server. |
+| `--reload` | off | Restart the server when source files change (development). |
+
 > [!WARNING]
-> The server listens on all network interfaces and has no authentication, so anyone who can reach your machine on port 5000 can read and edit your annotations. Use it on a trusted network only.
+> The annotator has no authentication. With `--host 0.0.0.0` it listens on every network interface, and anyone who can reach your machine on that port can read and edit your annotations. Only do this on a trusted network.
 
 The annotator offers **GeoNames** and **SwissNames3D**, whichever of them you have installed. Install one first if you have not already — see [installation](../installation.md).
 

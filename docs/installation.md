@@ -124,6 +124,8 @@ When the summary prints, the gazetteer is installed and ready to use.
 
 The build needs considerably more disk space than the finished file occupies, because the source data is staged before being compacted; free space is checked before the build starts, and the intermediate files are deleted when it finishes. It also needs about 4 GB of RAM, so closing other heavy applications helps. If a build fails, any previously installed gazetteer of the same name is left as it was, so it is safe to simply run the command again.
 
+If the gazetteer is already installed, `install` says so and stops; pass `--force` to rebuild it anyway. `--keep-downloads` keeps the downloaded source files (under the data directory's `.downloads` folder) so that a later rebuild does not fetch them again. An unknown name exits with status 2 and lists the built-in gazetteers; a failed build prints one line and exits with status 1, and `--verbose` shows the full traceback.
+
 Once a gazetteer is installed, `list` reports it with its size on disk:
 
 ``` bash
@@ -141,8 +143,11 @@ geoparser uninstall geonames
 ```
 
 ``` text
+Remove gazetteer 'geonames'? [y/N]: y
 Removed gazetteer 'geonames'.
 ```
+
+Pass `--yes` to skip the confirmation, for example in scripts.
 
 ### Checking the Gazetteer
 

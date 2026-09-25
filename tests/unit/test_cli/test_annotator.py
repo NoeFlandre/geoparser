@@ -26,8 +26,8 @@ class TestAnnotatorCli:
         mock_run.assert_called_once()
 
     @patch("geoparser.annotator.app.run")
-    def test_passes_no_arguments_to_run(self, mock_run):
-        """Test that no arguments are passed to run()."""
+    def test_defaults_bind_to_localhost(self, mock_run):
+        """By default the annotator is local-only and opens a browser."""
         # Arrange
         from geoparser.cli.annotator import annotator_cli
 
@@ -35,4 +35,6 @@ class TestAnnotatorCli:
         annotator_cli()
 
         # Assert
-        mock_run.assert_called_once_with()
+        mock_run.assert_called_once_with(
+            use_reloader=False, host="127.0.0.1", port=5000, open_browser=True
+        )

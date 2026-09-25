@@ -96,10 +96,12 @@ class TestInstallCli:
         mock_builder.return_value = mock_builder_instance
 
         # Act
-        install_cli("path/to/config.yaml")
+        install_cli("path/to/config.yaml", force=True)
 
         # Assert
-        mock_builder_instance.build.assert_called_once_with(mock_path)
+        mock_builder_instance.build.assert_called_once_with(
+            mock_path, keep_downloads=False
+        )
 
     @patch("geoparser.gazetteer.build.GazetteerBuilder")
     @patch("geoparser.cli.install._get_builtin_gazetteers")
@@ -122,10 +124,12 @@ class TestInstallCli:
         mock_builder.return_value = mock_builder_instance
 
         # Act
-        install_cli("geonames")
+        install_cli("geonames", force=True)
 
         # Assert
-        mock_builder_instance.build.assert_called_once_with(builtin_path)
+        mock_builder_instance.build.assert_called_once_with(
+            builtin_path, keep_downloads=False
+        )
 
     @patch("geoparser.cli.install._get_builtin_gazetteers")
     @patch("geoparser.cli.install.Path")
@@ -174,7 +178,7 @@ class TestInstallCli:
         mock_builder.return_value = mock_builder_instance
 
         # Act
-        install_cli("path/to/config.yaml")
+        install_cli("path/to/config.yaml", force=True)
 
         # Assert
         mock_builder.assert_called_once()
@@ -224,7 +228,7 @@ class TestUninstallCli:
 
         mock_uninstall.return_value = True
 
-        uninstall_cli("andorranames")
+        uninstall_cli("andorranames", yes=True)
 
         mock_uninstall.assert_called_once_with("andorranames")
         assert "Removed gazetteer 'andorranames'" in capsys.readouterr().out
@@ -239,4 +243,4 @@ class TestUninstallCli:
         mock_uninstall.return_value = False
 
         with pytest.raises(typer.Exit):
-            uninstall_cli("missing")
+            uninstall_cli("missing", yes=True)

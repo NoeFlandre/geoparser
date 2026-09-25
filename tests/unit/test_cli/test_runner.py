@@ -72,7 +72,7 @@ class TestInstallErrors:
         config.write_text("name: custom\n")
         mock_builder.return_value.build.side_effect = OSError("No space left")
 
-        result = runner.invoke(app, ["install", str(config)])
+        result = runner.invoke(app, ["install", str(config), "--force"])
 
         assert result.exit_code == 1
         assert "No space left" in result.stderr
@@ -84,7 +84,130 @@ class TestInstallErrors:
         config.write_text("name: custom\n")
         mock_builder.return_value.build.side_effect = OSError("No space left")
 
-        result = runner.invoke(app, ["install", str(config), "--verbose"])
+        result = runner.invoke(app, ["install", str(config), "--force", "--verbose"])
 
         assert result.exit_code == 1
         assert isinstance(result.exception, OSError)
+
+
+@pytest.mark.unit
+class TestAnnotatorOptions:
+    """Test that annotator flags reach ``run``."""
+
+    @patch("geoparser.annotator.app.run")
+    def test_flags_are_passed_through(self, mock_run):
+        result = runner.invoke(
+            app,
+            [
+                "annotator",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8080",
+                "--no-browser",
+                "--reload",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        mock_run.assert_called_once_with(
+            use_reloader=True, host="0.0.0.0", port=8080, open_browser=False
+        )
+
+    @patch("geoparser.annotator.app.run")
+    def test_default_host_is_localhost(self, mock_run):
+        result = runner.invoke(app, ["annotator"])
+
+        assert result.exit_code == 0, result.output
+        assert mock_run.call_args.kwargs["host"] == "127.0.0.1"
+
+
+def _write_config(directory: Path, name: str = "custom") -> Path:
+    config = directory / f"{name}.yaml"
+    config.write_text(f"name: {name}\n")
+    return config
+
+
+@pytest.mark.unit
+class TestInstallOptions:
+    """Test install's --keep-downloads and --force."""
+
+    @patch("geoparser.gazetteer.build.schema.GazetteerConfig.from_yaml")
+    @patch("geoparser.gazetteer.build.GazetteerBuilder")
+    def test_skips_installed_gazetteer_without_force(
+        self, mock_builder, mock_from_yaml, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(
+            "geoparser.gazetteer.artifact.gazetteers_dir", lambda: tmp_path
+        )
+        mock_from_yaml.return_value.name = "custom"
+        (tmp_path / "custom.db").write_bytes(b"")
+        config = _write_config(tmp_path)
+
+        result = runner.invoke(app, ["install", str(config)])
+
+        assert result.exit_code == 0, result.output
+        assert "already installed" in result.stdout
+        mock_builder.return_value.build.assert_not_called()
+
+    @patch("geoparser.gazetteer.build.schema.GazetteerConfig.from_yaml")
+    @patch("geoparser.gazetteer.build.GazetteerBuilder")
+    def test_builds_when_not_installed(
+        self, mock_builder, mock_from_yaml, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(
+            "geoparser.gazetteer.artifact.gazetteers_dir", lambda: tmp_path
+        )
+        mock_from_yaml.return_value.name = "custom"
+        config = _write_config(tmp_path)
+
+        result = runner.invoke(app, ["install", str(config), "--keep-downloads"])
+
+        assert result.exit_code == 0, result.output
+        mock_builder.return_value.build.assert_called_once_with(
+            config, keep_downloads=True
+        )
+
+    @patch("geoparser.gazetteer.build.GazetteerBuilder")
+    def test_force_rebuilds(self, mock_builder, tmp_path):
+        config = _write_config(tmp_path)
+
+        result = runner.invoke(app, ["install", str(config), "--force"])
+
+        assert result.exit_code == 0, result.output
+        mock_builder.return_value.build.assert_called_once_with(
+            config, keep_downloads=False
+        )
+
+
+@pytest.mark.unit
+class TestUninstallConfirmation:
+    """Test that uninstall asks before deleting."""
+
+    @pytest.fixture
+    def installed(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "geoparser.gazetteer.artifact.gazetteers_dir", lambda: tmp_path
+        )
+        artifact = tmp_path / "custom.db"
+        artifact.write_bytes(b"")
+        return artifact
+
+    def test_declining_keeps_the_gazetteer(self, installed):
+        result = runner.invoke(app, ["uninstall", "custom"], input="n\n")
+
+        assert result.exit_code == 1
+        assert installed.exists()
+
+    def test_confirming_removes_the_gazetteer(self, installed):
+        result = runner.invoke(app, ["uninstall", "custom"], input="y\n")
+
+        assert result.exit_code == 0, result.output
+        assert not installed.exists()
+
+    def test_yes_skips_the_prompt(self, installed):
+        result = runner.invoke(app, ["uninstall", "custom", "--yes"])
+
+        assert result.exit_code == 0, result.output
+        assert "Remove gazetteer" not in result.output
+        assert not installed.exists()
