@@ -14,6 +14,10 @@ from sentence_transformers.sentence_transformer.training_args import (
 )
 from transformers import AutoTokenizer, PreTrainedTokenizerBase, logging
 
+from geoparser.gazetteer.description import (
+    GAZETTEER_ATTRIBUTE_MAP as SHARED_ATTRIBUTE_MAP,
+)
+from geoparser.gazetteer.description import admin_levels, describe_feature
 from geoparser.gazetteer.gazetteer import Gazetteer
 from geoparser.modules.resolvers import Resolver
 from geoparser.modules.resolvers.context import Sentence, select_context
@@ -50,29 +54,9 @@ class SentenceTransformerResolver(Resolver):
     )
 
     # Gazetteer-specific attribute mappings for location descriptions
-    GAZETTEER_ATTRIBUTE_MAP: t.ClassVar[dict[str, dict[str, str]]] = {
-        "geonames": {
-            "name": "name",
-            "type": "feature_name",
-            "level1": "country_name",
-            "level2": "admin1_name",
-            "level3": "admin2_name",
-        },
-        "geonames-cities": {
-            "name": "name",
-            "type": "feature_name",
-            "level1": "country_name",
-            "level2": "admin1_name",
-            "level3": "admin2_name",
-        },
-        "swissnames3d": {
-            "name": "NAME",
-            "type": "OBJEKTART",
-            "level1": "KANTON_NAME",
-            "level2": "BEZIRK_NAME",
-            "level3": "GEMEINDE_NAME",
-        },
-    }
+    GAZETTEER_ATTRIBUTE_MAP: t.ClassVar[dict[str, dict[str, str]]] = (
+        SHARED_ATTRIBUTE_MAP
+    )
 
     def __init__(
         self,
@@ -869,13 +853,7 @@ class SentenceTransformerResolver(Resolver):
         Returns:
             The non-empty administrative names, in level3..level1 order
         """
-        values = []
-        for level in ("level3", "level2", "level1"):
-            if level in self.attribute_map:
-                value = location_data.get(self.attribute_map[level])
-                if value:
-                    values.append(value)
-        return values
+        return admin_levels(location_data, self.attribute_map)
 
     def _generate_description(self, candidate: "Feature") -> str:
         """
@@ -887,24 +865,7 @@ class SentenceTransformerResolver(Resolver):
         Returns:
             Location description string
         """
-        location_data = candidate.data
-        attr_map = self.attribute_map
-        description_parts = []
-
-        feature_name = location_data.get(attr_map["name"])
-        if feature_name:
-            description_parts.append(feature_name)
-
-        feature_type = location_data.get(attr_map["type"])
-        if feature_type:
-            description_parts.append(f"({feature_type})")
-
-        admin_levels = self._admin_levels(location_data)
-        if admin_levels:
-            description_parts.append("in")
-            description_parts.append(", ".join(admin_levels))
-
-        return " ".join(description_parts).strip()
+        return describe_feature(candidate.data, self.attribute_map)
 
     def _candidate_description(self, candidate: "Feature") -> str:
         """Return a cached textual description for one gazetteer feature."""

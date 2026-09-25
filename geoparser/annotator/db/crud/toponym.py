@@ -17,6 +17,7 @@ from geoparser.annotator.exceptions import (
     ToponymOverlapException,
 )
 from geoparser.annotator.models.api import CandidatesGet
+from geoparser.gazetteer.description import GAZETTEER_ATTRIBUTE_MAP, describe_feature
 from geoparser.gazetteer.gazetteer import Gazetteer
 
 if t.TYPE_CHECKING:
@@ -35,23 +36,11 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         ToponymNotFoundException(f"{x} with ID {y} not found.")
     )
 
-    # Gazetteer-specific attribute mappings for location descriptions
-    GAZETTEER_ATTRIBUTE_MAP: t.ClassVar[dict[str, dict[str, str]]] = {
-        "geonames": {
-            "name": "name",
-            "type": "feature_name",
-            "level1": "country_name",
-            "level2": "admin1_name",
-            "level3": "admin2_name",
-        },
-        "swissnames3d": {
-            "name": "NAME",
-            "type": "OBJEKTART",
-            "level1": "KANTON_NAME",
-            "level2": "BEZIRK_NAME",
-            "level3": "GEMEINDE_NAME",
-        },
-    }
+    # Gazetteer-specific attribute mappings for location descriptions, shared
+    # with SentenceTransformerResolver so the two describe features alike.
+    GAZETTEER_ATTRIBUTE_MAP: t.ClassVar[dict[str, dict[str, str]]] = (
+        GAZETTEER_ATTRIBUTE_MAP
+    )
 
     # Filter attributes for each gazetteer
     GAZETTEER_FILTER_ATTRIBUTES: t.ClassVar[dict[str, list[str]]] = {
@@ -86,49 +75,12 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         Returns:
             Location description string
         """
-        # Get location data
         location_data = feature.data
-
-        if not location_data:
+        attr_map = cls.GAZETTEER_ATTRIBUTE_MAP.get(gazetteer_name)
+        if not location_data or attr_map is None:
             return feature.identifier
 
-        # Get attribute mappings for this gazetteer
-        if gazetteer_name not in cls.GAZETTEER_ATTRIBUTE_MAP:
-            return feature.identifier
-
-        attr_map = cls.GAZETTEER_ATTRIBUTE_MAP[gazetteer_name]
-
-        # Extract attributes
-        feature_name = location_data.get(attr_map["name"])
-        feature_type = location_data.get(attr_map["type"])
-
-        # Build description components
-        description_parts = []
-
-        # Add feature name if available
-        if feature_name:
-            description_parts.append(feature_name)
-
-        # Add feature type in brackets if available
-        if feature_type:
-            description_parts.append(f"({feature_type})")
-
-        # Build hierarchical context from admin levels
-        admin_levels = []
-        for level in ["level3", "level2", "level1"]:
-            if level in attr_map:
-                admin_value = location_data.get(attr_map[level])
-                if admin_value:
-                    admin_levels.append(admin_value)
-
-        # Combine description parts
-        if admin_levels:
-            description_parts.append("in")
-            description_parts.append(", ".join(admin_levels))
-
-        description = " ".join(description_parts).strip()
-
-        return description if description else feature.identifier
+        return describe_feature(location_data, attr_map) or feature.identifier
 
     @classmethod
     def validate_overlap(
@@ -205,6 +157,19 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
             return None, None
 
     @classmethod
+    def _candidate_entry(cls, feature: "Feature", gazetteer_name: str) -> dict:
+        """Build the annotator's candidate dict for one gazetteer feature."""
+        # Coordinates from geometry, with CRS transformation if needed
+        lat, lon = cls._get_wgs84_coordinates(feature)
+        return {
+            "loc_id": feature.identifier,
+            "description": cls._generate_location_description(feature, gazetteer_name),
+            "attributes": feature.data,  # Include all attributes for filtering
+            "latitude": lat,
+            "longitude": lon,
+        }
+
+    @classmethod
     def get_candidate_descriptions(
         cls,
         gazetteer_name: str,
@@ -221,24 +186,9 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         # Get candidates from gazetteer (returns list of Feature objects)
         candidates = gazetteer.search(search_text, method="exact")
 
-        # Prepare candidate descriptions and attributes
-        candidate_descriptions = []
-        for candidate in candidates:
-            # Generate description using lightweight method
-            description = cls._generate_location_description(candidate, gazetteer_name)
-
-            # Get coordinates from geometry (with CRS transformation if needed)
-            lat, lon = cls._get_wgs84_coordinates(candidate)
-
-            candidate_descriptions.append(
-                {
-                    "loc_id": candidate.identifier,
-                    "description": description,
-                    "attributes": candidate.data,  # Include all attributes for filtering
-                    "latitude": lat,
-                    "longitude": lon,
-                }
-            )
+        candidate_descriptions = [
+            cls._candidate_entry(candidate, gazetteer_name) for candidate in candidates
+        ]
 
         # Handle existing annotation if it's not in the candidate list
         existing_loc_id = toponym.loc_id
@@ -251,21 +201,9 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
             # Find the existing location
             existing_feature = gazetteer.find(existing_loc_id)
             if existing_feature:
-                existing_description = cls._generate_location_description(
-                    existing_feature, gazetteer_name
+                candidate_descriptions.append(
+                    cls._candidate_entry(existing_feature, gazetteer_name)
                 )
-
-                # Get coordinates from geometry (with CRS transformation if needed)
-                lat, lon = cls._get_wgs84_coordinates(existing_feature)
-
-                existing_annotation = {
-                    "loc_id": existing_loc_id,
-                    "description": existing_description,
-                    "attributes": existing_feature.data,
-                    "latitude": lat,
-                    "longitude": lon,
-                }
-                candidate_descriptions.append(existing_annotation)
 
         return candidate_descriptions, append_existing_candidate
 
