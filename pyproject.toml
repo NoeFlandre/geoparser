@@ -90,6 +90,11 @@ docs = [
 ]
 
 # spaCy models are not on PyPI; they are published as GitHub release artifacts.
+[tool.uv]
+# One uv for CI and the Docker image: setup-uv reads this setting, and the
+# Dockerfile's `ghcr.io/astral-sh/uv` tag must match it. Bump both together.
+required-version = "==0.11.16"
+
 [tool.uv.sources]
 en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0.tar.gz" }
 xx-sent-ud-sm = { url = "https://github.com/explosion/spacy-models/releases/download/xx_sent_ud_sm-3.8.0/xx_sent_ud_sm-3.8.0.tar.gz" }
