@@ -1,3 +1,4 @@
+import json
 import typing as t
 from importlib.resources import files
 from pathlib import Path
@@ -118,13 +119,27 @@ def install_cli(
         raise typer.Exit(code=1) from error
 
 
-def list_cli():
+def list_cli(
+    as_json: t.Annotated[
+        bool, typer.Option("--json", help="Print a JSON array for scripts.")
+    ] = False,
+):
     """
     List installed gazetteers.
+
+    Args:
+        as_json: Print ``[{"name": ..., "size_bytes": ...}]`` instead of text.
     """
     from geoparser.gazetteer.artifact import artifact_path, list_artifacts
 
     names = list_artifacts()
+    if as_json:
+        entries = [
+            {"name": name, "size_bytes": artifact_path(name).stat().st_size}
+            for name in names
+        ]
+        typer.echo(json.dumps(entries))
+        return
     if not names:
         typer.echo("No gazetteers installed.")
         return
