@@ -22,7 +22,9 @@ class _DefaultStdoutHandler(logging.Handler):
         if logging.getLogger().handlers:
             return
         try:
-            print(self.format(record), file=sys.stdout)
+            # Written to the stream directly: print()'s implicit stdout would
+            # make `file=sys.stdout` a no-op mutation nothing could detect.
+            sys.stdout.write(self.format(record) + "\n")
         except Exception:
             self.handleError(record)
 
