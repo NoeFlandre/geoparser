@@ -8,6 +8,8 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10,<3.15"
 dependencies = [
+    # Not imported directly: transformers' Trainer (behind
+    # SentenceTransformerTrainer in SentenceTransformerResolver.fit) requires it.
     "accelerate>=1.11.0,<2",
     "appdirs>=1.4.4,<2",
     "datasets>=5.0.0,<6",
@@ -16,12 +18,16 @@ dependencies = [
     "markupsafe>=3.0.3,<4",
     "pydantic>=2.12.3,<3",
     "pyproj>=3.7.1,<4",
+    # Not imported directly: FastAPI needs it to parse the annotator's
+    # Form/UploadFile request bodies.
     "python-multipart>=0.0.20,<0.0.21",
     "pyyaml>=6.0.3,<7",
     "rapidfuzz>=3.14.5,<4",
     "requests>=2.32.5,<3",
     "rich>=15.0.0,<16",
     "gliner2[local]>=2.0.0,<3",
+    # Not imported directly: gliner2 imports it for its models and LoRA
+    # training code.
     "peft>=0.15.2,<1",
     # GLiNER2's tokenizer is a sentencepiece model, which transformers can only
     # convert to its fast tokenizer with protobuf available. Without these the
