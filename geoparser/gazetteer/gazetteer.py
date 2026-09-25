@@ -44,8 +44,8 @@ class Gazetteer:
             # and that the message names the missing gazetteer.
             raise ValueError(
                 f"Gazetteer '{gazetteer_name}' is not installed. Install it by running "
-                f"'python -m geoparser install {gazetteer_name}', or run "
-                "'python -m geoparser list' to see which gazetteers are installed."
+                f"'geoparser install {gazetteer_name}', or run "
+                "'geoparser list' to see which gazetteers are installed."
             )
             # pragma: no mutate end
         self.gazetteer_name = gazetteer_name

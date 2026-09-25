@@ -1,3 +1,4 @@
+import typing as t
 from importlib.resources import files
 from pathlib import Path
 
@@ -23,13 +24,26 @@ def _get_builtin_gazetteers() -> dict[str, Path]:
     return gazetteers
 
 
-def install_cli(config: str):
+def install_cli(
+    config: t.Annotated[
+        str,
+        typer.Argument(
+            help="A built-in gazetteer name (e.g. 'geonames') or a path to a YAML config."
+        ),
+    ],
+    verbose: t.Annotated[
+        bool,
+        typer.Option("--verbose", "-v", help="Show the full traceback on failure."),
+    ] = False,
+):
     """
     Install a gazetteer from a configuration file.
 
     Args:
         config: Either a gazetteer name (e.g., 'geonames', 'swissnames3d') or
                 a path to a custom YAML configuration file.
+        verbose: Re-raise build failures with their traceback instead of
+                 printing a one-line error.
     """
     # Check if config is a built-in gazetteer name
     config_path = Path(config)
@@ -44,17 +58,33 @@ def install_cli(config: str):
             available = "\n".join(
                 f"  - {name}" for name in sorted(builtin_gazetteers.keys())
             )
-            raise FileNotFoundError(
+            typer.secho(
                 f"Gazetteer config not found: {config}\n"
-                f"Available built-in gazetteer configs:\n{available}"
+                f"Available built-in gazetteer configs:\n{available}",
+                fg=typer.colors.RED,
+                err=True,
             )
+            raise typer.Exit(code=2)
 
     # Imported per command: the build pipeline pulls in the heavy stack, and
     # `list` and `uninstall` have no reason to wait for it.
     from geoparser.gazetteer.build import GazetteerBuilder
 
     builder = GazetteerBuilder()
-    builder.build(config_path)
+    try:
+        builder.build(config_path)
+    except Exception as error:
+        # A failed download or a full disk is a user-facing condition, not a
+        # bug report: one line by default, the traceback on request.
+        if verbose:
+            raise
+        typer.secho(
+            f"Failed to install gazetteer from {config}: {error}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        typer.echo("Re-run with --verbose for the full traceback.", err=True)
+        raise typer.Exit(code=1) from error
 
 
 def list_cli():

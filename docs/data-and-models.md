@@ -8,7 +8,7 @@ never silently committed.
 ## Gazetteers
 
 Install a pre-configured gazetteer with the CLI, for example
-`python -m geoparser install geonames`. Custom gazetteers are described in the
+`geoparser install geonames`. Custom gazetteers are described in the
 [custom gazetteers guide](guides/custom-gazetteers.md). The resulting artifact
 is a self-contained SQLite file stored in the platform data directory.
 

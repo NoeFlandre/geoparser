@@ -53,6 +53,9 @@ dependencies = [
     "werkzeug>=3.1.3,<4",
 ]
 
+[project.scripts]
+geoparser = "geoparser.__main__:main"
+
 [project.urls]
 Homepage = "https://geoparser.app"
 Repository = "https://github.com/NoeFlandre/geoparser"

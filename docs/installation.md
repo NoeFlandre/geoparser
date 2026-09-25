@@ -43,7 +43,7 @@ Once the environment is activated your prompt starts with `(geoparser-env)`. The
 To confirm the package is installed and reachable:
 
 ``` bash
-python -m geoparser list
+geoparser list
 ```
 
 ``` text
@@ -75,7 +75,7 @@ The library includes ready-made configurations for two gazetteers, so either can
     - **Install time**: about **10–15 minutes**, depending on hardware and network
 
     ```bash
-    python -m geoparser install geonames
+    geoparser install geonames
     ```
 
     Coverage varies by region — some parts of the world are described in far more detail than others.
@@ -90,7 +90,7 @@ The library includes ready-made configurations for two gazetteers, so either can
     - **Install time**: about **1–2 minutes**
 
     ```bash
-    python -m geoparser install swissnames3d
+    geoparser install swissnames3d
     ```
 
     Attribute names are in German (`NAME`, `OBJEKTART`, `KANTON_NAME`). Note that the default resolver models were trained on English text against GeoNames, so expect to lower `min_similarity` and, ideally, to fine-tune — see [training modules](guides/training.md).
@@ -102,7 +102,7 @@ If you work on a region, a period, or a domain that neither covers, you can buil
 Taking GeoNames as the example:
 
 ``` bash
-python -m geoparser install geonames
+geoparser install geonames
 ```
 
 The command downloads the source data, transforms it, and builds a single self-contained file. It reports three stages:
@@ -127,7 +127,7 @@ The build needs considerably more disk space than the finished file occupies, be
 Once a gazetteer is installed, `list` reports it with its size on disk:
 
 ``` bash
-python -m geoparser list
+geoparser list
 ```
 
 ``` text
@@ -137,7 +137,7 @@ geonames  (9700.7 MB)
 Sizes shift as the upstream data is updated, so treat that as indicative. To remove one you no longer need:
 
 ``` bash
-python -m geoparser uninstall geonames
+geoparser uninstall geonames
 ```
 
 ``` text

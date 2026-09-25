@@ -129,30 +129,12 @@ class TestInstallCli:
 
     @patch("geoparser.cli.install._get_builtin_gazetteers")
     @patch("geoparser.cli.install.Path")
-    def test_raises_error_when_config_not_found(
-        self, mock_path_class, mock_get_builtin
+    def test_exits_2_when_config_not_found(
+        self, mock_path_class, mock_get_builtin, capsys
     ):
-        """Test that FileNotFoundError is raised when config doesn't exist."""
-        # Arrange
-        from geoparser.cli.install import install_cli
+        """An unknown name is a usage error: exit 2 and list what exists."""
+        import typer
 
-        mock_path = Mock()
-        mock_path.exists.return_value = False
-        mock_path_class.return_value = mock_path
-
-        mock_get_builtin.return_value = {"geonames": Path("/builtin/geonames.yaml")}
-
-        # Act & Assert
-        with pytest.raises(FileNotFoundError, match="Gazetteer config not found"):
-            install_cli("nonexistent")
-
-    @patch("geoparser.cli.install._get_builtin_gazetteers")
-    @patch("geoparser.cli.install.Path")
-    def test_error_message_lists_available_gazetteers(
-        self, mock_path_class, mock_get_builtin
-    ):
-        """Test that error message lists available built-in gazetteers."""
-        # Arrange
         from geoparser.cli.install import install_cli
 
         mock_path = Mock()
@@ -164,11 +146,12 @@ class TestInstallCli:
             "swissnames3d": Path("/builtin/swissnames3d.yaml"),
         }
 
-        # Act & Assert
-        with pytest.raises(FileNotFoundError) as exc_info:
+        with pytest.raises(typer.Exit) as exc_info:
             install_cli("nonexistent")
 
-        error_message = str(exc_info.value)
+        assert exc_info.value.exit_code == 2
+        error_message = capsys.readouterr().err
+        assert "Gazetteer config not found: nonexistent" in error_message
         assert "geonames" in error_message
         assert "swissnames3d" in error_message
         assert "Available built-in gazetteer configs" in error_message

@@ -22,7 +22,7 @@ If you already have annotations in another format, you do not need the applicati
 ## Starting the Application
 
 ``` bash
-python -m geoparser annotator
+geoparser annotator
 ```
 
 It starts a local web server and opens `http://127.0.0.1:5000/` in your browser. Stop it with `Ctrl-C`.
