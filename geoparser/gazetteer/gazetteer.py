@@ -9,7 +9,11 @@ from __future__ import annotations
 
 import re
 
-from geoparser.gazetteer.artifact import GazetteerArtifact, artifact_path
+from geoparser.gazetteer.artifact import (
+    DEFAULT_SEARCH_LIMIT,
+    GazetteerArtifact,
+    artifact_path,
+)
 from geoparser.gazetteer.feature import Feature
 
 
@@ -53,7 +57,11 @@ class Gazetteer:
         return self._artifact.crs
 
     def search(
-        self, name: str, method: str = "exact", limit: int = 10000, tiers: int = 1
+        self,
+        name: str,
+        method: str = "exact",
+        limit: int = DEFAULT_SEARCH_LIMIT,
+        tiers: int = 1,
     ) -> list[Feature]:
         """
         Search for features using the specified search method.
@@ -61,7 +69,7 @@ class Gazetteer:
         Args:
             name: Name string to search for
             method: Search method to use ("exact", "phrase", "partial", "fuzzy")
-            limit: Maximum number of results to return (default: 10000)
+            limit: Maximum number of results to return (default: ``DEFAULT_SEARCH_LIMIT``)
             tiers: Number of rank tiers to include in results (default: 1,
                 ignored for exact method)
 

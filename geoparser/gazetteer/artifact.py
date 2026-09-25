@@ -22,16 +22,27 @@ import threading
 import typing as t
 from pathlib import Path
 
-from appdirs import user_data_dir
-
 from geoparser.db.functions import levenshtein, soundex
 from geoparser.gazetteer.feature import Feature
+from geoparser.paths import geoparser_data_dir
 
 # Bump when the artifact schema changes; artifacts with a different version
 # must be rebuilt.
 SCHEMA_VERSION = "1"
 
 ARTIFACT_SUFFIX = ".db"
+
+# Default maximum number of candidates a gazetteer search considers.
+DEFAULT_SEARCH_LIMIT = 10_000
+
+# Per-name BM25 match query shared by phrase and partial search; only the
+# MATCH expression differs between them.
+_BM25_MATCH_SQL = """
+            SELECT n.feature_id AS feature_id, bm25(name_fts) AS score
+            FROM name_fts
+            JOIN name n ON n.id = name_fts.rowid
+            WHERE name_fts MATCH ?
+        """
 
 FTS_TOKENIZER = "unicode61 remove_diacritics 2 tokenchars '.'"
 
@@ -98,10 +109,7 @@ def gazetteers_dir() -> Path:
     override = os.getenv("GEOPARSER_GAZETTEERS_DIR")
     if override:
         return Path(override)
-    # The empty appauthor keeps the path free of a vendor directory on
-    # Windows; on every other platform appdirs ignores it entirely, so
-    # mutating it cannot change where the artifacts live here.
-    return Path(user_data_dir("geoparser", "")) / "gazetteers"  # pragma: no mutate
+    return geoparser_data_dir() / "gazetteers"
 
 
 def artifact_path(gazetteer_name: str) -> Path:
@@ -267,7 +275,9 @@ class GazetteerArtifact:
         )
         return [row[0] for row in rows]
 
-    def search_exact(self, name: str, limit: int = 10000) -> list[Feature]:
+    def search_exact(
+        self, name: str, limit: int = DEFAULT_SEARCH_LIMIT
+    ) -> list[Feature]:
         """
         Find features with a name exactly matching the query.
 
@@ -339,8 +349,12 @@ class GazetteerArtifact:
         )
         return self._features_from_rows(rows)
 
+    def _search_fts(self, match_expr: str, limit: int, tiers: int) -> list[Feature]:
+        """Run a BM25-scored FTS MATCH query and keep the best score tiers."""
+        return self._search_tiered(_BM25_MATCH_SQL, (match_expr,), limit, tiers)
+
     def search_phrase(
-        self, name: str, limit: int = 10000, tiers: int = 1
+        self, name: str, limit: int = DEFAULT_SEARCH_LIMIT, tiers: int = 1
     ) -> list[Feature]:
         """
         Find features whose names contain the query as a contiguous phrase.
@@ -356,16 +370,10 @@ class GazetteerArtifact:
         Returns:
             List of matching features, best matches first
         """
-        matched_sql = """
-            SELECT n.feature_id AS feature_id, bm25(name_fts) AS score
-            FROM name_fts
-            JOIN name n ON n.id = name_fts.rowid
-            WHERE name_fts MATCH ?
-        """
-        return self._search_tiered(matched_sql, (f'"{name}"',), limit, tiers)
+        return self._search_fts(f'"{name}"', limit, tiers)
 
     def search_partial(
-        self, name: str, limit: int = 10000, tiers: int = 1
+        self, name: str, limit: int = DEFAULT_SEARCH_LIMIT, tiers: int = 1
     ) -> list[Feature]:
         """
         Find features whose names match some of the query tokens.
@@ -384,16 +392,10 @@ class GazetteerArtifact:
         query = " OR ".join(
             f'"{token.strip()}"' for token in name.split() if token.strip()
         )
-        matched_sql = """
-            SELECT n.feature_id AS feature_id, bm25(name_fts) AS score
-            FROM name_fts
-            JOIN name n ON n.id = name_fts.rowid
-            WHERE name_fts MATCH ?
-        """
-        return self._search_tiered(matched_sql, (query,), limit, tiers)
+        return self._search_fts(query, limit, tiers)
 
     def search_fuzzy(
-        self, name: str, limit: int = 10000, tiers: int = 1
+        self, name: str, limit: int = DEFAULT_SEARCH_LIMIT, tiers: int = 1
     ) -> list[Feature]:
         """
         Find features with names that sound like the query.

@@ -23,6 +23,8 @@ from geoparser.modules.resolvers.sentencetransformer import SentenceTransformerR
 
 if t.TYPE_CHECKING:
     import torch
+    from sentence_transformers import SentenceTransformer
+    from transformers import PreTrainedTokenizerBase
 
     from geoparser.gazetteer.feature import Feature
 
@@ -98,7 +100,7 @@ class JinaResolver(SentenceTransformerResolver):
         )
         self.reranker.eval()
 
-    def _load_transformer(self, model_name: str, **kwargs):
+    def _load_transformer(self, model_name: str, **kwargs) -> "SentenceTransformer":
         """
         Load the embedding model, allowing its bundled modelling code to run.
 
@@ -111,7 +113,7 @@ class JinaResolver(SentenceTransformerResolver):
         """
         return super()._load_transformer(model_name, trust_remote_code=True, **kwargs)
 
-    def _load_tokenizer(self, model_name: str, **kwargs):
+    def _load_tokenizer(self, model_name: str, **kwargs) -> "PreTrainedTokenizerBase":
         """
         Load the tokenizer, allowing its bundled code to run.
 

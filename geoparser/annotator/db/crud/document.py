@@ -35,7 +35,7 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
         return result if result is not None else -1
 
     @classmethod
-    def _reindex_documents(cls, db: DBSession, session_id: uuid.UUID):
+    def _reindex_documents(cls, db: DBSession, session_id: uuid.UUID) -> None:
         documents = db.exec(
             select(AnnotatorDocument)
             .where(AnnotatorDocument.session_id == session_id)
