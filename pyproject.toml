@@ -221,12 +221,17 @@ tmp_path_retention_policy = "failed"
 # Mutation testing: mutmut edits the source in small ways and re-runs the
 # tests; a mutant that survives is a line the suite does not really check.
 source_paths = ["geoparser"]
-# The annotator is a server-rendered UI that coverage also omits, and the CLI
-# layer is argument wiring around code that is mutated on its own. Everything
-# the library actually computes -- geoparser, gazetteer, services, modules, db
-# -- is mutated.
+# Database repositories and models are covered by the annotator unit tests and
+# stay in mutation scope. The web surface and CLI are argument/UI wiring.
 do_not_mutate = [
-    "geoparser/annotator/*",
+    "geoparser/annotator/app.py",
+    "geoparser/annotator/constants.py",
+    "geoparser/annotator/dependencies.py",
+    "geoparser/annotator/exceptions.py",
+    "geoparser/annotator/metadata.py",
+    "geoparser/annotator/models/*",
+    "geoparser/annotator/routes/*",
+    "geoparser/annotator/server.py",
     "geoparser/cli/*",
     # The build pipeline assembles SQL and drives duckdb; the unit suite mocks
     # that away, so its mutants can only be judged by the integration suite,
@@ -281,9 +286,6 @@ exclude_also = [
 core = "sysmon"
 disable_warnings = ["no-sysmon"]
 source = ["geoparser"]
-omit = [
-    "geoparser/annotator/*",
-]
 relative_files = true
 
 [tool.coverage.paths]

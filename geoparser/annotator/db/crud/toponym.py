@@ -91,25 +91,48 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         toponym: AnnotatorToponymBase | AnnotatorToponymUpdate,
         document_id: uuid.UUID | str | None,
     ) -> bool:
-        # A partial update that names no document, or leaves the span alone,
-        # cannot introduce an overlap. SQL already behaved this way -- comparing
-        # against NULL matched nothing -- so this only makes the outcome explicit.
-        if document_id is None or toponym.start is None or toponym.end is None:
+        if not cls._has_complete_overlap_span(toponym, document_id):
             return True
-        filter_args = [
-            AnnotatorToponym.document_id == document_id,
-            (AnnotatorToponym.start < toponym.end)
-            & (AnnotatorToponym.end > toponym.start),
-        ]
-        if hasattr(toponym, "id"):
-            filter_args.append(AnnotatorToponym.id != toponym.id)
-        overlapping = db.exec(select(AnnotatorToponym).where(*filter_args)).all()
+
+        overlapping = db.exec(
+            select(AnnotatorToponym).where(
+                *cls._overlap_filter_args(toponym, document_id)
+            )
+        ).all()
         if overlapping:
             msg = f"Toponyms overlap: {overlapping} and {toponym}"
             raise ToponymOverlapException(
                 msg,
             )
         return True
+
+    @staticmethod
+    def _has_complete_overlap_span(
+        toponym: AnnotatorToponymBase | AnnotatorToponymUpdate,
+        document_id: uuid.UUID | str | None,
+    ) -> bool:
+        """Return whether both the document and candidate span are known."""
+        return (
+            document_id is not None
+            and toponym.start is not None
+            and toponym.end is not None
+        )
+
+    @staticmethod
+    def _overlap_filter_args(
+        toponym: AnnotatorToponymBase | AnnotatorToponymUpdate,
+        document_id: uuid.UUID | str | None,
+    ) -> list[t.Any]:
+        """Build the SQL filters while excluding an updated row by its ID."""
+        start = t.cast(int, toponym.start)
+        end = t.cast(int, toponym.end)
+        filter_args = [
+            AnnotatorToponym.document_id == document_id,
+            (AnnotatorToponym.start < end) & (AnnotatorToponym.end > start),
+        ]
+        if hasattr(toponym, "id"):
+            filter_args.append(AnnotatorToponym.id != toponym.id)
+        return filter_args
 
     @classmethod
     def _remove_duplicates(
@@ -174,6 +197,37 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         }
 
     @classmethod
+    def _candidate_entry(cls, candidate: "Feature", gazetteer_name: str) -> dict:
+        """Convert a gazetteer feature to the candidate payload used by the UI."""
+        latitude, longitude = cls._get_wgs84_coordinates(candidate)
+        return {
+            "loc_id": candidate.identifier,
+            "description": cls._generate_location_description(
+                candidate, gazetteer_name
+            ),
+            "attributes": candidate.data,
+            "latitude": latitude,
+            "longitude": longitude,
+        }
+
+    @classmethod
+    def _existing_candidate_entry(
+        cls,
+        gazetteer: t.Any,
+        gazetteer_name: str,
+        loc_id: str | None,
+        candidates: t.Sequence["Feature"],
+    ) -> dict | None:
+        """Resolve an annotated location only when search did not find it."""
+        candidate_ids = {candidate.identifier for candidate in candidates}
+        if not loc_id or loc_id in candidate_ids:
+            return None
+        existing_feature = gazetteer.find(loc_id)
+        if existing_feature is None:
+            return None
+        return cls._candidate_entry(existing_feature, gazetteer_name)
+
+    @classmethod
     def get_candidate_descriptions(
         cls,
         gazetteer_name: str,
@@ -184,32 +238,18 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         # Initialize gazetteer
         gazetteer = get_gazetteer(gazetteer_name)
 
-        # Use query_text if provided, else use toponym_text
-        search_text = query_text if query_text else toponym_text
-
-        # Get candidates from gazetteer (returns list of Feature objects)
+        search_text = query_text or toponym_text
         candidates = gazetteer.search(search_text, method="exact")
 
         candidate_descriptions = [
             cls._candidate_entry(candidate, gazetteer_name) for candidate in candidates
         ]
-
-        # Handle existing annotation if it's not in the candidate list
-        existing_loc_id = toponym.loc_id
-        candidate_ids = [c.identifier for c in candidates]
-        append_existing_candidate = (
-            bool(existing_loc_id) and existing_loc_id not in candidate_ids
+        existing_candidate = cls._existing_candidate_entry(
+            gazetteer, gazetteer_name, toponym.loc_id, candidates
         )
-
-        if append_existing_candidate:
-            # Find the existing location
-            existing_feature = gazetteer.find(existing_loc_id)
-            if existing_feature:
-                candidate_descriptions.append(
-                    cls._candidate_entry(existing_feature, gazetteer_name)
-                )
-
-        return candidate_descriptions, append_existing_candidate
+        if existing_candidate is not None:
+            candidate_descriptions.append(existing_candidate)
+        return candidate_descriptions, existing_candidate is not None
 
     @classmethod
     # BaseRepository declares the widest input type (SQLModel); each repository
@@ -266,23 +306,50 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         gazetteer_name: str,
         candidates_request: CandidatesGet,
     ) -> dict:
-        toponym = cls.get_toponym(
-            doc, candidates_request.start or 0, candidates_request.end or 0
+        start, end, text, query_text = cls._normalize_candidate_request(
+            candidates_request
         )
+        toponym = cls.get_toponym(doc, start, end)
         if not toponym:
             raise ToponymNotFoundException
         candidate_descriptions, existing_candidate_is_appended = (
             cls.get_candidate_descriptions(
                 gazetteer_name,
                 toponym,
-                candidates_request.text or "",
-                candidates_request.query_text or "",
+                text,
+                query_text,
             )
         )
+        return cls._candidate_payload(
+            candidate_descriptions,
+            toponym,
+            gazetteer_name,
+            existing_candidate_is_appended,
+        )
 
+    @staticmethod
+    def _normalize_candidate_request(
+        request: CandidatesGet,
+    ) -> tuple[int, int, str, str]:
+        """Replace optional candidate-request values with their UI defaults."""
+        return (
+            request.start or 0,
+            request.end or 0,
+            request.text or "",
+            request.query_text or "",
+        )
+
+    @classmethod
+    def _candidate_payload(
+        cls,
+        candidate_descriptions: list[dict],
+        toponym: AnnotatorToponym,
+        gazetteer_name: str,
+        existing_candidate_is_appended: bool,
+    ) -> dict:
+        """Build the complete response payload for candidate lookup."""
         # Get filter attributes for this gazetteer
         filter_attributes = cls.GAZETTEER_FILTER_ATTRIBUTES.get(gazetteer_name, [])
-
         return {
             "candidates": candidate_descriptions,
             "filter_attributes": filter_attributes,
@@ -315,21 +382,38 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         one_sense_per_discourse = (
             toponym.document.session.settings.one_sense_per_discourse
         )
-        # Update the loc_id
         toponym.loc_id = annotation.loc_id if annotation.loc_id is not None else None
         cls.update(db, toponym)
-        if one_sense_per_discourse and toponym.loc_id:
-            # Apply the same loc_id to other unannotated toponyms with the same text
-            for other_toponym in document.toponyms:
-                if (
-                    other_toponym.text == toponym.text
-                    and other_toponym.loc_id == ""
-                    and other_toponym is not toponym
-                ):
-                    other_toponym.loc_id = toponym.loc_id
-                    cls.update(db, other_toponym)
+        if one_sense_per_discourse:
+            cls._propagate_discourse_annotation(db, document, toponym)
         db.refresh(document)
         return document.toponyms
+
+    @staticmethod
+    def _is_unannotated_repeat(
+        candidate: AnnotatorToponym, selected: AnnotatorToponym
+    ) -> bool:
+        """Return whether a row is another unannotated mention of the selection."""
+        return (
+            candidate.text == selected.text
+            and candidate.loc_id == ""
+            and candidate is not selected
+        )
+
+    @classmethod
+    def _propagate_discourse_annotation(
+        cls,
+        db: DBSession,
+        document: "AnnotatorDocument",
+        selected: AnnotatorToponym,
+    ) -> None:
+        """Copy a chosen location ID to other unannotated repeated mentions."""
+        if not selected.loc_id:
+            return
+        for candidate in document.toponyms:
+            if cls._is_unannotated_repeat(candidate, selected):
+                candidate.loc_id = selected.loc_id
+                cls.update(db, candidate)
 
     @classmethod
     def delete(cls, db: DBSession, id: uuid.UUID) -> AnnotatorToponym:

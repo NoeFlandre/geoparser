@@ -48,6 +48,51 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
             cls._read_uploaded_text(file, rewind=True)
 
     @classmethod
+    def _decode_text_files(cls, files: list[UploadFile]) -> list[tuple[str, str]]:
+        """Return safe filenames and decoded contents for uploaded files."""
+        return [
+            (secure_filename(file.filename or ""), cls._read_uploaded_text(file))
+            for file in files
+        ]
+
+    @staticmethod
+    def _extract_toponyms(
+        text: str, recognizer: t.Any | None
+    ) -> list[AnnotatorToponymCreate]:
+        """Recognize topynoms in one text, treating an unavailable result as empty."""
+        if recognizer is None:
+            return []
+        references = recognizer.predict([text])[0] or []
+        return [
+            AnnotatorToponymCreate(text=text[start:end], start=start, end=end)
+            for start, end in references
+        ]
+
+    @classmethod
+    def _create_uploaded_document(
+        cls,
+        db: DBSession,
+        filename: str,
+        text: str,
+        session_id: uuid.UUID,
+        spacy_model: str,
+        apply_spacy: bool,
+        recognizer: t.Any | None,
+    ) -> AnnotatorDocument:
+        """Persist a decoded upload and any locations returned by spaCy."""
+        return cls.create(
+            db,
+            AnnotatorDocumentCreate(
+                filename=filename,
+                spacy_model=spacy_model,
+                text=text,
+                toponyms=cls._extract_toponyms(text, recognizer),
+                spacy_applied=apply_spacy,
+            ),
+            additional={"session_id": session_id},
+        )
+
+    @classmethod
     def get_highest_index(cls, db: DBSession, session_id: uuid.UUID) -> int:
         result = db.exec(
             select(AnnotatorDocument.doc_index)
@@ -112,39 +157,20 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
         spacy_model: str,
         apply_spacy: bool = False,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
     ) -> list[AnnotatorDocument]:
-        decoded_files = [
-            (secure_filename(file.filename or ""), cls._read_uploaded_text(file))
-            for file in files
-        ]
-
-        recognizer = None
-        if apply_spacy:
-            recognizer = SpacyRecognizer(model_name=spacy_model)
-
-        documents = []
-        for filename, text in decoded_files:
-            toponyms = []
-            if apply_spacy and recognizer:
-                # Recognizers may return None for a document they cannot
-                # process; that yields no toponyms rather than a TypeError.
-                references = recognizer.predict([text])[0] or []
-                toponyms = [
-                    AnnotatorToponymCreate(text=text[start:end], start=start, end=end)
-                    for start, end in references
-                ]
-            document = cls.create(
+        decoded_files = cls._decode_text_files(files)
+        recognizer = SpacyRecognizer(model_name=spacy_model) if apply_spacy else None
+        return [
+            cls._create_uploaded_document(
                 db,
-                AnnotatorDocumentCreate(
-                    filename=filename,
-                    spacy_model=spacy_model,
-                    text=text,
-                    toponyms=toponyms,
-                    spacy_applied=apply_spacy,
-                ),
-                additional={"session_id": session_id},
+                filename,
+                text,
+                session_id,
+                spacy_model,
+                apply_spacy,
+                recognizer,
             )
-            documents.append(document)
-        return documents
+            for filename, text in decoded_files
+        ]
 
     @classmethod
     def read(cls, db: DBSession, id: uuid.UUID) -> AnnotatorDocument:
@@ -200,7 +226,10 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
 
     @classmethod
     def get_document_progress(cls, db: DBSession, id: uuid.UUID) -> dict[str, t.Any]:
-        return next(cls.get_progress(db, id=id))
+        try:
+            return next(cls.get_progress(db, id=id))
+        except StopIteration as error:
+            raise cls.exception_factory(cls.model.__name__, id) from error
 
     @classmethod
     def read_all(cls, db: DBSession, **filters) -> list[AnnotatorDocument]:

@@ -26,13 +26,13 @@ def annotator_client(monkeypatch):
     spacy_package = ModuleType("spacy")
     spacy_package.__path__ = []
     spacy_util = ModuleType("spacy.util")
-    spacy_util.get_installed_models = lambda: []
-    spacy_package.util = spacy_util
+    spacy_util.__dict__["get_installed_models"] = lambda: []
+    spacy_package.__dict__["util"] = spacy_util
     monkeypatch.setitem(sys.modules, "spacy", spacy_package)
     monkeypatch.setitem(sys.modules, "spacy.util", spacy_util)
 
     recognizer_module = ModuleType("geoparser.modules.recognizers.spacy")
-    recognizer_module.SpacyRecognizer = type("SpacyRecognizer", (), {})
+    recognizer_module.__dict__["SpacyRecognizer"] = type("SpacyRecognizer", (), {})
     monkeypatch.setitem(
         sys.modules, "geoparser.modules.recognizers.spacy", recognizer_module
     )
