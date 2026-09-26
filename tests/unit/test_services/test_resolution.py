@@ -330,18 +330,19 @@ class TestResolutionServicePredict:
 class TestResolutionServiceFit:
     """Test ResolutionService fit method."""
 
-    def test_raises_error_if_resolver_has_no_fit_method(self, mock_manual_resolver):
+    def test_raises_error_if_resolver_has_no_fit_method(self):
         """Test that fit raises error if resolver doesn't implement fit."""
-        # Arrange
-        # Remove fit method from mock
-        if hasattr(mock_manual_resolver, "fit"):
-            delattr(mock_manual_resolver, "fit")
+        from types import SimpleNamespace
 
-        service = ResolutionService(mock_manual_resolver)
+        # Arrange
+        mock_manual_resolver = SimpleNamespace(name="manual")
+        service = ResolutionService(cast(Any, mock_manual_resolver))
 
         # Act & Assert
-        with pytest.raises(ValueError, match="does not implement a fit method"):
+        with pytest.raises(ValueError) as error:
             service.fit([])
+
+        assert str(error.value) == ("Resolver 'manual' does not implement a fit method")
 
     def test_calls_resolver_fit_with_training_data(
         self,

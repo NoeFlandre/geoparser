@@ -168,6 +168,21 @@ def test_import_does_not_create_the_database_parent_directory(tmp_path):
     assert result.returncode == 0, result.stderr
     assert not database_file.parent.exists()
 
+
+@pytest.mark.unit
+class TestDatabaseCompatibilityCheckCases:
+    """Exercise compatibility layouts with both current and legacy schemas."""
+
+    @staticmethod
+    def _make_engine():
+        from sqlalchemy.pool import StaticPool
+
+        return create_engine(
+            "sqlite:///:memory:",
+            poolclass=StaticPool,
+            connect_args={"check_same_thread": False},
+        )
+
     def test_accepts_an_empty_database(self):
         """
         A database with none of the legacy tables is usable.
@@ -346,6 +361,55 @@ def test_ensure_database_directory_creates_sqlite_parent(tmp_path, monkeypatch):
     url = URL.create("sqlite", database=str(database_file))
     monkeypatch.setattr(db, "engine", SimpleNamespace(url=url))
 
+    db._ensure_database_directory()
+
+    assert database_file.parent.is_dir()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "url",
+    [
+        "sqlite://",
+        "sqlite:///:memory:",
+        "sqlite:///file:shared?mode=memory&cache=shared",
+    ],
+)
+def test_ensure_database_directory_skips_non_file_sqlite_urls(url, monkeypatch):
+    """Memory and URI SQLite URLs do not need parent directories."""
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from sqlalchemy.engine import make_url
+
+    import geoparser.db.db as db
+
+    mkdir = Mock()
+    monkeypatch.setattr(db, "engine", SimpleNamespace(url=make_url(url)))
+    monkeypatch.setattr(Path, "mkdir", mkdir)
+
+    db._ensure_database_directory()
+
+    mkdir.assert_not_called()
+
+
+@pytest.mark.unit
+def test_ensure_database_directory_is_idempotent(tmp_path, monkeypatch):
+    """Repeated use succeeds when the SQLite parent already exists."""
+    from types import SimpleNamespace
+
+    from sqlalchemy.engine import URL
+
+    import geoparser.db.db as db
+
+    database_file = tmp_path / "nested" / "geoparser.db"
+    monkeypatch.setattr(
+        db,
+        "engine",
+        SimpleNamespace(url=URL.create("sqlite", database=str(database_file))),
+    )
+
+    db._ensure_database_directory()
     db._ensure_database_directory()
 
     assert database_file.parent.is_dir()

@@ -1336,6 +1336,28 @@ class TestSentenceTransformerResolverHelperMethods:
 class TestSentenceTransformerResolverPrepareTrainingData:
     """Test SentenceTransformerResolver _prepare_training_data method."""
 
+    def test_search_uses_the_training_candidate_limit(self):
+        """Training data uses an explicit stable limit for each exact search."""
+        from unittest.mock import Mock
+
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        resolver = object.__new__(SentenceTransformerResolver)
+        candidate = Mock(identifier="123")
+        resolver._extract_context = Mock(return_value="Paris is beautiful")
+        resolver._candidate_description = Mock(return_value="Paris (city)")
+        resolver._search_candidates = Mock(return_value=[candidate])
+
+        resolver._prepare_training_data(
+            ["Paris is beautiful."], [[(0, 5)]], [[("geonames", "123")]]
+        )
+
+        resolver._search_candidates.assert_called_once_with(
+            "Paris", "exact", tiers=1, limit=10000
+        )
+
     @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"

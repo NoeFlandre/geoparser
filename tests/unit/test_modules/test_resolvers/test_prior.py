@@ -77,6 +77,33 @@ class TestInflectionFallback:
             "Paris", "exact", limit=10000, tiers=1
         )
 
+    def test_custom_limit_is_forwarded_to_the_exact_search(self, resolver):
+        """The exact search respects the caller's candidate limit."""
+        hit = _feature(1)
+        resolver.gazetteer.search.return_value = [hit]
+
+        assert list(resolver._search_candidates("Paris", "exact", 1, limit=17)) == [hit]
+        resolver.gazetteer.search.assert_called_once_with(
+            "Paris", "exact", limit=17, tiers=1
+        )
+
+    def test_custom_limit_is_forwarded_to_inflection_retries(self, resolver):
+        """Trimmed-name retries use the same candidate limit as the first search."""
+        hit = _feature(1)
+        resolver.gazetteer.search.side_effect = lambda name, method, **kwargs: (
+            [hit] if name == "Saksa" else []
+        )
+
+        assert list(resolver._search_candidates("Saksan", "exact", 1, limit=17)) == [
+            hit
+        ]
+        assert [
+            call.kwargs["limit"] for call in resolver.gazetteer.search.call_args_list
+        ] == [
+            17,
+            17,
+        ]
+
     def test_wider_methods_are_not_trimmed(self, resolver):
         """Only exact search is retried; fuzzy already tolerates endings."""
         resolver.gazetteer.search.return_value = []
@@ -147,6 +174,20 @@ class TestParentSettings:
 
         assert default.config["population_weight"] == 0.3
         assert default.config["inflection_fallback"] is False
+
+    def test_positional_parent_settings_are_forwarded(self):
+        """Positional SentenceTransformerResolver arguments remain supported."""
+        with (
+            patch(f"{PARENT}.Gazetteer"),
+            patch(f"{PARENT}.SentenceTransformer"),
+            patch(f"{PARENT}.AutoTokenizer.from_pretrained"),
+            patch(f"{PARENT}.spacy.load"),
+        ):
+            resolver = PriorResolver(
+                "custom-model", attribute_map={"name": "name", "type": "type"}
+            )
+
+        assert resolver.model_name == "custom-model"
 
     def test_custom_settings_are_passed_through(self):
         """Non-default values are recorded and used, not replaced."""
