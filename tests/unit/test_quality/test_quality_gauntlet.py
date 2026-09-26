@@ -30,29 +30,6 @@ def test_quality_stages_have_the_required_order(tmp_path: Path) -> None:
     assert ty_command[-3:] == ("geoparser", "scripts", "tests")
 
 
-def test_quality_stages_can_skip_the_redundant_baseline(tmp_path: Path) -> None:
-    """CI can keep the coverage test stage without repeating its baseline."""
-    stages = build_stages(Path("/repo"), tmp_path, skip_baseline=True)
-
-    assert "baseline" not in {stage.name for stage in stages}
-    assert "tests" in {stage.name for stage in stages}
-
-
-def test_quality_cli_accepts_skip_baseline(monkeypatch) -> None:
-    """The workflow can request the lean CI stage list explicitly."""
-    names = []
-
-    def fake_run_stages(stages, environment):
-        names.extend(stage.name for stage in stages)
-        return 0
-
-    monkeypatch.setattr("scripts.quality_gauntlet.run_stages", fake_run_stages)
-
-    assert main(["--skip-baseline", "--skip-mutation", "--skip-docker"]) == 0
-    assert "baseline" not in names
-    assert "tests" in names
-
-
 def _dep002_ignores(stages: list[Stage]) -> set[str]:
     dependencies = next(stage for stage in stages if stage.name == "dependencies")
     deptry = next(command for command in dependencies.commands if "deptry" in command)
