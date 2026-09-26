@@ -45,6 +45,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       # uv provides the interpreter on every platform, so all three operating
       # systems take the same path; this replaces the setup-python/brew split.
@@ -97,7 +99,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # The coverage comment action stores its badge data on a branch with git,
+      # so this checkout keeps its credentials; the job runs no PR-controlled
+      # code after combining coverage.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: true # zizmor: ignore[artipacked]
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true

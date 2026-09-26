@@ -2,7 +2,9 @@ name: Coverage preview
 
 # Tests only runs on pull requests now, so this keys off any successful run and
 # publishes the browsable coverage report against the pull request head.
-on:
+# workflow_run lets the base repository publish the report for fork PRs; the
+# downloaded HTML is uploaded as data, never executed.
+on: # zizmor: ignore[dangerous-triggers]
   workflow_run:
     workflows: ["Tests"]
     types:

@@ -31,6 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           # Needed to prove the tagged commit is reachable from main.
           fetch-depth: 0
 
@@ -46,7 +47,9 @@ jobs:
 
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
-          enable-cache: true
+          # No cache in the release build: a cache written by another workflow
+          # must not be able to influence the artifacts we publish.
+          enable-cache: false
 
       # `--no-sync` keeps this to a pyproject.toml read/write; the build below
       # creates its own isolated environment, so no project venv is needed.

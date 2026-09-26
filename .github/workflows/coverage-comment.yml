@@ -3,7 +3,9 @@ name: Coverage comment
 # Runs from the base repository rather than inside the Tests workflow so that
 # pull requests from forks can be commented on without ever granting write
 # permissions to fork-controlled code.
-on:
+# workflow_run is required to comment on fork PRs; this job never checks out
+# or executes PR code, it only posts the artifact the Tests run produced.
+on: # zizmor: ignore[dangerous-triggers]
   workflow_run:
     workflows: ["Tests"]
     types:
