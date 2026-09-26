@@ -5,8 +5,17 @@ Tests the ManualRecognizer module for handling manually annotated references.
 """
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from geoparser.modules.recognizers.manual import ManualRecognizer
+
+
+class NoIndexList(list):
+    """A list that exposes accidental repeated linear searches."""
+
+    def index(self, *args, **kwargs):
+        raise AssertionError("predict should use an index built at initialization")
 
 
 @pytest.mark.unit
@@ -199,3 +208,52 @@ class TestManualRecognizerPredict:
 
         # Assert
         assert results[0] == [(10, 15), (5, 8), (0, 3)]  # Order preserved
+
+    def test_duplicate_text_uses_first_annotation(self):
+        recognizer = ManualRecognizer(
+            label="test",
+            texts=["same", "same"],
+            references=[[(0, 1)], [(2, 3)]],
+        )
+
+        assert recognizer.predict(["same"]) == [[(0, 1)]]
+
+    def test_empty_query_and_empty_annotations(self):
+        recognizer = ManualRecognizer(label="test", texts=[], references=[])
+
+        assert recognizer.predict([]) == []
+        assert recognizer.predict(["unknown"]) == [None]
+
+    def test_predict_does_not_call_list_index(self):
+        recognizer = ManualRecognizer(
+            label="test",
+            texts=NoIndexList(["known"]),
+            references=[[(0, 2)]],
+        )
+
+        assert recognizer.predict(["known"]) == [[(0, 2)]]
+
+    @settings(max_examples=80, derandomize=True, deadline=None)
+    @given(
+        annotations=st.lists(
+            st.tuples(
+                st.text(max_size=8),
+                st.lists(st.tuples(st.integers(0, 20), st.integers(0, 20)), max_size=6),
+            ),
+            max_size=12,
+        ),
+        queries=st.lists(st.text(max_size=8), max_size=12),
+    )
+    def test_predict_matches_first_list_index_semantics(self, annotations, queries):
+        texts = [text for text, _ in annotations]
+        references = [spans for _, spans in annotations]
+        recognizer = ManualRecognizer("test", texts, references)
+
+        expected = []
+        for query in queries:
+            try:
+                expected.append(references[texts.index(query)])
+            except ValueError:
+                expected.append(None)
+
+        assert recognizer.predict(queries) == expected
