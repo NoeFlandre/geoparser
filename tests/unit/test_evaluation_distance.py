@@ -220,6 +220,13 @@ class TestAreaUnderErrorCurve:
 
         assert 0.0 < near < far < 1.0
 
+    def test_default_auc_preserves_the_pre_73_sub_ulp_golden_value(self):
+        """Tiny nonzero errors retain the legacy default's exact rounding."""
+        gold = [located(0, 1, 0.0, 0.0)]
+        predicted = [located(0, 1, 0.0, 1e-19)]
+
+        assert area_under_error_curve(gold, predicted) == 0.0
+
     def test_compresses_the_scale_logarithmically(self):
         """Test that a tenfold worse error is not a tenfold worse score."""
         gold = [located(0, 1, 0.0, 0.0)]
@@ -338,6 +345,4 @@ class TestMutationPins:
         assert accuracy_at_km(gold, predicted) == pytest.approx(1 / 3)
         assert mean_error_km(gold, predicted) == pytest.approx(6754.450447566197)
         assert median_error_km(gold, predicted) == pytest.approx(224.3513426985906)
-        assert area_under_error_curve(gold, predicted) == pytest.approx(
-            0.5156451334367401
-        )
+        assert area_under_error_curve(gold, predicted) == 0.5156451334367401
