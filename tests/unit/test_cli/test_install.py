@@ -96,10 +96,12 @@ class TestInstallCli:
         mock_builder.return_value = mock_builder_instance
 
         # Act
-        install_cli("path/to/config.yaml")
+        install_cli("path/to/config.yaml", force=True)
 
         # Assert
-        mock_builder_instance.build.assert_called_once_with(mock_path)
+        mock_builder_instance.build.assert_called_once_with(
+            mock_path, keep_downloads=False
+        )
 
     @patch("geoparser.gazetteer.build.GazetteerBuilder")
     @patch("geoparser.cli.install._get_builtin_gazetteers")
@@ -122,37 +124,21 @@ class TestInstallCli:
         mock_builder.return_value = mock_builder_instance
 
         # Act
-        install_cli("geonames")
+        install_cli("geonames", force=True)
 
         # Assert
-        mock_builder_instance.build.assert_called_once_with(builtin_path)
+        mock_builder_instance.build.assert_called_once_with(
+            builtin_path, keep_downloads=False
+        )
 
     @patch("geoparser.cli.install._get_builtin_gazetteers")
     @patch("geoparser.cli.install.Path")
-    def test_raises_error_when_config_not_found(
-        self, mock_path_class, mock_get_builtin
+    def test_exits_2_when_config_not_found(
+        self, mock_path_class, mock_get_builtin, capsys
     ):
-        """Test that FileNotFoundError is raised when config doesn't exist."""
-        # Arrange
-        from geoparser.cli.install import install_cli
+        """An unknown name is a usage error: exit 2 and list what exists."""
+        import typer
 
-        mock_path = Mock()
-        mock_path.exists.return_value = False
-        mock_path_class.return_value = mock_path
-
-        mock_get_builtin.return_value = {"geonames": Path("/builtin/geonames.yaml")}
-
-        # Act & Assert
-        with pytest.raises(FileNotFoundError, match="Gazetteer config not found"):
-            install_cli("nonexistent")
-
-    @patch("geoparser.cli.install._get_builtin_gazetteers")
-    @patch("geoparser.cli.install.Path")
-    def test_error_message_lists_available_gazetteers(
-        self, mock_path_class, mock_get_builtin
-    ):
-        """Test that error message lists available built-in gazetteers."""
-        # Arrange
         from geoparser.cli.install import install_cli
 
         mock_path = Mock()
@@ -164,11 +150,12 @@ class TestInstallCli:
             "swissnames3d": Path("/builtin/swissnames3d.yaml"),
         }
 
-        # Act & Assert
-        with pytest.raises(FileNotFoundError) as exc_info:
+        with pytest.raises(typer.Exit) as exc_info:
             install_cli("nonexistent")
 
-        error_message = str(exc_info.value)
+        assert exc_info.value.exit_code == 2
+        error_message = capsys.readouterr().err
+        assert "Gazetteer config not found: nonexistent" in error_message
         assert "geonames" in error_message
         assert "swissnames3d" in error_message
         assert "Available built-in gazetteer configs" in error_message
@@ -191,7 +178,7 @@ class TestInstallCli:
         mock_builder.return_value = mock_builder_instance
 
         # Act
-        install_cli("path/to/config.yaml")
+        install_cli("path/to/config.yaml", force=True)
 
         # Assert
         mock_builder.assert_called_once()
@@ -241,7 +228,7 @@ class TestUninstallCli:
 
         mock_uninstall.return_value = True
 
-        uninstall_cli("andorranames")
+        uninstall_cli("andorranames", yes=True)
 
         mock_uninstall.assert_called_once_with("andorranames")
         assert "Removed gazetteer 'andorranames'" in capsys.readouterr().out
@@ -256,4 +243,4 @@ class TestUninstallCli:
         mock_uninstall.return_value = False
 
         with pytest.raises(typer.Exit):
-            uninstall_cli("missing")
+            uninstall_cli("missing", yes=True)

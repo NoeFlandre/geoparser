@@ -28,7 +28,8 @@ class Module(ABC):  # noqa: B024
         """
         if self.NAME is None:
             # pragma: no mutate start - wording only; a test pins the type.
-            raise ValueError("Module must define a NAME class attribute")
+            msg = "Module must define a NAME class attribute"
+            raise ValueError(msg)
             # pragma: no mutate end
 
         self.name = self.NAME

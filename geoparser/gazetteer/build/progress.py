@@ -296,7 +296,8 @@ class Stage:
                 which previously surfaced as an AttributeError on None.
         """
         if self._progress is None or self._task_id is None:  # pragma: no cover
-            raise RuntimeError("Stage used outside of its `with` block")
+            msg = "Stage used outside of its `with` block"
+            raise RuntimeError(msg)
         return self._progress, self._task_id
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -384,7 +385,7 @@ class _Item:
             self._total = 100
         self._progress.update(self._task_id, completed=percent)
 
-    def close(self, success: bool = True) -> None:
+    def close(self, success: bool = True) -> None:  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
         """
         Finish this item and remove its bar.
 
@@ -494,7 +495,7 @@ def track(
     def _run() -> None:
         try:
             run()
-        except BaseException as exc:
+        except BaseException as exc:  # noqa: BLE001 - re-raised on the calling thread after join
             error.append(exc)
 
     thread = threading.Thread(target=_run, daemon=True)
@@ -512,7 +513,7 @@ def _sample(bar: _Item, poll: t.Callable[[], float | None]) -> None:
     """Read one progress value and apply it to ``bar``, ignoring poll errors."""
     try:
         value = poll()
-    except Exception:
+    except Exception:  # noqa: BLE001 - a failed progress poll must not abort the build
         return
     if value is not None and value >= 0:
         bar.set_progress(value)

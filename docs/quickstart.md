@@ -278,3 +278,20 @@ Results saved under project name: a1b2c3d4
 ```
 
 The printed name is how you get back to those results later, with `Project("a1b2c3d4")`. When you know in advance that you want to keep something, it is better to create a project with a name you chose — see [managing projects](guides/projects.md).
+
+## From the Command Line
+
+The same pipeline runs without writing Python. `geoparser parse` reads each file you name as one document (or standard input, given `-` or nothing), and writes one JSON record per document to standard output:
+
+``` bash
+echo "The worst damage was reported in Manchester and Leeds." \
+  | geoparser parse - --gazetteer geonames --recognizer gliner --resolver jina
+```
+
+``` text
+{"source": "-", "text": "The worst damage ...", "toponyms": [{"start": 33, "end": 43, "text": "Manchester", "gazetteer": "geonames", "identifier": "2643123", "geometry": {"type": "Point", "coordinates": [...]}}, ...]}
+```
+
+`--recognizer` is `spacy` (the default) or `gliner`; `--resolver` is `prior` (the default), `sentencetransformer` or `jina`. `--recognizer-model` and `--model` swap in a different recognizer or resolver checkpoint. `--format` chooses between `jsonl` (the default), `json` (one array) and `geojson` (a FeatureCollection of the linked toponyms, in WGS 84), and `--output PATH` writes to a file instead. Progress messages go to standard error, so the output can be piped; `-q` keeps only warnings and `-v` adds debug messages. If the gazetteer is not installed, the command exits with status 2 before loading any model and tells you to run `geoparser install`.
+
+`geoparser list --json` prints the installed gazetteers as a JSON array, for scripts.

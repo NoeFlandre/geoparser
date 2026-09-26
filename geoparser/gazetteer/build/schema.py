@@ -125,10 +125,11 @@ class SourceConfig(BaseModel):
     @classmethod
     def validate_name(cls, value: str) -> str:
         if not _IDENTIFIER_PATTERN.match(value):
-            raise ValueError(
+            msg = (
                 f"Source name '{value}' must start with a letter or underscore "
                 "and contain only letters, digits and underscores"
             )
+            raise ValueError(msg)
         return value
 
     @model_validator(mode="after")
@@ -145,58 +146,60 @@ class SourceConfig(BaseModel):
     def _validate_location(self) -> None:
         """A source is fetched from a url or read from a path, never both."""
         if bool(self.url) == bool(self.path):
-            raise ValueError(
-                f"Source '{self.name}' must define exactly one of 'url' or 'path'"
-            )
+            msg = f"Source '{self.name}' must define exactly one of 'url' or 'path'"
+            raise ValueError(msg)
 
     def _validate_attribute_names(self) -> None:
         """Attributes must exist, and each must be named only once."""
         if not self.attributes:
-            raise ValueError(
-                f"Source '{self.name}' must declare at least one attribute"
-            )
+            msg = f"Source '{self.name}' must declare at least one attribute"
+            raise ValueError(msg)
         duplicates = _duplicates([attribute.name for attribute in self.attributes])
         if duplicates:
-            raise ValueError(
+            msg = (
                 f"Source '{self.name}' has duplicate attribute names: "
                 f"{', '.join(sorted(duplicates))}"
             )
+            raise ValueError(msg)
 
     def _validate_tabular(self) -> None:
         """A delimited source carries its coordinates as ordinary columns."""
         if self._geometry_attributes():
-            raise ValueError(
+            msg = (
                 f"Source '{self.name}': tabular sources cannot declare a "
                 "geometry attribute"
             )
+            raise ValueError(msg)
 
     def _reject_tabular_only_options(self) -> None:
         """CSV parsing options make no sense without a delimiter."""
         for field in ("quote",):
             if getattr(self, field) is not None:
-                raise ValueError(
+                msg = (
                     f"Source '{self.name}': '{field}' is only valid for tabular "
                     "sources (those with a 'delimiter')"
                 )
+                raise ValueError(msg)
         if self.skip_rows:
-            raise ValueError(
-                f"Source '{self.name}': 'skip_rows' is only valid for tabular sources"
-            )
+            msg = f"Source '{self.name}': 'skip_rows' is only valid for tabular sources"
+            raise ValueError(msg)
 
     def _validate_spatial(self) -> None:
         """A spatial source has exactly one geometry attribute, named for it."""
         self._reject_tabular_only_options()
         geometry_attributes = self._geometry_attributes()
         if len(geometry_attributes) != 1:
-            raise ValueError(
+            msg = (
                 f"Source '{self.name}': a spatial source must declare exactly "
                 "one geometry attribute"
             )
+            raise ValueError(msg)
         if geometry_attributes[0].name != GEOMETRY_ATTRIBUTE:
-            raise ValueError(
+            msg = (
                 f"Source '{self.name}': the geometry attribute must be named "
                 f"'{GEOMETRY_ATTRIBUTE}'"
             )
+            raise ValueError(msg)
 
     def _geometry_attributes(self) -> list[AttributeDef]:
         """The attributes of this source that hold a geometry."""
@@ -275,10 +278,12 @@ class FeatureConfig(BaseModel):
     @classmethod
     def validate_names(cls, value: list[str]) -> list[str]:
         if not value:
-            raise ValueError("A feature must define at least one name")
+            msg = "A feature must define at least one name"
+            raise ValueError(msg)
         for name in value:
             if not isinstance(name, str) or not name.strip():
-                raise ValueError("A feature name must be a non-empty string")
+                msg = "A feature name must be a non-empty string"
+                raise ValueError(msg)
         return value
 
     @field_validator("joins")
@@ -286,7 +291,8 @@ class FeatureConfig(BaseModel):
     def validate_joins(cls, value: list[str]) -> list[str]:
         for join in value:
             if not isinstance(join, str) or not join.strip():
-                raise ValueError("A join must be a non-empty SQL join clause")
+                msg = "A join must be a non-empty SQL join clause"
+                raise ValueError(msg)
         return value
 
     @field_validator("data")
@@ -294,12 +300,14 @@ class FeatureConfig(BaseModel):
     def validate_data(cls, value: list[str]) -> list[str]:
         for item in value:
             if not isinstance(item, str) or not item.strip():
-                raise ValueError("A data value must be a non-empty string")
+                msg = "A data value must be a non-empty string"
+                raise ValueError(msg)
             if split_data_value(item)[1] is None:
-                raise ValueError(
+                msg = (
                     f"Data value '{item}' is a scalar expression, so it needs "
                     "an alias to name the stored key: '<expression> AS <alias>'"
                 )
+                raise ValueError(msg)
         return value
 
     @model_validator(mode="after")
@@ -308,10 +316,11 @@ class FeatureConfig(BaseModel):
         # the None filter here is about types, not about dropping real keys.
         duplicates = _duplicates([split_data_value(item)[1] for item in self.data])
         if duplicates:
-            raise ValueError(
+            msg = (
                 f"Feature '{self.source}' has duplicate data keys: "
                 f"{', '.join(sorted(duplicates))}"
             )
+            raise ValueError(msg)
         return self
 
 
@@ -331,40 +340,46 @@ class GazetteerConfig(BaseModel):
     @classmethod
     def validate_name(cls, value: str) -> str:
         if not _NAME_PATTERN.match(value):
-            raise ValueError(
+            msg = (
                 f"Gazetteer name '{value}' must contain only letters, digits, "
                 "underscores and hyphens"
             )
+            raise ValueError(msg)
         return value
 
     @field_validator("disk")
     @classmethod
     def validate_disk(cls, value: int | None) -> int | None:
         if value is not None and value <= 0:
-            raise ValueError("disk must be a positive number of bytes")
+            msg = "disk must be a positive number of bytes"
+            raise ValueError(msg)
         return value
 
     @field_validator("sources")
     @classmethod
     def validate_sources(cls, value: list[SourceConfig]) -> list[SourceConfig]:
         if not value:
-            raise ValueError("A gazetteer must define at least one source")
+            msg = "A gazetteer must define at least one source"
+            raise ValueError(msg)
         duplicates = _duplicates([source.name for source in value])
         if duplicates:
-            raise ValueError(f"Duplicate source names: {', '.join(sorted(duplicates))}")
+            msg = f"Duplicate source names: {', '.join(sorted(duplicates))}"
+            raise ValueError(msg)
         return value
 
     @field_validator("features")
     @classmethod
     def validate_features(cls, value: list[FeatureConfig]) -> list[FeatureConfig]:
         if not value:
-            raise ValueError("A gazetteer must define at least one feature block")
+            msg = "A gazetteer must define at least one feature block"
+            raise ValueError(msg)
         duplicates = _duplicates([feature.source for feature in value])
         if duplicates:
-            raise ValueError(
+            msg = (
                 "Each source can back at most one feature block, but these back "
                 f"several: {', '.join(sorted(duplicates))}"
             )
+            raise ValueError(msg)
         return value
 
     @model_validator(mode="after")
@@ -373,9 +388,8 @@ class GazetteerConfig(BaseModel):
 
         for feature in self.features:
             if feature.source not in source_names:
-                raise ValueError(
-                    f"Feature references unknown source '{feature.source}'"
-                )
+                msg = f"Feature references unknown source '{feature.source}'"
+                raise ValueError(msg)
         return self
 
     @classmethod
@@ -391,7 +405,7 @@ class GazetteerConfig(BaseModel):
         Returns:
             Validated GazetteerConfig instance
         """
-        with open(path, encoding="utf-8") as config_file:
+        with Path(path).open(encoding="utf-8") as config_file:
             data = yaml.safe_load(config_file)
         config = cls.model_validate(data)
         base_dir = Path(path).resolve().parent

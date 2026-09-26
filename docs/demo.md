@@ -84,7 +84,7 @@ pip install jupyter plotly
 ```
 
 ``` bash
-python -m geoparser install geonames
+geoparser install geonames
 ```
 
 ``` bash

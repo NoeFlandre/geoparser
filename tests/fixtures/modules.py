@@ -55,21 +55,14 @@ def reuse_loaded_models():
     class CachedAutoTokenizer:
         from_pretrained = staticmethod(load_tokenizer)
 
-    class CachedSpacy:
-        # Stands in for the spacy module inside the resolver's namespace so that
-        # `_load_spacy_model` keeps its download-on-miss branch and unit tests
-        # can still patch `sentencetransformer.spacy.load` and `spacy.cli`.
-        def __init__(self, real):
-            self._real = real
-            self.load = lru_cache(maxsize=None)(real.load)
-
-        def __getattr__(self, name):
-            return getattr(self._real, name)
+    # Loading the sentence splitter once per session is what keeps the resolver
+    # tests fast; tests can still patch `sentencetransformer.load_spacy_model`.
+    load_spacy = lru_cache(maxsize=None)(st_module.load_spacy_model)
 
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(st_module, "SentenceTransformer", transformer_factory)
         monkeypatch.setattr(st_module, "AutoTokenizer", CachedAutoTokenizer)
-        monkeypatch.setattr(st_module, "spacy", CachedSpacy(st_module.spacy))
+        monkeypatch.setattr(st_module, "load_spacy_model", load_spacy)
         yield
 
 

@@ -43,7 +43,7 @@ Once the environment is activated your prompt starts with `(geoparser-env)`. The
 To confirm the package is installed and reachable:
 
 ``` bash
-python -m geoparser list
+geoparser list
 ```
 
 ``` text
@@ -75,7 +75,7 @@ The library includes ready-made configurations for two gazetteers, so either can
     - **Install time**: about **10–15 minutes**, depending on hardware and network
 
     ```bash
-    python -m geoparser install geonames
+    geoparser install geonames
     ```
 
     Coverage varies by region — some parts of the world are described in far more detail than others.
@@ -90,7 +90,7 @@ The library includes ready-made configurations for two gazetteers, so either can
     - **Install time**: about **1–2 minutes**
 
     ```bash
-    python -m geoparser install swissnames3d
+    geoparser install swissnames3d
     ```
 
     Attribute names are in German (`NAME`, `OBJEKTART`, `KANTON_NAME`). Note that the default resolver models were trained on English text against GeoNames, so expect to lower `min_similarity` and, ideally, to fine-tune — see [training modules](guides/training.md).
@@ -102,7 +102,7 @@ If you work on a region, a period, or a domain that neither covers, you can buil
 Taking GeoNames as the example:
 
 ``` bash
-python -m geoparser install geonames
+geoparser install geonames
 ```
 
 The command downloads the source data, transforms it, and builds a single self-contained file. It reports three stages:
@@ -124,10 +124,12 @@ When the summary prints, the gazetteer is installed and ready to use.
 
 The build needs considerably more disk space than the finished file occupies, because the source data is staged before being compacted; free space is checked before the build starts, and the intermediate files are deleted when it finishes. It also needs about 4 GB of RAM, so closing other heavy applications helps. If a build fails, any previously installed gazetteer of the same name is left as it was, so it is safe to simply run the command again.
 
+If the gazetteer is already installed, `install` says so and stops; pass `--force` to rebuild it anyway. `--keep-downloads` keeps the downloaded source files (under the data directory's `.downloads` folder) so that a later rebuild does not fetch them again. An unknown name exits with status 2 and lists the built-in gazetteers; a failed build prints one line and exits with status 1, and `--verbose` shows the full traceback.
+
 Once a gazetteer is installed, `list` reports it with its size on disk:
 
 ``` bash
-python -m geoparser list
+geoparser list
 ```
 
 ``` text
@@ -137,12 +139,15 @@ geonames  (9700.7 MB)
 Sizes shift as the upstream data is updated, so treat that as indicative. To remove one you no longer need:
 
 ``` bash
-python -m geoparser uninstall geonames
+geoparser uninstall geonames
 ```
 
 ``` text
+Remove gazetteer 'geonames'? [y/N]: y
 Removed gazetteer 'geonames'.
 ```
+
+Pass `--yes` to skip the confirmation, for example in scripts.
 
 ### Checking the Gazetteer
 

@@ -57,8 +57,8 @@ def _blocks(path: Path) -> Iterator[_Block]:
         )
         block: _Block | None = None
         current: _Entity | None = None
-        for line in handle:
-            line = line.rstrip("\n")
+        for raw_line in handle:
+            line = raw_line.rstrip("\n")
             if line.startswith(DOCUMENT_ID):
                 if block is not None:
                     yield block

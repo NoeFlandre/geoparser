@@ -28,7 +28,7 @@ Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 # Event listener for SQLite foreign keys
 # This applies to ALL Engine instances (including test engines)
 @event.listens_for(Engine, "connect")
-def _set_sqlite_pragma(dbapi_connection, connection_record):
+def _set_sqlite_pragma(dbapi_connection, connection_record):  # noqa: ARG001 - signature fixed by SQLAlchemy's connect event
     """
     Configure SQLite connections on connect.
 
@@ -97,7 +97,7 @@ def _check_database_compatibility() -> None:
         if legacy_gazetteer_tables or legacy_referent_layout:
             # pragma: no mutate start - the wording of this guidance is not
             # behaviour; a test pins that it names the database file.
-            raise RuntimeError(
+            msg = (
                 "Your geoparser database was created by an older version and is not compatible "
                 "with this release:\n\n"
                 f"{db_path}\n\n"
@@ -106,6 +106,7 @@ def _check_database_compatibility() -> None:
                 "will need to delete the database file and reinstall the gazetteers to continue. "
                 "Doing so also removes any projects and results stored in the database. "
             )
+            raise RuntimeError(msg)
             # pragma: no mutate end
 
 

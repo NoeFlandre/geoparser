@@ -30,9 +30,10 @@ class SessionSettingsRepository(BaseRepository[AnnotatorSessionSettings]):
         exclude: list[str] | None = None,
         additional: dict[str, t.Any] | None = None,
     ) -> AnnotatorSessionSettings:
-        assert additional and "session_id" in additional, (
-            "settings cannot be created without link to session"
-        )
+        # An explicit check, not an assert: asserts vanish under ``python -O``.
+        if not additional or "session_id" not in additional:
+            msg = "settings cannot be created without link to session"
+            raise ValueError(msg)
         return super().create(db, item, exclude=exclude, additional=additional)
 
     @classmethod

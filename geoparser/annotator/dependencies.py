@@ -21,5 +21,4 @@ def get_document(
 ) -> AnnotatorDocument:
     if doc_index < len(session.documents):
         return session.documents[doc_index]
-    else:
-        raise DocumentNotFoundException
+    raise DocumentNotFoundException

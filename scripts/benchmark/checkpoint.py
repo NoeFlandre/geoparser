@@ -107,9 +107,8 @@ class Checkpoint:
             return self.recognition
         if phase == "resolution":
             return self.resolution
-        raise ValueError(
-            f"Unknown phase {phase!r}; expected 'recognition' or 'resolution'."
-        )
+        msg = f"Unknown phase {phase!r}; expected 'recognition' or 'resolution'."
+        raise ValueError(msg)
 
 
 def save(path: Path, checkpoint: Checkpoint) -> None:

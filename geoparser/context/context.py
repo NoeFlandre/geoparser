@@ -78,7 +78,8 @@ class Context:
         if record is None:  # pragma: no cover - guaranteed by the caller
             # pragma: no mutate start - wording only, on a branch the caller
             # makes unreachable; there is no test that could pin the prose.
-            raise RuntimeError(f"Context record '{context_id}' no longer exists")
+            msg = f"Context record '{context_id}' no longer exists"
+            raise RuntimeError(msg)
             # pragma: no mutate end
         return record
 

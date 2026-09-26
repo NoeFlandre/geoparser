@@ -193,5 +193,18 @@ def test_ci_pins_setup_uv_to_a_resolvable_release() -> None:
         for path in sorted((PROJECT_ROOT / ".github/workflows").glob("*.yml"))
     )
 
-    assert "astral-sh/setup-uv@v10.1.0" in workflow_text
+    # Pinned by commit SHA, with the release it resolves to named alongside.
+    assert re.search(r"astral-sh/setup-uv@[0-9a-f]{40} # v10\.1\.0\n", workflow_text)
     assert "astral-sh/setup-uv@v10\n" not in workflow_text
+
+
+def test_every_action_is_pinned_to_a_commit_sha() -> None:
+    uses = re.compile(r"^\s*(?:-\s*)?uses:\s*(\S+)", re.MULTILINE)
+    unpinned = [
+        f"{path.name}: {ref}"
+        for path in sorted((PROJECT_ROOT / ".github/workflows").glob("*.yml"))
+        for ref in uses.findall(path.read_text(encoding="utf-8"))
+        if not ref.startswith("./") and not re.search(r"@[0-9a-f]{40}$", ref)
+    ]
+
+    assert unpinned == []

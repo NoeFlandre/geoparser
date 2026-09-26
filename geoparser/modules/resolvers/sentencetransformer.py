@@ -1,22 +1,26 @@
-import itertools
 import re
 import typing as t
-from pathlib import Path
 
 import spacy
 import spacy.tokens
 import torch
-from datasets import Dataset
-from sentence_transformers import SentenceTransformer, SentenceTransformerTrainer
-from sentence_transformers.sentence_transformer.losses import ContrastiveLoss
-from sentence_transformers.sentence_transformer.training_args import (
-    SentenceTransformerTrainingArguments,
-)
+from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, PreTrainedTokenizerBase, logging
 
+from geoparser._logging import get_logger
+from geoparser.gazetteer.description import (
+    GAZETTEER_ATTRIBUTE_MAP as SHARED_ATTRIBUTE_MAP,
+)
+from geoparser.gazetteer.description import admin_levels, describe_feature
 from geoparser.gazetteer.gazetteer import Gazetteer
+from geoparser.modules._spacy import load_spacy_model
 from geoparser.modules.resolvers import Resolver
-from geoparser.modules.resolvers.context import Sentence, select_context
+from geoparser.modules.resolvers._context import ContextWindowMixin
+from geoparser.modules.resolvers._similarity import SimilarityMixin
+from geoparser.modules.resolvers._training import TrainingMixin
+from geoparser.modules.resolvers.context import Sentence
+
+logger = get_logger(__name__)
 
 if t.TYPE_CHECKING:
     from geoparser.gazetteer.feature import Feature
@@ -30,13 +34,19 @@ _ENCODE_BATCH_SIZE = 32  # pragma: no mutate
 _SHOW_ENCODE_PROGRESS = True  # pragma: no mutate
 
 
-class SentenceTransformerResolver(Resolver):
+class SentenceTransformerResolver(
+    ContextWindowMixin, SimilarityMixin, TrainingMixin, Resolver
+):
     """
     A resolver that uses SentenceTransformer to map reference contexts to gazetteer candidates.
 
     This resolver extracts contextual information around each reference, generates embeddings
     for the context, retrieves candidate features from the gazetteer, generates location
     descriptions and embeddings for candidates, and finds the best match using cosine similarity.
+
+    Context sizing, similarity scoring and fine-tuning live in the private
+    ``_context``, ``_similarity`` and ``_training`` mixins; this class stays
+    the public entry point and owns loading and the candidate search.
     """
 
     NAME = "SentenceTransformerResolver"
@@ -50,29 +60,9 @@ class SentenceTransformerResolver(Resolver):
     )
 
     # Gazetteer-specific attribute mappings for location descriptions
-    GAZETTEER_ATTRIBUTE_MAP: t.ClassVar[dict[str, dict[str, str]]] = {
-        "geonames": {
-            "name": "name",
-            "type": "feature_name",
-            "level1": "country_name",
-            "level2": "admin1_name",
-            "level3": "admin2_name",
-        },
-        "geonames-cities": {
-            "name": "name",
-            "type": "feature_name",
-            "level1": "country_name",
-            "level2": "admin1_name",
-            "level3": "admin2_name",
-        },
-        "swissnames3d": {
-            "name": "NAME",
-            "type": "OBJEKTART",
-            "level1": "KANTON_NAME",
-            "level2": "BEZIRK_NAME",
-            "level3": "GEMEINDE_NAME",
-        },
-    }
+    GAZETTEER_ATTRIBUTE_MAP: t.ClassVar[dict[str, dict[str, str]]] = (
+        SHARED_ATTRIBUTE_MAP
+    )
 
     def __init__(
         self,
@@ -198,13 +188,13 @@ class SentenceTransformerResolver(Resolver):
         if attribute_map is None:
             # Look up in GAZETTEER_ATTRIBUTE_MAP
             if gazetteer_name not in self.GAZETTEER_ATTRIBUTE_MAP:
-                raise ValueError(
+                msg = (
                     f"Gazetteer '{gazetteer_name}' is not configured in GAZETTEER_ATTRIBUTE_MAP. "
                     f"Please provide a custom attribute_map parameter."
                 )
+                raise ValueError(msg)
             return self.GAZETTEER_ATTRIBUTE_MAP[gazetteer_name]
-        else:
-            return attribute_map
+        return attribute_map
 
     def _load_spacy_model(self, model_name: str) -> spacy.language.Language:
         """
@@ -216,17 +206,7 @@ class SentenceTransformerResolver(Resolver):
         Returns:
             Loaded spaCy Language model
         """
-        try:
-            nlp = spacy.load(model_name)
-        except OSError:
-            # Model not found, download it
-            # pragma: no mutate start - progress prose, not behaviour; the
-            # download and the reload below are what the tests pin.
-            print(f"Downloading spaCy model '{model_name}'...")
-            # pragma: no mutate end
-            spacy.cli.download(model_name)
-            nlp = spacy.load(model_name)
-        return nlp
+        return load_spacy_model(model_name)
 
     def predict(
         self, texts: list[str], references: list[list[tuple[int, int]]]
@@ -353,7 +333,7 @@ class SentenceTransformerResolver(Resolver):
         """
         return all(all(r is not None for r in doc_results) for doc_results in results)
 
-    def _search_once(
+    def _search_once(  # noqa: PLR0913, PLR0917 - internal step taking each search setting of the resolver
         self,
         texts: list[str],
         references: list[list[tuple[int, int]]],
@@ -401,7 +381,7 @@ class SentenceTransformerResolver(Resolver):
             contexts.append(doc_contexts)
         return contexts
 
-    def _encode(self, texts: list[str], role: str) -> "torch.Tensor":
+    def _encode(self, texts: list[str], role: str) -> "torch.Tensor":  # noqa: ARG002 - hook for asymmetric subclasses such as JinaResolver
         """
         Embed a batch of strings with the sentence transformer.
 
@@ -748,117 +728,6 @@ class SentenceTransformerResolver(Resolver):
             return None
         return self.gazetteer_name, candidate_list[best_idx].identifier
 
-    def _extract_context(self, text: str, start: int, end: int) -> str:
-        """
-        Extract context around a single reference, respecting model token limits.
-
-        The whole document is used when it fits. Otherwise the choice of which
-        sentences to keep is made by :func:`~geoparser.modules.resolvers.context.select_context`
-        over this document's measured sentences.
-
-        Args:
-            text: Full document text
-            start: Start position of the reference
-            end: End position of the reference
-
-        Returns:
-            Context string for the reference
-        """
-        token_limit = self._token_limit()
-
-        if self._document_tokens(text) <= token_limit:
-            return text
-
-        return select_context(self._measured_sentences(text), start, end, token_limit)
-
-    def _measured_sentences(self, text: str) -> tuple[Sentence, ...]:
-        """
-        The document's sentences, priced in encoder tokens.
-
-        This is the adapter between the models this resolver loads and the
-        plain arithmetic that sizes a context: spaCy supplies the spans, the
-        tokenizer supplies the costs, and everything downstream sees neither.
-
-        Args:
-            text: Full document text
-
-        Returns:
-            One Sentence per sentence of the document, in order
-        """
-        if text not in self.measured_sentences:
-            self.measured_sentences[text] = tuple(
-                Sentence(
-                    text=sent.text,
-                    start=sent.start_char,
-                    end=sent.end_char,
-                    cost=self._sentence_tokens(sent),
-                )
-                for sent in self._sentences(text)
-            )
-        return self.measured_sentences[text]
-
-    def _token_limit(self) -> int:
-        """
-        The number of tokens available for a context.
-
-        Returns:
-            The model's maximum sequence length, less the special tokens
-            ([CLS] and [SEP] for BERT-like models)
-
-        Raises:
-            ValueError: If the model advertises no maximum sequence length
-        """
-        max_seq_length = self.transformer.get_max_seq_length()
-        if max_seq_length is None:
-            # pragma: no mutate start - wording only; a test pins the type and
-            # that the message names the model.
-            raise ValueError(
-                f"Model '{self.model_name}' does not report a maximum sequence "
-                "length, so reference context cannot be sized"
-            )
-            # pragma: no mutate end
-        return max_seq_length - 2
-
-    def _document_tokens(self, text: str) -> int:
-        """
-        The token count of a whole document, computed once per document.
-
-        Args:
-            text: Full document text
-
-        Returns:
-            Number of tokens in the document
-        """
-        if text not in self.doc_tokens:
-            self.doc_tokens[text] = len(self.tokenizer.tokenize(text))
-        return self.doc_tokens[text]
-
-    def _sentences(self, text: str) -> list["spacy.tokens.Span"]:
-        """
-        The document's sentences, parsed once per document.
-
-        Args:
-            text: Full document text
-
-        Returns:
-            The document's sentence spans, in order
-        """
-        if text not in self.doc_objects:
-            self.doc_objects[text] = self.nlp(text)
-        return list(self.doc_objects[text].sents)
-
-    def _sentence_tokens(self, sentence: "spacy.tokens.Span") -> int:
-        """
-        The token cost of one sentence.
-
-        Args:
-            sentence: The sentence to measure
-
-        Returns:
-            Number of tokens the encoder would spend on it
-        """
-        return len(self.tokenizer.tokenize(sentence.text))
-
     def _admin_levels(self, location_data: dict) -> list[str]:
         """
         Administrative place names for a candidate, most specific first.
@@ -869,13 +738,7 @@ class SentenceTransformerResolver(Resolver):
         Returns:
             The non-empty administrative names, in level3..level1 order
         """
-        values = []
-        for level in ("level3", "level2", "level1"):
-            if level in self.attribute_map:
-                value = location_data.get(self.attribute_map[level])
-                if value:
-                    values.append(value)
-        return values
+        return admin_levels(location_data, self.attribute_map)
 
     def _generate_description(self, candidate: "Feature") -> str:
         """
@@ -887,24 +750,7 @@ class SentenceTransformerResolver(Resolver):
         Returns:
             Location description string
         """
-        location_data = candidate.data
-        attr_map = self.attribute_map
-        description_parts = []
-
-        feature_name = location_data.get(attr_map["name"])
-        if feature_name:
-            description_parts.append(feature_name)
-
-        feature_type = location_data.get(attr_map["type"])
-        if feature_type:
-            description_parts.append(f"({feature_type})")
-
-        admin_levels = self._admin_levels(location_data)
-        if admin_levels:
-            description_parts.append("in")
-            description_parts.append(", ".join(admin_levels))
-
-        return " ".join(description_parts).strip()
+        return describe_feature(candidate.data, self.attribute_map)
 
     def _candidate_description(self, candidate: "Feature") -> str:
         """Return a cached textual description for one gazetteer feature."""
@@ -913,242 +759,3 @@ class SentenceTransformerResolver(Resolver):
                 candidate
             )
         return self.candidate_descriptions[candidate.id]
-
-    def _calculate_similarities(
-        self,
-        context_embedding: torch.Tensor,
-        candidate_embeddings: list[torch.Tensor],
-    ) -> list[float]:
-        """
-        Calculate cosine similarities between context and candidate embeddings.
-
-        Args:
-            context_embedding: Embedding tensor for the reference context
-            candidate_embeddings: List of embedding tensors for candidates
-
-        Returns:
-            List of similarity scores
-        """
-        if not candidate_embeddings:
-            return []
-
-        # Stack candidate embeddings
-        candidate_tensor = torch.stack(candidate_embeddings)
-
-        # Calculate cosine similarities
-        # pragma: no mutate start - dim=1 is also torch's default, so a
-        # mutant that drops it computes exactly the same similarities.
-        similarities = torch.nn.functional.cosine_similarity(
-            context_embedding.unsqueeze(0), candidate_tensor, dim=1
-        )
-        # pragma: no mutate end
-
-        return similarities.tolist()
-
-    def _calculate_similarity_batches(
-        self,
-        contexts: list[str],
-        candidate_lists: list[list["Feature"]],
-    ) -> list[list[float]]:
-        """Score every candidate list with one flattened cosine operation."""
-        scores: list[list[float]] = [[] for _ in candidate_lists]
-        pending = self._non_empty(contexts, candidate_lists)
-        if not pending:
-            return scores
-
-        lengths = [len(candidate_list) for _, _, candidate_list in pending]
-        similarities = self._flat_similarities(pending, lengths)
-        offsets = [0, *itertools.accumulate(lengths)]
-        for (index, _, _), start, end in zip(
-            pending, offsets, offsets[1:], strict=False
-        ):
-            scores[index] = similarities[start:end]
-        return scores
-
-    @staticmethod
-    def _non_empty(
-        contexts: list[str], candidate_lists: list[list["Feature"]]
-    ) -> list[tuple[int, str, list["Feature"]]]:
-        """Return (index, context, candidates) for every non-empty list."""
-        return [
-            (index, context, candidate_list)
-            for index, (context, candidate_list) in enumerate(
-                zip(contexts, candidate_lists, strict=True)
-            )
-            if candidate_list
-        ]
-
-    def _flat_similarities(
-        self,
-        pending: list[tuple[int, str, list["Feature"]]],
-        lengths: list[int],
-    ) -> list[float]:
-        """
-        Score every (context, candidate) pair of a batch in one cosine call.
-
-        Args:
-            pending: (index, context, candidates) for each non-empty list
-            lengths: How many candidates each entry of ``pending`` has
-
-        Returns:
-            One similarity per candidate, in the order of ``pending``
-        """
-        context_tensor = torch.stack(
-            [self.context_embeddings[context] for _, context, _ in pending]
-        )
-        candidate_tensor = torch.cat(
-            [
-                torch.stack(
-                    [self.candidate_embeddings[candidate.id] for candidate in items]
-                )
-                for _, _, items in pending
-            ]
-        )
-        repeated_contexts = torch.repeat_interleave(
-            context_tensor,
-            torch.tensor(lengths, device=context_tensor.device),
-            dim=0,
-        )
-        return torch.nn.functional.cosine_similarity(
-            repeated_contexts, candidate_tensor, dim=1
-        ).tolist()
-
-    def fit(
-        self,
-        texts: list[str],
-        references: list[list[tuple[int, int]]],
-        referents: list[list[tuple[str, str]]],
-        output_path: str | Path,
-        epochs: int = 1,
-        batch_size: int = 8,
-        learning_rate: float = 2e-5,
-        warmup_ratio: float = 0.1,
-        save_strategy: str = "epoch",
-    ) -> None:
-        """
-        Fine-tune the SentenceTransformer model using references and their resolved referents as training data.
-
-        This method gathers all references that have been resolved (i.e., have referents), extracts
-        their contexts and all candidate descriptions, and uses them to create positive and negative
-        training examples for fine-tuning the underlying SentenceTransformer model using ContrastiveLoss.
-
-        Args:
-            texts: List of document text strings
-            references: List of lists of (start, end) position tuples
-            referents: List of lists of (gazetteer_name, identifier) tuples
-            output_path: Directory path to save the fine-tuned model
-            epochs: Number of training epochs (default: 1)
-            batch_size: Training batch size (default: 8)
-            learning_rate: Learning rate for training (default: 2e-5)
-            warmup_ratio: Warmup ratio for learning rate scheduler (default: 0.1)
-            save_strategy: When to save the model during training (default: "epoch")
-
-        Raises:
-            ValueError: If no training examples can be created from the provided documents
-        """
-        print("Preparing training data from referent annotations...")
-
-        # Step 1: Gather training data from resolved references
-        training_data = self._prepare_training_data(texts, references, referents)
-
-        if not training_data["sentence1"] or len(training_data["sentence1"]) == 0:
-            raise ValueError(
-                "No training examples found. Ensure documents contain references with referent annotations."
-            )
-
-        print(f"Created {len(training_data['sentence1'])} training examples")
-
-        # Step 2: Create training dataset
-        train_dataset = Dataset.from_dict(training_data)
-
-        # Step 3: Setup training loss
-        train_loss = ContrastiveLoss(self.transformer)
-
-        # Step 4: Configure training arguments
-        training_args = SentenceTransformerTrainingArguments(
-            output_dir=str(output_path),
-            num_train_epochs=epochs,
-            per_device_train_batch_size=batch_size,
-            learning_rate=learning_rate,
-            warmup_ratio=warmup_ratio,
-            save_strategy=save_strategy,
-            logging_strategy="steps",
-            logging_steps=max(1, len(training_data["sentence1"]) // (batch_size * 10)),
-            eval_strategy="no",  # No evaluation for now
-            save_total_limit=2,  # Keep only 2 checkpoints
-            load_best_model_at_end=False,
-        )
-
-        # Step 5: Create trainer
-        trainer = SentenceTransformerTrainer(
-            model=self.transformer,
-            args=training_args,
-            train_dataset=train_dataset,
-            loss=train_loss,
-        )
-
-        print("Starting model fine-tuning...")
-
-        # Step 6: Train the model
-        trainer.train()
-
-        # Step 7: Save the final model
-        self.transformer.save_pretrained(str(output_path))
-
-        print(f"Model fine-tuning completed and saved to: {output_path}")
-
-    def _prepare_training_data(
-        self,
-        texts: list[str],
-        references: list[list[tuple[int, int]]],
-        referents: list[list[tuple[str, str]]],
-    ) -> dict[str, list]:
-        """
-        Prepare training data from documents with resolved references.
-
-        This method extracts all references that have been resolved (have referents),
-        gets their contexts and all candidate descriptions to create both positive
-        and negative training examples for ContrastiveLoss.
-
-        Args:
-            texts: List of document text strings
-            references: List of lists of (start, end) position tuples
-            referents: List of lists of (gazetteer_name, identifier) tuples
-
-        Returns:
-            Dictionary with 'sentence1', 'sentence2', and 'label' lists for training
-        """
-        sentence1_texts = []  # contexts
-        sentence2_texts = []  # candidate descriptions
-        labels = []  # 1 for positive, 0 for negative
-
-        for text, doc_references, doc_referents in zip(
-            texts, references, referents, strict=True
-        ):
-            for (start, end), (_gazetteer_name, identifier) in zip(
-                doc_references, doc_referents, strict=True
-            ):
-                # Extract context for this reference
-                context = self._extract_context(text, start, end)
-
-                # Get all candidates for this reference text to create negative examples
-                reference_text = text[start:end]
-                candidates = self.gazetteer.search(reference_text)
-
-                for candidate in candidates:
-                    # Generate description for this candidate
-                    description = self._generate_description(candidate)
-
-                    # Determine if this is a positive or negative example
-                    label = 1 if candidate.identifier == identifier else 0
-
-                    # Add as training example
-                    sentence1_texts.append(context)
-                    sentence2_texts.append(description)
-                    labels.append(label)
-
-        return {
-            "sentence1": sentence1_texts,
-            "sentence2": sentence2_texts,
-            "label": labels,
-        }

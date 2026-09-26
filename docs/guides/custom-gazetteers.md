@@ -160,7 +160,7 @@ Five things about the source declaration deserve attention, because they are whe
 Install it:
 
 ``` bash
-python -m geoparser install pleiades.yaml
+geoparser install pleiades.yaml
 ```
 
 ``` text
@@ -569,11 +569,11 @@ Add a second block when its source contributes places the first one does not hav
 The configuration is now complete; it is reproduced in full at the end of this walkthrough. Installed, it takes well under a minute and 0.6 GB of working disk space, and produces an artifact of about 23 MB with 42,242 features and 79,578 names. That measured figure is what the file's `disk` key declares, so that a build with too little room to finish says so before it starts rather than halfway through:
 
 ``` bash
-python -m geoparser install pleiades.yaml
+geoparser install pleiades.yaml
 ```
 
 ``` bash
-python -m geoparser list
+geoparser list
 ```
 
 Check it from the outside before trusting it. Look up places you know and confirm the names, attributes, and coordinates are what you expect:
@@ -755,17 +755,17 @@ Knowing the limits saves time looking for keys that do not exist:
 Install a configuration by pointing the same command at the file instead of a pre-configured name:
 
 ``` bash
-python -m geoparser install path/to/my_gazetteer.yaml
+geoparser install path/to/my_gazetteer.yaml
 ```
 
 It then behaves exactly like a pre-configured gazetteer:
 
 ``` bash
-python -m geoparser list
+geoparser list
 ```
 
 ``` bash
-python -m geoparser uninstall my_gazetteer
+geoparser uninstall my_gazetteer
 ```
 
 The build validates the configuration, acquires the files, runs the projections, and writes the artifact. If anything is wrong, it stops with a message and nothing is installed; a successful build atomically replaces any previous artifact of the same name, so iterating on a configuration is safe.

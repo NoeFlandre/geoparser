@@ -487,7 +487,8 @@ def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> None:
     """
     rows = collect_rows(evidence_dir)
     if not rows:
-        raise ValueError(f"no {REPORT_NAME} under {evidence_dir}")
+        msg = f"no {REPORT_NAME} under {evidence_dir}"
+        raise ValueError(msg)
     api.create_repo(repo_id, repo_type="dataset", private=False, exist_ok=True)
     api.upload_folder(
         repo_id=repo_id,

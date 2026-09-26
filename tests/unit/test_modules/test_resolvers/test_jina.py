@@ -33,7 +33,7 @@ def patched():
         patch(f"{PARENT}.Gazetteer"),
         patch(f"{PARENT}.SentenceTransformer") as transformer,
         patch(f"{PARENT}.AutoTokenizer.from_pretrained"),
-        patch(f"{PARENT}.spacy.load"),
+        patch(f"{PARENT}.load_spacy_model"),
         patch(f"{MODULE}.AutoModel.from_pretrained") as reranker,
     ):
         yield SimpleNamespace(

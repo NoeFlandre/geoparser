@@ -22,7 +22,7 @@ def resolver():
         patch(
             "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
         ),
-        patch("geoparser.modules.resolvers.sentencetransformer.spacy.load"),
+        patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model"),
     ):
         from geoparser.modules.resolvers.sentencetransformer import (
             SentenceTransformerResolver,

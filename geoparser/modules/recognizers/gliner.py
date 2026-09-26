@@ -68,9 +68,8 @@ class GLiNER2Recognizer(Recognizer):
         if not entity_types:
             # pragma: no mutate start - wording only; a test pins the type and
             # that the message names what is missing.
-            raise ValueError(
-                "GLiNER2Recognizer needs at least one entity type to look for."
-            )
+            msg = "GLiNER2Recognizer needs at least one entity type to look for."
+            raise ValueError(msg)
             # pragma: no mutate end
 
         super().__init__(model_name=model_name, entity_types=entity_types)

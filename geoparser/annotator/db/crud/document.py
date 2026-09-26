@@ -59,9 +59,10 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
         exclude: list[str] | None = None,
         additional: dict[str, t.Any] | None = None,
     ) -> AnnotatorDocument:
-        assert additional and "session_id" in additional, (
-            "document cannot be created without link to session"
-        )
+        # An explicit check, not an assert: asserts vanish under ``python -O``.
+        if not additional or "session_id" not in additional:
+            msg = "document cannot be created without link to session"
+            raise ValueError(msg)
         # Create the main document object
         document = super().create(
             db,
@@ -87,7 +88,7 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
         files: list[UploadFile],
         session_id: uuid.UUID,
         spacy_model: str,
-        apply_spacy: bool = False,
+        apply_spacy: bool = False,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
     ) -> list[AnnotatorDocument]:
         recognizer = None
         if apply_spacy:
@@ -152,8 +153,7 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
         after_toponym = Markup.escape(document.text[last_idx:])
         html_parts.append(after_toponym)
         # Combine all parts into a single Markup object
-        html = Markup("").join(html_parts)
-        return html
+        return Markup("").join(html_parts)
 
     @classmethod
     def get_progress(cls, db: DBSession, **filters) -> t.Iterator[dict]:
