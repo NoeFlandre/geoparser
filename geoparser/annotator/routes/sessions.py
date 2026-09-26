@@ -8,7 +8,7 @@ from fastapi.responses import RedirectResponse
 from sqlmodel import Session as DBSession
 
 from geoparser.annotator.db.crud import DocumentRepository, SessionRepository
-from geoparser.annotator.db.db import db_location, get_db
+from geoparser.annotator.db.db import get_database_location, get_db
 from geoparser.annotator.db.models import AnnotatorSession, AnnotatorSessionCreate
 from geoparser.annotator.dependencies import get_session
 from geoparser.annotator.exceptions import (
@@ -43,7 +43,7 @@ def create_session(
 def create_from_legacy_files(
     db: t.Annotated[DBSession, Depends(get_db)],
 ) -> LegacyFilesResponse:
-    legacy_files = list(db_location.parent.glob("*.json"))
+    legacy_files = list(get_database_location().parent.glob("*.json"))
     if not legacy_files:
         return LegacyFilesResponse()
     files_loaded = 0

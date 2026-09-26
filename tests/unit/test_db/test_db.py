@@ -340,7 +340,7 @@ def test_ensure_database_directory_skips_non_sqlite_engines(monkeypatch):
 
     mkdir = Mock()
     monkeypatch.setattr(
-        db, "engine", SimpleNamespace(url=make_url("postgresql://localhost/geoparser"))
+        db, "_engine", SimpleNamespace(url=make_url("postgresql://localhost/geoparser"))
     )
     monkeypatch.setattr(Path, "mkdir", mkdir)
 
@@ -360,7 +360,7 @@ def test_ensure_database_directory_creates_sqlite_parent(tmp_path, monkeypatch):
 
     database_file = tmp_path / "created-on-use" / "geoparser.db"
     url = URL.create("sqlite", database=str(database_file))
-    monkeypatch.setattr(db, "engine", SimpleNamespace(url=url))
+    monkeypatch.setattr(db, "_engine", SimpleNamespace(url=url))
 
     db._ensure_database_directory()
 
@@ -386,7 +386,7 @@ def test_ensure_database_directory_skips_non_file_sqlite_urls(url, monkeypatch):
     import geoparser.db.db as db
 
     mkdir = Mock()
-    monkeypatch.setattr(db, "engine", SimpleNamespace(url=make_url(url)))
+    monkeypatch.setattr(db, "_engine", SimpleNamespace(url=make_url(url)))
     monkeypatch.setattr(Path, "mkdir", mkdir)
 
     db._ensure_database_directory()
@@ -406,7 +406,7 @@ def test_ensure_database_directory_is_idempotent(tmp_path, monkeypatch):
     database_file = tmp_path / "nested" / "deeper" / "geoparser.db"
     monkeypatch.setattr(
         db,
-        "engine",
+        "_engine",
         SimpleNamespace(url=URL.create("sqlite", database=str(database_file))),
     )
 

@@ -117,7 +117,9 @@ def test_legacy_import_reports_schema_failure_and_keeps_bad_file(
     legacy_dir = tmp_path / "legacy"
     legacy_dir.mkdir()
     session_routes = import_module("geoparser.annotator.routes.sessions")
-    monkeypatch.setattr(session_routes, "db_location", legacy_dir / "annotator.db")
+    monkeypatch.setattr(
+        session_routes, "get_database_location", lambda: legacy_dir / "annotator.db"
+    )
 
     good_file = legacy_dir / "good.json"
     good_payload = {
@@ -183,7 +185,9 @@ def test_legacy_import_reports_invalid_utf8_and_keeps_file(
     legacy_dir = tmp_path / "legacy"
     legacy_dir.mkdir()
     session_routes = import_module("geoparser.annotator.routes.sessions")
-    monkeypatch.setattr(session_routes, "db_location", legacy_dir / "annotator.db")
+    monkeypatch.setattr(
+        session_routes, "get_database_location", lambda: legacy_dir / "annotator.db"
+    )
     bad_file = legacy_dir / "invalid-utf8.json"
     bad_file.write_bytes(b"{\xff}")
 

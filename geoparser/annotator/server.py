@@ -6,7 +6,7 @@ import webbrowser
 import uvicorn
 
 from geoparser.annotator.app import app
-from geoparser.annotator.db.db import create_db_and_tables, engine
+from geoparser.annotator.db.db import create_db_and_tables
 
 
 def run(
@@ -29,7 +29,7 @@ def run(
         browser_host = "127.0.0.1" if host in ("0.0.0.0", "::") else host  # noqa: S104 - only maps a wildcard bind to a browsable loopback URL
         webbrowser.open_new(f"http://{browser_host}:{port}/")
 
-    create_db_and_tables(engine)
+    create_db_and_tables()
     if open_browser:
         threading.Timer(1.0, launch_browser).start()
     # uvicorn can only reload an application it imports itself.

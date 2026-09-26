@@ -361,7 +361,9 @@ def test_legacy_import_with_no_files_returns_empty_result(
     empty_legacy_dir.mkdir()
     sessions_routes = import_module("geoparser.annotator.routes.sessions")
     monkeypatch.setattr(
-        sessions_routes, "db_location", empty_legacy_dir / "annotator.db"
+        sessions_routes,
+        "get_database_location",
+        lambda: empty_legacy_dir / "annotator.db",
     )
 
     response = client.post("/session/read/legacy-files")

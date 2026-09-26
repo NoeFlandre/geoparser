@@ -5,20 +5,27 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from threading import Lock
 
 from sqlalchemy import Engine, event, text
-from sqlalchemy.engine import Connection, make_url
+from sqlalchemy.engine import Connection
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine
 
 import geoparser.db.models  # noqa: F401
 from geoparser.paths import geoparser_data_dir
 
-# Database URL configuration (SQLite)
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    f"sqlite:///{geoparser_data_dir() / 'geoparser.db'}",
-)
+_engine: Engine | None = None
+_engine_lock = Lock()
+
+
+def _database_url() -> str:
+    """Resolve the project database URL when the database is first used."""
+    override = os.getenv("DATABASE_URL")
+    if override is not None:
+        return override
+    return f"sqlite:///{geoparser_data_dir() / 'geoparser.db'}"
 
 
 def _database_path(database_url: str) -> str:
@@ -26,7 +33,60 @@ def _database_path(database_url: str) -> str:
     return make_url(database_url).database or ""
 
 
-db_path = _database_path(DATABASE_URL)
+def _sqlite_file_path(database_url: str) -> Path | None:
+    """Return a filesystem path for a file-backed SQLite URL."""
+    url = make_url(database_url)
+    if url.get_backend_name() != "sqlite" or not url.database:
+        return None
+    if url.database == ":memory:" or url.database.startswith("file:"):
+        return None
+    return Path(url.database)
+
+
+def get_database_path() -> Path | None:
+    """Return the path configured for the project database."""
+    current_engine = globals().get("engine", _engine)
+    if current_engine is not None:
+        return _sqlite_file_path(str(current_engine.url))
+    return _sqlite_file_path(_database_url())
+
+
+def get_engine() -> Engine:
+    """Return the project database engine, creating it on first use."""
+    global _engine  # noqa: PLW0603 - lazy singleton; test fixtures patch _engine directly
+
+    patched_engine = globals().get("engine")
+    if patched_engine is not None:
+        return patched_engine
+    engine = _engine
+    if engine is None:
+        with _engine_lock:
+            engine = _engine
+            if engine is None:
+                database_url = _database_url()
+                database_path = _sqlite_file_path(database_url)
+                if database_path is not None:
+                    database_path.parent.mkdir(parents=True, exist_ok=True)
+                engine = _engine = create_engine(
+                    database_url,
+                    echo=False,  # Set to True for SQL debugging
+                    connect_args={"check_same_thread": False},
+                    poolclass=NullPool,  # NullPool is recommended for SQLite
+                )
+    return engine
+
+
+def __getattr__(name: str):
+    """Preserve lazy access to the former module-level configuration names."""
+    if name == "engine":
+        return get_engine()
+    if name == "DATABASE_URL":
+        return _database_url()
+    if name == "db_path":
+        path = get_database_path()
+        return str(path) if path is not None else None
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
 
 
 # Event listener for SQLite foreign keys
@@ -48,20 +108,12 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):  # noqa: ARG001 - s
         cursor.close()
 
 
-# Create engine once at module level
-engine: Engine = create_engine(
-    DATABASE_URL,
-    echo=False,  # Set to True for SQL debugging
-    connect_args={"check_same_thread": False},
-    poolclass=NullPool,  # NullPool is recommended for SQLite
-)
-
-
 def _ensure_database_directory() -> None:
     """Create the parent directory when a file-backed SQLite database is used."""
-    if engine.url.get_backend_name() != "sqlite":
+    url = get_engine().url
+    if url.get_backend_name() != "sqlite":
         return
-    database = engine.url.database
+    database = url.database
     if database is None or database == ":memory:" or database.startswith("file:"):
         return
     Path(database).expanduser().parent.mkdir(parents=True, exist_ok=True)
@@ -88,6 +140,7 @@ def _check_database_compatibility() -> None:
     Raises:
         RuntimeError: If a legacy database layout is detected.
     """
+    engine = get_engine()
     with engine.connect() as connection:
 
         def _table_exists(name: str) -> bool:
@@ -113,7 +166,7 @@ def _check_database_compatibility() -> None:
             msg = (
                 "Your geoparser database was created by an older version and is not compatible "
                 "with this release:\n\n"
-                f"{db_path}\n\n"
+                f"{get_database_path()}\n\n"
                 "The Irchel Geoparser is still in active development, and the database format "
                 "may change between releases. There is no automatic upgrade path yet, so you "
                 "will need to delete the database file and reinstall the gazetteers to continue. "
@@ -128,12 +181,12 @@ def create_db_and_tables() -> None:
     Create all database tables.
 
     Make sure all models are imported before calling this function.
-    For this application, tables are created automatically at module import.
-    This function is provided for explicit table creation if needed.
+    The database engine is created on first use, so this function also
+    initializes the database directory when needed.
     """
     _ensure_database_directory()
     _check_database_compatibility()
-    SQLModel.metadata.create_all(engine)
+    SQLModel.metadata.create_all(get_engine())
 
 
 @contextmanager
@@ -148,7 +201,7 @@ def get_session() -> Iterator[Session]:
         SQLModel Session for database operations
     """
     _ensure_database_directory()
-    session = Session(engine, expire_on_commit=False)
+    session = Session(get_engine(), expire_on_commit=False)
     try:
         yield session
     finally:
@@ -168,5 +221,5 @@ def get_connection() -> Iterator[Connection]:
         SQLAlchemy Connection for database operations
     """
     _ensure_database_directory()
-    with engine.connect() as connection:
+    with get_engine().connect() as connection:
         yield connection
