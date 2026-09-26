@@ -31,6 +31,7 @@ def build_stages(
     root: Path,
     artifact_dir: Path,
     *,
+    skip_baseline: bool = False,
     skip_mutation: bool = False,
     skip_docker: bool = False,
     offline: bool = False,
@@ -49,7 +50,6 @@ def build_stages(
     demo_docker_tag = f"{docker_tag}-demo"
 
     stages = [
-        Stage("baseline", (_uv("pytest", "--cov-fail-under=100"),), root),
         Stage(
             "ruff",
             (
@@ -110,7 +110,14 @@ def build_stages(
         ),
         Stage(
             "architecture",
-            (_uv("python", "scripts/check_architecture.py", "--package", "geoparser"),),
+            (
+                _uv(
+                    "python",
+                    "scripts/check_architecture.py",
+                    "--package",
+                    "geoparser",
+                ),
+            ),
             root,
         ),
         Stage(
@@ -128,6 +135,10 @@ def build_stages(
             root,
         ),
     ]
+    if not skip_baseline:
+        stages.insert(
+            0, Stage("baseline", (_uv("pytest", "--cov-fail-under=100"),), root)
+        )
 
     if not skip_mutation:
         stages.append(
@@ -256,6 +267,11 @@ def main(argv: list[str] | None = None) -> int:
     """Run all quality stages unless an explicitly diagnostic flag is used."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--skip-baseline",
+        action="store_true",
+        help="Skip the redundant first test run; the later tests stage still enforces coverage.",
+    )
+    parser.add_argument(
         "--skip-mutation",
         action="store_true",
         help="Skip mutation testing for local diagnosis; CI must not use this.",
@@ -291,6 +307,7 @@ def main(argv: list[str] | None = None) -> int:
         stages = build_stages(
             root,
             artifact_dir,
+            skip_baseline=args.skip_baseline,
             skip_mutation=args.skip_mutation,
             skip_docker=args.skip_docker,
             offline=args.offline,

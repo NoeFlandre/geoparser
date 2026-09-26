@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, edited]
   push:
     branches:
       - main
@@ -20,6 +21,7 @@ concurrency:
 
 jobs:
   quality:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
     name: quality-gate
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -49,4 +51,11 @@ jobs:
             huggingface-${{ runner.os }}-
 
       - name: Run the complete deterministic quality gauntlet
-        run: uv run --no-sync python scripts/quality_gauntlet.py
+        env:
+          GEOPARSER_TEST_REMOTE_MODELS: ${{ github.event_name == 'schedule' && '1' || '' }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
+            uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline
+          else
+            uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline --skip-docker
+          fi

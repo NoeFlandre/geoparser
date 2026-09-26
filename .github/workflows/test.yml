@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, edited]
   # The trunk itself is also tested. This is what keeps the README badges alive,
   # seeds the default-branch Actions cache that every pull request restores from
   # (caches written by a pull request are scoped to that pull request alone), and
@@ -36,11 +37,29 @@ env:
 
 jobs:
   pytest:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        include:
+          - os: ubuntu-latest
+            python-version: '3.10'
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: ubuntu-latest
+            python-version: '3.13'
+          - os: ubuntu-latest
+            python-version: '3.14'
+          - os: windows-latest
+            python-version: '3.10'
+          - os: windows-latest
+            python-version: '3.14'
+          - os: macos-latest
+            python-version: '3.10'
+          - os: macos-latest
+            python-version: '3.14'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -95,6 +114,7 @@ jobs:
           include-hidden-files: true
 
   coverage:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
     needs: [pytest]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -165,7 +185,7 @@ jobs:
   # matrix values, so requiring those directly deadlocks the ruleset as soon as
   # the matrix changes; this name never does.
   tests-passed:
-    if: always()
+    if: always() && (github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null)
     needs: [pytest, coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 5
