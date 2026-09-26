@@ -326,13 +326,12 @@ def area_under_error_curve(
     """
     Summarize the whole error distribution as one number, lower being better.
 
-    Errors are capped at ``unresolved_error_km``, compressed with
-    ``ln(1 + error)``, normalized by ``ln(1 + unresolved_error_km)``, and
-    averaged. The default penalty is ``MAX_ERROR_KM``, above every distance
-    between valid coordinates. The log scale is what makes the number
-    informative: on a linear scale a few hemisphere-scale mistakes would
-    drown out every difference between a 5 km and a 500 km error, which is
-    the range an improvement actually moves.
+    Errors are capped at ``MAX_ERROR_KM``, compressed with
+    ``ln(1 + error)``, normalized by ``ln(1 + MAX_ERROR_KM)``, and averaged.
+    An unplaced toponym receives ``unresolved_error_km`` before that cap. The
+    log scale makes the number informative: on a linear scale a few
+    hemisphere-scale mistakes would drown out every difference between a 5 km
+    and a 500 km error, which is the range an improvement actually moves.
 
     This follows the shape of the AUC used in the toponym resolution
     literature, but the exact normalization here is this repository's own --
@@ -354,12 +353,12 @@ def area_under_error_curve(
         return 0.0
     if unresolved_error_km == MAX_ERROR_KM:
         # Preserve the legacy default's exact floating-point rounding.
-        ceiling = math.log(1 + unresolved_error_km)
+        ceiling = math.log(1 + MAX_ERROR_KM)
         return sum(
-            math.log(1 + min(error, unresolved_error_km)) / ceiling for error in errors
+            math.log(1 + min(error, MAX_ERROR_KM)) / ceiling for error in errors
         ) / len(errors)
 
-    ceiling = math.log1p(unresolved_error_km)
+    ceiling = math.log1p(MAX_ERROR_KM)
     return sum(
-        math.log1p(min(error, unresolved_error_km)) / ceiling for error in errors
+        math.log1p(min(error, MAX_ERROR_KM)) / ceiling for error in errors
     ) / len(errors)

@@ -3,7 +3,7 @@
 import math
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 
 from geoparser.evaluation import (
@@ -20,8 +20,6 @@ pytestmark = pytest.mark.property
 
 EARTH_RADIUS_KM = 6371.0088
 MAX_SPHERICAL_DISTANCE_KM = math.pi * EARTH_RADIUS_KM
-FAST = settings(max_examples=20, derandomize=True, deadline=None, database=None)
-
 latitude = st.floats(min_value=-90, max_value=90, allow_nan=False, allow_infinity=False)
 longitude = st.floats(
     min_value=-180, max_value=180, allow_nan=False, allow_infinity=False
@@ -59,7 +57,6 @@ def annotations(points: list[tuple[float, float]]) -> list[Annotation]:
     return [annotation_at(index, point) for index, point in enumerate(points)]
 
 
-@FAST
 @given(first=coordinate, middle=coordinate, last=coordinate)
 def test_haversine_geodesic_invariants(
     first: tuple[float, float],
@@ -82,7 +79,6 @@ def test_haversine_geodesic_invariants(
     assert direct <= via_middle + 1e-8
 
 
-@FAST
 @given(
     rows=st.lists(st.tuples(coordinate, coordinate), max_size=8),
     thresholds=st.tuples(threshold, threshold),
@@ -101,7 +97,6 @@ def test_accuracy_is_bounded_and_monotone_with_threshold(
     assert 0.0 <= lower_score <= upper_score <= 1.0
 
 
-@FAST
 @given(sample=error_rows_with_permutation())
 def test_mean_and_median_are_bounded_and_permutation_invariant(
     sample: tuple[
@@ -128,7 +123,6 @@ def test_mean_and_median_are_bounded_and_permutation_invariant(
     )
 
 
-@FAST
 @given(first=coordinate, second=coordinate, count=st.integers(min_value=1, max_value=8))
 def test_median_of_identical_errors_equals_the_common_error(
     first: tuple[float, float], second: tuple[float, float], count: int
@@ -140,7 +134,6 @@ def test_median_of_identical_errors_equals_the_common_error(
     assert median_error_km(expected, predicted) == pytest.approx(common_error)
 
 
-@FAST
 @given(
     rows=st.lists(st.tuples(coordinate, coordinate), max_size=8),
     unresolved_error_km=st.floats(
@@ -168,7 +161,6 @@ def test_area_under_error_curve_is_bounded_and_perfect_scores_zero(
     assert perfect_score == 0.0
 
 
-@FAST
 @given(
     rows=st.lists(
         st.tuples(st.one_of(st.none(), coordinate), st.one_of(st.none(), coordinate)),

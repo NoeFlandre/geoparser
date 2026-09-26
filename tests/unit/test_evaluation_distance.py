@@ -235,15 +235,34 @@ class TestAreaUnderErrorCurve:
 
         assert hundred_km < 10 * ten_km
 
-    def test_stays_in_range_when_a_resolved_error_exceeds_the_miss_penalty(self):
-        """Errors beyond the configured miss penalty saturate at one."""
+    def test_custom_miss_penalty_does_not_clip_resolved_errors(self):
+        """Only an unresolved toponym receives the configured miss penalty."""
         gold = [located(0, 6, *ZURICH)]
 
         score = area_under_error_curve(
             gold, [located(0, 6, *GENEVA)], unresolved_error_km=100.0
         )
 
-        assert score == 1.0
+        distance = haversine_km(*ZURICH, *GENEVA)
+        assert score == pytest.approx(math.log1p(distance) / math.log1p(MAX_ERROR_KM))
+
+    def test_custom_miss_penalty_does_not_rescale_the_auc(self):
+        """The configured miss cost uses the fixed maximum-error scale."""
+        gold = [located(0, 6, *ZURICH)]
+        unresolved_error_km = 1000.0
+
+        score = area_under_error_curve(
+            gold, [], unresolved_error_km=unresolved_error_km
+        )
+
+        assert score == pytest.approx(
+            math.log1p(unresolved_error_km) / math.log1p(MAX_ERROR_KM)
+        )
+        resolved_default = area_under_error_curve(gold, [located(0, 6, *GENEVA)])
+        resolved_custom = area_under_error_curve(
+            gold, [located(0, 6, *GENEVA)], unresolved_error_km=unresolved_error_km
+        )
+        assert resolved_custom == resolved_default
 
     def test_handles_the_smallest_positive_miss_penalty(self):
         """A valid tiny penalty still has a finite logarithmic normalization."""
@@ -251,7 +270,7 @@ class TestAreaUnderErrorCurve:
 
         score = area_under_error_curve(gold, [], unresolved_error_km=5e-324)
 
-        assert score == 1.0
+        assert score == pytest.approx(math.log1p(5e-324) / math.log1p(MAX_ERROR_KM))
 
 
 class TestMutationPins:
@@ -286,8 +305,10 @@ class TestMutationPins:
             (mean_error_km, 100.0),
             (median_error_km, 100.0),
             (lambda e, p, **k: accuracy_at_km(e, p, **k), 1.0),
-            # The configured miss penalty normalizes the unresolved error to 1.
-            (area_under_error_curve, 1.0),
+            (
+                area_under_error_curve,
+                math.log1p(100.0) / math.log1p(MAX_ERROR_KM),
+            ),
         ],
     )
     def test_every_summary_passes_on_a_custom_unresolved_error(self, metric, expected):
