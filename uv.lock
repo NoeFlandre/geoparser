@@ -235,15 +235,6 @@ wheels = [
 ]
 
 [[package]]
-name = "appdirs"
-version = "1.4.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d7/d8/05696357e0311f5b5c316d7b95f46c669dd9c15aaeecbb48c7d0aeb88c40/appdirs-1.4.4.tar.gz", hash = "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41", size = 13470, upload-time = "2020-05-11T07:59:51.037Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/00/2344469e2084fb287c2e0b57b72910309874c3245463acd6cf5e3db69324/appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128", size = 9566, upload-time = "2020-05-11T07:59:49.499Z" },
-]
-
-[[package]]
 name = "appnope"
 version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1363,13 +1354,13 @@ version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
-    { name = "appdirs" },
     { name = "datasets" },
     { name = "duckdb" },
     { name = "fastapi" },
     { name = "gliner2", extra = ["local"] },
     { name = "markupsafe" },
     { name = "peft" },
+    { name = "platformdirs" },
     { name = "protobuf" },
     { name = "pydantic" },
     { name = "pyproj", version = "3.7.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -1442,13 +1433,13 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "accelerate", specifier = ">=1.11.0,<2" },
-    { name = "appdirs", specifier = ">=1.4.4,<2" },
     { name = "datasets", specifier = ">=5.0.0,<6" },
     { name = "duckdb", specifier = ">=1.5.4,<2" },
     { name = "fastapi", specifier = ">=0.121.0,<0.122" },
     { name = "gliner2", extras = ["local"], specifier = ">=2.0.0,<3" },
     { name = "markupsafe", specifier = ">=3.0.3,<4" },
     { name = "peft", specifier = ">=0.15.2,<1" },
+    { name = "platformdirs", specifier = ">=4.2.0,<5" },
     { name = "protobuf", specifier = ">=6.33.1,<8" },
     { name = "pydantic", specifier = ">=2.12.3,<3" },
     { name = "pyproj", specifier = ">=3.7.1,<4" },

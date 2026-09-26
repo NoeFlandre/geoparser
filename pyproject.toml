@@ -11,7 +11,7 @@ dependencies = [
     # Not imported directly: transformers' Trainer (behind
     # SentenceTransformerTrainer in SentenceTransformerResolver.fit) requires it.
     "accelerate>=1.11.0,<2",
-    "appdirs>=1.4.4,<2",
+    "platformdirs>=4.2.0,<5",
     "datasets>=5.0.0,<6",
     "duckdb>=1.5.4,<2",
     "fastapi>=0.121.0,<0.122",
