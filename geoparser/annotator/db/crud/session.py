@@ -3,6 +3,7 @@ import typing as t
 import uuid
 
 from fastapi.encoders import jsonable_encoder
+from pydantic import ValidationError
 from sqlmodel import Session as DBSession
 
 from geoparser.annotator.db.crud.base import BaseRepository
@@ -16,7 +17,10 @@ from geoparser.annotator.db.models.session import (
     AnnotatorSessionUpdate,
 )
 from geoparser.annotator.db.models.toponym import AnnotatorToponymCreate
-from geoparser.annotator.exceptions import SessionNotFoundException
+from geoparser.annotator.exceptions import (
+    InvalidUploadException,
+    SessionNotFoundException,
+)
 
 
 class SessionRepository(BaseRepository[AnnotatorSession]):
@@ -63,29 +67,46 @@ class SessionRepository(BaseRepository[AnnotatorSession]):
     def create_from_json(
         cls, db: DBSession, json_str: str, keep_id: bool = False
     ) -> AnnotatorSession:
-        # Parse the JSON input
-        content = json.loads(json_str)
-        session = AnnotatorSessionCreate.model_validate(
-            {
-                **content,
-                "documents": [
-                    AnnotatorDocumentCreate.model_validate(
-                        {
-                            **document_dict,
-                            "toponyms": [
-                                AnnotatorToponymCreate.model_validate(toponym_dict)
-                                for toponym_dict in document_dict["toponyms"]
-                            ],
-                            "spacy_applied": True,
-                        }
-                    )
-                    for document_dict in content["documents"]
-                ],
-            }
-        )
-        additional = {}
-        if keep_id and (session_id := content.get("session_id")):
-            additional["id"] = uuid.UUID(session_id)
+        try:
+            content = json.loads(json_str)
+            if not isinstance(content, dict):
+                raise ValueError("session JSON must contain an object")
+            documents = content.get("documents")
+            if not isinstance(documents, list):
+                raise ValueError("session JSON must contain a documents list")
+
+            session = AnnotatorSessionCreate.model_validate(
+                {
+                    **content,
+                    "documents": [
+                        AnnotatorDocumentCreate.model_validate(
+                            {
+                                **document_dict,
+                                "toponyms": [
+                                    AnnotatorToponymCreate.model_validate(toponym_dict)
+                                    for toponym_dict in document_dict["toponyms"]
+                                ],
+                                "spacy_applied": True,
+                            }
+                        )
+                        for document_dict in documents
+                    ],
+                }
+            )
+            additional = {}
+            if keep_id and (session_id := content.get("session_id")):
+                additional["id"] = uuid.UUID(session_id)
+        except (
+            json.JSONDecodeError,
+            KeyError,
+            TypeError,
+            ValueError,
+            ValidationError,
+        ) as error:
+            raise InvalidUploadException(
+                "Invalid session JSON: required fields are missing or malformed."
+            ) from error
+
         return cls.create(db, session, additional=additional)
 
     @classmethod

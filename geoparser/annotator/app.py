@@ -39,11 +39,13 @@ from geoparser.annotator.db.models import (
 from geoparser.annotator.dependencies import get_document, get_session
 from geoparser.annotator.exceptions import (
     DocumentNotFoundException,
+    InvalidUploadException,
     SessionNotFoundException,
     SessionSettingsNotFoundException,
     ToponymNotFoundException,
     ToponymOverlapException,
     document_exception_handler,
+    invalid_upload_exception_handler,
     session_exception_handler,
     sessionsettings_exception_handler,
     toponym_exception_handler,
@@ -93,6 +95,10 @@ app.add_exception_handler(
 app.add_exception_handler(
     ToponymOverlapException,
     toponym_overlap_exception_handler,  # ty: ignore[invalid-argument-type]
+)
+app.add_exception_handler(
+    InvalidUploadException,
+    invalid_upload_exception_handler,  # ty: ignore[invalid-argument-type]
 )
 templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "templates")
@@ -215,6 +221,10 @@ def create_session(
 ) -> RedirectResponse:
     global current_gazetteer_name
 
+    # Validate every file before creating a session so an invalid upload does
+    # not leave an empty session behind.
+    DocumentRepository.validate_text_files(files)
+
     # Store the gazetteer name
     current_gazetteer_name = gazetteer
     session = SessionRepository.create(db, AnnotatorSessionCreate(gazetteer=gazetteer))
@@ -239,13 +249,14 @@ def create_from_legacy_files(
     files_failed = []
     for legacy_file in legacy_files:
         try:
-            with open(legacy_file) as infile:
+            with open(legacy_file, encoding="utf-8") as infile:
                 content = infile.read()
             SessionRepository.create_from_json(db, content, keep_id=True)
+        except (InvalidUploadException, UnicodeDecodeError):
+            files_failed.append(legacy_file.name)
+        else:
             legacy_file.unlink()
             files_loaded += 1
-        except (json.decoder.JSONDecodeError, KeyError):
-            files_failed.append(legacy_file.name)
     return LegacyFilesResponse(
         files_found=len(legacy_files),
         files_loaded=files_loaded,
@@ -286,9 +297,13 @@ def continue_session_file(
     # Handle uploaded session file
     if session_file and session_file.filename:
         # Save session to cache
-        session = SessionRepository.create_from_json(
-            db, session_file.file.read().decode(), keep_id=False
-        )
+        try:
+            session_content = session_file.file.read().decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise InvalidUploadException(
+                "Session file must be valid UTF-8 JSON."
+            ) from error
+        session = SessionRepository.create_from_json(db, session_content, keep_id=False)
         # Store the gazetteer name
         current_gazetteer_name = session.gazetteer
         # Redirect to annotate page

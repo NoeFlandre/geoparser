@@ -15,7 +15,10 @@ from geoparser.annotator.db.models.document import (
     AnnotatorDocumentUpdate,
 )
 from geoparser.annotator.db.models.toponym import AnnotatorToponymCreate
-from geoparser.annotator.exceptions import DocumentNotFoundException
+from geoparser.annotator.exceptions import (
+    DocumentNotFoundException,
+    InvalidUploadException,
+)
 from geoparser.modules.recognizers.spacy import SpacyRecognizer
 
 
@@ -24,6 +27,25 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
     exception_factory: t.Callable[[str, uuid.UUID], Exception] = lambda x, y: (
         DocumentNotFoundException(f"{x} with ID {y} not found.")
     )
+
+    @staticmethod
+    def _read_uploaded_text(file: UploadFile, *, rewind: bool = False) -> str:
+        filename = secure_filename(file.filename or "uploaded file")
+        try:
+            return file.file.read().decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise InvalidUploadException(
+                f"Text file '{filename}' must be valid UTF-8."
+            ) from error
+        finally:
+            if rewind:
+                file.file.seek(0)
+
+    @classmethod
+    def validate_text_files(cls, files: list[UploadFile]) -> None:
+        """Reject undecodable files before an upload creates database rows."""
+        for file in files:
+            cls._read_uploaded_text(file, rewind=True)
 
     @classmethod
     def get_highest_index(cls, db: DBSession, session_id: uuid.UUID) -> int:
@@ -89,15 +111,18 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
         spacy_model: str,
         apply_spacy: bool = False,
     ) -> list[AnnotatorDocument]:
+        decoded_files = [
+            (secure_filename(file.filename or ""), cls._read_uploaded_text(file))
+            for file in files
+        ]
+
         recognizer = None
         if apply_spacy:
             recognizer = SpacyRecognizer(model_name=spacy_model)
 
         documents = []
-        for file in files:
+        for filename, text in decoded_files:
             toponyms = []
-            filename = secure_filename(file.filename or "")
-            text = file.file.read().decode("utf-8")
             if apply_spacy and recognizer:
                 # Recognizers may return None for a document they cannot
                 # process; that yields no toponyms rather than a TypeError.

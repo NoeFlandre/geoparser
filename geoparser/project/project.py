@@ -399,7 +399,7 @@ class Project:
         """
         # Load JSON file
         file_path = Path(path)
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
 
         # Extract gazetteer name from annotations

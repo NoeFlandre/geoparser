@@ -24,6 +24,10 @@ class ToponymOverlapException(Exception):
     pass
 
 
+class InvalidUploadException(Exception):
+    """An uploaded or legacy file cannot be decoded or validated."""
+
+
 def session_exception_handler(
     request: Request, exc: SessionNotFoundException
 ) -> JSONResponse:
@@ -78,6 +82,17 @@ def toponym_overlap_exception_handler(
             **BaseResponse(
                 status="error", message="Overlap with existing toponym."
             ).model_dump()
+        },
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+    )
+
+
+def invalid_upload_exception_handler(
+    request: Request, exc: InvalidUploadException
+) -> JSONResponse:
+    return JSONResponse(
+        content={
+            **BaseResponse(status="error", message=str(exc)).model_dump(),
         },
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
     )
