@@ -4,6 +4,7 @@ import builtins
 import json
 import sys
 import uuid
+from importlib import import_module
 from pathlib import Path
 from types import ModuleType
 
@@ -33,9 +34,8 @@ def client_and_engine(monkeypatch):
         sys.modules, "geoparser.modules.recognizers.spacy", recognizer_module
     )
 
-    from importlib import import_module
-
     annotator_app = import_module("geoparser.annotator.app")
+    get_db = import_module("geoparser.annotator.db.db").get_db
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -47,12 +47,12 @@ def client_and_engine(monkeypatch):
         with Session(engine) as db:
             yield db
 
-    annotator_app.app.dependency_overrides[annotator_app.get_db] = override_get_db
+    annotator_app.app.dependency_overrides[get_db] = override_get_db
     try:
         with TestClient(annotator_app.app, raise_server_exceptions=False) as client:
             yield client, engine, annotator_app
     finally:
-        annotator_app.app.dependency_overrides.pop(annotator_app.get_db, None)
+        annotator_app.app.dependency_overrides.pop(get_db, None)
         engine.dispose()
 
 
@@ -113,10 +113,11 @@ def test_legacy_import_reports_schema_failure_and_keeps_bad_file(
     client_and_engine, tmp_path, monkeypatch
 ):
     """A bad session is reported while good UTF-8 sessions still load."""
-    client, engine, annotator_app = client_and_engine
+    client, engine, _annotator_app = client_and_engine
     legacy_dir = tmp_path / "legacy"
     legacy_dir.mkdir()
-    monkeypatch.setattr(annotator_app, "db_location", legacy_dir / "annotator.db")
+    session_routes = import_module("geoparser.annotator.routes.sessions")
+    monkeypatch.setattr(session_routes, "db_location", legacy_dir / "annotator.db")
 
     good_file = legacy_dir / "good.json"
     good_payload = {
@@ -178,10 +179,11 @@ def test_legacy_import_reports_invalid_utf8_and_keeps_file(
     client_and_engine, tmp_path, monkeypatch
 ):
     """An undecodable legacy file is listed and left available to recover."""
-    client, _, annotator_app = client_and_engine
+    client, _, _annotator_app = client_and_engine
     legacy_dir = tmp_path / "legacy"
     legacy_dir.mkdir()
-    monkeypatch.setattr(annotator_app, "db_location", legacy_dir / "annotator.db")
+    session_routes = import_module("geoparser.annotator.routes.sessions")
+    monkeypatch.setattr(session_routes, "db_location", legacy_dir / "annotator.db")
     bad_file = legacy_dir / "invalid-utf8.json"
     bad_file.write_bytes(b"{\xff}")
 

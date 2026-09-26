@@ -1,0 +1,26 @@
+{
+  "gazetteer": "geonames",
+  "documents": [
+    {
+      "filename": "paris.txt",
+      "spacy_model": "en_core_web_sm",
+      "spacy_applied": true,
+      "text": "Paris",
+      "toponyms": [
+        {
+          "text": "Paris",
+          "start": 0,
+          "end": 5,
+          "loc_id": "2988507"
+        }
+      ]
+    },
+    {
+      "filename": "berlin.txt",
+      "spacy_model": "en_core_web_sm",
+      "spacy_applied": false,
+      "text": "Berlin",
+      "toponyms": []
+    }
+  ]
+}
