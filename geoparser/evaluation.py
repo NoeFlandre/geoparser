@@ -22,6 +22,35 @@ class Annotation:
     without a gazetteer identifier, and two gazetteers disagree on identifiers
     for the same place, so distance is what compares across them."""
 
+    def __post_init__(self) -> None:
+        """Reject spans and locations that cannot describe an annotation."""
+        if isinstance(self.start, bool) or not isinstance(self.start, int):
+            raise TypeError("start offset must be an integer")
+        if isinstance(self.end, bool) or not isinstance(self.end, int):
+            raise TypeError("end offset must be an integer")
+        if self.start < 0 or self.end <= self.start:
+            raise ValueError("annotation span must satisfy 0 <= start < end")
+
+        latitude = self.latitude
+        longitude = self.longitude
+        if (latitude is None) != (longitude is None):
+            raise ValueError("latitude and longitude must be provided together")
+        if latitude is None or longitude is None:
+            return
+        if (
+            isinstance(latitude, bool)
+            or not isinstance(latitude, (int, float))
+            or isinstance(longitude, bool)
+            or not isinstance(longitude, (int, float))
+        ):
+            raise TypeError("latitude and longitude must be numeric coordinates")
+        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            raise ValueError(
+                "coordinates must have latitude in [-90, 90] and longitude in [-180, 180]"
+            )
+        if not math.isfinite(latitude) or not math.isfinite(longitude):
+            raise ValueError("coordinates must be finite")
+
     @property
     def span(self) -> tuple[int, int]:
         """Return the half-open character span."""
@@ -50,6 +79,47 @@ def _resolved_pairs(
         for annotation in annotations
         if annotation.identifier is not None
     }
+
+
+def _validate_gold_annotations(annotations: Sequence[Annotation]) -> None:
+    """Reject one gold span assigned multiple identifiers or locations."""
+    identifiers: dict[Identity, str] = {}
+    locations: dict[Identity, tuple[float, float]] = {}
+    for annotation in annotations:
+        identity = annotation.identity
+        if annotation.identifier is not None:
+            previous_identifier = identifiers.get(identity)
+            if (
+                previous_identifier is not None
+                and previous_identifier != annotation.identifier
+            ):
+                raise ValueError(
+                    "conflicting gold annotations for span "
+                    f"{identity}: identifiers {previous_identifier!r} and "
+                    f"{annotation.identifier!r}"
+                )
+            identifiers[identity] = annotation.identifier
+
+        if annotation.latitude is not None and annotation.longitude is not None:
+            location = (annotation.latitude, annotation.longitude)
+            previous_location = locations.get(identity)
+            if previous_location is not None and previous_location != location:
+                raise ValueError(
+                    "conflicting gold annotations for span "
+                    f"{identity}: coordinates {previous_location!r} and {location!r}"
+                )
+            locations[identity] = location
+
+
+def _validate_unresolved_error_km(value: float) -> None:
+    """Require a finite, positive penalty for an unplaced gold span."""
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or value <= 0
+        or (isinstance(value, float) and not math.isfinite(value))
+    ):
+        raise ValueError("unresolved_error_km must be a finite positive number")
 
 
 def _ratio(numerator: int, denominator: int) -> float:
@@ -90,6 +160,7 @@ def resolution_accuracy(
     expected: Sequence[Annotation], predicted: Sequence[Annotation]
 ) -> float:
     """Measure exact span-and-identifier matches against resolved gold pairs."""
+    _validate_gold_annotations(expected)
     expected_pairs = _resolved_pairs(expected)
     predicted_pairs = _resolved_pairs(predicted)
     correct = len(expected_pairs & predicted_pairs)
@@ -166,6 +237,8 @@ def resolution_errors_km(
     Returns:
         Distance errors in kilometres, in descending order
     """
+    _validate_unresolved_error_km(unresolved_error_km)
+    _validate_gold_annotations(expected)
     predictions = _located(predicted)
     errors = [
         haversine_km(latitude, longitude, *predictions[identity])
@@ -195,6 +268,13 @@ def accuracy_at_km(
     Returns:
         The fraction placed close enough, where an empty comparison is perfect
     """
+    if (
+        isinstance(threshold_km, bool)
+        or not isinstance(threshold_km, (int, float))
+        or threshold_km < 0
+        or (isinstance(threshold_km, float) and not math.isfinite(threshold_km))
+    ):
+        raise ValueError("threshold_km must be a finite non-negative number")
     errors = resolution_errors_km(
         expected, predicted, unresolved_error_km=unresolved_error_km
     )
@@ -246,11 +326,13 @@ def area_under_error_curve(
     """
     Summarize the whole error distribution as one number, lower being better.
 
-    Errors are compressed with ``ln(1 + error)`` and normalized by
-    ``ln(1 + MAX_ERROR_KM)``, then averaged. The log scale is what makes the
-    number informative: on a linear scale a few hemisphere-scale mistakes
-    would drown out every difference between a 5 km and a 500 km error, which
-    is the range an improvement actually moves.
+    Errors are capped at ``unresolved_error_km``, compressed with
+    ``ln(1 + error)``, normalized by ``ln(1 + unresolved_error_km)``, and
+    averaged. The default penalty is ``MAX_ERROR_KM``, above every distance
+    between valid coordinates. The log scale is what makes the number
+    informative: on a linear scale a few hemisphere-scale mistakes would
+    drown out every difference between a 5 km and a 500 km error, which is
+    the range an improvement actually moves.
 
     This follows the shape of the AUC used in the toponym resolution
     literature, but the exact normalization here is this repository's own --
@@ -270,5 +352,7 @@ def area_under_error_curve(
     )
     if not errors:
         return 0.0
-    ceiling = math.log(1 + unresolved_error_km)
-    return sum(math.log(1 + error) / ceiling for error in errors) / len(errors)
+    ceiling = math.log1p(unresolved_error_km)
+    return sum(
+        math.log1p(min(error, unresolved_error_km)) / ceiling for error in errors
+    ) / len(errors)
