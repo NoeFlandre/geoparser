@@ -187,13 +187,20 @@ def test_pull_request_base_edits_trigger_guarded_ci() -> None:
     workflows = ["test.yml", "lint.yml", "docs.yml", "quality.yml"]
 
     for filename in workflows:
-        content = (PROJECT_ROOT / ".github/workflows" / filename).read_text(
-            encoding="utf-8"
+        workflow = yaml.load(
+            (PROJECT_ROOT / ".github/workflows" / filename).read_text(encoding="utf-8"),
+            Loader=yaml.BaseLoader,
         )
-        assert "types: [opened, synchronize, reopened, edited]" in content
-        assert (
-            "if: github.event_name != 'pull_request' || github.event.action != "
-            "'edited' || github.event.changes.base != null" in content
+        pull_request = workflow["on"]["pull_request"]
+        assert {"opened", "synchronize", "reopened", "edited"} <= set(
+            pull_request["types"]
+        )
+        guards = [
+            str(job.get("if", "")).replace(" ", "") for job in workflow["jobs"].values()
+        ]
+        assert any(
+            "github.event.changes.base" in guard and "edited" in guard
+            for guard in guards
         )
 
 

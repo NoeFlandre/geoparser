@@ -1422,6 +1422,7 @@ lint = [
     { name = "coverage", extra = ["toml"] },
     { name = "radon" },
     { name = "ruff" },
+    { name = "toml" },
     { name = "ty" },
 ]
 test = [
@@ -1504,6 +1505,7 @@ lint = [
     { name = "coverage", extras = ["toml"], specifier = ">=7.0,<8" },
     { name = "radon", specifier = ">=6.0.1,<7" },
     { name = "ruff", specifier = "==0.16.6" },
+    { name = "toml", specifier = ">=0.10.2,<1" },
     { name = "ty", specifier = "==0.0.78" },
 ]
 test = [

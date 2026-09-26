@@ -77,6 +77,7 @@ dev = [
 lint = [
     "ruff==0.16.6",
     "ty==0.0.78",
+    "toml>=0.10.2,<1",
     # radon + coverage are what scripts/crap.py needs to combine complexity
     # with coverage; coverage also backs the combined report in CI.
     "radon>=6.0.1,<7",
