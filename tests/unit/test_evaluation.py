@@ -1,3 +1,4 @@
+import math
 from dataclasses import FrozenInstanceError
 
 import pytest
@@ -19,6 +20,59 @@ def test_annotation_is_an_immutable_value_object() -> None:
     with pytest.raises(FrozenInstanceError):
         field_name = "start"
         setattr(annotation, field_name, 3)
+
+
+@pytest.mark.parametrize("start,end", [(-1, 1), (2, 2), (3, 2)])
+def test_annotation_rejects_invalid_character_spans(start: int, end: int) -> None:
+    with pytest.raises(ValueError, match="span"):
+        Annotation(start, end)
+
+
+@pytest.mark.parametrize("start,end", [(1.5, 3), (1, True)])
+def test_annotation_rejects_non_integer_span_offsets(start: int, end: int) -> None:
+    with pytest.raises(TypeError, match="integer"):
+        Annotation(start, end)
+
+
+@pytest.mark.parametrize("latitude,longitude", [(47.0, None), (None, 8.0)])
+def test_annotation_requires_latitude_and_longitude_together(
+    latitude: float | None, longitude: float | None
+) -> None:
+    with pytest.raises(ValueError, match="latitude and longitude"):
+        Annotation(0, 4, latitude=latitude, longitude=longitude)
+
+
+@pytest.mark.parametrize(
+    "latitude,longitude",
+    [
+        (-90.1, 0.0),
+        (90.1, 0.0),
+        (0.0, -180.1),
+        (0.0, 180.1),
+        (math.nan, 0.0),
+        (0.0, math.inf),
+    ],
+)
+def test_annotation_rejects_out_of_range_or_non_finite_coordinates(
+    latitude: float, longitude: float
+) -> None:
+    with pytest.raises(ValueError, match="coordinate"):
+        Annotation(0, 4, latitude=latitude, longitude=longitude)
+
+
+@pytest.mark.parametrize("latitude,longitude", [("47.0", 8.0), (47.0, True)])
+def test_annotation_rejects_non_numeric_coordinates(
+    latitude: float, longitude: float
+) -> None:
+    with pytest.raises(TypeError, match="coordinate"):
+        Annotation(0, 4, latitude=latitude, longitude=longitude)
+
+
+def test_annotation_accepts_valid_coordinate_boundaries() -> None:
+    annotation = Annotation(0, 4, latitude=-90.0, longitude=180.0)
+
+    assert annotation.latitude == -90.0
+    assert annotation.longitude == 180.0
 
 
 def test_annotation_identity_is_the_span_until_a_document_qualifies_it() -> None:
@@ -123,6 +177,18 @@ def test_resolution_accuracy_counts_each_gold_pair_once() -> None:
     ]
 
     assert resolution_accuracy(expected, predicted) == 1.0
+
+
+def test_resolution_accuracy_rejects_conflicting_gold_identifiers_for_one_span() -> (
+    None
+):
+    expected = [
+        Annotation(0, 16, "3041563", "doc"),
+        Annotation(0, 16, "3041564", "doc"),
+    ]
+
+    with pytest.raises(ValueError, match="conflicting gold annotations"):
+        resolution_accuracy(expected, [])
 
 
 def test_resolution_accuracy_is_one_without_resolvable_gold_annotations() -> None:

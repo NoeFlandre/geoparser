@@ -80,12 +80,10 @@ class TestResolutionErrors:
 
         assert resolution_errors_km(gold, predicted) == [MAX_ERROR_KM]
 
-    def test_ignores_a_prediction_with_only_one_coordinate(self):
-        """Test that half a coordinate pair does not count as a placement."""
-        gold = [located(0, 6, *ZURICH)]
-        predicted = [Annotation(0, 6, None, "d", 47.3769, None)]
-
-        assert resolution_errors_km(gold, predicted) == [MAX_ERROR_KM]
+    def test_rejects_a_prediction_with_only_one_coordinate(self):
+        """A placement must supply both coordinates or neither."""
+        with pytest.raises(ValueError, match="latitude and longitude"):
+            Annotation(0, 6, None, "d", 47.3769, None)
 
     def test_keeps_documents_apart(self):
         """Test that the same offsets in two documents are different spans."""
@@ -144,6 +142,15 @@ class TestAccuracyAtKm:
         predicted = [located(0, 6, 47.36667, 8.55)]
 
         assert accuracy_at_km(gold, predicted, threshold_km=0.5) == 0.0
+
+    def test_rejects_a_negative_threshold(self):
+        with pytest.raises(ValueError, match="threshold_km"):
+            accuracy_at_km([], [], threshold_km=-0.1)
+
+    @pytest.mark.parametrize("threshold_km", [math.nan, math.inf])
+    def test_rejects_a_non_finite_threshold(self, threshold_km):
+        with pytest.raises(ValueError, match="threshold_km"):
+            accuracy_at_km([], [], threshold_km=threshold_km)
 
 
 class TestErrorSummaries:
@@ -221,6 +228,24 @@ class TestAreaUnderErrorCurve:
 
         assert hundred_km < 10 * ten_km
 
+    def test_stays_in_range_when_a_resolved_error_exceeds_the_miss_penalty(self):
+        """Errors beyond the configured miss penalty saturate at one."""
+        gold = [located(0, 6, *ZURICH)]
+
+        score = area_under_error_curve(
+            gold, [located(0, 6, *GENEVA)], unresolved_error_km=100.0
+        )
+
+        assert score == 1.0
+
+    def test_handles_the_smallest_positive_miss_penalty(self):
+        """A valid tiny penalty still has a finite logarithmic normalization."""
+        gold = [located(0, 6, *ZURICH)]
+
+        score = area_under_error_curve(gold, [], unresolved_error_km=5e-324)
+
+        assert score == 1.0
+
 
 class TestMutationPins:
     """Edges of the arithmetic that a plausible slip would get wrong."""
@@ -254,8 +279,7 @@ class TestMutationPins:
             (mean_error_km, 100.0),
             (median_error_km, 100.0),
             (lambda e, p, **k: accuracy_at_km(e, p, **k), 1.0),
-            # Normalized by the configured error itself, so exactly 1.0; the
-            # default maximum would score log(20040) / log(101), about 2.1.
+            # The configured miss penalty normalizes the unresolved error to 1.
             (area_under_error_curve, 1.0),
         ],
     )
@@ -284,3 +308,36 @@ class TestMutationPins:
         predicted = [located(0, 1, *ZURICH)]
 
         assert area_under_error_curve(gold, predicted) == pytest.approx(0.5)
+
+    @pytest.mark.parametrize("unresolved_error_km", [0.0, -1.0, math.nan, math.inf])
+    def test_rejects_non_positive_or_non_finite_unresolved_error(
+        self, unresolved_error_km
+    ):
+        with pytest.raises(ValueError, match="unresolved_error_km"):
+            resolution_errors_km([], [], unresolved_error_km=unresolved_error_km)
+
+    def test_rejects_conflicting_gold_locations_for_one_span(self):
+        """One gold span cannot silently select whichever location came last."""
+        gold = [located(0, 6, *ZURICH), located(0, 6, *GENEVA)]
+
+        with pytest.raises(ValueError, match="conflicting gold annotations"):
+            resolution_errors_km(gold, [])
+
+    def test_default_distance_metrics_preserve_the_legacy_golden_values(self):
+        """Pin default scores while custom miss penalties gain a bounded AUC."""
+        gold = [
+            located(0, 6, *ZURICH),
+            located(7, 13, *ZURICH),
+            located(14, 20, *ZURICH),
+        ]
+        predicted = [located(0, 6, *ZURICH), located(7, 13, *GENEVA)]
+
+        assert resolution_errors_km(gold, predicted) == pytest.approx(
+            [MAX_ERROR_KM, 224.3513426985906, 0.0]
+        )
+        assert accuracy_at_km(gold, predicted) == pytest.approx(1 / 3)
+        assert mean_error_km(gold, predicted) == pytest.approx(6754.450447566197)
+        assert median_error_km(gold, predicted) == pytest.approx(224.3513426985906)
+        assert area_under_error_curve(gold, predicted) == pytest.approx(
+            0.5156451334367401
+        )
