@@ -45,6 +45,38 @@ def _is_installed(config_path: Path) -> bool:
     return True
 
 
+def _resolve_config(config: str) -> Path:
+    """
+    Turn a gazetteer name or config path into the config file to build.
+
+    Args:
+        config: A built-in gazetteer name or a path to a YAML config.
+
+    Returns:
+        Path of the configuration file.
+
+    Raises:
+        typer.Exit: With code 2 when neither a file nor a built-in name
+            matches; the available names are printed to stderr.
+    """
+    config_path = Path(config)
+    if config_path.exists():
+        return config_path
+
+    builtin_gazetteers = _get_builtin_gazetteers()
+    if config in builtin_gazetteers:
+        return builtin_gazetteers[config]
+
+    available = "\n".join(f"  - {name}" for name in sorted(builtin_gazetteers.keys()))
+    typer.secho(
+        f"Gazetteer config not found: {config}\n"
+        f"Available built-in gazetteer configs:\n{available}",
+        fg=typer.colors.RED,
+        err=True,
+    )
+    raise typer.Exit(code=2)
+
+
 def install_cli(
     config: t.Annotated[
         str,
@@ -76,26 +108,7 @@ def install_cli(
         verbose: Re-raise build failures with their traceback instead of
                  printing a one-line error.
     """
-    # Check if config is a built-in gazetteer name
-    config_path = Path(config)
-
-    if not config_path.exists():
-        # Get available built-in gazetteers
-        builtin_gazetteers = _get_builtin_gazetteers()
-
-        if config in builtin_gazetteers:
-            config_path = builtin_gazetteers[config]
-        else:
-            available = "\n".join(
-                f"  - {name}" for name in sorted(builtin_gazetteers.keys())
-            )
-            typer.secho(
-                f"Gazetteer config not found: {config}\n"
-                f"Available built-in gazetteer configs:\n{available}",
-                fg=typer.colors.RED,
-                err=True,
-            )
-            raise typer.Exit(code=2)
+    config_path = _resolve_config(config)
 
     # Imported per command: the build pipeline pulls in the heavy stack, and
     # `list` and `uninstall` have no reason to wait for it.

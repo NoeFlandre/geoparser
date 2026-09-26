@@ -237,6 +237,42 @@ def _configure_logging(quiet: bool, verbose: bool) -> None:
     logging.getLogger("geoparser").setLevel(level)
 
 
+def _require_gazetteer(gazetteer: str) -> None:
+    """
+    Stop with exit code 2 unless the gazetteer is installed.
+
+    Args:
+        gazetteer: Name of the gazetteer the resolver will use.
+
+    Raises:
+        typer.Exit: If the gazetteer is not installed.
+    """
+    from geoparser.gazetteer.artifact import artifact_path
+
+    if not artifact_path(gazetteer).exists():
+        typer.secho(
+            f"Gazetteer '{gazetteer}' is not installed. "
+            f"Install it with: geoparser install {gazetteer}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+
+def _write_output(rendered: str, output: Path | None) -> None:
+    """
+    Write the rendered results to a file, or to stdout when none is given.
+
+    Args:
+        rendered: The serialized results.
+        output: Destination file, or None for stdout.
+    """
+    if output is None:
+        sys.stdout.write(rendered)
+    else:
+        output.write_text(rendered, encoding="utf-8")
+
+
 def parse_cli(
     inputs: t.Annotated[
         list[str] | None,
@@ -283,19 +319,9 @@ def parse_cli(
     Results are written as JSON Lines to stdout by default, one record per
     input document; progress messages go to stderr.
     """
-    from geoparser.gazetteer.artifact import artifact_path
-
     # Checked first: loading the models takes far longer than this, and would
     # only end in the same error.
-    if not artifact_path(gazetteer).exists():
-        typer.secho(
-            f"Gazetteer '{gazetteer}' is not installed. "
-            f"Install it with: geoparser install {gazetteer}",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=2)
-
+    _require_gazetteer(gazetteer)
     _configure_logging(quiet, verbose)
     documents = _read_inputs(inputs or [STDIN])
 
@@ -311,8 +337,4 @@ def parse_cli(
         for (source, _), document in zip(documents, parsed, strict=True)
     ]
 
-    rendered = _serialize(records, output_format)
-    if output is None:
-        sys.stdout.write(rendered)
-    else:
-        output.write_text(rendered, encoding="utf-8")
+    _write_output(_serialize(records, output_format), output)
