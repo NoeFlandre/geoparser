@@ -7,9 +7,10 @@ Everything under ``benchmark-evidence/`` is uploaded to ``runs/`` in the
 dataset, and the dataset card is regenerated from the reports found there, so
 the Hub copy never shows a number the committed evidence does not hold.
 
-The results derive from HIPE-2022, licensed CC-BY-NC-SA 4.0, and share-alike
-carries that licence over to the dataset. The corpus text is not uploaded:
-reports and checkpoints hold scores, offsets and coordinates, not articles.
+The corpora carry different terms: HIPE-2022 is CC BY-NC-SA 4.0, while the
+UniTopRank release containing GeoVirus and NewsLi is Apache-2.0. The corpus
+text is not uploaded; reports and checkpoints hold scores, offsets and
+coordinates, not articles.
 """
 
 from __future__ import annotations
@@ -26,10 +27,14 @@ from pathlib import Path
 from scripts.benchmark.chart import render_bar_chart
 from scripts.benchmark.corpora import CORPORA
 from scripts.benchmark.pipelines import HYBRID, PRIOR_SETTINGS
+from scripts.benchmark.report import _number
 
 DEFAULT_REPO_ID = "NoeFlandre/geoparser-benchmark-results"
 EVIDENCE_DIR = Path(__file__).resolve().parents[2] / "benchmark-evidence"
-LICENSE = "cc-by-nc-sa-4.0"
+LICENSE = "other"
+LICENSE_NAME = "Mixed corpus terms; see the dataset card"
+HIPE_DATA_URL = "https://github.com/hipe-eval/HIPE-2022-data"
+UNITOPRANK_DATA_URL = "https://figshare.com/articles/software/UniTopRank/30445541"
 REPORT_NAME = "benchmark-report.json"
 BASELINE_PREFIX = "baseline"
 # One flat table for the Hub's viewer: left to itself it tries to read every
@@ -113,23 +118,23 @@ ABLATION_CHART = "charts/ablation-acc161.svg"
 BENCHMARKS = {
     "geovirus": (
         "GeoVirus",
-        "WikiNews articles on epidemics (Gritta et al., 2018).",
+        "WikiNews epidemics (Gritta et al.; UniTopRank release, Apache-2.0).",
     ),
     "hipe2020": (
         "HIPE-2020",
-        "Historical Swiss, Luxembourgish and American newspapers, OCR.",
+        "Historical newspapers and commentary (HIPE-2022, CC BY-NC-SA 4.0).",
     ),
     "newseye": (
         "NewsEye",
-        "Historical European newspapers, OCR (HIPE-2022).",
+        "Historical European newspapers (HIPE-2022, CC BY-NC-SA 4.0).",
     ),
     "topres19th": (
         "TopRes19th",
-        "19th-century British newspapers, OCR (HIPE-2022).",
+        "19th-century British newspapers (HIPE-2022, CC BY-NC-SA 4.0).",
     ),
     "newsli": (
         "NewsLi",
-        "Wikinews linked to GeoNames (UniTopRank, Hu et al., 2026); "
+        "Wikinews linked to GeoNames (UniTopRank, Apache-2.0); "
         "first 500 articles per language.",
     ),
 }
@@ -174,11 +179,6 @@ def collect_rows(evidence_dir: Path) -> list[dict[str, t.Any]]:
                 }
             )
     return rows
-
-
-def _number(value: float | None) -> str:
-    """Format a score, or a dash for a phase that did not run."""
-    return "-" if value is None else f"{value:.3f}"
 
 
 def render_csv(rows: Sequence[dict[str, t.Any]]) -> str:
@@ -275,7 +275,7 @@ def mark_best(
     Returns:
         One Markdown cell per value, a dash for a missing one
     """
-    shown = [None if value is None else f"{value:.3f}" for value in values]
+    shown = [None if value is None else _number(value) for value in values]
     ranked = sorted(
         {cell for cell in shown if cell is not None},
         key=float,
@@ -430,7 +430,6 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
     """Return the dataset card, with compact results tables built from ``rows``."""
     lines = [
         "---",
-        f"license: {LICENSE}",
         "configs:",
         "- config_name: default",
         "  data_files:",
@@ -438,6 +437,8 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
         f"    path: {RESULTS_FILE}",
         "language: [en, de, fr, fi, sv, ar, es, fa, ja, pl, ro, sr, ta, tr, uk]",
         "pretty_name: Geoparser benchmark results",
+        f"license: {LICENSE}",
+        f"license_name: {LICENSE_NAME}",
         "tags: [geoparsing, toponym-resolution, benchmark]",
         "---",
         "",
@@ -470,9 +471,11 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
         f"`{RESULTS_FILE}` (the viewer) has every run with AUC, errors and",
         "runtime; `runs/` holds reports, checkpoints and job logs.",
         "",
-        "## Licence",
+        "## Corpus terms",
         "",
-        "CC-BY-NC-SA 4.0, following HIPE-2022 (Ehrmann et al.).",
+        f"HIPE-2022: CC BY-NC-SA 4.0 ([source]({HIPE_DATA_URL})); "
+        f"GeoVirus and NewsLi: Apache-2.0 ([UniTopRank release]({UNITOPRANK_DATA_URL})).",
+        "No source article text is uploaded here. The terms for each source corpus still apply when you obtain or reuse its files.",
         "",
     ]
     return "\n".join(lines)

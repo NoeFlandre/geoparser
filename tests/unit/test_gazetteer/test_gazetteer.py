@@ -7,7 +7,7 @@ Tests the Gazetteer query interface against small hand-crafted artifacts.
 import pytest
 
 from geoparser.gazetteer.feature import Feature
-from geoparser.gazetteer.gazetteer import Gazetteer
+from geoparser.gazetteer.gazetteer import Gazetteer, normalize_name
 
 
 @pytest.mark.unit
@@ -151,6 +151,12 @@ class TestGazetteerSearch:
 
         assert gazetteer.search("", method="exact") == []
         assert gazetteer.search('  ""  ', method="phrase") == []
+
+
+@pytest.mark.unit
+def test_normalize_name_removes_quotes_and_trims_whitespace():
+    """The query normalizer is available to resolver code as shared behavior."""
+    assert normalize_name('  "Bern"  ') == "Bern"
 
 
 @pytest.mark.unit

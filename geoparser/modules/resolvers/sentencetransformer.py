@@ -1,5 +1,4 @@
 import itertools
-import re
 import typing as t
 from pathlib import Path
 
@@ -12,18 +11,14 @@ from sentence_transformers.sentence_transformer.losses import ContrastiveLoss
 from sentence_transformers.sentence_transformer.training_args import (
     SentenceTransformerTrainingArguments,
 )
-from transformers import AutoTokenizer, PreTrainedTokenizerBase, logging
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
-from geoparser.gazetteer.gazetteer import Gazetteer
+from geoparser.gazetteer.gazetteer import Gazetteer, normalize_name
 from geoparser.modules.resolvers import Resolver
 from geoparser.modules.resolvers.context import Sentence, select_context
 
 if t.TYPE_CHECKING:
     from geoparser.gazetteer.feature import Feature
-
-# Suppress transformers tokenizer token length warnings
-logging.set_verbosity_error()
-
 
 # Throughput and display only: neither changes the embeddings that come back.
 _ENCODE_BATCH_SIZE = 32  # pragma: no mutate
@@ -144,7 +139,7 @@ class SentenceTransformerResolver(Resolver):
         # resolver owns these because the values depend on its gazetteer and
         # attribute map.
         self.candidate_search_cache: dict[
-            tuple[str, str, int], tuple[Feature, ...]
+            tuple[str, str, int, int], tuple[Feature, ...]
         ] = {}
         self.candidate_descriptions: dict[int, str] = {}
         self.measured_sentences: dict[str, tuple[Sentence, ...]] = {}
@@ -194,6 +189,9 @@ class SentenceTransformerResolver(Resolver):
         Returns:
             The loaded tokenizer
         """
+        from transformers import logging
+
+        logging.set_verbosity_error()
         return AutoTokenizer.from_pretrained(model_name, **kwargs)
 
     def _validate_and_set_attribute_map(
@@ -518,14 +516,14 @@ class SentenceTransformerResolver(Resolver):
                 self._merge_candidates(doc_candidates[ref_idx], found)
 
     def _search_candidates(
-        self, name: str, method: str, tiers: int
+        self, name: str, method: str, tiers: int, limit: int = 10000
     ) -> tuple["Feature", ...]:
         """Search the gazetteer once for each normalized query and tier."""
-        normalized_name = re.sub(r'"', "", name).strip()
-        key = (normalized_name, method, tiers)
+        normalized_name = normalize_name(name)
+        key = (normalized_name, method, tiers, limit)
         if key not in self.candidate_search_cache:
             self.candidate_search_cache[key] = tuple(
-                self.gazetteer.search(normalized_name, method, tiers=tiers)
+                self.gazetteer.search(normalized_name, method, limit=limit, tiers=tiers)
             )
         return self.candidate_search_cache[key]
 
@@ -726,11 +724,16 @@ class SentenceTransformerResolver(Resolver):
             if not self._is_pending(result, candidate_list):
                 continue
 
+            scores = similarities[ref_idx]
+            if scores is None:
+                raise ValueError(
+                    "a pending reference is missing precomputed similarities"
+                )
             referent = self._best_referent(
                 context,
                 candidate_list,
                 min_similarity,
-                similarities[ref_idx],
+                scores,
             )
             if referent is not None:
                 doc_results[ref_idx] = referent
@@ -1033,7 +1036,7 @@ class SentenceTransformerResolver(Resolver):
         # Step 1: Gather training data from resolved references
         training_data = self._prepare_training_data(texts, references, referents)
 
-        if not training_data["sentence1"] or len(training_data["sentence1"]) == 0:
+        if not training_data["sentence1"]:
             raise ValueError(
                 "No training examples found. Ensure documents contain references with referent annotations."
             )
@@ -1115,11 +1118,13 @@ class SentenceTransformerResolver(Resolver):
 
                 # Get all candidates for this reference text to create negative examples
                 reference_text = text[start:end]
-                candidates = self.gazetteer.search(reference_text)
+                candidates = self._search_candidates(
+                    reference_text, "exact", tiers=1, limit=10000
+                )
 
                 for candidate in candidates:
                     # Generate description for this candidate
-                    description = self._generate_description(candidate)
+                    description = self._candidate_description(candidate)
 
                     # Determine if this is a positive or negative example
                     label = 1 if candidate.identifier == identifier else 0

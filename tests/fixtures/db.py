@@ -5,6 +5,7 @@ Provides function-scoped in-memory test databases configured exactly like produc
 Each test gets a completely fresh database, ensuring perfect isolation.
 """
 
+from collections.abc import Iterator
 from unittest.mock import patch
 
 import pytest
@@ -16,7 +17,7 @@ import geoparser.db.models  # noqa: F401 - Ensure models are registered
 
 
 @pytest.fixture(scope="function")
-def test_engine() -> Engine:
+def test_engine() -> Iterator[Engine]:
     """
     Create a fresh in-memory test database for each test.
 
@@ -44,7 +45,7 @@ def test_engine() -> Engine:
 
 
 @pytest.fixture(scope="function")
-def test_session() -> Session:
+def test_session() -> Iterator[Session]:
     """
     Provide a database session for tests that need one.
 

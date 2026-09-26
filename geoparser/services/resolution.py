@@ -10,6 +10,7 @@ from geoparser.db.crud import (
 from geoparser.db.db import get_session
 from geoparser.db.models import Referent, Resolution, ResolverCreate
 from geoparser.gazetteer.gazetteer import Gazetteer
+from geoparser.services._shared import ensure_module_record, require_fit
 
 if t.TYPE_CHECKING:
     from geoparser.db.models import Document, Reference
@@ -34,29 +35,6 @@ class ResolutionService:
         self.resolver = resolver
         self._gazetteers: dict[str, Gazetteer] = {}
 
-    def _ensure_resolver_record(self, resolver: "Resolver") -> str:
-        """
-        Ensure a resolver record exists in the database.
-
-        Creates a new resolver record if it doesn't already exist.
-
-        Args:
-            resolver: The resolver module to ensure exists in the database
-
-        Returns:
-            The resolver ID from the database
-        """
-        with get_session() as session:
-            resolver_record = ResolverRepository.get(session, id=resolver.id)
-            if resolver_record is None:
-                resolver_create = ResolverCreate(
-                    id=resolver.id,
-                    name=resolver.name,
-                    config=resolver.config,
-                )
-                resolver_record = ResolverRepository.create(session, resolver_create)
-            return resolver_record.id
-
     def predict(self, documents: list["Document"]) -> None:
         """
         Run the resolver on all references from the provided documents and store results in the database.
@@ -65,7 +43,9 @@ class ResolutionService:
             documents: List of Document objects containing references to process
         """
         # Ensure resolver record exists in database and get the ID
-        resolver_id = self._ensure_resolver_record(self.resolver)
+        resolver_id = ensure_module_record(
+            ResolverRepository, ResolverCreate, self.resolver
+        )
 
         if not documents:
             return
@@ -159,11 +139,7 @@ class ResolutionService:
         """
         # Resolvers are not required to be trainable, so `fit` is looked up
         # rather than declared on the base class.
-        fit: t.Callable[..., None] | None = getattr(self.resolver, "fit", None)
-        if fit is None:
-            raise ValueError(
-                f"Resolver '{self.resolver.name}' does not implement a fit method"
-            )
+        fit = require_fit(self.resolver, "Resolver")
 
         # Extract texts, references, and referents from documents
         texts = []

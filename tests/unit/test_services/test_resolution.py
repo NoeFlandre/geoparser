@@ -4,6 +4,7 @@ Unit tests for geoparser/services/resolution.py
 Tests the ResolutionService class with mocked resolvers.
 """
 
+from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
@@ -372,7 +373,7 @@ def test_training_reads_each_toponyms_location_once(mock_sentencetransformer_res
     document = SimpleNamespace(toponyms=[reference_type()])
     service = ResolutionService(mock_sentencetransformer_resolver)
 
-    spans, pairs = service._annotated_pairs(document)
+    spans, pairs = service._annotated_pairs(cast(Any, document))
 
     assert (spans, pairs) == ([(0, 5)], [("geonames", "1")])
     assert reads.call_count == 1

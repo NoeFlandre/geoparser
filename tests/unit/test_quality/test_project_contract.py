@@ -2,14 +2,10 @@ import re
 from pathlib import Path
 
 import pytest
+import tomli as tomllib
 import yaml
 
 from tests.unit import test_docs as docs_guard
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10 CI.
-    import tomli as tomllib
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -182,9 +178,73 @@ def test_ci_runs_the_full_gate_and_publishes_strict_mkdocs() -> None:
     assert "uv sync --locked" in quality
     assert "scripts/quality_gauntlet.py" in quality
     assert "--skip-mutation" not in quality
-    assert "--skip-docker" not in quality
+    assert "--skip-baseline" in quality
+    assert "--skip-docker" in quality
     assert "mkdocs build --strict" in docs
     assert "deploy-pages" in docs
+
+
+def test_pull_request_base_edits_trigger_guarded_ci() -> None:
+    """Changing a PR base starts CI, while title and description edits do not."""
+    workflows = ["test.yml", "lint.yml", "docs.yml", "quality.yml"]
+
+    for filename in workflows:
+        content = (PROJECT_ROOT / ".github/workflows" / filename).read_text(
+            encoding="utf-8"
+        )
+        assert "types: [opened, synchronize, reopened, edited]" in content
+        assert (
+            "if: github.event_name != 'pull_request' || github.event.action != "
+            "'edited' || github.event.changes.base != null" in content
+        )
+
+
+def test_test_matrix_runs_every_python_on_ubuntu_and_endpoints_elsewhere() -> None:
+    """All Python versions stay covered with a smaller OS cross-product."""
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    matrix = workflow["jobs"]["pytest"]["strategy"]["matrix"]
+
+    assert len(matrix["include"]) == 9
+    assert [
+        entry["python-version"]
+        for entry in matrix["include"]
+        if entry["os"] == "ubuntu-latest"
+    ] == ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    assert {
+        (entry["os"], entry["python-version"])
+        for entry in matrix["include"]
+        if entry["os"] != "ubuntu-latest"
+    } == {
+        ("windows-latest", "3.10"),
+        ("windows-latest", "3.14"),
+        ("macos-latest", "3.10"),
+        ("macos-latest", "3.14"),
+    }
+
+
+def test_nightly_quality_runs_remote_models_and_docker() -> None:
+    """The scheduled gauntlet enables real integrations and both images."""
+    quality = (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "GEOPARSER_TEST_REMOTE_MODELS" in quality
+    assert "github.event_name == 'schedule'" in quality
+    assert (
+        "uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline\n"
+        in quality
+    )
+    assert (
+        "uv run --no-sync python scripts/quality_gauntlet.py "
+        "--skip-baseline --skip-docker" in quality
+    )
+    gauntlet = (PROJECT_ROOT / "scripts/quality_gauntlet.py").read_text(
+        encoding="utf-8"
+    )
+    assert "demo/Dockerfile" in gauntlet
 
 
 def test_ci_pins_setup_uv_to_a_resolvable_release() -> None:

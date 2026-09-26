@@ -8,7 +8,7 @@ from pathlib import Path
 
 from appdirs import user_data_dir
 from sqlalchemy import Engine, event, text
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine
 
@@ -20,9 +20,13 @@ DATABASE_URL = os.getenv(
     f"sqlite:///{Path(user_data_dir('geoparser', '')) / 'geoparser.db'}",
 )
 
-# Ensure parent directory exists
-db_path = DATABASE_URL.replace("sqlite:///", "")
-Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+
+def _database_path(database_url: str) -> str:
+    """Return the database component parsed from a SQLAlchemy URL."""
+    return make_url(database_url).database or ""
+
+
+db_path = _database_path(DATABASE_URL)
 
 
 # Event listener for SQLite foreign keys
@@ -50,8 +54,17 @@ engine: Engine = create_engine(
     echo=False,  # Set to True for SQL debugging
     connect_args={"check_same_thread": False},
     poolclass=NullPool,  # NullPool is recommended for SQLite
-    pool_pre_ping=True,  # Keeps connections fresh for long-lived apps
 )
+
+
+def _ensure_database_directory() -> None:
+    """Create the parent directory when a file-backed SQLite database is used."""
+    if engine.url.get_backend_name() != "sqlite":
+        return
+    database = engine.url.database
+    if database is None or database == ":memory:" or database.startswith("file:"):
+        return
+    Path(database).expanduser().parent.mkdir(parents=True, exist_ok=True)
 
 
 # SQL keywords and SQLite identifiers are case-insensitive, so case mutations
@@ -117,6 +130,7 @@ def create_db_and_tables() -> None:
     For this application, tables are created automatically at module import.
     This function is provided for explicit table creation if needed.
     """
+    _ensure_database_directory()
     _check_database_compatibility()
     SQLModel.metadata.create_all(engine)
 
@@ -132,6 +146,7 @@ def get_session() -> Iterator[Session]:
     Yields:
         SQLModel Session for database operations
     """
+    _ensure_database_directory()
     session = Session(engine, expire_on_commit=False)
     try:
         yield session
@@ -151,5 +166,6 @@ def get_connection() -> Iterator[Connection]:
     Yields:
         SQLAlchemy Connection for database operations
     """
+    _ensure_database_directory()
     with engine.connect() as connection:
         yield connection

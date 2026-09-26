@@ -2,6 +2,8 @@ import typing as t
 import uuid
 
 from pyproj import Transformer
+from pyproj.exceptions import ProjError
+from shapely.errors import GEOSException
 from sqlmodel import Session as DBSession
 from sqlmodel import select
 
@@ -201,7 +203,7 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
             lon, lat = transformer.transform(centroid.x, centroid.y)
             return lat, lon
 
-        except Exception:
+        except (GEOSException, ProjError):
             return None, None
 
     @classmethod

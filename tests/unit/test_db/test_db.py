@@ -5,7 +5,11 @@ Tests the database setup following SQLAlchemy best practices and
 test fixtures that redirect database operations to test databases.
 """
 
+import os
 import re
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 from sqlalchemy import Engine
@@ -78,7 +82,7 @@ class TestPatchDbFixture:
 
         # get_session() should use the test database
         with get_session() as session:
-            result = session.exec(
+            result = session.connection().execute(
                 text(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='project'"
                 )
@@ -131,6 +135,38 @@ class TestDatabaseCompatibilityCheck:
         # Act & Assert
         with patch.object(db, "engine", legacy_engine), pytest.raises(RuntimeError):
             db.create_db_and_tables()
+
+
+@pytest.mark.unit
+def test_database_path_comes_from_sqlalchemy_url():
+    """The database component is parsed correctly for non-SQLite URLs too."""
+    from geoparser.db.db import _database_path
+
+    assert (
+        _database_path("postgresql+psycopg://user:secret@localhost:5432/geoparser")
+        == "geoparser"
+    )
+
+
+@pytest.mark.unit
+def test_import_does_not_create_the_database_parent_directory(tmp_path):
+    """Importing db configuration leaves filesystem setup until first use."""
+    database_file = tmp_path / "created-on-use" / "geoparser.db"
+    environment = os.environ.copy()
+    environment["DATABASE_URL"] = f"sqlite:///{database_file}"
+    project_root = Path(__file__).resolve().parents[3]
+
+    result = subprocess.run(
+        [sys.executable, "-c", "import geoparser.db.db"],
+        cwd=project_root,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert not database_file.parent.exists()
 
     def test_accepts_an_empty_database(self):
         """

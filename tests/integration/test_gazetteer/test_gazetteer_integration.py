@@ -133,6 +133,7 @@ class TestGazetteerIntegration:
 
         assert len(results) > 0
         feature = results[0]
+        assert feature is not None
         assert "Andorra la Vella" in feature.names
 
     def test_feature_has_lookup_attributes(self, andorra_gazetteer):
@@ -140,6 +141,7 @@ class TestGazetteerIntegration:
         gazetteer = Gazetteer("andorranames")
 
         feature = gazetteer.find("3041563")
+        assert feature is not None
 
         assert feature.data["country_name"] == "Andorra"
         assert feature.data["feature_name"] is not None

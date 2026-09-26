@@ -116,6 +116,7 @@ class TestSpacyRecognizerIntegration:
 
         # Assert
         assert len(results) == 1
+        assert results[0] is not None
         # Should find GPE entities
         assert len(results[0]) > 0
 

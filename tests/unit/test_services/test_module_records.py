@@ -7,6 +7,8 @@ to tell later what actually produced the annotations -- and the loss is
 invisible at prediction time.
 """
 
+from typing import Any, cast
+
 import pytest
 from sqlmodel import select
 
@@ -33,28 +35,31 @@ class TestRecognizerRecord:
         """Everything the recognizer was configured with is persisted."""
         # Arrange
         recognizer = _Module("SpacyRecognizer", {"model_name": "en_core_web_sm"})
-        service = RecognitionService(recognizer)
+        service = RecognitionService(cast(Any, recognizer))
 
         # Act
-        recognizer_id = service._ensure_recognizer_record(recognizer)
+        service.predict([])
 
         # Assert
         with get_session() as session:
             rows = session.exec(select(Recognizer)).all()
-        assert recognizer_id == "SpacyRecognizer-id"
-        assert [(row.name, row.config) for row in rows] == [
-            ("SpacyRecognizer", {"model_name": "en_core_web_sm"})
+        assert [(row.id, row.name, row.config) for row in rows] == [
+            (
+                "SpacyRecognizer-id",
+                "SpacyRecognizer",
+                {"model_name": "en_core_web_sm"},
+            )
         ]
 
     def test_reuses_an_existing_row_rather_than_writing_a_second(self):
         """The same recognizer twice is one row."""
         # Arrange
         recognizer = _Module("SpacyRecognizer", {"model_name": "en_core_web_sm"})
-        service = RecognitionService(recognizer)
+        service = RecognitionService(cast(Any, recognizer))
 
         # Act
-        service._ensure_recognizer_record(recognizer)
-        service._ensure_recognizer_record(recognizer)
+        service.predict([])
+        service.predict([])
 
         # Assert
         with get_session() as session:
@@ -69,28 +74,31 @@ class TestResolverRecord:
         """Everything the resolver was configured with is persisted."""
         # Arrange
         resolver = _Module("SentenceTransformerResolver", {"min_similarity": 0.6})
-        service = ResolutionService(resolver)
+        service = ResolutionService(cast(Any, resolver))
 
         # Act
-        resolver_id = service._ensure_resolver_record(resolver)
+        service.predict([])
 
         # Assert
         with get_session() as session:
             rows = session.exec(select(Resolver)).all()
-        assert resolver_id == "SentenceTransformerResolver-id"
-        assert [(row.name, row.config) for row in rows] == [
-            ("SentenceTransformerResolver", {"min_similarity": 0.6})
+        assert [(row.id, row.name, row.config) for row in rows] == [
+            (
+                "SentenceTransformerResolver-id",
+                "SentenceTransformerResolver",
+                {"min_similarity": 0.6},
+            )
         ]
 
     def test_reuses_an_existing_row_rather_than_writing_a_second(self):
         """The same resolver twice is one row."""
         # Arrange
         resolver = _Module("SentenceTransformerResolver", {"min_similarity": 0.6})
-        service = ResolutionService(resolver)
+        service = ResolutionService(cast(Any, resolver))
 
         # Act
-        service._ensure_resolver_record(resolver)
-        service._ensure_resolver_record(resolver)
+        service.predict([])
+        service.predict([])
 
         # Assert
         with get_session() as session:

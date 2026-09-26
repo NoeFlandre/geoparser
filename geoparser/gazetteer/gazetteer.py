@@ -7,10 +7,13 @@ file) and exposes name search and identifier lookup over its features.
 
 from __future__ import annotations
 
-import re
-
 from geoparser.gazetteer.artifact import GazetteerArtifact, artifact_path
 from geoparser.gazetteer.feature import Feature
+
+
+def normalize_name(name: str) -> str:
+    """Remove double quote characters and trim whitespace from a query."""
+    return name.replace('"', "").strip()
 
 
 class Gazetteer:
@@ -72,7 +75,7 @@ class Gazetteer:
             ValueError: If an unknown search method is specified
         """
         # Remove quotes and trim whitespace
-        normalized_name = re.sub(r'"', "", name).strip()
+        normalized_name = normalize_name(name)
         if not normalized_name:
             return []
 

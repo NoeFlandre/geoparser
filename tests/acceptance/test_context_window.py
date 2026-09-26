@@ -7,6 +7,8 @@ selection code, with sentence costs stated directly so each scenario says
 exactly what it depends on.
 """
 
+from typing import Any
+
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
@@ -17,7 +19,7 @@ scenarios("features/context_window.feature")
 
 
 @pytest.fixture
-def context_state() -> dict[str, object]:
+def context_state() -> dict[str, Any]:
     """What each scenario builds up as its steps run."""
     return {}
 
@@ -36,17 +38,17 @@ def _document(costs: list[int]) -> list[Sentence]:
 
 
 @given(parsers.parse("a document whose sentences cost {costs} tokens"))
-def document(context_state: dict[str, object], costs: str) -> None:
+def document(context_state: dict[str, Any], costs: str) -> None:
     context_state["sentences"] = _document([int(part) for part in costs.split(",")])
 
 
 @given(parsers.parse("the encoder can afford {budget:d} tokens"))
-def budget(context_state: dict[str, object], budget: int) -> None:
+def budget(context_state: dict[str, Any], budget: int) -> None:
     context_state["budget"] = budget
 
 
 @when(parsers.parse("I size the context around the sentence at index {index:d}"))
-def size_context(context_state: dict[str, object], index: int) -> None:
+def size_context(context_state: dict[str, Any], index: int) -> None:
     sentences = context_state["sentences"]
     assert isinstance(sentences, list)
     target = sentences[index]
@@ -56,7 +58,7 @@ def size_context(context_state: dict[str, object], index: int) -> None:
 
 
 @when("I size the context around an offset past the end of the document")
-def size_context_past_end(context_state: dict[str, object]) -> None:
+def size_context_past_end(context_state: dict[str, Any]) -> None:
     sentences = context_state["sentences"]
     assert isinstance(sentences, list)
     past_end = sentences[-1].end + 5
@@ -67,7 +69,7 @@ def size_context_past_end(context_state: dict[str, object]) -> None:
 
 
 @then(parsers.parse("the context covers sentences {first:d} to {last:d}"))
-def context_covers(context_state: dict[str, object], first: int, last: int) -> None:
+def context_covers(context_state: dict[str, Any], first: int, last: int) -> None:
     sentences = context_state["sentences"]
     assert isinstance(sentences, list)
     expected = " ".join(item.text for item in sentences[first : last + 1])
@@ -75,7 +77,7 @@ def context_covers(context_state: dict[str, object], first: int, last: int) -> N
 
 
 @then(parsers.parse("the context costs at most {budget:d} tokens"))
-def context_costs_at_most(context_state: dict[str, object], budget: int) -> None:
+def context_costs_at_most(context_state: dict[str, Any], budget: int) -> None:
     sentences = context_state["sentences"]
     assert isinstance(sentences, list)
     context = context_state["context"]
@@ -84,7 +86,7 @@ def context_costs_at_most(context_state: dict[str, object], budget: int) -> None
 
 
 @then("sizing fails because no sentence contains the reference")
-def sizing_fails(context_state: dict[str, object]) -> None:
+def sizing_fails(context_state: dict[str, Any]) -> None:
     error = context_state.get("error")
     assert isinstance(error, ValueError)
     assert "No sentence contains reference" in str(error)

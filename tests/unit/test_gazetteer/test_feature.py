@@ -19,6 +19,7 @@ class TestFeature:
         make_artifact()
 
         feature = Gazetteer("testgaz").find("1")
+        assert feature is not None
 
         assert feature.names == ["Paris", "Lutetia"]
 
@@ -27,6 +28,7 @@ class TestFeature:
         make_artifact()
 
         feature = Gazetteer("testgaz").find("1")
+        assert feature is not None
 
         assert feature.geometry is None
 
@@ -40,6 +42,8 @@ class TestFeature:
         )
 
         feature = Gazetteer("testgaz").find("1")
+        assert feature is not None
+        assert feature.geometry is not None
 
         assert feature.geometry.equals(point)
         assert feature.crs == "EPSG:4326"

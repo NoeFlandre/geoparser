@@ -14,6 +14,7 @@ from geoparser.db.models import (
     RecognizerCreate,
     Reference,
 )
+from geoparser.services._shared import ensure_module_record, require_fit
 
 if t.TYPE_CHECKING:
     from geoparser.modules.recognizers.base import Recognizer
@@ -36,31 +37,6 @@ class RecognitionService:
         """
         self.recognizer = recognizer
 
-    def _ensure_recognizer_record(self, recognizer: "Recognizer") -> str:
-        """
-        Ensure a recognizer record exists in the database.
-
-        Creates a new recognizer record if it doesn't already exist.
-
-        Args:
-            recognizer: The recognizer module to ensure exists in the database
-
-        Returns:
-            The recognizer ID from the database
-        """
-        with get_session() as session:
-            recognizer_record = RecognizerRepository.get(session, id=recognizer.id)
-            if recognizer_record is None:
-                recognizer_create = RecognizerCreate(
-                    id=recognizer.id,
-                    name=recognizer.name,
-                    config=recognizer.config,
-                )
-                recognizer_record = RecognizerRepository.create(
-                    session, recognizer_create
-                )
-            return recognizer_record.id
-
     def predict(self, documents: list["Document"]) -> None:
         """
         Run the recognizer on the provided documents and store results in the database.
@@ -69,7 +45,9 @@ class RecognitionService:
             documents: List of Document objects to process
         """
         # Ensure recognizer record exists in database and get the ID
-        recognizer_id = self._ensure_recognizer_record(self.recognizer)
+        recognizer_id = ensure_module_record(
+            RecognizerRepository, RecognizerCreate, self.recognizer
+        )
 
         if not documents:
             return
@@ -126,11 +104,7 @@ class RecognitionService:
         """
         # Recognizers are not required to be trainable, so `fit` is looked up
         # rather than declared on the base class.
-        fit: t.Callable[..., None] | None = getattr(self.recognizer, "fit", None)
-        if fit is None:
-            raise ValueError(
-                f"Recognizer '{self.recognizer.name}' does not implement a fit method"
-            )
+        fit = require_fit(self.recognizer, "Recognizer")
 
         # Extract texts and references from documents
         texts = []

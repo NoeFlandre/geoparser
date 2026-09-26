@@ -4,11 +4,38 @@ Unit tests for geoparser/modules/resolvers/sentencetransformer.py
 Tests the SentenceTransformerResolver module with mocked dependencies.
 """
 
+import subprocess
+import sys
+from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import Mock, call, patch
 
 import pytest
 import torch
+
+
+@pytest.mark.unit
+def test_import_does_not_change_transformers_logging_verbosity():
+    """Importing the resolver must leave process-wide logging settings alone."""
+    project_root = Path(__file__).resolve().parents[4]
+    script = (
+        "from transformers import logging\n"
+        "logging.set_verbosity_warning()\n"
+        "verbosity = logging.get_verbosity()\n"
+        "import geoparser.modules.resolvers.sentencetransformer\n"
+        "assert logging.get_verbosity() == verbosity\n"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.unit
@@ -772,6 +799,20 @@ class TestSentenceTransformerResolverPredict:
 class TestSentenceTransformerResolverHelperMethods:
     """Test SentenceTransformerResolver helper methods."""
 
+    def test_pending_reference_requires_precomputed_similarities(self):
+        """A pending candidate group always has scores from the search pass."""
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        resolver = SentenceTransformerResolver.__new__(SentenceTransformerResolver)
+        candidate = SimpleNamespace(identifier="Paris")
+
+        with pytest.raises(ValueError, match="precomputed similarities"):
+            resolver._evaluate_document(
+                ["Paris"], cast(Any, [[candidate]]), [None], 0.6, [None]
+            )
+
     @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
@@ -788,13 +829,14 @@ class TestSentenceTransformerResolverHelperMethods:
 
         resolver = SentenceTransformerResolver()
         candidate = SimpleNamespace(id=1)
-        resolver.gazetteer.search.return_value = [candidate]
+        gazetteer = cast(Mock, resolver.gazetteer)
+        gazetteer.search.return_value = [candidate]
 
         first = resolver._search_candidates(' "Paris" ', "exact", tiers=1)
         second = resolver._search_candidates("Paris", "exact", tiers=1)
 
         assert first == second == (candidate,)
-        resolver.gazetteer.search.assert_called_once_with("Paris", "exact", tiers=1)
+        gazetteer.search.assert_called_once_with("Paris", "exact", limit=10000, tiers=1)
 
     @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
     @patch(
@@ -814,8 +856,8 @@ class TestSentenceTransformerResolverHelperMethods:
         candidate = SimpleNamespace(id=1)
         resolver._generate_description = Mock(return_value="Paris (city)")
 
-        first = resolver._candidate_description(candidate)
-        second = resolver._candidate_description(candidate)
+        first = resolver._candidate_description(cast(Any, candidate))
+        second = resolver._candidate_description(cast(Any, candidate))
 
         assert first == second == "Paris (city)"
         resolver._generate_description.assert_called_once_with(candidate)
@@ -923,7 +965,8 @@ class TestSentenceTransformerResolverHelperMethods:
             wraps=torch.nn.functional.cosine_similarity,
         ) as cosine_similarity:
             batch = resolver._calculate_similarity_batches(
-                ["first", "second"], [[candidates[0], candidates[1]], []]
+                ["first", "second"],
+                cast(Any, [[candidates[0], candidates[1]], []]),
             )
 
         assert batch[0] == pytest.approx([1.0, 0.0])
@@ -976,7 +1019,7 @@ class TestSentenceTransformerResolverHelperMethods:
         candidates = [[[first], [second]]]
         results = [[None, None]]
 
-        resolver._evaluate_candidates(contexts, candidates, results, 0.6)
+        resolver._evaluate_candidates(contexts, cast(Any, candidates), results, 0.6)
 
         resolver._calculate_similarity_batches.assert_called_once_with(
             ["first", "second"], [[first], [second]]
@@ -1280,7 +1323,9 @@ class TestSentenceTransformerResolverHelperMethods:
         candidates = [SimpleNamespace(id=i) for i in (1, 2, 3)]
 
         # Act
-        (similarities,) = resolver._calculate_similarity_batches(["ctx"], [candidates])
+        (similarities,) = resolver._calculate_similarity_batches(
+            ["ctx"], cast(Any, [candidates])
+        )
 
         # Assert
         assert all(isinstance(value, float) for value in similarities)
