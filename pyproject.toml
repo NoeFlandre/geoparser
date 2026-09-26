@@ -229,5 +229,8 @@ source = [
     "geoparser\\",
 ]
 
+[tool.ty.analysis]
+allowed-unresolved-imports = ["tomli"]
+
 [tool.ty.src]
 include = ["geoparser", "scripts", "tests"]
