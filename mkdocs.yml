@@ -72,6 +72,7 @@ nav:
       - Geoparser: api/geoparser.md
       - Project: api/project.md
       - Models: api/models.md
+      - Database: api/database.md
       - Modules: api/modules.md
       - Gazetteer: api/gazetteer.md
   - Development:
