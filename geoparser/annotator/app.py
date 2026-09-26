@@ -105,7 +105,7 @@ current_gazetteer_name: str | None = None
 
 
 @app.get("/", tags=["pages"])
-async def index(request: Request):
+async def index(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request=request, name="html/index.html")
 
 
