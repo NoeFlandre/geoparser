@@ -6,6 +6,7 @@ test fixtures that redirect database operations to test databases.
 """
 
 import re
+import uuid
 
 import pytest
 from sqlalchemy import Engine
@@ -274,3 +275,225 @@ class TestSetSqlitePragma:
 
         # Assert
         connection.cursor.assert_not_called()
+
+
+_FOREIGN_KEY_INDEXES = (
+    ("document", "project_id"),
+    ("reference", "document_id"),
+    ("reference", "recognizer_id"),
+    ("referent", "reference_id"),
+    ("referent", "resolver_id"),
+    ("resolution", "reference_id"),
+    ("resolution", "resolver_id"),
+    ("recognition", "document_id"),
+    ("recognition", "recognizer_id"),
+)
+_FOREIGN_KEY_TABLES = (
+    "project",
+    "recognizer",
+    "resolver",
+    "document",
+    "reference",
+    "referent",
+    "resolution",
+    "recognition",
+)
+
+
+def _seed_foreign_key_index_data(engine, row_count: int = 256) -> dict:
+    """Populate enough relational rows to verify SQLite's index choices."""
+    from sqlmodel import SQLModel
+
+    import geoparser.db.models  # noqa: F401 - register tables in SQLModel metadata
+
+    project_ids = [uuid.uuid4() for _ in range(row_count)]
+    document_ids = [uuid.uuid4() for _ in range(row_count)]
+    reference_ids = [uuid.uuid4() for _ in range(row_count)]
+    referent_ids = [uuid.uuid4() for _ in range(row_count)]
+    resolution_ids = [uuid.uuid4() for _ in range(row_count)]
+    recognition_ids = [uuid.uuid4() for _ in range(row_count)]
+    recognizer_ids = [f"recognizer-{index}" for index in range(row_count)]
+    resolver_ids = [f"resolver-{index}" for index in range(row_count)]
+
+    with engine.begin() as connection:
+        connection.execute(
+            SQLModel.metadata.tables["project"].insert(),
+            [
+                {"id": project_id, "name": f"project-{index}"}
+                for index, project_id in enumerate(project_ids)
+            ],
+        )
+        connection.execute(
+            SQLModel.metadata.tables["recognizer"].insert(),
+            [
+                {"id": recognizer_id, "name": recognizer_id, "config": {}}
+                for recognizer_id in recognizer_ids
+            ],
+        )
+        connection.execute(
+            SQLModel.metadata.tables["resolver"].insert(),
+            [
+                {"id": resolver_id, "name": resolver_id, "config": {}}
+                for resolver_id in resolver_ids
+            ],
+        )
+        connection.execute(
+            SQLModel.metadata.tables["document"].insert(),
+            [
+                {
+                    "id": document_id,
+                    "text": f"Document {index}",
+                    "project_id": project_ids[index],
+                }
+                for index, document_id in enumerate(document_ids)
+            ],
+        )
+        connection.execute(
+            SQLModel.metadata.tables["reference"].insert(),
+            [
+                {
+                    "id": reference_id,
+                    "document_id": document_ids[index],
+                    "recognizer_id": recognizer_ids[index],
+                    "start": 0,
+                    "end": 1,
+                    "text": "x",
+                }
+                for index, reference_id in enumerate(reference_ids)
+            ],
+        )
+        connection.execute(
+            SQLModel.metadata.tables["referent"].insert(),
+            [
+                {
+                    "id": referent_ids[index],
+                    "reference_id": reference_ids[index],
+                    "resolver_id": resolver_ids[index],
+                    "gazetteer_name": "test",
+                    "feature_identifier": str(index),
+                }
+                for index in range(row_count)
+            ],
+        )
+        connection.execute(
+            SQLModel.metadata.tables["resolution"].insert(),
+            [
+                {
+                    "id": resolution_ids[index],
+                    "reference_id": reference_ids[index],
+                    "resolver_id": resolver_ids[index],
+                }
+                for index in range(row_count)
+            ],
+        )
+        connection.execute(
+            SQLModel.metadata.tables["recognition"].insert(),
+            [
+                {
+                    "id": recognition_ids[index],
+                    "document_id": document_ids[index],
+                    "recognizer_id": recognizer_ids[index],
+                }
+                for index in range(row_count)
+            ],
+        )
+
+    return {
+        ("document", "project_id"): project_ids[0].hex,
+        ("reference", "document_id"): document_ids[0].hex,
+        ("reference", "recognizer_id"): recognizer_ids[0],
+        ("referent", "reference_id"): reference_ids[0].hex,
+        ("referent", "resolver_id"): resolver_ids[0],
+        ("resolution", "reference_id"): reference_ids[0].hex,
+        ("resolution", "resolver_id"): resolver_ids[0],
+        ("recognition", "document_id"): document_ids[0].hex,
+        ("recognition", "recognizer_id"): recognizer_ids[0],
+    }
+
+
+def _assert_foreign_key_indexes_and_query_plans(engine, values: dict) -> None:
+    """Assert every foreign-key index exists and is selected by SQLite."""
+    with engine.connect() as connection:
+        for table, column in _FOREIGN_KEY_INDEXES:
+            index_name = f"ix_{table}_{column}"
+            indexes = {
+                row[1]
+                for row in connection.exec_driver_sql(f"PRAGMA index_list('{table}')")
+            }
+            assert index_name in indexes
+
+            plan = connection.exec_driver_sql(
+                f"EXPLAIN QUERY PLAN SELECT id FROM {table} WHERE {column} = ?",
+                (values[(table, column)],),
+            ).all()
+            details = " ".join(row[3] for row in plan)
+            assert index_name in details
+
+
+def _count_foreign_key_tables(connection) -> dict[str, int]:
+    """Count rows in tables covered by the foreign-key indexes."""
+    return {
+        table: connection.exec_driver_sql(f"SELECT COUNT(*) FROM {table}").scalar_one()
+        for table in _FOREIGN_KEY_TABLES
+    }
+
+
+@pytest.mark.unit
+class TestForeignKeyIndexes:
+    """Test fresh schema indexes and the SQLite startup migration."""
+
+    @staticmethod
+    def _make_engine():
+        from sqlalchemy.pool import StaticPool
+
+        return create_engine(
+            "sqlite:///:memory:",
+            poolclass=StaticPool,
+            connect_args={"check_same_thread": False},
+        )
+
+    def test_fresh_database_uses_all_foreign_key_indexes(self):
+        """Fresh tables get each foreign-key index and query plans use it."""
+        from unittest.mock import patch
+
+        import geoparser.db.db as db
+
+        engine = self._make_engine()
+        try:
+            with patch.object(db, "engine", engine):
+                db.create_db_and_tables()
+                values = _seed_foreign_key_index_data(engine)
+                _assert_foreign_key_indexes_and_query_plans(engine, values)
+        finally:
+            engine.dispose()
+
+    def test_existing_database_migration_is_idempotent_and_preserves_data(self):
+        """Startup adds missing indexes to existing tables without data loss."""
+        from unittest.mock import patch
+
+        from sqlmodel import SQLModel
+
+        import geoparser.db.db as db
+
+        engine = self._make_engine()
+        try:
+            SQLModel.metadata.create_all(engine)
+            values = _seed_foreign_key_index_data(engine)
+            with engine.begin() as connection:
+                for table, column in _FOREIGN_KEY_INDEXES:
+                    connection.exec_driver_sql(
+                        f"DROP INDEX IF EXISTS ix_{table}_{column}"
+                    )
+                rows_before = _count_foreign_key_tables(connection)
+
+            with patch.object(db, "engine", engine):
+                db.create_db_and_tables()
+                db.create_db_and_tables()
+                _assert_foreign_key_indexes_and_query_plans(engine, values)
+
+            with engine.connect() as connection:
+                rows_after = _count_foreign_key_tables(connection)
+            assert rows_after == rows_before
+            assert set(rows_after.values()) == {256}
+        finally:
+            engine.dispose()

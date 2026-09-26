@@ -24,12 +24,18 @@ class Recognition(RecognitionBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     document_id: uuid.UUID = Field(
         sa_column=Column(
-            UUID, ForeignKey("document.id", ondelete="CASCADE"), nullable=False
+            UUID,
+            ForeignKey("document.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
         )
     )
     recognizer_id: str = Field(
         sa_column=Column(
-            String, ForeignKey("recognizer.id", ondelete="CASCADE"), nullable=False
+            String,
+            ForeignKey("recognizer.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
         )
     )
     document: "Document" = Relationship(back_populates="recognitions")
