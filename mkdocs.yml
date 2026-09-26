@@ -6,7 +6,7 @@ edit_uri: edit/main/docs/
 use_directory_urls: false
 strict: true
 exclude_docs: |
-  superpowers/plans/**
+  superpowers/**
 
 theme:
   name: material
@@ -66,6 +66,7 @@ nav:
       - Managing Projects: guides/projects.md
       - Annotating Data: guides/annotating.md
       - Training Modules: guides/training.md
+      - Benchmarking: guides/benchmark.md
       - Offline Model Pilot: guides/model-pilot.md
   - API Reference:
       - Geoparser: api/geoparser.md
@@ -82,3 +83,4 @@ nav:
           - Quality Gates and MkDocs: decisions/0001-quality-gates-and-mkdocs.md
           - CPU-only Linux Containers: decisions/0002-linux-container-cpu-pytorch.md
           - Resource-bounded Real-model Pilot: decisions/0003-real-model-pilot-boundary.md
+          - Resolver Choice: decisions/0004-resolver-choice.md

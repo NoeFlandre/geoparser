@@ -38,6 +38,8 @@ Because the labels are matched zero-shot, naming what you actually want is usual
 
 Spans from every label are merged into a single list ordered by position in the text, so the resolver sees the references in the order they are written.
 
+Texts longer than 10,000 characters use GLiNER2's long-document mode, which scans fixed word chunks. This keeps memory manageable for long documents and noisy OCR, where each character can produce several tokens. Shorter texts are processed whole. The same behavior is described on the [`GLiNER2Recognizer` API page](../api/modules.md).
+
 ### SpacyRecognizer
 
 The `SpacyRecognizer` uses spaCy's named entity recognition capabilities to identify potential place names in text. By default, it recognizes entities labeled as geopolitical entities (GPE), locations (LOC), and facilities (FAC) as potential toponyms, though this can be customized.
@@ -69,6 +71,23 @@ The `en_core_web_trf` pipeline requires the `spacy-curated-transformers` plugin.
 The `entity_types` parameter allows you to filter which entity types are considered as toponyms. By default, the recognizer includes FAC (facilities like buildings and landmarks), GPE (geopolitical entities like countries and cities), and LOC (natural locations and regions). If your application only needs to identify country and city names, you might restrict this to just GPE.
 
 ## Built-in Resolvers
+
+### PriorResolver
+
+`PriorResolver` uses the same MiniLM encoder, gazetteer search, and context windows as `SentenceTransformerResolver`. It adds a population score when ranking close candidates. A candidate's score is its context similarity plus `population_weight * log10(1 + population) / 10`; candidates without a usable population get no bonus. The default weight is `0.3`. The `min_similarity` threshold still checks the raw context similarity before ranking, so population cannot lift a weak match over the threshold.
+
+Inflection fallback is off by default. Set `inflection_fallback=True` to retry an exact miss after trimming one to three trailing characters from a single-word name. This can help with declined or inflected place names; it does not change phrase, partial, or fuzzy searches.
+
+``` python
+from geoparser.modules import PriorResolver
+
+resolver = PriorResolver(
+    population_weight=0.3,
+    inflection_fallback=False,
+)
+```
+
+See the [benchmark guide](benchmark.md) for the comparison and ablation results, and the [resolver API](../api/modules.md#resolvers) for all constructor arguments.
 
 ### JinaResolver
 

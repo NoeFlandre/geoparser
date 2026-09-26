@@ -1,5 +1,5 @@
 """
-Run a pipeline over the corpus, checkpointing as it goes.
+Run a pipeline over one corpus, checkpointing as it goes.
 
 Documents are processed in chunks and each chunk is persisted before the next
 begins, so a job that runs out of walltime loses at most one chunk. The unit
@@ -131,7 +131,7 @@ def run_phase(
 
     Args:
         phase: ``recognition`` or ``resolution``
-        pipeline: ``upstream`` or ``swapped``
+        pipeline: A name registered in ``scripts.benchmark.pipelines``
         documents: The whole corpus slice under test
         state: The checkpoint to read from and extend
         checkpoint_path: Where to persist the checkpoint
