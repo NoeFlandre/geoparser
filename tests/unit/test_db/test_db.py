@@ -403,7 +403,7 @@ def test_ensure_database_directory_is_idempotent(tmp_path, monkeypatch):
 
     import geoparser.db.db as db
 
-    database_file = tmp_path / "nested" / "geoparser.db"
+    database_file = tmp_path / "nested" / "deeper" / "geoparser.db"
     monkeypatch.setattr(
         db,
         "engine",
