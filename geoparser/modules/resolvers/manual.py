@@ -51,6 +51,16 @@ class ManualResolver(Resolver):
         self.texts = texts
         self.references = references
         self.referents = referents
+        self._text_indices: dict[str, int] = {}
+        for idx, text in enumerate(texts):
+            self._text_indices.setdefault(text, idx)
+
+        self._reference_indices: list[dict[tuple[int, int], int]] = []
+        for doc_references in references:
+            reference_indices: dict[tuple[int, int], int] = {}
+            for idx, reference in enumerate(doc_references):
+                reference_indices.setdefault(reference, idx)
+            self._reference_indices.append(reference_indices)
 
     def predict(
         self, texts: list[str], references: list[list[tuple[int, int]]]
@@ -74,24 +84,24 @@ class ManualResolver(Resolver):
         """
         results = []
         for text, doc_references in zip(texts, references, strict=True):
-            try:
-                text_idx = self.texts.index(text)
-                stored_references = self.references[text_idx]
-                stored_referents = self.referents[text_idx]
-
-                doc_results = []
-                for reference in doc_references:
-                    try:
-                        reference_idx = stored_references.index(reference)
-                        doc_results.append(stored_referents[reference_idx])
-                    except ValueError:
-                        # Reference not in stored annotations - return None
-                        # This signals to the service that no annotation is available
-                        doc_results.append(None)
-
-                results.append(doc_results)
-            except ValueError:
+            text_idx = self._text_indices.get(text)
+            if text_idx is None:
                 # Text not in stored annotations - return None for all references in this document
                 results.append([None] * len(doc_references))
+                continue
+
+            stored_referents = self.referents[text_idx]
+            reference_indices = self._reference_indices[text_idx]
+
+            doc_results = []
+            for reference in doc_references:
+                reference_idx = reference_indices.get(reference)
+                if reference_idx is None:
+                    # Reference not in stored annotations - return None
+                    doc_results.append(None)
+                else:
+                    doc_results.append(stored_referents[reference_idx])
+
+            results.append(doc_results)
 
         return results
