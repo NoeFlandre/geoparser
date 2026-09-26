@@ -1,0 +1,71 @@
+name: Benchmarks
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Install benchmark dependencies without spaCy model artifacts
+        run: >-
+          uv sync --locked --no-default-groups --group test
+          --no-install-package en-core-web-sm
+          --no-install-package xx-sent-ud-sm
+
+      - name: Benchmark pull request base
+        env:
+          TMPDIR: ${{ github.workspace }}/.tmp
+          HF_HOME: ${{ github.workspace }}/.tmp/huggingface
+        run: |
+          mkdir -p .tmp
+          git worktree add --detach .tmp/main "${{ github.event.pull_request.base.sha }}"
+          mkdir -p .tmp/main/tests
+          cp -R tests/benchmarks .tmp/main/tests/
+          cd .tmp/main
+          "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest \
+            --confcutdir=tests/benchmarks \
+            -o addopts='' \
+            -o markers=benchmark \
+            -m benchmark \
+            --benchmark-only \
+            --benchmark-json="$GITHUB_WORKSPACE/.tmp/main.json" \
+            tests/benchmarks/test_performance.py
+
+      - name: Benchmark pull request branch and run algorithmic guards
+        env:
+          TMPDIR: ${{ github.workspace }}/.tmp
+          HF_HOME: ${{ github.workspace }}/.tmp/huggingface
+        run: |
+          "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest \
+            --confcutdir=tests/benchmarks \
+            -o addopts='' \
+            -m benchmark \
+            --benchmark-json=.tmp/pull-request.json \
+            tests/benchmarks
+
+      - name: Enforce median regression limit
+        run: >-
+          "$GITHUB_WORKSPACE/.venv/bin/python"
+          scripts/benchmark/compare.py
+          .tmp/main.json .tmp/pull-request.json

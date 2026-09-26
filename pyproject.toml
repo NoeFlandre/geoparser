@@ -91,6 +91,7 @@ test = [
     "toml>=0.10.2,<1",
     "pytest>=8.4.2,<10",
     "pytest-cov>=7.0.0,<8",
+    "pytest-benchmark>=5,<6",
     "hypothesis>=6.140.0,<7",
     "pytest-bdd>=8.1.0,<9",
     "tomli>=2.0.1,<3; python_version < \"3.11\"",
@@ -242,9 +243,12 @@ markers = [
     "property: Property-based tests over generated inputs",
     "acceptance: Executable user-facing acceptance scenarios",
     "architecture: Automated import and dependency-boundary checks",
+    "benchmark: Opt-in performance checks over synthetic data",
 ]
 addopts = [
     "--strict-markers",
+    "-m",
+    "not benchmark",
     "--cov=geoparser",
     "--cov-report=term-missing",
     "--cov-config=pyproject.toml",
