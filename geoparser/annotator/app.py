@@ -104,9 +104,6 @@ templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 spacy_models = list(get_installed_models())
 
-# Module-level variable to track current session's gazetteer name
-current_gazetteer_name: str | None = None
-
 
 @app.get("/", tags=["pages"])
 async def index(request: Request) -> HTMLResponse:
@@ -148,11 +145,8 @@ def annotate(
     # Response, not HTMLResponse: this route redirects when the session or
     # document is missing.
 ) -> Response:
-    global current_gazetteer_name  # noqa: PLW0603 - single-user app state; replaced by app.state in a later refactor
-
     try:
         session = get_session(db, session_id)
-        current_gazetteer_name = session.gazetteer
     except SessionNotFoundException:
         return RedirectResponse(
             url=app.url_path_for("index"),
@@ -216,14 +210,10 @@ def create_session(
     spacy_model: t.Annotated[str, Form()],
     db: t.Annotated[DBSession, Depends(get_db)],
 ) -> RedirectResponse:
-    global current_gazetteer_name  # noqa: PLW0603 - single-user app state; replaced by app.state in a later refactor
-
     # Validate every file before creating a session so an invalid upload does
     # not leave an empty session behind.
     DocumentRepository.validate_text_files(files)
 
-    # Store the gazetteer name
-    current_gazetteer_name = gazetteer
     session = SessionRepository.create(db, AnnotatorSessionCreate(gazetteer=gazetteer))
     DocumentRepository.create_from_text_files(
         db, files, session.id, spacy_model, apply_spacy=False
@@ -266,8 +256,6 @@ def continue_session_cached(
     db: t.Annotated[DBSession, Depends(get_db)],
     session_id: t.Annotated[uuid.UUID, Form()],
 ) -> RedirectResponse:
-    global current_gazetteer_name  # noqa: PLW0603 - single-user app state; replaced by app.state in a later refactor
-
     # Load selected session directly without creating a new session
     try:
         session = get_session(db, session_id)
@@ -275,8 +263,6 @@ def continue_session_cached(
         return RedirectResponse(
             app.url_path_for("continue_session"), status_code=status.HTTP_302_FOUND
         )
-    # Store the gazetteer name
-    current_gazetteer_name = session.gazetteer
     # Redirect to annotate page
     return RedirectResponse(
         app.url_path_for("annotate", session_id=session.id, doc_index=0),
@@ -289,8 +275,6 @@ def continue_session_file(
     db: t.Annotated[DBSession, Depends(get_db)],
     session_file: UploadFile | None = None,
 ) -> RedirectResponse:
-    global current_gazetteer_name  # noqa: PLW0603 - single-user app state; replaced by app.state in a later refactor
-
     # Handle uploaded session file
     if session_file and session_file.filename:
         # Save session to cache
@@ -301,8 +285,6 @@ def continue_session_file(
                 "Session file must be valid UTF-8 JSON."
             ) from error
         session = SessionRepository.create_from_json(db, session_content, keep_id=False)
-        # Store the gazetteer name
-        current_gazetteer_name = session.gazetteer
         # Redirect to annotate page
         return RedirectResponse(
             app.url_path_for("annotate", session_id=session.id, doc_index=0),
@@ -393,16 +375,11 @@ def delete_document(
     "/session/{session_id}/document/{doc_index}/get_candidates", tags=["candidates"]
 )
 def get_candidates(
+    session: t.Annotated[AnnotatorSession, Depends(get_session)],
     doc: t.Annotated[AnnotatorDocument, Depends(get_document)],
     candidates_request: CandidatesGet,
 ) -> dict[str, t.Any]:
-    global current_gazetteer_name  # noqa: PLW0602 - reads the module-level gazetteer selection documented above
-    # Set when the annotate page for this session was opened.
-    if current_gazetteer_name is None:
-        raise SessionNotFoundException
-    return ToponymRepository.get_candidates(
-        doc, current_gazetteer_name, candidates_request
-    )
+    return ToponymRepository.get_candidates(doc, session.gazetteer, candidates_request)
 
 
 @app.post("/session/{session_id}/document/{doc_index}/annotation", tags=["annotation"])
