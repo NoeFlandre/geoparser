@@ -13,6 +13,10 @@
 #
 # The benchmark checkpoints per chunk into $RESULTS, which IS on /home, so a
 # job that ends at its walltime is resumed rather than restarted by the next.
+#
+# submit.sh passes LIMIT, DEVICE, CHUNK_SIZE, MIN_SIMILARITY, PIPELINES,
+# CORPORA and PHASES through the OAR job environment. PIPELINES and CORPORA
+# take comma-separated names; PHASES accepts recognition and resolution.
 
 set -euo pipefail
 
