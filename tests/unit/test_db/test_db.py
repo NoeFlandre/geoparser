@@ -310,3 +310,42 @@ class TestSetSqlitePragma:
 
         # Assert
         connection.cursor.assert_not_called()
+
+
+@pytest.mark.unit
+def test_ensure_database_directory_skips_non_sqlite_engines(monkeypatch):
+    """Non-SQLite database URLs need no local filesystem setup."""
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from sqlalchemy.engine import make_url
+
+    import geoparser.db.db as db
+
+    mkdir = Mock()
+    monkeypatch.setattr(
+        db, "engine", SimpleNamespace(url=make_url("postgresql://localhost/geoparser"))
+    )
+    monkeypatch.setattr(Path, "mkdir", mkdir)
+
+    db._ensure_database_directory()
+
+    mkdir.assert_not_called()
+
+
+@pytest.mark.unit
+def test_ensure_database_directory_creates_sqlite_parent(tmp_path, monkeypatch):
+    """File-backed SQLite databases create their directory on first use."""
+    from types import SimpleNamespace
+
+    from sqlalchemy.engine import URL
+
+    import geoparser.db.db as db
+
+    database_file = tmp_path / "created-on-use" / "geoparser.db"
+    url = URL.create("sqlite", database=str(database_file))
+    monkeypatch.setattr(db, "engine", SimpleNamespace(url=url))
+
+    db._ensure_database_directory()
+
+    assert database_file.parent.is_dir()
