@@ -43,6 +43,9 @@ class ManualRecognizer(Recognizer):
         self.label = label
         self.texts = texts
         self.references = references
+        self._text_indices: dict[str, int] = {}
+        for idx, text in enumerate(texts):
+            self._text_indices.setdefault(text, idx)
 
     def predict(self, texts: list[str]) -> list[list[tuple[int, int]] | None]:
         """
@@ -64,12 +67,12 @@ class ManualRecognizer(Recognizer):
         """
         results = []
         for text in texts:
-            try:
-                idx = self.texts.index(text)
-                results.append(self.references[idx])
-            except ValueError:
+            idx = self._text_indices.get(text)
+            if idx is None:
                 # Text not in stored annotations - return None
                 # This signals to the service that no annotation is available
                 results.append(None)
+            else:
+                results.append(self.references[idx])
 
         return results
