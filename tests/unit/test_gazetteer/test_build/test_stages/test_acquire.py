@@ -1,11 +1,13 @@
 """
 Unit tests for geoparser/gazetteer/build/stages/acquire.py
 
-Tests source resolution, downloading (with size-based caching) and ZIP
+Tests source resolution, downloading (with validator-based caching) and ZIP
 extraction directly against the Acquirer's methods, using tmp_path for local
 files/archives and requests_mock for HTTP.
 """
 
+import hashlib
+import json
 import os
 import time
 import zipfile
@@ -76,14 +78,51 @@ class TestDownload:
 
         assert path.read_bytes() == b"1,Paris\n"
 
-    def test_skips_download_when_size_matches(self, acquirer, requests_mock):
-        """A cached file matching the remote size is not re-downloaded."""
+    def test_persists_response_validators_in_json_sidecar(
+        self, acquirer, requests_mock
+    ):
+        """A completed download records validators and its received byte count."""
+        url = "https://example.com/places.csv"
+        content = b"1,Paris\n"
+        last_modified = "Mon, 01 Jan 2024 00:00:00 GMT"
+        requests_mock.get(
+            url,
+            content=content,
+            headers={
+                "ETag": '"v1"',
+                "Last-Modified": last_modified,
+                "Content-Length": str(len(content)),
+            },
+        )
+
+        path = acquirer._download_file(url)
+
+        metadata = json.loads(
+            path.with_name(f"{path.name}.meta").read_text(encoding="utf-8")
+        )
+        assert metadata == {
+            "content_length": len(content),
+            "etag": '"v1"',
+            "last_modified": last_modified,
+        }
+
+    def test_skips_download_when_validators_match(self, acquirer, requests_mock):
+        """A cached file with a matching ETag is not re-downloaded."""
         content = b"1,Paris\n"
         download_path = acquirer.downloads_directory / "places.csv"
         download_path.write_bytes(content)
+        download_path.with_name(f"{download_path.name}.meta").write_text(
+            json.dumps(
+                {
+                    "etag": '"v1"',
+                    "last_modified": None,
+                    "content_length": len(content),
+                }
+            )
+        )
         requests_mock.head(
             "https://example.com/places.csv",
-            headers={"content-length": str(len(content))},
+            headers={"content-length": str(len(content)), "etag": '"v1"'},
         )
         get_mock = requests_mock.get(
             "https://example.com/places.csv", content=b"SHOULD NOT BE FETCHED"
@@ -93,6 +132,175 @@ class TestDownload:
 
         assert path.read_bytes() == content
         assert not get_mock.called
+
+    def test_redownloads_same_size_file_when_etag_changes(
+        self, acquirer, requests_mock
+    ):
+        """A new ETag invalidates a cached file even when its size is unchanged."""
+        url = "https://example.com/places.csv"
+        content = b"OLD"
+        download_path = acquirer.downloads_directory / "places.csv"
+        download_path.write_bytes(content)
+        download_path.with_name(f"{download_path.name}.meta").write_text(
+            json.dumps(
+                {
+                    "etag": '"v1"',
+                    "last_modified": None,
+                    "content_length": len(content),
+                }
+            )
+        )
+        requests_mock.head(
+            url,
+            headers={"content-length": str(len(content)), "etag": '"v2"'},
+        )
+        get_mock = requests_mock.get(url, content=b"NEW", headers={"etag": '"v2"'})
+
+        path = acquirer._download_file(url)
+
+        assert get_mock.called
+        assert path.read_bytes() == b"NEW"
+
+    def test_redownloads_same_size_file_when_last_modified_changes(
+        self, acquirer, requests_mock
+    ):
+        """Last-Modified invalidates a cache when the server has no ETag."""
+        url = "https://example.com/places.csv"
+        content = b"OLD"
+        download_path = acquirer.downloads_directory / "places.csv"
+        download_path.write_bytes(content)
+        download_path.with_name(f"{download_path.name}.meta").write_text(
+            json.dumps(
+                {
+                    "etag": None,
+                    "last_modified": "Mon, 01 Jan 2024 00:00:00 GMT",
+                    "content_length": len(content),
+                }
+            )
+        )
+        requests_mock.head(
+            url,
+            headers={
+                "content-length": str(len(content)),
+                "last-modified": "Tue, 02 Jan 2024 00:00:00 GMT",
+            },
+        )
+        get_mock = requests_mock.get(url, content=b"NEW")
+
+        path = acquirer._download_file(url)
+
+        assert get_mock.called
+        assert path.read_bytes() == b"NEW"
+
+    def test_redownloads_when_cached_file_size_differs_from_sidecar(
+        self, acquirer, requests_mock
+    ):
+        """A matching validator does not reuse a locally changed cache file."""
+        url = "https://example.com/places.csv"
+        download_path = acquirer.downloads_directory / "places.csv"
+        download_path.write_bytes(b"ALTERED")
+        download_path.with_name(f"{download_path.name}.meta").write_text(
+            json.dumps(
+                {
+                    "etag": '"v1"',
+                    "last_modified": None,
+                    "content_length": len(b"OLD"),
+                }
+            )
+        )
+        requests_mock.head(url, headers={"etag": '"v1"'})
+        get_mock = requests_mock.get(url, content=b"NEW", headers={"etag": '"v1"'})
+
+        path = acquirer._download_file(url)
+
+        assert get_mock.called
+        assert path.read_bytes() == b"NEW"
+
+    def test_query_string_does_not_become_part_of_download_filename(
+        self, acquirer, requests_mock
+    ):
+        """The cache filename comes from the URL path without its query."""
+        url = "https://example.com/data/places.csv?token=secret"
+        requests_mock.get(url, content=b"1,Paris\n")
+
+        path = acquirer._download_file(url)
+
+        assert path.name == "places.csv"
+
+    def test_interrupted_stream_does_not_publish_partial_file(
+        self, acquirer, monkeypatch
+    ):
+        """A failed response leaves neither a final file nor a .part file."""
+        download_path = acquirer.downloads_directory / "places.csv"
+
+        class InterruptedResponse:
+            def __init__(self):
+                self.headers = {"Content-Length": "8", "ETag": '"v1"'}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return None
+
+            def raise_for_status(self):
+                return None
+
+            def iter_content(self, chunk_size):
+                yield b"part"
+                raise requests.ConnectionError("connection dropped")
+
+        monkeypatch.setattr(
+            requests, "get", lambda *args, **kwargs: InterruptedResponse()
+        )
+
+        with pytest.raises(requests.ConnectionError, match="connection dropped"):
+            acquirer._stream_download("https://example.com/places.csv", download_path)
+
+        assert not download_path.exists()
+        assert not download_path.with_name(f"{download_path.name}.part").exists()
+
+    def test_content_length_mismatch_does_not_publish_file(self, acquirer, monkeypatch):
+        """The received byte count must match a declared Content-Length."""
+        download_path = acquirer.downloads_directory / "places.csv"
+
+        class ShortResponse:
+            def __init__(self):
+                self.headers = {"Content-Length": "4"}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return None
+
+            def raise_for_status(self):
+                return None
+
+            def iter_content(self, chunk_size):
+                yield b"abc"
+
+        monkeypatch.setattr(requests, "get", lambda *args, **kwargs: ShortResponse())
+
+        with pytest.raises(ValueError, match="Content-Length"):
+            acquirer._stream_download("https://example.com/places.csv", download_path)
+
+        assert not download_path.exists()
+        assert not download_path.with_name(f"{download_path.name}.part").exists()
+
+    def test_sha256_mismatch_does_not_publish_download(self, acquirer, requests_mock):
+        """A configured SHA-256 mismatch fails the acquisition atomically."""
+        url = "https://example.com/places.csv"
+        expected_sha256 = hashlib.sha256(b"right").hexdigest()
+        requests_mock.get(url, content=b"wrong")
+        source = make_source(url=url, path=None, sha256=expected_sha256)
+
+        with pytest.raises(ValueError, match="SHA-256 mismatch"):
+            acquirer.acquire(source)
+
+        download_path = acquirer.downloads_directory / "places.csv"
+        assert not download_path.exists()
+        assert not download_path.with_name(f"{download_path.name}.part").exists()
 
     def test_redownloads_when_size_differs(self, acquirer, requests_mock):
         """A cached file whose size no longer matches is re-downloaded."""
