@@ -352,6 +352,13 @@ def area_under_error_curve(
     )
     if not errors:
         return 0.0
+    if unresolved_error_km == MAX_ERROR_KM:
+        # Preserve the legacy default's exact floating-point rounding.
+        ceiling = math.log(1 + unresolved_error_km)
+        return sum(
+            math.log(1 + min(error, unresolved_error_km)) / ceiling for error in errors
+        ) / len(errors)
+
     ceiling = math.log1p(unresolved_error_km)
     return sum(
         math.log1p(min(error, unresolved_error_km)) / ceiling for error in errors
