@@ -7,6 +7,7 @@ them. These tests pin the directory appdirs used to resolve,
 """
 
 import ntpath
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -25,11 +26,13 @@ class TestGeoparserDataDir:
 
         resolve.assert_called_once_with("geoparser", appauthor=False)
 
+    @pytest.mark.skipif(sys.platform != "linux", reason="Linux path semantics")
     def test_linux_honours_xdg_data_home(self, monkeypatch):
         monkeypatch.setenv("XDG_DATA_HOME", "/data")
 
         assert Unix("geoparser", appauthor=False).user_data_dir == "/data/geoparser"
 
+    @pytest.mark.skipif(sys.platform != "linux", reason="Linux path semantics")
     def test_linux_defaults_to_local_share(self, monkeypatch):
         monkeypatch.delenv("XDG_DATA_HOME", raising=False)
         monkeypatch.setenv("HOME", "/home/u")
@@ -39,6 +42,7 @@ class TestGeoparserDataDir:
             == "/home/u/.local/share/geoparser"
         )
 
+    @pytest.mark.skipif(sys.platform != "darwin", reason="macOS path semantics")
     def test_macos_uses_application_support(self, monkeypatch):
         monkeypatch.setenv("HOME", "/Users/u")
 
