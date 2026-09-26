@@ -75,7 +75,7 @@ def _encode_suffix(letters: list[str], previous_code: str) -> str:
     return digits
 
 
-def soundex(text: str) -> str:
+def soundex(text: str | None) -> str:
     """
     Compute the American Soundex code for a string.
 

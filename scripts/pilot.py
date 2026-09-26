@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from geoparser.db.models import Document
     from geoparser.evaluation import Annotation
 
 Report = dict[str, Any]
@@ -329,7 +330,7 @@ def _configure_runtime(output_dir: Path, hf_home: Path | None, offline: bool) ->
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 
-def _document_annotations(document: object) -> list[Annotation]:
+def _document_annotations(document: Document) -> list[Annotation]:
     """Extract recognized spans and resolver IDs from a parsed document."""
     from geoparser.evaluation import Annotation
 
@@ -339,7 +340,7 @@ def _document_annotations(document: object) -> list[Annotation]:
             reference.end,
             reference.location.identifier if reference.location is not None else None,
         )
-        for reference in document.toponyms  # type: ignore[attr-defined]
+        for reference in document.toponyms
     ]
 
 

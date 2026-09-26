@@ -4,13 +4,13 @@ import uuid
 from sqlmodel import Session
 
 from geoparser.db.crud import (
-    ReferentRepository,  # noqa: F401 - retained as a patch/extension seam
     ResolutionRepository,
     ResolverRepository,
 )
 from geoparser.db.db import get_session
 from geoparser.db.models import Referent, Resolution, ResolverCreate
 from geoparser.gazetteer.gazetteer import Gazetteer
+from geoparser.services._shared import ensure_module_record, require_fit
 
 if t.TYPE_CHECKING:
     from geoparser.db.models import Document, Reference
@@ -35,29 +35,6 @@ class ResolutionService:
         self.resolver = resolver
         self._gazetteers: dict[str, Gazetteer] = {}
 
-    def _ensure_resolver_record(self, resolver: "Resolver") -> str:
-        """
-        Ensure a resolver record exists in the database.
-
-        Creates a new resolver record if it doesn't already exist.
-
-        Args:
-            resolver: The resolver module to ensure exists in the database
-
-        Returns:
-            The resolver ID from the database
-        """
-        with get_session() as session:
-            resolver_record = ResolverRepository.get(session, id=resolver.id)
-            if resolver_record is None:
-                resolver_create = ResolverCreate(
-                    id=resolver.id,
-                    name=resolver.name,
-                    config=resolver.config,
-                )
-                resolver_record = ResolverRepository.create(session, resolver_create)
-            return resolver_record.id
-
     def predict(self, documents: list["Document"]) -> None:
         """
         Run the resolver on all references from the provided documents and store results in the database.
@@ -66,7 +43,9 @@ class ResolutionService:
             documents: List of Document objects containing references to process
         """
         # Ensure resolver record exists in database and get the ID
-        resolver_id = self._ensure_resolver_record(self.resolver)
+        resolver_id = ensure_module_record(
+            ResolverRepository, ResolverCreate, self.resolver
+        )
 
         if not documents:
             return
@@ -84,7 +63,7 @@ class ResolutionService:
                 predicted_referents = self.resolver.predict(texts, reference_boundaries)
 
                 # Validate and stage every row before one atomic commit.
-                self._record_all_referent_predictions(
+                self._record_referent_prediction_groups(
                     session, reference_objects, predicted_referents, resolver_id
                 )
                 session.commit()
@@ -160,11 +139,7 @@ class ResolutionService:
         """
         # Resolvers are not required to be trainable, so `fit` is looked up
         # rather than declared on the base class.
-        fit: t.Callable[..., None] | None = getattr(self.resolver, "fit", None)
-        if fit is None:
-            raise ValueError(
-                f"Resolver '{self.resolver.name}' does not implement a fit method"
-            )
+        fit = require_fit(self.resolver, "Resolver")
 
         # Extract texts, references, and referents from documents
         texts = []
@@ -200,24 +175,15 @@ class ResolutionService:
         Returns:
             The reference spans and their (gazetteer, identifier) referents
         """
-        annotated = [(ref, ref.location) for ref in doc.toponyms if ref.location]
+        # location opens the gazetteer, so it is read once per toponym
+        annotated = [
+            (ref, location) for ref in doc.toponyms if (location := ref.location)
+        ]
         spans = [(ref.start, ref.end) for ref, _ in annotated]
         pairs = [
             (location.gazetteer_name, location.identifier) for _, location in annotated
         ]
         return spans, pairs
-
-    def _record_all_referent_predictions(
-        self,
-        session: Session,
-        reference_groups: list[list["Reference"]],
-        predicted_groups: list[list[tuple[str, str] | None]],
-        resolver_id: str,
-    ) -> None:
-        """Stage all document resolution rows with one database write."""
-        self._record_referent_prediction_groups(
-            session, reference_groups, predicted_groups, resolver_id
-        )
 
     def _record_referent_prediction_groups(
         self,
@@ -265,13 +231,12 @@ class ResolutionService:
             The records to stage, referent first
         """
         gazetteer_name, identifier = referent
-        records = [
+        return [
             self._create_referent_record(
                 reference.id, gazetteer_name, identifier, resolver_id
             ),
             self._create_resolution_record(reference.id, resolver_id),
         ]
-        return [record for record in records if record is not None]
 
     def _create_referent_record(
         self,

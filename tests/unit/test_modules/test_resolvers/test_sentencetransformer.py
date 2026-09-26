@@ -4,11 +4,38 @@ Unit tests for geoparser/modules/resolvers/sentencetransformer.py
 Tests the SentenceTransformerResolver module with mocked dependencies.
 """
 
+import subprocess
+import sys
+from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import Mock, call, patch
 
 import pytest
 import torch
+
+
+@pytest.mark.unit
+def test_import_does_not_change_transformers_logging_verbosity():
+    """Importing the resolver must leave process-wide logging settings alone."""
+    project_root = Path(__file__).resolve().parents[4]
+    script = (
+        "from transformers import logging\n"
+        "logging.set_verbosity_warning()\n"
+        "verbosity = logging.get_verbosity()\n"
+        "import geoparser.modules.resolvers.sentencetransformer\n"
+        "assert logging.get_verbosity() == verbosity\n"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.unit
@@ -230,7 +257,6 @@ class TestSentenceTransformerResolverInitialization:
 
         # Assert
         assert resolver.doc_tokens == {}
-        assert resolver.doc_objects == {}
         assert resolver.context_embeddings == {}
         assert resolver.candidate_embeddings == {}
         assert resolver.candidate_search_cache == {}
@@ -708,10 +734,10 @@ class TestSentenceTransformerResolverPredict:
     )
     @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
     @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_caches_doc_objects(
+    def test_parses_each_document_once(
         self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
     ):
-        """Test that spaCy doc objects are cached to avoid recomputation."""
+        """Test that a document's sentences are measured once and reused."""
         # Arrange
         from geoparser.modules.resolvers.sentencetransformer import (
             SentenceTransformerResolver,
@@ -754,8 +780,8 @@ class TestSentenceTransformerResolverPredict:
         text = "Test text"
         resolver.predict(texts=[text], references=[[(0, 4), (5, 9)]])
 
-        # Assert - spaCy doc for text should be cached
-        assert text in resolver.doc_objects
+        # Assert - the document's sentences are cached
+        assert text in resolver.measured_sentences
 
         # Act - Count spaCy calls before second predict
         nlp_call_count_first = mock_nlp_instance.call_count
@@ -766,12 +792,26 @@ class TestSentenceTransformerResolverPredict:
 
         # Assert - spaCy should not be called again for the same text
         assert nlp_call_count_second == nlp_call_count_first
-        assert text in resolver.doc_objects
+        assert not hasattr(resolver, "doc_objects")
 
 
 @pytest.mark.unit
 class TestSentenceTransformerResolverHelperMethods:
     """Test SentenceTransformerResolver helper methods."""
+
+    def test_pending_reference_requires_precomputed_similarities(self):
+        """A pending candidate group always has scores from the search pass."""
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        resolver = SentenceTransformerResolver.__new__(SentenceTransformerResolver)
+        candidate = SimpleNamespace(identifier="Paris")
+
+        with pytest.raises(ValueError, match="precomputed similarities"):
+            resolver._evaluate_document(
+                ["Paris"], cast(Any, [[candidate]]), [None], 0.6, [None]
+            )
 
     @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
     @patch(
@@ -789,13 +829,14 @@ class TestSentenceTransformerResolverHelperMethods:
 
         resolver = SentenceTransformerResolver()
         candidate = SimpleNamespace(id=1)
-        resolver.gazetteer.search.return_value = [candidate]
+        gazetteer = cast(Mock, resolver.gazetteer)
+        gazetteer.search.return_value = [candidate]
 
         first = resolver._search_candidates(' "Paris" ', "exact", tiers=1)
         second = resolver._search_candidates("Paris", "exact", tiers=1)
 
         assert first == second == (candidate,)
-        resolver.gazetteer.search.assert_called_once_with("Paris", "exact", tiers=1)
+        gazetteer.search.assert_called_once_with("Paris", "exact", limit=10000, tiers=1)
 
     @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
     @patch(
@@ -815,8 +856,8 @@ class TestSentenceTransformerResolverHelperMethods:
         candidate = SimpleNamespace(id=1)
         resolver._generate_description = Mock(return_value="Paris (city)")
 
-        first = resolver._candidate_description(candidate)
-        second = resolver._candidate_description(candidate)
+        first = resolver._candidate_description(cast(Any, candidate))
+        second = resolver._candidate_description(cast(Any, candidate))
 
         assert first == second == "Paris (city)"
         resolver._generate_description.assert_called_once_with(candidate)
@@ -891,69 +932,6 @@ class TestSentenceTransformerResolverHelperMethods:
     )
     @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
     @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_calculate_similarities_returns_list_of_floats(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _calculate_similarities returns list of similarity scores."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver()
-
-        context_embedding = torch.tensor([1.0, 0.0, 0.0])
-        candidate_embeddings = [
-            torch.tensor([1.0, 0.0, 0.0]),  # Perfect match
-            torch.tensor([0.0, 1.0, 0.0]),  # Orthogonal
-        ]
-
-        # Act
-        similarities = resolver._calculate_similarities(
-            context_embedding, candidate_embeddings
-        )
-
-        # Assert
-        assert isinstance(similarities, list)
-        assert len(similarities) == 2
-        assert all(isinstance(s, float) for s in similarities)
-        # First should be higher similarity than second
-        assert similarities[0] > similarities[1]
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_calculate_similarities_handles_empty_list(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _calculate_similarities handles empty candidate list."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver()
-
-        context_embedding = torch.tensor([1.0, 0.0, 0.0])
-        candidate_embeddings = []
-
-        # Act
-        similarities = resolver._calculate_similarities(
-            context_embedding, candidate_embeddings
-        )
-
-        # Assert
-        assert similarities == []
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
     def test_vectorizes_uneven_candidate_lists_in_one_similarity_call(
         self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
     ):
@@ -987,17 +965,11 @@ class TestSentenceTransformerResolverHelperMethods:
             wraps=torch.nn.functional.cosine_similarity,
         ) as cosine_similarity:
             batch = resolver._calculate_similarity_batches(
-                ["first", "second"], [[candidates[0], candidates[1]], []]
+                ["first", "second"],
+                cast(Any, [[candidates[0], candidates[1]], []]),
             )
 
-        scalar = [
-            resolver._calculate_similarities(
-                resolver.context_embeddings["first"],
-                [resolver.candidate_embeddings[1], resolver.candidate_embeddings[2]],
-            ),
-            [],
-        ]
-        assert batch[0] == pytest.approx(scalar[0])
+        assert batch[0] == pytest.approx([1.0, 0.0])
         assert batch[1] == []
         assert cosine_similarity.call_count == 1
 
@@ -1047,7 +1019,7 @@ class TestSentenceTransformerResolverHelperMethods:
         candidates = [[[first], [second]]]
         results = [[None, None]]
 
-        resolver._evaluate_candidates(contexts, candidates, results, 0.6)
+        resolver._evaluate_candidates(contexts, cast(Any, candidates), results, 0.6)
 
         resolver._calculate_similarity_batches.assert_called_once_with(
             ["first", "second"], [[first], [second]]
@@ -1330,40 +1302,61 @@ class TestSentenceTransformerResolverHelperMethods:
     )
     @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
     @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_calculate_similarities_returns_correct_values(
+    def test_similarity_batches_return_cosine_values(
         self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
     ):
-        """Test that _calculate_similarities returns correct cosine similarity values."""
+        """Batch scoring returns each candidate's cosine similarity, as floats."""
         # Arrange
         from geoparser.modules.resolvers.sentencetransformer import (
             SentenceTransformerResolver,
         )
 
         resolver = SentenceTransformerResolver()
-
-        # Create embeddings with known similarities
-        context_embedding = torch.tensor([1.0, 0.0, 0.0])
-        candidate_embeddings = [
-            torch.tensor([1.0, 0.0, 0.0]),  # Similarity = 1.0 (identical)
-            torch.tensor([0.5, 0.866, 0.0]),  # Similarity ≈ 0.5 (60 degree angle)
-            torch.tensor([-1.0, 0.0, 0.0]),  # Similarity = -1.0 (opposite)
-        ]
+        resolver.context_embeddings["ctx"] = torch.tensor([1.0, 0.0, 0.0])
+        resolver.candidate_embeddings.update(
+            {
+                1: torch.tensor([1.0, 0.0, 0.0]),  # identical: 1.0
+                2: torch.tensor([0.5, 0.866, 0.0]),  # 60 degrees: about 0.5
+                3: torch.tensor([-1.0, 0.0, 0.0]),  # opposite: -1.0
+            }
+        )
+        candidates = [SimpleNamespace(id=i) for i in (1, 2, 3)]
 
         # Act
-        similarities = resolver._calculate_similarities(
-            context_embedding, candidate_embeddings
+        (similarities,) = resolver._calculate_similarity_batches(
+            ["ctx"], cast(Any, [candidates])
         )
 
         # Assert
-        assert len(similarities) == 3
-        assert abs(similarities[0] - 1.0) < 0.01  # First is perfect match
-        assert abs(similarities[1] - 0.5) < 0.1  # Second is ~0.5
-        assert abs(similarities[2] - (-1.0)) < 0.01  # Third is opposite
+        assert all(isinstance(value, float) for value in similarities)
+        assert similarities == pytest.approx([1.0, 0.5, -1.0], abs=0.01)
 
 
 @pytest.mark.unit
 class TestSentenceTransformerResolverPrepareTrainingData:
     """Test SentenceTransformerResolver _prepare_training_data method."""
+
+    def test_search_uses_the_training_candidate_limit(self):
+        """Training data uses an explicit stable limit for each exact search."""
+        from unittest.mock import Mock
+
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        resolver = object.__new__(SentenceTransformerResolver)
+        candidate = Mock(identifier="123")
+        resolver._extract_context = Mock(return_value="Paris is beautiful")
+        resolver._candidate_description = Mock(return_value="Paris (city)")
+        resolver._search_candidates = Mock(return_value=[candidate])
+
+        resolver._prepare_training_data(
+            ["Paris is beautiful."], [[(0, 5)]], [[("geonames", "123")]]
+        )
+
+        resolver._search_candidates.assert_called_once_with(
+            "Paris", "exact", tiers=1, limit=10000
+        )
 
     @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
     @patch(
@@ -1753,3 +1746,34 @@ class TestConfigIdentity:
         assert customized.config["attribute_map"] == custom_map
         assert default.config["attribute_map"] is None
         assert customized.id != default.id
+
+
+@pytest.mark.unit
+@patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+@patch("geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained")
+@patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
+@patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
+def test_clear_caches_empties_every_cache(
+    mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
+):
+    """A long-lived resolver can release everything it has cached."""
+    from geoparser.modules.resolvers.sentencetransformer import (
+        SentenceTransformerResolver,
+    )
+
+    resolver = SentenceTransformerResolver()
+    caches = (
+        "doc_tokens",
+        "measured_sentences",
+        "context_embeddings",
+        "candidate_embeddings",
+        "candidate_search_cache",
+        "candidate_descriptions",
+    )
+    for name in caches:
+        getattr(resolver, name)["key"] = "value"
+
+    resolver.clear_caches()
+
+    for name in caches:
+        assert getattr(resolver, name) == {}, name

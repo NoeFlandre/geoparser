@@ -66,7 +66,8 @@ class TestSentence:
 
         # Act & Assert
         with pytest.raises(AttributeError):
-            sentence.cost = 99
+            field_name = "cost"
+            setattr(sentence, field_name, 99)
 
 
 @pytest.mark.unit

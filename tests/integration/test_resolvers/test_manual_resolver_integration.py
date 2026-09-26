@@ -234,9 +234,15 @@ class TestManualResolverIntegration:
         results = resolver.predict(texts, references)
 
         # Assert
-        assert len(results[0]) == 2
-        assert results[0][0][0] == "geonames"
-        assert results[0][1][0] == "swissnames3d"
+        predictions = results[0]
+        assert predictions is not None
+        assert len(predictions) == 2
+        first_prediction = predictions[0]
+        second_prediction = predictions[1]
+        assert first_prediction is not None
+        assert second_prediction is not None
+        assert first_prediction[0] == "geonames"
+        assert second_prediction[0] == "swissnames3d"
 
     def test_handles_large_reference_set(self):
         """Test that ManualResolver can handle many references efficiently."""

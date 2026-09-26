@@ -310,7 +310,7 @@ class TestSearchDefaults:
         ["search_phrase", "search_partial", "search_fuzzy"],
     )
     def test_tiered_searches_default_to_one_tier_and_ten_thousand(
-        self, make_artifact, method
+        self, make_artifact, method, monkeypatch
     ):
         """Tiered searches score at most 10000 candidates and keep one tier."""
         artifact = GazetteerArtifact(make_artifact())
@@ -321,13 +321,13 @@ class TestSearchDefaults:
             captured["tiers"] = tiers
             return []
 
-        artifact._search_tiered = record
+        monkeypatch.setattr(artifact, "_search_tiered", record)
 
         getattr(artifact, method)("Paris")
 
         assert captured == {"limit": 10000, "tiers": 1}
 
-    def test_search_exact_defaults_to_ten_thousand(self, make_artifact):
+    def test_search_exact_defaults_to_ten_thousand(self, make_artifact, monkeypatch):
         """search_exact passes its default limit through to the query."""
         artifact = GazetteerArtifact(make_artifact())
         connection = artifact._connection()
@@ -338,7 +338,9 @@ class TestSearchDefaults:
             captured.append(parameters)
             return original(sql, parameters)
 
-        artifact._connection = lambda: SimpleNamespace(execute=record)
+        monkeypatch.setattr(
+            artifact, "_connection", lambda: SimpleNamespace(execute=record)
+        )
 
         artifact.search_exact("Paris")
 

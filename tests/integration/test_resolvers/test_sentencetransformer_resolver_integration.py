@@ -214,10 +214,10 @@ class TestSentenceTransformerResolverIntegration:
         assert texts[0] in real_sentencetransformer_resolver.doc_tokens
         assert isinstance(real_sentencetransformer_resolver.doc_tokens[texts[0]], int)
 
-    def test_caches_doc_objects_for_multiple_references(
+    def test_caches_sentences_for_multiple_references(
         self, real_sentencetransformer_resolver, andorra_gazetteer
     ):
-        """Test that resolver caches spaCy doc objects when processing multiple references."""
+        """Test that resolver caches sentences when processing multiple references."""
         # Arrange
         # Use long text to trigger sentence splitting
         long_text = (
@@ -236,8 +236,8 @@ class TestSentenceTransformerResolverIntegration:
         # Act
         real_sentencetransformer_resolver.predict(texts, references)
 
-        # Assert - Document should be in spaCy doc cache
-        assert texts[0] in real_sentencetransformer_resolver.doc_objects
+        # Assert - the document's sentences should be cached
+        assert texts[0] in real_sentencetransformer_resolver.measured_sentences
 
     def test_reuses_cached_doc_tokens_across_calls(
         self, real_sentencetransformer_resolver, andorra_gazetteer
@@ -260,10 +260,10 @@ class TestSentenceTransformerResolverIntegration:
         assert final_cache_size == initial_cache_size
         assert texts[0] in real_sentencetransformer_resolver.doc_tokens
 
-    def test_reuses_cached_doc_objects_across_calls(
+    def test_reuses_cached_sentences_across_calls(
         self, real_sentencetransformer_resolver, andorra_gazetteer
     ):
-        """Test that resolver reuses cached spaCy doc objects across multiple predict calls."""
+        """Test that resolver reuses cached sentences across multiple predict calls."""
         # Arrange
         # Use long text to ensure spaCy processing is needed
         long_text = (
@@ -278,16 +278,16 @@ class TestSentenceTransformerResolverIntegration:
 
         # Act - First call
         real_sentencetransformer_resolver.predict(texts, references)
-        initial_cache_size = len(real_sentencetransformer_resolver.doc_objects)
+        initial_cache_size = len(real_sentencetransformer_resolver.measured_sentences)
 
         # Act - Second call with same text
         real_sentencetransformer_resolver.predict(texts, references)
-        final_cache_size = len(real_sentencetransformer_resolver.doc_objects)
+        final_cache_size = len(real_sentencetransformer_resolver.measured_sentences)
 
         # Assert - Cache should not grow on second call
         assert initial_cache_size > 0
         assert final_cache_size == initial_cache_size
-        assert texts[0] in real_sentencetransformer_resolver.doc_objects
+        assert texts[0] in real_sentencetransformer_resolver.measured_sentences
 
     def test_generates_deterministic_id(self, andorra_gazetteer):
         """Test that same configuration produces same resolver ID."""

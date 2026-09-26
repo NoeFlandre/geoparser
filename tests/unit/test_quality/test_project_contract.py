@@ -7,7 +7,7 @@ import yaml
 from tests.unit import test_docs as docs_guard
 
 try:
-    import tomllib
+    import tomllib  # ty: ignore[unresolved-import]
 except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10 CI.
     import tomli as tomllib
 
@@ -44,6 +44,13 @@ def test_project_quality_dependencies_and_pytest_markers_are_declared() -> None:
         project["tool"]["pytest"]["ini_options"]["tmp_path_retention_policy"]
         == "failed"
     )
+
+
+def test_ty_allows_the_optional_tomli_fallback() -> None:
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
+        project = tomllib.load(pyproject_file)
+
+    assert project["tool"]["ty"]["analysis"]["allowed-unresolved-imports"] == ["tomli"]
 
 
 def test_mutation_runner_copies_quality_support_modules() -> None:

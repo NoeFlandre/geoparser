@@ -219,7 +219,6 @@ core = "sysmon"
 disable_warnings = ["no-sysmon"]
 source = ["geoparser"]
 omit = [
-    "tests/*",
     "geoparser/annotator/*",
 ]
 relative_files = true
@@ -230,5 +229,8 @@ source = [
     "geoparser\\",
 ]
 
+[tool.ty.analysis]
+allowed-unresolved-imports = ["tomli"]
+
 [tool.ty.src]
-include = ["geoparser"]
+include = ["geoparser", "scripts", "tests"]

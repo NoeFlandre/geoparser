@@ -7,14 +7,17 @@ file) and exposes name search and identifier lookup over its features.
 
 from __future__ import annotations
 
-import re
-
 from geoparser.gazetteer.artifact import (
     DEFAULT_SEARCH_LIMIT,
     GazetteerArtifact,
     artifact_path,
 )
 from geoparser.gazetteer.feature import Feature
+
+
+def normalize_name(name: str) -> str:
+    """Remove double quote characters and trim whitespace from a query."""
+    return name.replace('"', "").strip()
 
 
 class Gazetteer:
@@ -80,7 +83,7 @@ class Gazetteer:
             ValueError: If an unknown search method is specified
         """
         # Remove quotes and trim whitespace
-        normalized_name = re.sub(r'"', "", name).strip()
+        normalized_name = normalize_name(name)
         if not normalized_name:
             return []
 
@@ -111,3 +114,38 @@ class Gazetteer:
             Feature object if found, None otherwise
         """
         return self._artifact.find(identifier)
+
+
+# One Gazetteer per installed artifact, keyed by name and by the file's
+# identity, so a reinstall (which replaces the file) is picked up rather than
+# served from a connection to the old one.
+_OPEN: dict[str, tuple[tuple[int, int], Gazetteer]] = {}
+
+
+def get_gazetteer(gazetteer_name: str) -> Gazetteer:
+    """
+    Return a shared Gazetteer for an installed artifact.
+
+    Opening a Gazetteer checks the file and opens a SQLite connection, which
+    adds up when it is done per feature lookup. The artifact is read-only and
+    keeps one connection per thread, so one instance can be shared.
+
+    Args:
+        gazetteer_name: Name of the gazetteer
+
+    Returns:
+        The shared Gazetteer
+
+    Raises:
+        ValueError: If the gazetteer is not installed
+    """
+    try:
+        stat = artifact_path(gazetteer_name).stat()
+    except FileNotFoundError:
+        return Gazetteer(gazetteer_name)
+    stamp = (stat.st_ino, stat.st_mtime_ns)
+    cached = _OPEN.get(gazetteer_name)
+    if cached is None or cached[0] != stamp:
+        cached = (stamp, Gazetteer(gazetteer_name))
+        _OPEN[gazetteer_name] = cached
+    return cached[1]

@@ -25,9 +25,9 @@ class ManualResolver(Resolver):
     def __init__(
         self,
         label: str,
-        texts: list[str],
-        references: list[list[tuple[int, int]]],
-        referents: list[list[tuple[str, str] | None]],
+        texts: t.Sequence[str],
+        references: t.Sequence[t.Sequence[tuple[int, int]]],
+        referents: t.Sequence[t.Sequence[tuple[str, str] | None]],
     ):
         """
         Initialize the ManualResolver with a label and referent annotations.
@@ -48,9 +48,9 @@ class ManualResolver(Resolver):
 
         # Store as instance attributes
         self.label = label
-        self.texts = texts
-        self.references = references
-        self.referents = referents
+        self.texts = list(texts)
+        self.references = [list(document) for document in references]
+        self.referents = [list(document) for document in referents]
 
     def predict(
         self, texts: list[str], references: list[list[tuple[int, int]]]

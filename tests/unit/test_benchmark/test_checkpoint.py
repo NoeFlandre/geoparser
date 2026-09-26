@@ -7,6 +7,7 @@ nothing downstream could tell. These tests pin that it starts over instead.
 """
 
 import json
+from typing import Any
 
 import pytest
 
@@ -19,9 +20,9 @@ from scripts.benchmark.checkpoint import (
 )
 
 
-def identity(**overrides):
+def identity(**overrides: Any) -> RunIdentity:
     """Build a run identity with sensible defaults."""
-    fields = {
+    fields: dict[str, Any] = {
         "pipeline": "swapped",
         "corpus_digest": "abc123",
         "gazetteer": "geonames",

@@ -69,7 +69,7 @@ class TestAndorraBuild:
         features_with_parens = [
             feature
             for feature in gazetteer.search("General", method="partial", tiers=3)
-            if "(" in feature.data["name"]
+            if feature is not None and "(" in feature.data["name"]
         ]
 
         for feature in features_with_parens:
@@ -81,6 +81,7 @@ class TestAndorraBuild:
         gazetteer = Gazetteer("andorranames")
 
         feature = gazetteer.find("3041563")  # Andorra la Vella
+        assert feature is not None
 
         assert feature.data["shape_fid"] is not None
 
@@ -228,15 +229,20 @@ class TestDuplicateGeometryMerge:
         merged = gazetteer.find("p1")
 
         assert merged is not None
-        assert merged.geometry.geom_type == "MultiPoint"
-        assert {(point.x, point.y) for point in merged.geometry.geoms} == {
+        assert merged.geometry is not None
+        merged_geometry = merged.geometry
+        assert merged_geometry.geom_type == "MultiPoint"
+        assert {(point.x, point.y) for point in merged_geometry.geoms} == {
             (1.0, 1.0),
             (2.0, 2.0),
         }
 
         single = gazetteer.find("p2")
-        assert single.geometry.geom_type == "Point"
-        assert (single.geometry.x, single.geometry.y) == (3.0, 3.0)
+        assert single is not None
+        assert single.geometry is not None
+        single_geometry = single.geometry
+        assert single_geometry.geom_type == "Point"
+        assert (single_geometry.x, single_geometry.y) == (3.0, 3.0)
 
 
 @pytest.mark.integration

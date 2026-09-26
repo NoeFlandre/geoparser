@@ -137,12 +137,16 @@ class TestMemoryLimit:
         connection = duckdb.connect()
         try:
             builder._configure_staging(connection, tmp_path)
-            memory_limit = connection.execute(
+            memory_setting = connection.execute(
                 "SELECT value FROM duckdb_settings() WHERE name = 'memory_limit'"
-            ).fetchone()[0]
-            threads = connection.execute(
+            ).fetchone()
+            threads_setting = connection.execute(
                 "SELECT value FROM duckdb_settings() WHERE name = 'threads'"
-            ).fetchone()[0]
+            ).fetchone()
+            assert memory_setting is not None
+            assert threads_setting is not None
+            memory_limit = memory_setting[0]
+            threads = threads_setting[0]
         finally:
             connection.close()
 

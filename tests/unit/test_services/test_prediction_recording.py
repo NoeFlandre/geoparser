@@ -9,6 +9,7 @@ behaviours are easy to break into either a crash or a silent early exit.
 
 import uuid
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -173,10 +174,7 @@ class TestReferentValidation:
         """Run the record creation, returning the Gazetteer mock."""
         service = ResolutionService(Mock())
         feature = SimpleNamespace(identifier=identifier) if found else None
-        with (
-            patch("geoparser.services.resolution.Gazetteer") as gazetteer,
-            patch("geoparser.services.resolution.ReferentRepository"),
-        ):
+        with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
             gazetteer.return_value.find.return_value = feature
             service._create_referent_record(
                 uuid.uuid4(), gazetteer_name, identifier, "res"
@@ -216,7 +214,7 @@ class TestBatchPersistence:
 
         session = Mock()
         service._record_reference_predictions(
-            session, [document], [[(0, 5), (6, 12)]], "rec"
+            session, cast(Any, [document]), [[(0, 5), (6, 12)]], "rec"
         )
 
         session.add_all.assert_called_once()
@@ -236,7 +234,7 @@ class TestBatchPersistence:
             gazetteer.return_value.find.return_value = feature
             service._record_referent_prediction_groups(
                 session,
-                [references],
+                cast(Any, [references]),
                 [[("geonames", "123"), ("geonames", "123")]],
                 "res",
             )
@@ -259,7 +257,9 @@ class TestBatchStatusQueries:
             "geoparser.services.recognition.RecognitionRepository.get_processed_document_ids",
             return_value={"d2"},
         ) as lookup:
-            remaining = service._filter_unprocessed_documents(session, documents, "rec")
+            remaining = service._filter_unprocessed_documents(
+                session, cast(Any, documents), "rec"
+            )
 
         assert remaining == [documents[0]]
         lookup.assert_called_once_with(session, ["d1", "d2"], "rec")
@@ -279,7 +279,7 @@ class TestBatchStatusQueries:
             return_value={"r2"},
         ) as lookup:
             texts, boundaries, remaining = service._collect_unprocessed(
-                session, documents, "res"
+                session, cast(Any, documents), "res"
             )
 
         assert texts == ["text"]

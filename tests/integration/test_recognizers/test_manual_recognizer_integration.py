@@ -73,6 +73,7 @@ class TestManualRecognizerIntegration:
 
         # Assert
         assert len(results) == 1
+        assert results[0] is not None
         assert len(results[0]) == 2
         assert (0, 5) in results[0]
         assert (10, 16) in results[0]
@@ -195,7 +196,7 @@ class TestManualRecognizerIntegration:
 
         # Assert
         assert len(results) == num_docs
-        assert all(len(result) == 1 for result in results)
+        assert all(result is not None and len(result) == 1 for result in results)
 
     def test_config_contains_only_label(self):
         """Test that recognizer config contains only the label."""

@@ -2,6 +2,8 @@ import typing as t
 import uuid
 
 from pyproj import Transformer
+from pyproj.exceptions import ProjError
+from shapely.errors import GEOSException
 from sqlmodel import Session as DBSession
 from sqlmodel import select
 
@@ -17,7 +19,7 @@ from geoparser.annotator.exceptions import (
     ToponymOverlapException,
 )
 from geoparser.annotator.models.api import CandidatesGet
-from geoparser.gazetteer.gazetteer import Gazetteer
+from geoparser.gazetteer.gazetteer import get_gazetteer
 
 if t.TYPE_CHECKING:
     from geoparser.annotator.db.models.document import AnnotatorDocument
@@ -201,7 +203,7 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
             lon, lat = transformer.transform(centroid.x, centroid.y)
             return lat, lon
 
-        except Exception:
+        except (GEOSException, ProjError):
             return None, None
 
     @classmethod
@@ -213,7 +215,7 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         query_text: str,
     ) -> tuple[list[dict], bool]:
         # Initialize gazetteer
-        gazetteer = Gazetteer(gazetteer_name)
+        gazetteer = get_gazetteer(gazetteer_name)
 
         # Use query_text if provided, else use toponym_text
         search_text = query_text if query_text else toponym_text

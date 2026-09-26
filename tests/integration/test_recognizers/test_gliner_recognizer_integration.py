@@ -106,6 +106,7 @@ class TestGLiNER2RecognizerIntegration:
         (found,) = rivers.predict([text])
 
         # Assert
+        assert found is not None
         assert "Danube" in {text[start:end] for start, end in found}
 
     def test_batches_are_returned_document_for_document(self, recognizer):

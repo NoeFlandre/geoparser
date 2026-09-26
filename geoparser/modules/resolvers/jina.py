@@ -162,7 +162,7 @@ class JinaResolver(SentenceTransformerResolver):
         context: str,
         candidate_list: list["Feature"],
         min_similarity: float,
-        similarities: list[float] | None = None,
+        similarities: list[float],
     ) -> tuple[str, str] | None:
         """
         Pick a referent by shortlisting on embeddings and reranking.
@@ -171,26 +171,16 @@ class JinaResolver(SentenceTransformerResolver):
             context: The reference's context string
             candidate_list: Candidates to rank, all already embedded
             min_similarity: Similarity the best candidate must reach
+            similarities: Each candidate's precomputed embedding similarity
 
         Returns:
             A (gazetteer_name, identifier) pair, or None when no candidate is
             similar enough
         """
-        if similarities is None:
-            similarities = self._calculate_similarities(
-                self.context_embeddings[context],
-                [
-                    self.candidate_embeddings[candidate.id]
-                    for candidate in candidate_list
-                ],
-            )
-        if not similarities:
+        if not similarities or max(similarities) < min_similarity:
             return None
 
         shortlist = self._shortlist(candidate_list, similarities)
-        if max(similarities) < min_similarity:
-            return None
-
         return self.gazetteer_name, self._reranked(context, shortlist).identifier
 
     def _shortlist(
