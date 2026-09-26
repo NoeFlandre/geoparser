@@ -60,13 +60,15 @@ class Geoparser:
             project.run_resolver(self.resolver)
 
     @overload
-    def parse(self, texts: str, save: bool = False) -> Document: ...
+    def parse(self, texts: str, save: bool = False) -> Document: ...  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
 
     @overload
-    def parse(self, texts: Sequence[str], save: bool = False) -> list[Document]: ...
+    def parse(self, texts: Sequence[str], save: bool = False) -> list[Document]: ...  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
 
     def parse(
-        self, texts: str | Sequence[str], save: bool = False
+        self,
+        texts: str | Sequence[str],
+        save: bool = False,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
     ) -> Document | list[Document]:
         """
         Parse one or more texts with the configured recognizer and resolver.

@@ -89,11 +89,12 @@ class Project:
         if isinstance(texts, str):
             # pragma: no mutate start - the wording of this guidance is not
             # behaviour; a test pins the type and that it names the method.
-            raise TypeError(
+            msg = (
                 "create_documents() expects a sequence of texts. To create a single "
                 "document, pass a sequence with one text in it: "
                 "create_documents(['...'])."
             )
+            raise TypeError(msg)
             # pragma: no mutate end
 
         with get_session() as session:
@@ -169,11 +170,12 @@ class Project:
             except (AttributeError, TypeError, ValueError):
                 # pragma: no mutate start - wording only; a test pins the type
                 # and that the message names create_documents().
-                raise ValueError(
+                msg = (
                     f"'{value}' is not a valid document ID. Document IDs are the values "
                     "returned by create_documents(). To select results by tag instead, "
                     "pass the tag as a keyword argument: get_documents(tag='...')."
-                ) from None
+                )
+                raise ValueError(msg) from None
                 # pragma: no mutate end
 
         return normalized
@@ -257,10 +259,11 @@ class Project:
         """
         missing = [str(id) for id in requested_ids if id not in found]
         if missing:
-            raise ValueError(
+            msg = (
                 f"No documents with the following IDs exist in project "
                 f"'{self.name}': {', '.join(missing)}"
             )
+            raise ValueError(msg)
 
     @staticmethod
     def _apply_context(
@@ -379,7 +382,10 @@ class Project:
         resolution_service.fit(documents, **kwargs)
 
     def load_annotations(
-        self, path: str, tag: str, create_documents: bool = False
+        self,
+        path: str,
+        tag: str,
+        create_documents: bool = False,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
     ) -> None:
         """
         Load annotations from an annotator JSON file and register them in the project.

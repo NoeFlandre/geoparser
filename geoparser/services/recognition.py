@@ -128,9 +128,8 @@ class RecognitionService:
         # rather than declared on the base class.
         fit: t.Callable[..., None] | None = getattr(self.recognizer, "fit", None)
         if fit is None:
-            raise ValueError(
-                f"Recognizer '{self.recognizer.name}' does not implement a fit method"
-            )
+            msg = f"Recognizer '{self.recognizer.name}' does not implement a fit method"
+            raise ValueError(msg)
 
         # Extract texts and references from documents
         texts = []

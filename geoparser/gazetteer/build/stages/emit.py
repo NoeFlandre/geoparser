@@ -186,10 +186,11 @@ def finalize(
         ).fetchone()[0]
         bar.set_progress(100)
         if stored_features != feature_count or stored_names != name_count:
-            raise RuntimeError(
+            msg = (
                 f"Artifact integrity check failed: expected {feature_count} features "
                 f"and {name_count} names, found {stored_features} and {stored_names}"
             )
+            raise RuntimeError(msg)
     advance()
 
     with item("Compacting artifact", total=100) as bar:

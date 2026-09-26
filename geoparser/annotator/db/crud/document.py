@@ -88,7 +88,7 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
         files: list[UploadFile],
         session_id: uuid.UUID,
         spacy_model: str,
-        apply_spacy: bool = False,
+        apply_spacy: bool = False,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
     ) -> list[AnnotatorDocument]:
         recognizer = None
         if apply_spacy:

@@ -207,9 +207,8 @@ class SpacyRecognizer(Recognizer):
         examples = self._prepare_training_data(texts, references)
 
         if not examples:
-            raise ValueError(
-                "No training examples found. Ensure documents contain reference annotations."
-            )
+            msg = "No training examples found. Ensure documents contain reference annotations."
+            raise ValueError(msg)
 
         logger.info(f"Created {len(examples)} training examples")
 

@@ -88,10 +88,11 @@ class ContextWindowMixin:
         if max_seq_length is None:
             # pragma: no mutate start - wording only; a test pins the type and
             # that the message names the model.
-            raise ValueError(
+            msg = (
                 f"Model '{self.model_name}' does not report a maximum sequence "
                 "length, so reference context cannot be sized"
             )
+            raise ValueError(msg)
             # pragma: no mutate end
         return max_seq_length - 2
 

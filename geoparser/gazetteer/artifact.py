@@ -174,18 +174,20 @@ class GazetteerArtifact:
         """
         self.path = Path(path)
         if not self.path.exists():
-            raise FileNotFoundError(f"Gazetteer artifact not found: {self.path}")
+            msg = f"Gazetteer artifact not found: {self.path}"
+            raise FileNotFoundError(msg)
         self._local = threading.local()
         self.metadata = self._read_metadata()
         version = self.metadata.get("schema_version")
         if version != SCHEMA_VERSION:
             # pragma: no mutate start - wording only; a test pins the type and
             # that the message names both schema versions.
-            raise RuntimeError(
+            msg = (
                 f"Gazetteer artifact {self.path} has schema version {version!r}, "
                 f"but this version of geoparser requires {SCHEMA_VERSION!r}. "
                 "Please reinstall the gazetteer."
             )
+            raise RuntimeError(msg)
             # pragma: no mutate end
 
     @property
@@ -218,9 +220,8 @@ class GazetteerArtifact:
         try:
             rows = self._connection().execute(self._METADATA_SQL).fetchall()
         except sqlite3.DatabaseError as error:
-            raise RuntimeError(
-                f"File {self.path} is not a valid gazetteer artifact: {error}"
-            ) from error
+            msg = f"File {self.path} is not a valid gazetteer artifact: {error}"
+            raise RuntimeError(msg) from error
         return dict(rows)
 
     def _features_from_rows(self, rows: t.Iterable[tuple]) -> list[Feature]:

@@ -140,6 +140,10 @@ select = [
     # return style, misc idioms, performance, no blanket noqa, complexity.
     "BLE", "DTZ", "S", "T20", "ARG", "PL", "PTH", "RET", "PIE", "PERF", "PGH",
     "C90",
+    # Exception messages and API shape (#59). FBT and N818 hits in the public
+    # API are ratcheted with code-specific noqa comments, to be removed when
+    # the signatures and names change in the next major release.
+    "EM", "TRY", "FBT", "N",
 ]
 ignore = [
     # Formatter owns line length; long strings and comments are not worth churning.
@@ -153,6 +157,9 @@ ignore = [
     # try/except inside a loop is how per-item failures are isolated; the
     # overhead ruff warns about is gone in Python 3.11+.
     "PERF203",
+    # Descriptive exception messages are the point; EM already keeps them
+    # out of the raise line.
+    "TRY003",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -160,7 +167,10 @@ ignore = [
 "__init__.py" = ["F401"]
 # Tests assert, build throwaway paths and SQL, shell out to tools, and stub
 # signatures whose arguments they ignore; none of that is production code.
-"tests/**" = ["S", "ARG", "T20", "PLR", "PLW", "PTH", "DTZ", "BLE", "C90"]
+"tests/**" = [
+    "S", "ARG", "T20", "PLR", "PLW", "PTH", "DTZ", "BLE", "C90",
+    "EM", "TRY", "FBT", "N802",
+]
 # Developer scripts report to the terminal and shell out to git, uv and
 # docker by name.
 "scripts/**" = ["T20", "S603", "S607"]
@@ -170,7 +180,8 @@ ignore = [
 "geoparser/annotator/exceptions.py" = ["ARG001"]
 # Typer builds each command's options from its signature: one parameter per
 # flag is the API, not a design smell.
-"geoparser/cli/**" = ["PLR0913", "PLR0917"]
+# Boolean parameters there are --flag options, not positional arguments.
+"geoparser/cli/**" = ["PLR0913", "PLR0917", "FBT001", "FBT002"]
 # The demo notebook reports its progress to the reader.
 "demo/**" = ["T20"]
 

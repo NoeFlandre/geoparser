@@ -296,7 +296,8 @@ class Stage:
                 which previously surfaced as an AttributeError on None.
         """
         if self._progress is None or self._task_id is None:  # pragma: no cover
-            raise RuntimeError("Stage used outside of its `with` block")
+            msg = "Stage used outside of its `with` block"
+            raise RuntimeError(msg)
         return self._progress, self._task_id
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -384,7 +385,7 @@ class _Item:
             self._total = 100
         self._progress.update(self._task_id, completed=percent)
 
-    def close(self, success: bool = True) -> None:
+    def close(self, success: bool = True) -> None:  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
         """
         Finish this item and remove its bar.
 

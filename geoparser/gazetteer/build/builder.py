@@ -114,7 +114,7 @@ class GazetteerBuilder:
     # count stays proportional to the memory limit on small machines.
     _MB_PER_THREAD = 1024
 
-    def build(self, config_path: str | Path, keep_downloads: bool = False) -> Path:
+    def build(self, config_path: str | Path, keep_downloads: bool = False) -> Path:  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
         """
         Build and install a gazetteer from a configuration file.
 
@@ -174,11 +174,12 @@ class GazetteerBuilder:
         free = shutil.disk_usage(directory).free
         if free >= config.disk:
             return
-        raise OSError(
+        msg = (
             f"Not enough free disk space to install gazetteer '{config.name}': "
             f"need {_format_bytes(config.disk)}, have {_format_bytes(free)} free "
             f"on {directory}"
         )
+        raise OSError(msg)
 
     def _configure_staging(
         self, connection: duckdb.DuckDBPyConnection, build_dir: Path
@@ -420,12 +421,13 @@ class GazetteerBuilder:
             connection.install_extension("spatial")
             connection.load_extension("spatial")
         except duckdb.Error as error:
-            raise RuntimeError(
+            msg = (
                 "Failed to load the DuckDB spatial extension, which is required "
                 "to build gazetteers with geometries. The extension is downloaded "
                 "on first use; make sure you have network access, then try again. "
                 f"Original error: {error}"
-            ) from error
+            )
+            raise RuntimeError(msg) from error
 
     def _prepare_sources(
         self,
@@ -568,10 +570,11 @@ class GazetteerBuilder:
 
         total = scalar_int(connection, "SELECT count(*) FROM _features_final")
         if total == 0:
-            raise ValueError(
+            msg = (
                 "The build produced no features; check the configuration's "
                 "'features' blocks and input files"
             )
+            raise ValueError(msg)
 
     def _compile_feature(
         self,
@@ -678,12 +681,13 @@ class GazetteerBuilder:
                 f"'{identifier}' (sources: {sources})"
                 for identifier, sources in duplicates
             )
-            raise ValueError(
+            msg = (
                 "Identifiers must be unique across the whole gazetteer, but the "
                 f"following appear in multiple feature blocks: {examples}. "
                 "Merge the blocks or disambiguate the identifiers with an "
                 "expression (e.g. a source prefix)."
             )
+            raise ValueError(msg)
 
     def _build_artifact(
         self,

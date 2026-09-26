@@ -212,7 +212,8 @@ def build_report(
 ) -> Report:
     """Build the complete pilot report without loading any ML components."""
     if not (len(cases) == len(predictions) == len(timings_ms)):
-        raise ValueError("cases, predictions, and timings_ms must have the same length")
+        msg = "cases, predictions, and timings_ms must have the same length"
+        raise ValueError(msg)
 
     documents = [
         build_document_report(case, predicted, elapsed_ms)
@@ -316,7 +317,7 @@ def write_report(report: Report, output_dir: Path) -> tuple[Path, Path]:
     return json_path, markdown_path
 
 
-def _configure_runtime(output_dir: Path, hf_home: Path | None, offline: bool) -> None:
+def _configure_runtime(output_dir: Path, hf_home: Path | None, offline: bool) -> None:  # noqa: FBT001 - positional bool kept for API compatibility; make keyword-only in the next major release
     """Route the pilot database and gazetteer artifact to the output volume."""
     output_dir.mkdir(parents=True, exist_ok=True)
     database_path = output_dir / "pilot.sqlite"

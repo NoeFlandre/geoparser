@@ -4,23 +4,23 @@ from fastapi.responses import JSONResponse
 from geoparser.annotator.models.api import BaseResponse
 
 
-class SessionNotFoundException(Exception):
+class SessionNotFoundException(Exception):  # noqa: N818
     pass
 
 
-class SessionSettingsNotFoundException(Exception):
+class SessionSettingsNotFoundException(Exception):  # noqa: N818
     pass
 
 
-class DocumentNotFoundException(Exception):
+class DocumentNotFoundException(Exception):  # noqa: N818
     pass
 
 
-class ToponymNotFoundException(Exception):
+class ToponymNotFoundException(Exception):  # noqa: N818
     pass
 
 
-class ToponymOverlapException(Exception):
+class ToponymOverlapException(Exception):  # noqa: N818
     pass
 
 

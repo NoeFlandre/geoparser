@@ -66,7 +66,8 @@ def scalar_int(connection: duckdb.DuckDBPyConnection, sql: str) -> int:
     """
     row = connection.execute(sql).fetchone()
     if row is None:  # pragma: no cover - an aggregate always returns one row
-        raise RuntimeError(f"Query returned no rows: {sql}")
+        msg = f"Query returned no rows: {sql}"
+        raise RuntimeError(msg)
     return int(row[0])
 
 
@@ -148,7 +149,8 @@ class Loader:
         with the single-threaded scanner rather than rejected.
         """
         if source_config.delimiter is None:  # pragma: no cover - is_tabular
-            raise ValueError(f"Source '{source_config.name}' has no delimiter")
+            msg = f"Source '{source_config.name}' has no delimiter"
+            raise ValueError(msg)
         options = [
             f"delim={quote_literal(source_config.delimiter)}",
             f"skip={source_config.skip_rows}",
@@ -267,15 +269,17 @@ class Loader:
             ).fetchall()
         ]
         if not geometry_columns:
-            raise ValueError(
+            msg = (
                 f"Source '{source_config.name}': no geometry column found in "
                 f"{file_path}"
             )
+            raise ValueError(msg)
         if len(geometry_columns) > 1:
-            raise ValueError(
+            msg = (
                 f"Source '{source_config.name}': multiple geometry columns found "
                 f"in {file_path}: {', '.join(geometry_columns)}"
             )
+            raise ValueError(msg)
         return geometry_columns[0]
 
     def _normalize_geometry_column(

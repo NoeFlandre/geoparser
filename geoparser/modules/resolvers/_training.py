@@ -75,9 +75,8 @@ class TrainingMixin:
         training_data = self._prepare_training_data(texts, references, referents)
 
         if not training_data["sentence1"] or len(training_data["sentence1"]) == 0:
-            raise ValueError(
-                "No training examples found. Ensure documents contain references with referent annotations."
-            )
+            msg = "No training examples found. Ensure documents contain references with referent annotations."
+            raise ValueError(msg)
 
         logger.info(f"Created {len(training_data['sentence1'])} training examples")
 

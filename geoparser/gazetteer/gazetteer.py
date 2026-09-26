@@ -42,11 +42,12 @@ class Gazetteer:
         if not path.exists():
             # pragma: no mutate start - wording only; a test pins the type
             # and that the message names the missing gazetteer.
-            raise ValueError(
+            msg = (
                 f"Gazetteer '{gazetteer_name}' is not installed. Install it by running "
                 f"'geoparser install {gazetteer_name}', or run "
                 "'geoparser list' to see which gazetteers are installed."
             )
+            raise ValueError(msg)
             # pragma: no mutate end
         self.gazetteer_name = gazetteer_name
         self._artifact = GazetteerArtifact(path)
@@ -96,7 +97,8 @@ class Gazetteer:
         }
 
         if method not in method_map:
-            raise ValueError(f"Unknown search method: {method}")
+            msg = f"Unknown search method: {method}"
+            raise ValueError(msg)
 
         return method_map[method]()
 

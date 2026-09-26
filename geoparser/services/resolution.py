@@ -162,9 +162,8 @@ class ResolutionService:
         # rather than declared on the base class.
         fit: t.Callable[..., None] | None = getattr(self.resolver, "fit", None)
         if fit is None:
-            raise ValueError(
-                f"Resolver '{self.resolver.name}' does not implement a fit method"
-            )
+            msg = f"Resolver '{self.resolver.name}' does not implement a fit method"
+            raise ValueError(msg)
 
         # Extract texts, references, and referents from documents
         texts = []
@@ -297,9 +296,10 @@ class ResolutionService:
             self._gazetteers[gazetteer_name] = Gazetteer(gazetteer_name)
         feature = self._gazetteers[gazetteer_name].find(identifier)
         if feature is None:
-            raise ValueError(
+            msg = (
                 f"Feature '{identifier}' does not exist in gazetteer '{gazetteer_name}'"
             )
+            raise ValueError(msg)
 
         return Referent(
             reference_id=reference_id,

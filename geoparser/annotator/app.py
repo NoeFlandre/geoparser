@@ -525,7 +525,10 @@ def put_session_settings(
 
 
 def run(
-    use_reloader=False, host="127.0.0.1", port=5000, open_browser=True
+    use_reloader=False,  # noqa: FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
+    host="127.0.0.1",
+    port=5000,
+    open_browser=True,  # noqa: FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
 ):  # pragma: no cover
     """
     Run the annotator web application.

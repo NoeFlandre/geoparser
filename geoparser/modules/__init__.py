@@ -17,4 +17,5 @@ def __getattr__(name):
     if name in _MODULE_PATHS:
         module = import_module(_MODULE_PATHS[name])
         return getattr(module, name)
-    raise AttributeError(f"module 'geoparser.modules' has no attribute '{name}'")
+    msg = f"module 'geoparser.modules' has no attribute '{name}'"
+    raise AttributeError(msg)

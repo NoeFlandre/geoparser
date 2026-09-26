@@ -36,7 +36,7 @@ class PriorResolver(SentenceTransformerResolver):
         max_tiers: int = 3,
         attribute_map: dict | None = None,
         population_weight: float = DEFAULT_WEIGHT,
-        inflection_fallback: bool = True,
+        inflection_fallback: bool = True,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
     ):
         """
         Initialize the resolver.

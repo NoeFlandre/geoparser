@@ -79,10 +79,11 @@ class JinaResolver(SentenceTransformerResolver):
         if rerank_top_k < 1:
             # pragma: no mutate start - wording only; a test pins the type and
             # that the message names the parameter.
-            raise ValueError(
+            msg = (
                 f"rerank_top_k must be at least 1, got {rerank_top_k}: the "
                 "reranker needs at least one candidate to choose from."
             )
+            raise ValueError(msg)
             # pragma: no mutate end
 
         self.reranker_name = reranker_name
@@ -144,10 +145,11 @@ class JinaResolver(SentenceTransformerResolver):
         if role not in _ROLE_PROMPTS:
             # pragma: no mutate start - wording only; a test pins the type and
             # that the message names the parameter.
-            raise ValueError(
+            msg = (
                 f"Unknown encoding role {role!r}; expected one of "
                 f"{sorted(_ROLE_PROMPTS)}."
             )
+            raise ValueError(msg)
             # pragma: no mutate end
 
         return self.transformer.encode(

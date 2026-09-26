@@ -72,11 +72,12 @@ def resolve_device(requested: str) -> str:
     if requested == "auto":
         return "cuda" if available else "cpu"
     if requested == "cuda" and not available:
-        raise RuntimeError(
+        msg = (
             "CUDA was requested but torch reports no CUDA device. Check that "
             "the job reserved a GPU and that the CUDA build of torch is "
             "installed."
         )
+        raise RuntimeError(msg)
     return requested
 
 
@@ -101,7 +102,8 @@ def build_recognizer(pipeline: str, *, device: str) -> t.Any:
         The constructed recognizer
     """
     if pipeline not in PIPELINES:
-        raise ValueError(f"Unknown benchmark pipeline: {pipeline}")
+        msg = f"Unknown benchmark pipeline: {pipeline}"
+        raise ValueError(msg)
 
     if pipeline == UPSTREAM:
         from geoparser.modules import SpacyRecognizer
@@ -147,7 +149,8 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
     from geoparser.gazetteer import Gazetteer  # noqa: F401 - import order
 
     if pipeline not in PIPELINES:
-        raise ValueError(f"Unknown benchmark pipeline: {pipeline}")
+        msg = f"Unknown benchmark pipeline: {pipeline}"
+        raise ValueError(msg)
 
     if pipeline in (UPSTREAM, HYBRID):
         from geoparser.modules import SentenceTransformerResolver

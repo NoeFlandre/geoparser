@@ -103,8 +103,9 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
             filter_args.append(AnnotatorToponym.id != toponym.id)
         overlapping = db.exec(select(AnnotatorToponym).where(*filter_args)).all()
         if overlapping:
+            msg = f"Toponyms overlap: {overlapping} and {toponym}"
             raise ToponymOverlapException(
-                f"Toponyms overlap: {overlapping} and {toponym}",
+                msg,
             )
         return True
 
@@ -152,10 +153,10 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
             # Otherwise, transform to WGS84
             transformer = Transformer.from_crs(feature.crs, "EPSG:4326", always_xy=True)
             lon, lat = transformer.transform(centroid.x, centroid.y)
-            return lat, lon
-
         except Exception:  # noqa: BLE001 - a feature without a usable geometry or CRS is shown without a map pin
             return None, None
+        else:
+            return lat, lon
 
     @classmethod
     def _candidate_entry(cls, feature: "Feature", gazetteer_name: str) -> dict:

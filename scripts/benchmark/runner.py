@@ -110,7 +110,8 @@ def chunks(items: Sequence[t.Any], size: int) -> list[list[t.Any]]:
         ValueError: If the size is not positive, which would never terminate
     """
     if size < 1:
-        raise ValueError(f"chunk size must be at least 1, got {size}")
+        msg = f"chunk size must be at least 1, got {size}"
+        raise ValueError(msg)
     return [list(items[start : start + size]) for start in range(0, len(items), size)]
 
 

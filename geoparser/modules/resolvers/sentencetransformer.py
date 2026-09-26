@@ -188,10 +188,11 @@ class SentenceTransformerResolver(
         if attribute_map is None:
             # Look up in GAZETTEER_ATTRIBUTE_MAP
             if gazetteer_name not in self.GAZETTEER_ATTRIBUTE_MAP:
-                raise ValueError(
+                msg = (
                     f"Gazetteer '{gazetteer_name}' is not configured in GAZETTEER_ATTRIBUTE_MAP. "
                     f"Please provide a custom attribute_map parameter."
                 )
+                raise ValueError(msg)
             return self.GAZETTEER_ATTRIBUTE_MAP[gazetteer_name]
         return attribute_map
 
