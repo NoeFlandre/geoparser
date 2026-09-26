@@ -14,13 +14,13 @@ dependencies = [
     "platformdirs>=4.2.0,<5",
     "datasets>=5.0.0,<6",
     "duckdb>=1.5.4,<2",
-    "fastapi>=0.121.0,<0.122",
+    "fastapi>=0.121.0,<1",
     "markupsafe>=3.0.3,<4",
     "pydantic>=2.12.3,<3",
     "pyproj>=3.7.1,<4",
     # Not imported directly: FastAPI needs it to parse the annotator's
     # Form/UploadFile request bodies.
-    "python-multipart>=0.0.20,<0.0.21",
+    "python-multipart>=0.0.20,<1",
     "pyyaml>=6.0.3,<7",
     "rapidfuzz>=3.14.5,<4",
     "requests>=2.32.5,<3",
