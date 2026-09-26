@@ -68,9 +68,8 @@ dev = [
     { include-group = "lint" },
     { include-group = "test" },
     { include-group = "docs" },
+    { include-group = "demo" },
     "deptry>=0.23.1,<0.24",
-    "jupyter>=1.1.1,<2",
-    "plotly>=6.0.0,<7",
 ]
 # Kept separate so CI can install the linters without pulling torch and the
 # CUDA stack; this is what keeps the lint job at a few seconds.
@@ -96,6 +95,10 @@ test = [
 docs = [
     "mkdocs-material>=9.6.0,<10",
     "mkdocstrings[python]>=0.29.0,<1",
+]
+demo = [
+    "jupyter>=1.1.1,<2",
+    "plotly>=6.0.0,<7",
 ]
 
 # spaCy models are not on PyPI; they are published as GitHub release artifacts.

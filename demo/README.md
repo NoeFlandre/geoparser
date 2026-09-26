@@ -1,17 +1,25 @@
 # Irchel Geoparser Demo
 
-This demo showcases the Irchel Geoparser by extracting and mapping place names mentioned in Jules Verne's "Around the World in Eighty Days".
+This notebook extracts and maps place names mentioned in Jules Verne's *Around the World in Eighty Days*. The image is built locally from this checkout and its locked project dependencies. It does not contain a GeoNames gazetteer; the gazetteer and Hugging Face cache use the same persistent volume as the runtime image.
 
-## Running the Demo
+## Build and Run
 
-Simply run this single Docker command:
+From the repository root, set a Jupyter token and build the demo image:
 
 ```bash
-docker run -p 8888:8888 dguzh/geoparser-demo:latest
+export JUPYTER_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe())')"
+docker compose --profile demo build demo
 ```
 
-**Note**: The first time you run this command, it will take approximately 5 minutes to download the Docker image (compressed to ~10 GB, expands to ~30 GB). Subsequent runs will be instant.
+Install GeoNames into the shared volume, then start the notebook:
 
-Once the container starts, open your browser to `http://localhost:8888` and open the `demo.ipynb` notebook.
+```bash
+docker compose --profile install run --rm install
+docker compose --profile demo up demo
+```
 
-For more information, see the [Demo](https://docs.geoparser.app/en/latest/demo.html) page in the documentation.
+Open [http://localhost:8888/lab/tree/demo.ipynb](http://localhost:8888/lab/tree/demo.ipynb) and enter the value of `JUPYTER_TOKEN` when prompted. The token is required; the container exits with an error if it is missing. Set `HF_TOKEN` in the shell only if a Hugging Face resource you use requires authentication.
+
+The notebook uses the `en_core_web_trf` spaCy model installed in the image. The install command above downloads GeoNames into the named volume once; the gazetteer is not baked into the image. `docker compose down` stops the services and keeps the named data volume.
+
+See the project [README](../README.md) for the Python and CLI workflows, citation metadata, data paths, and runtime container.

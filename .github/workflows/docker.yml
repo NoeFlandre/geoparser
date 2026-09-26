@@ -1,0 +1,40 @@
+name: Docker smoke
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  docker-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build runtime image
+        run: docker build --file Dockerfile --tag geoparser:smoke .
+
+      - name: Build demo image
+        run: docker build --file demo/Dockerfile --tag geoparser-demo:smoke .
+
+      - name: Require a Jupyter token
+        shell: bash
+        run: |
+          set +e
+          output="$(docker run --rm geoparser-demo:smoke 2>&1)"
+          status=$?
+          set -e
+          test "$status" -eq 2
+          grep -Fq "JUPYTER_TOKEN is required" <<<"$output"

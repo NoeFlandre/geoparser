@@ -8,6 +8,10 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH="/opt/venv/bin:$PATH" \
+    GEOPARSER_DATA_DIR=/data/geoparser \
+    HF_HOME=/data/hf \
+    HF_HUB_CACHE=/data/hf/hub \
+    HF_DATASETS_CACHE=/data/hf/datasets \
     PYTHONUNBUFFERED=1
 
 # Install locked runtime dependencies before copying source so dependency
@@ -18,4 +22,14 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY geoparser ./geoparser
 RUN uv sync --locked --no-dev
 
-CMD ["python", "-m", "geoparser", "--help"]
+RUN groupadd --gid 1000 geoparser \
+    && useradd --uid 1000 --gid 1000 --create-home --shell /usr/sbin/nologin geoparser \
+    && mkdir -p /data/geoparser /data/hf \
+    && chown -R 1000:1000 /data
+
+VOLUME ["/data"]
+EXPOSE 8000
+USER 1000:1000
+
+ENTRYPOINT ["python", "-m", "geoparser"]
+CMD ["--help"]

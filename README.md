@@ -31,6 +31,22 @@ Gazetteers and SQLite databases are stored in the operating system's standard ap
 
 See the [installation guide](https://docs.geoparser.app/installation.html) for environment setup, the available gazetteers, and their disk requirements.
 
+## CLI
+
+Use the module entry point to manage gazetteers and launch the annotator:
+
+```bash
+python -m geoparser --help
+python -m geoparser install geonames
+geoparser annotator --host 0.0.0.0 --port 8000 --no-browser
+```
+
+Text parsing is available through the Python API shown below.
+
+## Data Paths
+
+In Docker Compose, the named `geoparser-data` volume is mounted at `/data`. Gazetteers and SQLite databases use `/data/geoparser`, and Hugging Face model/cache files use `/data/hf`; both remain available when containers stop.
+
 ## Quick Start
 
 ```python
@@ -65,6 +81,22 @@ Basel -> Basel, Switzerland (47.55839, 7.57327)
 
 Each name here has been tied to one specific entry in GeoNames, so besides the name and coordinates printed above you also have a stable identifier for the place, what kind of place it is, the administrative units it belongs to, and a geometry you can map, measure, or export.
 
+## Outputs
+
+`Geoparser.parse` returns a document with its detected `toponyms`. Each toponym keeps the source text and span; `toponym.location` is `None` when resolution finds no match and otherwise exposes the matched place's data, including its name and coordinates.
+
+## Docker
+
+The runtime image is built from the checked-out source and `uv.lock`. Docker Compose gives the install and annotator services the same named data volume:
+
+```bash
+docker compose build
+docker compose --profile install run --rm install
+docker compose up annotator
+```
+
+The annotator is available at [http://localhost:8000](http://localhost:8000). Set `HF_TOKEN` in the shell before running Compose only when a Hugging Face resource you use requires authentication. The volume keeps the installed gazetteer, databases, and Hugging Face cache when containers stop. See the [demo setup guide](demo/README.md) to build the notebook image locally; no prebuilt demo image is required.
+
 ## Documentation
 
 Full documentation, including setup, guides, and the API reference, is available at **[docs.geoparser.app](https://docs.geoparser.app)**.
@@ -82,6 +114,10 @@ Questions, bug reports, and ideas are always welcome via [issues](https://github
 ## Acknowledgments
 
 The Irchel Geoparser originated as part of Diego Gomes' Master's thesis and was further developed with support from the [Department of Geography](https://www.geo.uzh.ch/) at the University of Zurich and the [Public Data Lab](https://publicdatalab.ch/) of the Digitalization Initiative of the Zurich Higher Education Institutions. We thank Prof. Dr. Ross Purves for the opportunity to continue this work as part of a research project.
+
+## Citation
+
+If you use this project in research or software, cite it using the metadata in [CITATION.cff](CITATION.cff).
 
 ## License
 

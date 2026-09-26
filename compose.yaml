@@ -1,0 +1,50 @@
+services:
+  install:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: geoparser:local
+    profiles: [install]
+    command: [install, geonames]
+    volumes: [geoparser-data:/data]
+    environment:
+      GEOPARSER_DATA_DIR: /data/geoparser
+      HF_HOME: /data/hf
+      HF_HUB_CACHE: /data/hf/hub
+      HF_DATASETS_CACHE: /data/hf/datasets
+      HF_TOKEN: ${HF_TOKEN:-}
+
+  annotator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: geoparser:local
+    command:
+      [annotator, --host, 0.0.0.0, --port, "8000", --no-browser]
+    ports: ["8000:8000"]
+    volumes: [geoparser-data:/data]
+    environment:
+      GEOPARSER_DATA_DIR: /data/geoparser
+      HF_HOME: /data/hf
+      HF_HUB_CACHE: /data/hf/hub
+      HF_DATASETS_CACHE: /data/hf/datasets
+      HF_TOKEN: ${HF_TOKEN:-}
+
+  demo:
+    build:
+      context: .
+      dockerfile: demo/Dockerfile
+    image: geoparser-demo:local
+    profiles: [demo]
+    ports: ["8888:8888"]
+    volumes: [geoparser-data:/data]
+    environment:
+      GEOPARSER_DATA_DIR: /data/geoparser
+      HF_HOME: /data/hf
+      HF_HUB_CACHE: /data/hf/hub
+      HF_DATASETS_CACHE: /data/hf/datasets
+      HF_TOKEN: ${HF_TOKEN:-}
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN:-}
+
+volumes:
+  geoparser-data:
