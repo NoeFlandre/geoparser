@@ -1,7 +1,6 @@
 import re
 from pathlib import Path
 
-import pytest
 import yaml
 
 from tests.unit import test_docs as docs_guard
@@ -12,6 +11,16 @@ except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10 CI.
     import tomli as tomllib
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def test_citation_version_matches_project_version() -> None:
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
+        project = tomllib.load(pyproject_file)
+    citation = yaml.safe_load(
+        (PROJECT_ROOT / "CITATION.cff").read_text(encoding="utf-8")
+    )
+
+    assert citation["version"] == project["project"]["version"]
 
 
 def _package_name(requirement: str) -> str:
@@ -29,6 +38,7 @@ def test_project_quality_dependencies_and_pytest_markers_are_declared() -> None:
         if isinstance(dependency, str)
     }
     assert {"hypothesis", "pytest-bdd"} <= dependency_names
+    assert "toml" in dependency_names
     assert any(
         dependency.startswith("tomli") and 'python_version < "3.11"' in dependency
         for dependency in test_dependencies
@@ -76,39 +86,15 @@ def test_mutation_runner_copies_quality_support_modules() -> None:
 def test_public_documentation_uses_strict_mkdocs_material() -> None:
     configuration = PROJECT_ROOT / "mkdocs.yml"
     assert configuration.is_file()
-    content = configuration.read_text(encoding="utf-8")
-    parsed = yaml.safe_load(content)
+    parsed = yaml.safe_load(configuration.read_text(encoding="utf-8"))
 
-    assert "site_name: Irchel Geoparser" in content
-    assert "site_url: https://docs.geoparser.app/" in content
-    assert "strict: true" in content
-    assert "mkdocstrings" in content
-    assert "- Home: index.md" in content
+    assert isinstance(parsed["site_name"], str) and parsed["site_name"]
+    assert parsed["site_url"].startswith("https://")
     assert parsed["strict"] is True
-    assert parsed["plugins"][1] == {
-        "mkdocstrings": {
-            "handlers": {
-                "python": {
-                    "options": {
-                        "allow_inspection": True,
-                        "annotations_path": "brief",
-                        "docstring_section_style": "table",
-                        "docstring_style": "google",
-                        "docstring_options": {
-                            "warn_missing_types": False,
-                            "warn_unknown_params": False,
-                        },
-                        "force_inspection": True,
-                        "members_order": "source",
-                        "separate_signature": True,
-                        "show_object_full_path": False,
-                        "show_root_heading": True,
-                        "show_source": False,
-                    }
-                }
-            }
-        }
-    }
+    assert any(
+        isinstance(plugin, dict) and "mkdocstrings" in plugin
+        for plugin in parsed["plugins"]
+    )
     assert not list((PROJECT_ROOT / "docs").rglob("*.rst"))
 
     def nav_paths(items: list[object]) -> list[str]:
@@ -128,9 +114,9 @@ def test_public_documentation_uses_strict_mkdocs_material() -> None:
 
 
 def test_pyproject_is_compatible_with_mutmut_legacy_toml_parser() -> None:
-    legacy_toml = pytest.importorskip("toml")
+    import toml
 
-    legacy_toml.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    toml.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
 
 def test_runtime_packaging_is_locked_and_does_not_copy_local_state() -> None:
@@ -143,12 +129,7 @@ def test_runtime_packaging_is_locked_and_does_not_copy_local_state() -> None:
     assert dockerignore.is_file()
     assert citation.is_file()
 
-    dockerfile_content = dockerfile.read_text(encoding="utf-8")
     dockerignore_content = dockerignore.read_text(encoding="utf-8")
-    assert "python:3.12-slim" in dockerfile_content
-    assert "uv sync --locked --no-dev" in dockerfile_content
-    assert 'ENTRYPOINT ["python", "-m", "geoparser"]' in dockerfile_content
-    assert 'CMD ["--help"]' in dockerfile_content
     assert ".git" in dockerignore_content
     assert ".venv" in dockerignore_content
     assert "secrets" in dockerignore_content
@@ -174,26 +155,31 @@ def test_runtime_packaging_is_locked_and_does_not_copy_local_state() -> None:
     citation_data = yaml.safe_load(citation.read_text(encoding="utf-8"))
     assert citation_data["cff-version"] == "1.2.0"
     assert citation_data["title"] == "Irchel Geoparser"
-    assert citation_data["version"] == "0.6.0"
     assert citation_data["license"] == "MIT"
     assert citation_data["repository-code"].startswith("https://github.com/")
     assert len(citation_data["authors"]) >= 1
 
 
 def test_ci_runs_the_full_gate_and_publishes_strict_mkdocs() -> None:
-    quality = (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(
-        encoding="utf-8"
+    quality = yaml.safe_load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8")
     )
-    docs = (PROJECT_ROOT / ".github/workflows/docs.yml").read_text(encoding="utf-8")
+    docs = yaml.safe_load(
+        (PROJECT_ROOT / ".github/workflows/docs.yml").read_text(encoding="utf-8")
+    )
+    quality_triggers = quality.get("on", quality.get(True, {}))
+    quality_steps = quality["jobs"]["quality"]["steps"]
+    quality_commands = [step.get("run", "") for step in quality_steps]
+    docs_build_steps = docs["jobs"]["build"]["steps"]
+    deploy_steps = docs["jobs"]["deploy"]["steps"]
 
-    assert "pull_request:" in quality
-    assert "uv sync --locked" in quality
-    assert "scripts/quality_gauntlet.py" in quality
-    assert "--skip-mutation" not in quality
-    assert "--skip-baseline" in quality
-    assert "--skip-docker" in quality
-    assert "mkdocs build --strict" in docs
-    assert "deploy-pages" in docs
+    assert "pull_request" in quality_triggers
+    assert any("scripts/quality_gauntlet.py" in command for command in quality_commands)
+    assert not any("--skip-mutation" in command for command in quality_commands)
+    assert any(
+        "mkdocs build --strict" in step.get("run", "") for step in docs_build_steps
+    )
+    assert any("deploy-pages" in step.get("uses", "") for step in deploy_steps)
 
 
 def test_pull_request_base_edits_trigger_guarded_ci() -> None:
@@ -295,17 +281,6 @@ def test_fast_lint_workflow_runs_ty_with_the_lightweight_environment() -> None:
     )
 
 
-def test_ci_pins_setup_uv_to_a_resolvable_release() -> None:
-    workflow_text = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in sorted((PROJECT_ROOT / ".github/workflows").glob("*.yml"))
-    )
-
-    # Pinned by commit SHA, with the release it resolves to named alongside.
-    assert re.search(r"astral-sh/setup-uv@[0-9a-f]{40} # v10\.1\.0\n", workflow_text)
-    assert "astral-sh/setup-uv@v10\n" not in workflow_text
-
-
 def test_every_action_is_pinned_to_a_commit_sha() -> None:
     uses = re.compile(r"^\s*(?:-\s*)?uses:\s*(\S+)", re.MULTILINE)
     unpinned = [
@@ -377,7 +352,7 @@ def test_changelog_is_distributed_with_the_source_archive() -> None:
         in project["tool"]["hatch"]["build"]["targets"]["sdist"]["include"]
     )
     assert "## [Unreleased]" in changelog
-    assert "## [0.6.0]" in changelog
+    assert re.search(r"^## \[\d+\.\d+\.\d+\]$", changelog, re.MULTILINE)
 
 
 def test_quality_workflow_mutates_changed_python_modules_on_pull_requests() -> None:

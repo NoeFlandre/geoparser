@@ -83,6 +83,7 @@ lint = [
     "coverage[toml]>=7.0,<8",
 ]
 test = [
+    "toml>=0.10.2,<1",
     "pytest>=8.4.2,<10",
     "pytest-cov>=7.0.0,<8",
     "hypothesis>=6.140.0,<7",
