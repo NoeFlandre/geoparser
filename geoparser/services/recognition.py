@@ -1,6 +1,7 @@
 import typing as t
 import uuid
 
+from sqlalchemy import insert
 from sqlmodel import Session
 
 from geoparser.db.crud import (
@@ -11,8 +12,10 @@ from geoparser.db.db import get_session
 from geoparser.db.models import (
     Document,
     Recognition,
+    RecognitionCreate,
     RecognizerCreate,
     Reference,
+    ReferenceCreate,
 )
 
 if t.TYPE_CHECKING:
@@ -171,22 +174,34 @@ class RecognitionService:
         # that drops it or passes another falsy value pairs them identically.
         pairs = zip(documents, predicted_references, strict=False)
         # pragma: no mutate end
-        pending: list[Reference | Recognition] = []
+        reference_rows: list[dict[str, t.Any]] = []
+        recognition_rows: list[dict[str, t.Any]] = []
         for document, references in pairs:
             # Skip documents where predictions are not available
             # (None indicates the recognizer couldn't process this document)
             if references is not None:
-                pending += self._document_records(document, references, recognizer_id)
+                reference_records, recognition_record = self._document_records(
+                    document, references, recognizer_id
+                )
+                reference_rows.extend(
+                    row for row in reference_records if row is not None
+                )
+                if recognition_record is not None:
+                    recognition_rows.append(recognition_record)
 
-        if pending:
-            session.add_all(pending)
+        if reference_rows:
+            table = Reference.__table__  # ty: ignore[unresolved-attribute]
+            session.execute(insert(table), reference_rows)  # ty: ignore[deprecated]
+        if recognition_rows:
+            table = Recognition.__table__  # ty: ignore[unresolved-attribute]
+            session.execute(insert(table), recognition_rows)  # ty: ignore[deprecated]
 
     def _document_records(
         self,
         document: "Document",
         references: list[tuple[int, int]],
         recognizer_id: str,
-    ) -> list[Reference | Recognition]:
+    ) -> tuple[list[dict[str, t.Any] | None], dict[str, t.Any] | None]:
         """
         Build one document's reference records and its processed marker.
 
@@ -196,15 +211,15 @@ class RecognitionService:
             recognizer_id: ID of the recognizer that made the predictions
 
         Returns:
-            The records to stage, references first
+            The reference mappings and document processing marker
         """
-        records: list[Reference | Recognition | None] = [
+        records: list[dict[str, t.Any] | None] = [
             self._create_reference_record(document, start, end, recognizer_id)
             for start, end in references
         ]
         # Mark document as processed
-        records.append(self._create_recognition_record(document.id, recognizer_id))
-        return [record for record in records if record is not None]
+        recognition_record = self._create_recognition_record(document.id, recognizer_id)
+        return records, recognition_record
 
     def _create_reference_record(
         self,
@@ -212,7 +227,7 @@ class RecognitionService:
         start: int,
         end: int,
         recognizer_id: str,
-    ) -> Reference:
+    ) -> dict[str, t.Any]:
         """
         Create a reference record with the recognizer ID.
 
@@ -226,17 +241,19 @@ class RecognitionService:
             recognizer_id: ID of the recognizer
         """
         text = getattr(document, "text", None)
-        return Reference(
+        row = ReferenceCreate(
             start=start,
             end=end,
             text=text[start:end] if isinstance(text, str) else None,
             document_id=document.id,
             recognizer_id=recognizer_id,
-        )
+        ).model_dump()
+        row["id"] = uuid.uuid4()
+        return row
 
     def _create_recognition_record(
         self, document_id: uuid.UUID, recognizer_id: str
-    ) -> Recognition:
+    ) -> dict[str, t.Any]:
         """
         Create a recognition record for a document processed by a specific recognizer.
 
@@ -244,10 +261,12 @@ class RecognitionService:
             document_id: ID of the document that was processed
             recognizer_id: ID of the recognizer that processed it
         """
-        return Recognition(
+        row = RecognitionCreate(
             document_id=document_id,
             recognizer_id=recognizer_id,
-        )
+        ).model_dump()
+        row["id"] = uuid.uuid4()
+        return row
 
     def _filter_unprocessed_documents(
         self, session: Session, documents: list["Document"], recognizer_id: str

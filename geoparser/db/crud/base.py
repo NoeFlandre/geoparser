@@ -1,7 +1,8 @@
 import uuid
 from collections.abc import Iterable
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
+from sqlalchemy import insert
 from sqlmodel import Session, SQLModel, select
 
 T = TypeVar("T", bound=SQLModel)
@@ -38,19 +39,37 @@ class BaseRepository(Generic[T]):
         return db_obj
 
     @classmethod
-    def create_many(cls, db: Session, objects: Iterable[SQLModel]) -> list[T]:
+    def create_many(
+        cls, db: Session, objects: Iterable[SQLModel]
+    ) -> list[uuid.UUID | str]:
         """Create and commit a batch without one transaction per row."""
-        db_objects = [cls.model(**obj.model_dump()) for obj in objects]
-        if not db_objects:
+        table = cls.model.__table__  # ty: ignore[unresolved-attribute]
+        column_names = set(table.columns.keys())
+        rows: list[dict[str, Any]] = []
+        identifiers: list[uuid.UUID | str] = []
+        for obj in objects:
+            row = {
+                key: value
+                for key, value in obj.model_dump().items()
+                if key in column_names
+            }
+            if "id" not in row:
+                id_field = cls.model.model_fields.get("id")
+                if id_field is not None and id_field.default_factory is not None:
+                    row["id"] = uuid.uuid4()
+            identifiers.append(row["id"])
+            rows.append(row)
+
+        if not rows:
             return []
 
         try:
-            db.add_all(db_objects)
+            db.execute(insert(table), rows)  # ty: ignore[deprecated]
             db.commit()
         except Exception:
             db.rollback()
             raise
-        return db_objects
+        return identifiers
 
     @classmethod
     def get(cls, db: Session, id: uuid.UUID | str) -> T | None:

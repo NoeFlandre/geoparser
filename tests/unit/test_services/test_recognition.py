@@ -230,6 +230,63 @@ class TestRecognitionFailures:
         ):
             service.predict([document])
 
+    def test_rolls_back_first_core_insert_when_second_insert_fails(
+        self,
+        test_session,
+        mock_spacy_recognizer,
+        document_factory,
+        recognizer_factory,
+    ):
+        from contextlib import nullcontext
+
+        from sqlalchemy.sql.dml import Insert
+        from sqlmodel import select
+
+        from geoparser.db.models import Recognition, Reference
+
+        document = document_factory(text="Paris Berlin")
+        recognizer_factory(
+            id=mock_spacy_recognizer.id,
+            name=mock_spacy_recognizer.name,
+            config=mock_spacy_recognizer.config,
+        )
+        mock_spacy_recognizer.predict.return_value = [[(0, 5), (6, 12)]]
+        service = RecognitionService(mock_spacy_recognizer)
+        original_execute = test_session.execute
+        insert_count = 0
+
+        def fail_second_insert(statement, *args, **kwargs):
+            nonlocal insert_count
+            if isinstance(statement, Insert):
+                insert_count += 1
+                if insert_count == 2:
+                    raise RuntimeError("recognition marker insert failed")
+            return original_execute(statement, *args, **kwargs)
+
+        with (
+            patch(
+                "geoparser.services.recognition.get_session",
+                return_value=nullcontext(test_session),
+            ),
+            patch.object(test_session, "execute", side_effect=fail_second_insert),
+            pytest.raises(RuntimeError, match="recognition marker insert failed"),
+        ):
+            service.predict([document])
+
+        assert insert_count == 2
+        assert (
+            test_session.exec(
+                select(Reference).where(Reference.document_id == document.id)
+            ).all()
+            == []
+        )
+        assert (
+            test_session.exec(
+                select(Recognition).where(Recognition.document_id == document.id)
+            ).all()
+            == []
+        )
+
     def test_cuts_the_reference_text_from_the_document(self, mock_spacy_recognizer):
         """The span's text comes from the document, with no query."""
         from types import SimpleNamespace
@@ -239,9 +296,10 @@ class TestRecognitionFailures:
 
         reference = service._create_reference_record(document, 0, 8, "recognizer")
 
-        assert reference.text == "New York"
-        assert reference.document_id == document.id
-        assert reference.recognizer_id == "recognizer"
+        assert reference["text"] == "New York"
+        assert reference["document_id"] == document.id
+        assert reference["recognizer_id"] == "recognizer"
+        assert isinstance(reference["id"], uuid.UUID)
 
     def test_leaves_the_text_empty_for_a_document_without_one(
         self, mock_spacy_recognizer
@@ -252,4 +310,6 @@ class TestRecognitionFailures:
         document = SimpleNamespace(id=uuid.uuid4())
         service = RecognitionService(mock_spacy_recognizer)
 
-        assert service._create_reference_record(document, 0, 8, "r").text is None
+        reference = service._create_reference_record(document, 0, 8, "r")
+
+        assert reference["text"] is None

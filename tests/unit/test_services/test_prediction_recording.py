@@ -207,23 +207,52 @@ class TestReferentValidation:
 
 @pytest.mark.unit
 class TestBatchPersistence:
-    """The services stage model rows and issue one write per prediction batch."""
+    """The services stage validated mappings in core bulk writes."""
 
-    def test_recognition_records_all_rows_with_one_add_all(self):
-        """References and the processing marker are submitted together."""
+    def test_recognition_core_inserts_ordered_rows_without_orm_adds(self):
+        """References and the processing marker retain values and client IDs."""
+        ids = [uuid.uuid4() for _ in range(3)]
         document = SimpleNamespace(id=uuid.uuid4(), text="Paris Berlin")
         service = RecognitionService(Mock())
 
         session = Mock()
-        service._record_reference_predictions(
-            session, [document], [[(0, 5), (6, 12)]], "rec"
-        )
+        with patch("geoparser.services.recognition.uuid.uuid4", side_effect=ids):
+            service._record_reference_predictions(
+                session, [document], [[(0, 5), (6, 12)]], "rec"
+            )
 
-        session.add_all.assert_called_once()
-        assert len(session.add_all.call_args.args[0]) == 3
+        assert len(session.execute.call_args_list) == 2
+        reference_statement, reference_rows = session.execute.call_args_list[0].args
+        recognition_statement, recognition_rows = session.execute.call_args_list[1].args
+        assert reference_statement.table.name == "reference"
+        assert recognition_statement.table.name == "recognition"
+        assert reference_rows == [
+            {
+                "id": ids[0],
+                "start": 0,
+                "end": 5,
+                "text": "Paris",
+                "document_id": document.id,
+                "recognizer_id": "rec",
+            },
+            {
+                "id": ids[1],
+                "start": 6,
+                "end": 12,
+                "text": "Berlin",
+                "document_id": document.id,
+                "recognizer_id": "rec",
+            },
+        ]
+        assert recognition_rows == [
+            {"id": ids[2], "document_id": document.id, "recognizer_id": "rec"}
+        ]
+        session.add_all.assert_not_called()
+        session.commit.assert_not_called()
 
-    def test_resolution_records_all_rows_with_one_add_all(self):
-        """Referents and resolution markers are submitted together."""
+    def test_resolution_core_inserts_ordered_rows_without_orm_adds(self):
+        """Referents and resolution markers retain values and client IDs."""
+        ids = [uuid.uuid4() for _ in range(4)]
         references = [
             SimpleNamespace(id=uuid.uuid4()),
             SimpleNamespace(id=uuid.uuid4()),
@@ -234,15 +263,41 @@ class TestBatchPersistence:
 
         with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
             gazetteer.return_value.find.return_value = feature
-            service._record_referent_prediction_groups(
-                session,
-                [references],
-                [[("geonames", "123"), ("geonames", "123")]],
-                "res",
-            )
+            with patch("geoparser.services.resolution.uuid.uuid4", side_effect=ids):
+                service._record_referent_prediction_groups(
+                    session,
+                    [references],
+                    [[("geonames", "123"), ("geonames", "123")]],
+                    "res",
+                )
 
-        session.add_all.assert_called_once()
-        assert len(session.add_all.call_args.args[0]) == 4
+        assert len(session.execute.call_args_list) == 2
+        referent_statement, referent_rows = session.execute.call_args_list[0].args
+        resolution_statement, resolution_rows = session.execute.call_args_list[1].args
+        assert referent_statement.table.name == "referent"
+        assert resolution_statement.table.name == "resolution"
+        assert referent_rows == [
+            {
+                "id": ids[0],
+                "reference_id": references[0].id,
+                "gazetteer_name": "geonames",
+                "feature_identifier": "123",
+                "resolver_id": "res",
+            },
+            {
+                "id": ids[2],
+                "reference_id": references[1].id,
+                "gazetteer_name": "geonames",
+                "feature_identifier": "123",
+                "resolver_id": "res",
+            },
+        ]
+        assert resolution_rows == [
+            {"id": ids[1], "reference_id": references[0].id, "resolver_id": "res"},
+            {"id": ids[3], "reference_id": references[1].id, "resolver_id": "res"},
+        ]
+        session.add_all.assert_not_called()
+        session.commit.assert_not_called()
 
 
 @pytest.mark.unit

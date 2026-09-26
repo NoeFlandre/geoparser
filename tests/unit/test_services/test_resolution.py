@@ -168,6 +168,66 @@ class TestResolutionServicePredict:
         assert ResolutionRepository.get_by_reference(test_session, first.id) == []
         assert ResolutionRepository.get_by_reference(test_session, second.id) == []
 
+    def test_rolls_back_referent_insert_when_resolution_insert_fails(
+        self,
+        test_session,
+        mock_sentencetransformer_resolver,
+        document_factory,
+        reference_factory,
+        resolver_factory,
+    ):
+        from contextlib import nullcontext
+        from types import SimpleNamespace
+
+        from sqlalchemy.sql.dml import Insert
+
+        document = document_factory(text="Paris Berlin")
+        first = reference_factory(start=0, end=5, document_id=document.id)
+        second = reference_factory(start=6, end=12, document_id=document.id)
+        test_session.refresh(document)
+        resolver_factory(
+            id=mock_sentencetransformer_resolver.id,
+            name=mock_sentencetransformer_resolver.name,
+            config=mock_sentencetransformer_resolver.config,
+        )
+        mock_sentencetransformer_resolver.predict.return_value = [
+            [("geonames", "1"), ("geonames", "2")]
+        ]
+        service = ResolutionService(mock_sentencetransformer_resolver)
+        original_execute = test_session.execute
+        insert_count = 0
+
+        def fail_second_insert(statement, *args, **kwargs):
+            nonlocal insert_count
+            if isinstance(statement, Insert):
+                insert_count += 1
+                if insert_count == 2:
+                    raise RuntimeError("resolution marker insert failed")
+            return original_execute(statement, *args, **kwargs)
+
+        with (
+            patch(
+                "geoparser.services.resolution.get_session",
+                return_value=nullcontext(test_session),
+            ),
+            patch("geoparser.services.resolution.Gazetteer") as gazetteer,
+            patch.object(test_session, "execute", side_effect=fail_second_insert),
+            pytest.raises(RuntimeError, match="resolution marker insert failed"),
+        ):
+            gazetteer.return_value.find.side_effect = [
+                SimpleNamespace(identifier="1"),
+                SimpleNamespace(identifier="2"),
+            ]
+            service.predict([document])
+
+        from geoparser.db.crud import ReferentRepository, ResolutionRepository
+
+        assert insert_count == 2
+        assert ReferentRepository.get_by_reference(test_session, first.id) == []
+        assert ReferentRepository.get_by_reference(test_session, second.id) == []
+        assert ResolutionRepository.get_by_reference(test_session, first.id) == []
+        assert ResolutionRepository.get_by_reference(test_session, second.id) == []
+
     def test_skips_references_when_resolver_returns_none(
         self,
         test_session,
