@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from threading import Lock
 
-from sqlalchemy import Engine, event, text
+from sqlalchemy import Engine, event, inspect, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.pool import NullPool
@@ -127,6 +127,17 @@ def _ensure_database_directory() -> None:
 _TABLE_EXISTS_SQL = "SELECT 1 FROM sqlite_master WHERE type='table' AND name=:name"  # pragma: no mutate  # fmt: skip
 _COLUMN_EXISTS_SQL = "SELECT 1 FROM pragma_table_info('{table}') WHERE name=:column"  # pragma: no mutate  # fmt: skip
 _REFERENT_TABLE = "referent"  # pragma: no mutate
+_FOREIGN_KEY_INDEXES = (
+    ("document", "project_id"),
+    ("reference", "document_id"),
+    ("reference", "recognizer_id"),
+    ("referent", "reference_id"),
+    ("referent", "resolver_id"),
+    ("resolution", "reference_id"),
+    ("resolution", "resolver_id"),
+    ("recognition", "document_id"),
+    ("recognition", "recognizer_id"),
+)
 
 
 def _check_database_compatibility() -> None:
@@ -177,6 +188,34 @@ def _check_database_compatibility() -> None:
             # pragma: no mutate end
 
 
+def _ensure_foreign_key_indexes() -> None:
+    """Add missing SQLite foreign-key indexes without rebuilding tables."""
+    engine = get_engine()
+    if engine.dialect.name != "sqlite":
+        return
+
+    with engine.begin() as connection:
+        inspector = inspect(connection)
+        columns_by_table: dict[str, set[str]] = {}
+        for table_name, column_name in _FOREIGN_KEY_INDEXES:
+            if table_name not in columns_by_table:
+                columns_by_table[table_name] = {
+                    column["name"] for column in inspector.get_columns(table_name)
+                }
+            if column_name not in columns_by_table[table_name]:
+                continue
+
+            table = SQLModel.metadata.tables[table_name]
+            index_name = f"ix_{table_name}_{column_name}"
+            index = next(
+                (index for index in table.indexes if index.name == index_name), None
+            )
+            if index is None:
+                msg = f"Missing model index definition for {table_name}.{column_name}"
+                raise RuntimeError(msg)
+            index.create(connection, checkfirst=True)
+
+
 def create_db_and_tables() -> None:
     """
     Create all database tables.
@@ -188,6 +227,7 @@ def create_db_and_tables() -> None:
     _ensure_database_directory()
     _check_database_compatibility()
     SQLModel.metadata.create_all(get_engine())
+    _ensure_foreign_key_indexes()
 
 
 @contextmanager

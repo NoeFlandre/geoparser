@@ -33,7 +33,10 @@ class Document(DocumentBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     project_id: uuid.UUID = Field(
         sa_column=Column(
-            UUID, ForeignKey("project.id", ondelete="CASCADE"), nullable=False
+            UUID,
+            ForeignKey("project.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
         )
     )
     project: "Project" = Relationship(back_populates="documents")
