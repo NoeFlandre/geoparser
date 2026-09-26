@@ -227,6 +227,23 @@ class TestSourceConfigValidation:
 
         assert config.sources[0].crs == "EPSG:2056"
 
+    def test_sha256_is_optional_and_normalized(self):
+        """A source accepts a hexadecimal SHA-256 digest case-insensitively."""
+        data = minimal_config()
+        data["sources"][0]["sha256"] = "A" * 64
+
+        config = GazetteerConfig.model_validate(data)
+
+        assert config.sources[0].sha256 == "a" * 64
+
+    def test_rejects_invalid_sha256(self):
+        """A configured checksum must be a 64-character hexadecimal digest."""
+        data = minimal_config()
+        data["sources"][0]["sha256"] = "not-a-digest"
+
+        with pytest.raises(ValidationError, match="64-character hexadecimal"):
+            GazetteerConfig.model_validate(data)
+
     def test_rejects_invalid_source_name(self):
         """Source names must be valid identifiers."""
         data = minimal_config()
