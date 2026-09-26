@@ -10,7 +10,7 @@ whenever that is possible at all, and it is as large as the budget allows.
 """
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 
 from geoparser.modules.resolvers.context import (
@@ -19,8 +19,6 @@ from geoparser.modules.resolvers.context import (
     locate_sentence,
     select_context,
 )
-
-PROPERTY_SETTINGS = settings(deadline=None, derandomize=True, database=None)
 
 COSTS = st.lists(st.integers(min_value=0, max_value=40), min_size=1, max_size=12)
 BUDGETS = st.integers(min_value=0, max_value=120)
@@ -48,7 +46,6 @@ def documents_with_target(draw):
 
 
 @pytest.mark.property
-@PROPERTY_SETTINGS
 @given(documents_with_target(), BUDGETS)
 def test_the_window_always_contains_the_target_sentence(document, budget):
     """
@@ -65,7 +62,6 @@ def test_the_window_always_contains_the_target_sentence(document, budget):
 
 
 @pytest.mark.property
-@PROPERTY_SETTINGS
 @given(documents_with_target(), BUDGETS)
 def test_the_window_is_a_contiguous_run_in_document_order(document, budget):
     """The context is a slice of the document, not a selection from it."""
@@ -78,7 +74,6 @@ def test_the_window_is_a_contiguous_run_in_document_order(document, budget):
 
 
 @pytest.mark.property
-@PROPERTY_SETTINGS
 @given(documents_with_target(), BUDGETS)
 def test_the_window_fits_the_budget_unless_the_target_alone_cannot(document, budget):
     """
@@ -94,7 +89,6 @@ def test_the_window_fits_the_budget_unless_the_target_alone_cannot(document, bud
 
 
 @pytest.mark.property
-@PROPERTY_SETTINGS
 @given(documents_with_target(), BUDGETS)
 def test_neither_neighbour_of_the_window_would_have_fitted(document, budget):
     """
@@ -120,7 +114,6 @@ def test_neither_neighbour_of_the_window_would_have_fitted(document, budget):
 
 
 @pytest.mark.property
-@PROPERTY_SETTINGS
 @given(documents_with_target(), BUDGETS)
 def test_a_bigger_budget_never_gives_a_smaller_window(document, budget):
     """Growing the budget cannot cost the caller context."""
@@ -133,7 +126,6 @@ def test_a_bigger_budget_never_gives_a_smaller_window(document, budget):
 
 
 @pytest.mark.property
-@PROPERTY_SETTINGS
 @given(documents_with_target())
 def test_every_sentence_is_locatable_from_any_offset_it_covers(document):
     """A reference anywhere inside a sentence resolves to that sentence."""
@@ -145,7 +137,6 @@ def test_every_sentence_is_locatable_from_any_offset_it_covers(document):
 
 
 @pytest.mark.property
-@PROPERTY_SETTINGS
 @given(documents_with_target(), BUDGETS)
 def test_the_context_is_the_window_joined_by_single_spaces(document, budget):
     """select_context is expand_window plus a join, and nothing else."""
@@ -159,7 +150,6 @@ def test_the_context_is_the_window_joined_by_single_spaces(document, budget):
 
 
 @pytest.mark.property
-@PROPERTY_SETTINGS
 @given(documents_with_target(), BUDGETS)
 def test_the_context_always_contains_the_reference_text(document, budget):
     """The place name the caller asked about is in the string it gets back."""
@@ -172,7 +162,6 @@ def test_the_context_always_contains_the_reference_text(document, budget):
 
 
 @pytest.mark.property
-@PROPERTY_SETTINGS
 @given(
     st.lists(st.integers(min_value=0, max_value=20), min_size=1, max_size=8),
     st.integers(min_value=0, max_value=60),

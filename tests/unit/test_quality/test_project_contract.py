@@ -259,6 +259,42 @@ def test_nightly_quality_runs_remote_models_and_docker() -> None:
     assert "demo/Dockerfile" in gauntlet
 
 
+def test_property_workflows_select_ci_and_nightly_profiles() -> None:
+    test_workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    quality_workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    property_env = quality_workflow["jobs"]["quality"]["steps"][-1]["env"]
+
+    assert test_workflow["env"]["HYPOTHESIS_PROFILE"] == "ci"
+    assert property_env["HYPOTHESIS_PROFILE"] == (
+        "${{ github.event_name == 'schedule' && 'nightly' || 'ci' }}"
+    )
+
+
+def test_fast_lint_workflow_runs_ty_with_the_lightweight_environment() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/lint.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    ty_job = workflow["jobs"]["ty"]
+    commands = [step.get("run", "") for step in ty_job["steps"]]
+
+    assert any(
+        "uv sync --locked --no-default-groups --only-group lint --no-install-project"
+        in command
+        for command in commands
+    )
+    assert any(
+        "ty check --config-file ty-lint.toml geoparser scripts tests" in command
+        for command in commands
+    )
+
+
 def test_ci_pins_setup_uv_to_a_resolvable_release() -> None:
     workflow_text = "\n".join(
         path.read_text(encoding="utf-8")
@@ -280,3 +316,79 @@ def test_every_action_is_pinned_to_a_commit_sha() -> None:
     ]
 
     assert unpinned == []
+
+
+def test_precommit_config_runs_ruff_format_and_basic_file_checks() -> None:
+    config = yaml.load(
+        (PROJECT_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    hooks = {
+        hook["id"] for repository in config["repos"] for hook in repository["hooks"]
+    }
+
+    assert {"ruff", "ruff-format", "check-yaml", "check-toml"} <= hooks
+    assert "trailing-whitespace" in hooks
+    assert "end-of-file-fixer" in hooks
+
+
+def test_github_templates_cover_bug_feature_and_release_notes() -> None:
+    issue_dir = PROJECT_ROOT / ".github" / "ISSUE_TEMPLATE"
+    bug_report = (issue_dir / "bug_report.yml").read_text(encoding="utf-8")
+    feature_request = (issue_dir / "feature_request.yml").read_text(encoding="utf-8")
+    pull_request = (PROJECT_ROOT / ".github" / "PULL_REQUEST_TEMPLATE.md").read_text(
+        encoding="utf-8"
+    )
+    bug_form = yaml.safe_load(bug_report)
+    feature_form = yaml.safe_load(feature_request)
+
+    assert bug_form["name"] == "Bug report"
+    assert feature_form["name"] == "Feature request"
+    assert "steps to reproduce" in bug_report.lower()
+    assert "proposed solution" in feature_request.lower()
+    assert "CHANGELOG.md" in pull_request
+
+
+def test_release_workflow_requires_changelog_notes_for_the_tag() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    build_steps = workflow["jobs"]["build"]["steps"]
+    release_step = next(
+        step
+        for step in workflow["jobs"]["github-release"]["steps"]
+        if "gh release create" in step.get("run", "")
+    )
+
+    assert any("scripts/changelog.py" in step.get("run", "") for step in build_steps)
+    assert "--notes-file" in release_step["run"]
+    assert "--generate-notes" not in release_step["run"]
+
+
+def test_changelog_is_distributed_with_the_source_archive() -> None:
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
+        project = tomllib.load(pyproject_file)
+    changelog = (PROJECT_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert project["project"]["urls"]["Changelog"].endswith("/CHANGELOG.md")
+    assert (
+        "CHANGELOG.md"
+        in project["tool"]["hatch"]["build"]["targets"]["sdist"]["include"]
+    )
+    assert "## [Unreleased]" in changelog
+    assert "## [0.6.0]" in changelog
+
+
+def test_quality_workflow_mutates_changed_python_modules_on_pull_requests() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    job = workflow["jobs"]["changed-mutation"]
+    commands = [step.get("run", "") for step in job["steps"]]
+
+    assert "github.event_name == 'pull_request'" in job["if"]
+    assert any("changed_mutation_patterns.py" in command for command in commands)
+    assert any("mutmut run" in command for command in commands)
+    assert any("--max-no-tests 0" in command for command in commands)

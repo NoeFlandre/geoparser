@@ -1,0 +1,45 @@
+[analysis]
+# The fast Lint job installs only its tool group. Keep first-party checking
+# enabled while allowing external packages supplied by the full project or
+# test groups to resolve as Any in this job. The Quality gauntlet uses the
+# stricter configuration in pyproject.toml with all dependencies installed.
+allowed-unresolved-imports = [
+  "appdirs.**",
+  "catalogue.**",
+  "confection.**",
+  "coverage.**",
+  "datasets.**",
+  "duckdb.**",
+  "fastapi.**",
+  "gliner2.**",
+  "huggingface_hub.**",
+  "hypothesis.**",
+  "libcst.**",
+  "markupsafe.**",
+  "mutmut.**",
+  "pydantic.**",
+  "pyproj.**",
+  "pytest.**",
+  "pytest_bdd.**",
+  "radon.**",
+  "rapidfuzz.**",
+  "requests.**",
+  "rich.**",
+  "sentence_transformers.**",
+  "shapely.**",
+  "spacy.**",
+  "sqlalchemy.**",
+  "sqlmodel.**",
+  "tomli.**",
+  "torch.**",
+  "transformers.**",
+  "typer.**",
+  "uvicorn.**",
+  "werkzeug.**",
+  "yaml.**",
+]
+
+[rules]
+# Missing package types can make existing ignores appear unused in the fast
+# environment; the full Quality run checks these directives normally.
+unused-ignore-comment = "ignore"

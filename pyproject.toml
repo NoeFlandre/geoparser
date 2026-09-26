@@ -59,6 +59,7 @@ geoparser = "geoparser.__main__:main"
 [project.urls]
 Homepage = "https://geoparser.app"
 Repository = "https://github.com/NoeFlandre/geoparser"
+Changelog = "https://github.com/NoeFlandre/geoparser/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 # Everything needed to develop, test and document the project. `uv sync`
@@ -125,7 +126,7 @@ build-backend = "hatchling.build"
 packages = ["geoparser"]
 
 [tool.hatch.build.targets.sdist]
-include = ["geoparser", "LICENSE", "README.md", "ROADMAP.md"]
+include = ["geoparser", "LICENSE", "README.md", "ROADMAP.md", "CHANGELOG.md"]
 
 [tool.ruff]
 line-length = 88

@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest a change to GeoParser.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Describe the user need and the smallest useful change.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem should this solve?
+      description: Explain who is affected and what they cannot do today.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior or interface you would like.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Mention any workaround or alternative you have considered.

@@ -5,11 +5,13 @@ This module provides pytest configuration and imports all fixtures
 from the fixtures directory, making them available to all tests.
 """
 
+import os
 import shutil
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from hypothesis import settings as hypothesis_settings
 
 # Import all fixtures from the fixtures directory
 # This makes them available to all tests without explicit imports
@@ -19,6 +21,20 @@ pytest_plugins = [
     "tests.fixtures.modules",
     "tests.fixtures.gazetteer",
 ]
+
+hypothesis_settings.register_profile(
+    "ci",
+    derandomize=True,
+    database=None,
+    deadline=None,
+    max_examples=100,
+    print_blob=True,
+)
+hypothesis_settings.register_profile("dev", max_examples=50, deadline=None)
+hypothesis_settings.register_profile(
+    "nightly", derandomize=False, max_examples=2000, deadline=None
+)
+hypothesis_settings.load_profile(os.getenv("HYPOTHESIS_PROFILE", "dev"))
 
 _TRAINING_OUTPUT_NAMES = frozenset(
     {

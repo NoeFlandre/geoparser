@@ -134,3 +134,50 @@ def test_mutation_gate_accepts_a_run_that_accounts_for_every_mutant(
     )
 
     assert result == 0
+
+
+def test_mutation_gate_fails_when_no_tests_exceed_the_baseline(
+    monkeypatch: Any, tmp_path, capsys: Any
+) -> None:
+    monkeypatch.setattr(
+        mutation_gate, "mutation_diagnostics", lambda: "geoparser.foo.bar: no tests"
+    )
+    stats_path = _unaccounted_stats_path(
+        tmp_path, killed=10, survived=0, no_tests=2, total=12
+    )
+
+    result = mutation_gate.main(
+        [
+            "--max-survivors",
+            "0",
+            "--max-no-tests",
+            "1",
+            "--stats",
+            stats_path,
+        ]
+    )
+
+    assert result == 1
+    error = capsys.readouterr().err
+    assert "2 mutant(s) have no covering tests" in error
+    assert "geoparser.foo.bar: no tests" in error
+
+
+def test_mutation_gate_accepts_no_tests_at_the_baseline(tmp_path, capsys: Any) -> None:
+    stats_path = _unaccounted_stats_path(
+        tmp_path, killed=10, survived=0, no_tests=2, total=12
+    )
+
+    result = mutation_gate.main(
+        [
+            "--max-survivors",
+            "0",
+            "--max-no-tests",
+            "2",
+            "--stats",
+            stats_path,
+        ]
+    )
+
+    assert result == 0
+    assert "no tests 2" in capsys.readouterr().out

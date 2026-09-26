@@ -92,6 +92,7 @@ def mutation_diagnostics() -> str:
         ": survived",
         ": timeout",
         ": suspicious",
+        ": no tests",
         ": segfault",
         ": caught by type check",
         ": check was interrupted by user",
@@ -115,6 +116,7 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-survivors", type=int, required=True)
+    parser.add_argument("--max-no-tests", type=int)
     parser.add_argument("--stats", type=Path, default=STATS_PATH)
     args = parser.parse_args(argv)
 
@@ -157,7 +159,29 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    print(f"Within the agreed baseline of {args.max_survivors} surviving mutant(s).")
+    no_tests = stats.get("no_tests", 0)
+    if args.max_no_tests is not None and no_tests > args.max_no_tests:
+        diagnostics = mutation_diagnostics()
+        print(
+            f"\n{no_tests} mutant(s) have no covering tests, more than the "
+            f"agreed {args.max_no_tests}. Add a focused unit test or justify "
+            f"the scope in MUTATION_TESTING.md.",
+            file=sys.stderr,
+        )
+        print(
+            "\nMutation diagnostics:\n"
+            + (diagnostics or "No actionable mutant details were returned."),
+            file=sys.stderr,
+        )
+        return 1
+
+    no_tests_baseline = (
+        str(args.max_no_tests) if args.max_no_tests is not None else "unconfigured"
+    )
+    print(
+        "Within the agreed baselines of "
+        f"{args.max_survivors} surviving and {no_tests_baseline} untested mutant(s)."
+    )
     return 0
 
 

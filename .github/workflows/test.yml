@@ -24,6 +24,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
+  HYPOTHESIS_PROFILE: ci
   # The hard coverage gate, applied to the combined report across the whole
   # matrix. Single cells are not gated: platform-specific branches are
   # unreachable off their own operating system, so only the combination is a

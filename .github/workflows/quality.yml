@@ -53,9 +53,58 @@ jobs:
       - name: Run the complete deterministic quality gauntlet
         env:
           GEOPARSER_TEST_REMOTE_MODELS: ${{ github.event_name == 'schedule' && '1' || '' }}
+          HYPOTHESIS_PROFILE: ${{ github.event_name == 'schedule' && 'nightly' || 'ci' }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
             uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline
           else
             uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline --skip-docker
+
+  changed-mutation:
+    if: github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null)
+    name: changed-mutation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+
+      - name: Install locked test dependencies
+        run: uv sync --locked --no-default-groups --only-group test
+
+      - name: Mutate changed package modules
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          patterns_text="$(uv run --no-sync python scripts/changed_mutation_patterns.py "$BASE_SHA" "$HEAD_SHA")"
+          if [[ -z "$patterns_text" ]]; then
+            echo "No changed geoparser Python modules to mutate."
+            exit 0
+          fi
+          mapfile -t patterns <<< "$patterns_text"
+          mkdir -p mutants
+          rm -f mutants/mutmut-cicd-stats.json
+          run_status=0
+          uv run --no-sync mutmut run "${patterns[@]}" || run_status=$?
+          export_status=0
+          uv run --no-sync mutmut export-cicd-stats || export_status=$?
+          if (( export_status != 0 )); then
+            exit "$export_status"
+          fi
+          gate_status=0
+          uv run --no-sync python scripts/mutation_gate.py \
+            --max-survivors 0 \
+            --max-no-tests 0 \
+            --stats mutants/mutmut-cicd-stats.json || gate_status=$?
+          if (( run_status != 0 )); then
+            exit "$run_status"
+          fi
+          exit "$gate_status"
           fi

@@ -27,7 +27,7 @@ def _uv(*arguments: str) -> Command:
     return ("uv", "run", "--no-sync", "--offline", *arguments)
 
 
-def build_stages(
+def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI flags
     root: Path,
     artifact_dir: Path,
     *,
@@ -152,6 +152,8 @@ def build_stages(
                         "scripts/mutation_gate.py",
                         "--max-survivors",
                         "0",
+                        "--max-no-tests",
+                        "212",
                         "--stats",
                         "mutants/mutmut-cicd-stats.json",
                     ),

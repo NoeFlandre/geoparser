@@ -8,7 +8,7 @@ numbers and the checklist below whenever you work on it.
 ```bash
 uv run mutmut run                 # full sweep, regenerates mutants/
 uv run mutmut export-cicd-stats
-uv run python scripts/mutation_gate.py --max-survivors <baseline>
+uv run python scripts/mutation_gate.py --max-survivors 0 --max-no-tests 212
 ```
 
 Inspect one function's survivors with `uv run mutmut results` and
@@ -26,8 +26,10 @@ Pragmas only take effect when the mutant tree is regenerated, so delete
 | After excluding the build pipeline | 2021 | 1427 | 307 | 286 | — | 0 | 34.0/s |
 | Clean sweep after model pass | 1999 | 1786 | **0** | 212 | 1 | 0 | 31.2/s |
 
-The quality gauntlet passes `--max-survivors 0` to the mutation gate. Keep it
-at zero: a new survivor is a line the unit suite runs but does not check.
+The quality gauntlet passes `--max-survivors 0 --max-no-tests 212` to the
+mutation gate. Keep survivors at zero. The no-tests count is a ratchet: it
+must never rise above the last measured baseline, and the project is working
+towards bringing it below 100 (issue #85).
 
 ## Scope, and why
 
@@ -147,9 +149,8 @@ Two practical consequences:
 - A filtered run (`mutmut run <pattern>`) needs the mapping a full run builds.
   Do not delete `mutants/` before one.
 
-The 212 no-test mutants are an intentional scope boundary: the mutation run
-uses `tests/unit`, while the integration and e2e suites plus the 100% coverage
-gate cover the paths that the unit suite does not reach. They remain visible in
-the exported stats but are not survivors. No `MAX_NO_TESTS` ratchet is used,
-because this count describes the established test-scope split rather than an
-unbounded survival budget.
+The current 212 no-test mutants are still unclassified by function. The gate
+now rejects any increase above that measured baseline, and the fast PR job runs
+mutation only for changed package modules with a zero no-tests budget. The
+full baseline must be regenerated after adding focused unit tests; record the
+resulting function names here before reducing the 212 budget.

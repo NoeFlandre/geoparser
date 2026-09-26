@@ -54,6 +54,8 @@ Tests live under `tests/` and are organized as:
 
 Markers `unit`, `integration`, and `e2e` are declared under `[tool.pytest.ini_options]` in `pyproject.toml`, which is the single source of pytest configuration.
 
+Hypothesis uses registered `dev`, `ci`, and `nightly` profiles. Local runs use `dev` by default; set `HYPOTHESIS_PROFILE=ci` for deterministic CI-sized examples or `HYPOTHESIS_PROFILE=nightly` for the larger randomized run. The workflows select `ci` for pull requests and `nightly` for the scheduled quality run.
+
 Two integration files are opt-in, and skip with an explicit reason unless
 `GEOPARSER_TEST_REMOTE_MODELS=1` is set:
 
