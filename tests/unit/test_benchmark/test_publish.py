@@ -259,6 +259,14 @@ class TestPipelineDescriptions:
         assert "fastino/gliner2.5-multi-v1" in card
         assert "dguzh/geo-all-MiniLM-L6-v2" in card
 
+    def test_prior_description_matches_the_default_configuration(self):
+        """The published card describes the no-trimming population prior."""
+        card = render_card([])
+
+        assert "no inflection fallback" in card
+        assert "0.3 population prior" in card
+        assert "ending trimmed" not in card
+
 
 class TestCharts:
     """The card shows the results as charts, above the tables."""

@@ -93,9 +93,9 @@ PIPELINE_DESCRIPTIONS = {
     ),
     "prior": (
         "GLiNER2 `fastino/gliner2.5-multi-v1`",
-        "MiniLM + inflection fallback + population prior",
-        "hybrid, with exact-match misses retried with the ending trimmed "
-        "and a small log-population prior; no extra model.",
+        "MiniLM + weight-0.3 population prior (no inflection fallback)",
+        "hybrid, with a 0.3 log-population prior and exact matching only; "
+        "no inflection fallback or extra model.",
     ),
 }
 
