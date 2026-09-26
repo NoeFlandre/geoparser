@@ -22,7 +22,11 @@ from geoparser.annotator.db.crud import (
     SessionSettingsRepository,
     ToponymRepository,
 )
-from geoparser.annotator.db.db import create_db_and_tables, db_location, engine, get_db
+from geoparser.annotator.db.db import (
+    create_db_and_tables,
+    get_database_location,
+    get_db,
+)
 from geoparser.annotator.db.models import (
     AnnotatorDocument,
     AnnotatorSession,
@@ -231,7 +235,7 @@ def create_session(
 def create_from_legacy_files(
     db: t.Annotated[DBSession, Depends(get_db)],
 ):
-    legacy_cache_dir = db_location.parent
+    legacy_cache_dir = get_database_location().parent
     legacy_files = list(legacy_cache_dir.glob("*.json"))
     if not legacy_files:
         return LegacyFilesResponse()
@@ -540,7 +544,7 @@ def run(
     def launch_browser():
         webbrowser.open_new(f"http://127.0.0.1:{port}/")
 
-    create_db_and_tables(engine)
+    create_db_and_tables()
 
     if open_browser:
         threading.Timer(1.0, launch_browser).start()

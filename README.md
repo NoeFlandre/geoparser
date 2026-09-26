@@ -27,6 +27,8 @@ The library also needs a gazetteer, which is not bundled: it is the database of 
 python -m geoparser install geonames
 ```
 
+Gazetteers and SQLite databases are stored in the operating system's standard application data directory. Set `GEOPARSER_DATA_DIR` to use a different location; the [installation guide](https://docs.geoparser.app/installation.html#where-data-is-stored) explains the directory layout.
+
 See the [installation guide](https://docs.geoparser.app/installation.html) for environment setup, the available gazetteers, and their disk requirements.
 
 ## Quick Start

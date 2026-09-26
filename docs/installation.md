@@ -210,6 +210,15 @@ Gazetteers and project data are kept outside your working directory, in your ope
 
 Each gazetteer is one self-contained file under `gazetteers/`, and your projects, documents, and results live separately in `geoparser.db`. Because they are separate, reinstalling a gazetteer does not touch your projects, and deleting a project does not affect your gazetteers. A gazetteer can also be backed up or moved between machines by copying its file.
 
+To store application data somewhere else, set `GEOPARSER_DATA_DIR` to the base directory before installing gazetteers or starting the application:
+
+```bash
+export GEOPARSER_DATA_DIR=/path/to/geoparser-data
+python -m geoparser install geonames
+```
+
+Gazetteer artifacts are stored in `gazetteers/`, the project database in `geoparser.db`, and the annotator database in `annotator/annotator.db`, all beneath that directory. The variable is read when a database engine is first used, so set it before starting the process. `GEOPARSER_GAZETTEERS_DIR` can still override only the gazetteer directory.
+
 ## Upgrading
 
 ``` bash

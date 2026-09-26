@@ -67,7 +67,7 @@ def patch_db(test_engine: Engine):
     Automatically redirect all database access to use the test database.
 
     This fixture runs automatically for every test function. By patching
-    `engine` in geoparser.db.db, we ensure that:
+    `_engine` in geoparser.db.db, we ensure that:
     - Direct access to `engine` uses the test engine
     - `get_session()` works correctly (uses engine internally)
     - `get_connection()` works correctly (uses engine internally)
@@ -82,5 +82,5 @@ def patch_db(test_engine: Engine):
     Yields:
         None (patches are active during the test)
     """
-    with patch("geoparser.db.db.engine", test_engine):
+    with patch("geoparser.db.db._engine", test_engine):
         yield
