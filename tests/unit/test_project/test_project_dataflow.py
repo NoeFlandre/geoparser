@@ -6,7 +6,10 @@ the name in the wrong order, or dropping the project id from a document, still
 looks like a successful call while writing the wrong rows.
 """
 
+import builtins
+import json
 import uuid
+from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock, patch
@@ -182,10 +185,11 @@ class TestLoadAnnotations:
     @staticmethod
     def _export(tmp_path, documents, gazetteer="geonames"):
         """Write an annotator-format JSON file and return its path."""
-        import json
-
         path = tmp_path / "annotations.json"
-        path.write_text(json.dumps({"gazetteer": gazetteer, "documents": documents}))
+        path.write_text(
+            json.dumps({"gazetteer": gazetteer, "documents": documents}),
+            encoding="utf-8",
+        )
         return path
 
     @staticmethod
@@ -304,6 +308,37 @@ class TestLoadAnnotations:
 
         # Assert
         create_documents.assert_called_once_with(["Paris"])
+
+    def test_reads_utf8_annotations_when_default_encoding_is_cp1252(
+        self, tmp_path, monkeypatch
+    ):
+        """An export remains intact on systems whose text default is not UTF-8."""
+        # Arrange
+        path = tmp_path / "annotations.json"
+        path.write_bytes(
+            json.dumps(
+                {
+                    "gazetteer": "geonames",
+                    "documents": [{"text": "Zürich", "toponyms": []}],
+                },
+                ensure_ascii=False,
+            ).encode("utf-8")
+        )
+        real_open = builtins.open
+
+        def cp1252_default_open(file, *args, **kwargs):
+            if Path(file).resolve() == path.resolve() and "encoding" not in kwargs:
+                kwargs["encoding"] = "cp1252"
+            return real_open(file, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "open", cp1252_default_open)
+        project = Project.__new__(Project)
+
+        # Act
+        create_documents, _, _ = self._load(project, path, create_documents=True)
+
+        # Assert
+        create_documents.assert_called_once_with(["Zürich"])
 
 
 @pytest.mark.unit
