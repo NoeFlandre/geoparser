@@ -132,7 +132,7 @@ class TestProjectCreateDocuments:
         mock_project_repo.get_by_name.return_value = mock_existing_project
 
         created_ids = [uuid4(), uuid4(), uuid4()]
-        mock_doc_repo.create_many.return_value = [Mock(id=id) for id in created_ids]
+        mock_doc_repo.create_many.return_value = list(created_ids)
 
         project = Project("TestProject")
 
