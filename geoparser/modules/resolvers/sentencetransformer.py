@@ -193,8 +193,7 @@ class SentenceTransformerResolver(
                     f"Please provide a custom attribute_map parameter."
                 )
             return self.GAZETTEER_ATTRIBUTE_MAP[gazetteer_name]
-        else:
-            return attribute_map
+        return attribute_map
 
     def _load_spacy_model(self, model_name: str) -> spacy.language.Language:
         """
@@ -333,7 +332,7 @@ class SentenceTransformerResolver(
         """
         return all(all(r is not None for r in doc_results) for doc_results in results)
 
-    def _search_once(
+    def _search_once(  # noqa: PLR0913, PLR0917 - internal step taking each search setting of the resolver
         self,
         texts: list[str],
         references: list[list[tuple[int, int]]],
@@ -381,7 +380,7 @@ class SentenceTransformerResolver(
             contexts.append(doc_contexts)
         return contexts
 
-    def _encode(self, texts: list[str], role: str) -> "torch.Tensor":
+    def _encode(self, texts: list[str], role: str) -> "torch.Tensor":  # noqa: ARG002 - hook for asymmetric subclasses such as JinaResolver
         """
         Embed a batch of strings with the sentence transformer.
 

@@ -114,11 +114,12 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         old_toponyms: t.Sequence[AnnotatorToponym | AnnotatorToponymCreate],
         new_toponyms: t.Sequence[NewToponymT],
     ) -> list[NewToponymT]:
-        toponyms = []
-        for new_toponym in new_toponyms:
-            # only add the new toponym if there is no existing one
-            if not cls._get_toponym(old_toponyms, new_toponym.start, new_toponym.end):
-                toponyms.append(new_toponym)
+        # only add the new toponym if there is no existing one
+        toponyms = [
+            new_toponym
+            for new_toponym in new_toponyms
+            if not cls._get_toponym(old_toponyms, new_toponym.start, new_toponym.end)
+        ]
         return sorted(toponyms, key=lambda x: x.start)
 
     @classmethod
@@ -153,7 +154,7 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
             lon, lat = transformer.transform(centroid.x, centroid.y)
             return lat, lon
 
-        except Exception:
+        except Exception:  # noqa: BLE001 - a feature without a usable geometry or CRS is shown without a map pin
             return None, None
 
     @classmethod
@@ -219,9 +220,10 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         exclude: list[str] | None = None,
         additional: dict[str, t.Any] | None = None,
     ) -> AnnotatorToponym:
-        assert additional and "document_id" in additional, (
-            "toponym cannot be created without link to document"
-        )
+        # An explicit check, not an assert: asserts vanish under ``python -O``.
+        if not additional or "document_id" not in additional:
+            msg = "toponym cannot be created without link to document"
+            raise ValueError(msg)
         cls.validate_overlap(db, item, additional["document_id"])
         return super().create(db, item, exclude=exclude, additional=additional)
 

@@ -152,7 +152,7 @@ def _is_bare_reference(expression: str, match: re.Match[str], token: str) -> boo
         True for a bare column, False for literals, qualified parts and
         function names
     """
-    if token.startswith("'") or token.startswith('"'):
+    if token.startswith(("'", '"')):
         return False
     if expression[: match.start()].rstrip().endswith("."):
         return False
@@ -178,7 +178,7 @@ def qualify_expression(expression: str, replacements: t.Mapping[str, str]) -> st
 
     def replace(match: re.Match) -> str:
         token = match.group(0)
-        if token.startswith("'") or token.startswith('"'):
+        if token.startswith(("'", '"')):
             return token
         if token not in replacements:
             return token
@@ -322,7 +322,7 @@ class ProjectionCompiler:
         geometry = self._feature_geometry(feature)
         source = quote_identifier(feature.source)
         return (
-            f"WITH src_rows AS (\n"
+            f"WITH src_rows AS (\n"  # noqa: S608 - table/column names come from quote_identifier or module constants, values are bound
             f"    SELECT CAST(({identifier}) AS VARCHAR) AS identifier, "
             f"{geometry} AS geom\n"
             f"    FROM {source} AS src\n"

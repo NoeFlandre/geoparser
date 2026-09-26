@@ -36,7 +36,7 @@ class TrainingMixin:
 
         def _generate_description(self, candidate: "Feature") -> str: ...
 
-    def fit(
+    def fit(  # noqa: PLR0913, PLR0917 - public API; make keyword-only in the next major release
         self,
         texts: list[str],
         references: list[list[tuple[int, int]]],

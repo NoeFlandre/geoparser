@@ -338,7 +338,7 @@ class GazetteerBuilder:
         Returns:
             True when there is no further parent worth reading
         """
-        return directory == root or directory.parent == directory
+        return directory in (root, directory.parent)
 
     @staticmethod
     def _unified_cgroup_path() -> str | None:
@@ -349,7 +349,7 @@ class GazetteerBuilder:
             The path after the ``0::`` prefix, or None if there is no
             unified-hierarchy entry
         """
-        with open("/proc/self/cgroup", encoding="utf-8") as handle:
+        with open("/proc/self/cgroup", encoding="utf-8") as handle:  # noqa: PTH123 - tests substitute builtins.open to fake /proc
             for line in handle.read().splitlines():
                 # Unified hierarchy: ``0::/docker/<id>`` (or similar).
                 if line.startswith("0::"):
@@ -709,7 +709,7 @@ class GazetteerBuilder:
                     finalize(sqlite_connection, config, feature_count, name_count)
             finally:
                 sqlite_connection.close()
-        os.replace(temporary_path, target_path)
+        Path(temporary_path).replace(target_path)
         return feature_count, name_count
 
 

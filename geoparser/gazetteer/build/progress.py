@@ -494,7 +494,7 @@ def track(
     def _run() -> None:
         try:
             run()
-        except BaseException as exc:
+        except BaseException as exc:  # noqa: BLE001 - re-raised on the calling thread after join
             error.append(exc)
 
     thread = threading.Thread(target=_run, daemon=True)
@@ -512,7 +512,7 @@ def _sample(bar: _Item, poll: t.Callable[[], float | None]) -> None:
     """Read one progress value and apply it to ``bar``, ignoring poll errors."""
     try:
         value = poll()
-    except Exception:
+    except Exception:  # noqa: BLE001 - a failed progress poll must not abort the build
         return
     if value is not None and value >= 0:
         bar.set_progress(value)

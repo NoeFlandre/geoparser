@@ -28,7 +28,7 @@ Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 # Event listener for SQLite foreign keys
 # This applies to ALL Engine instances (including test engines)
 @event.listens_for(Engine, "connect")
-def _set_sqlite_pragma(dbapi_connection, connection_record):
+def _set_sqlite_pragma(dbapi_connection, connection_record):  # noqa: ARG001 - signature fixed by SQLAlchemy's connect event
     """
     Configure SQLite connections on connect.
 

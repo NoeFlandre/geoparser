@@ -76,7 +76,7 @@ def copy_rows(
     Returns:
         Number of copied rows
     """
-    total = scalar_int(duckdb_connection, f"SELECT count(*) FROM ({select_sql})")
+    total = scalar_int(duckdb_connection, f"SELECT count(*) FROM ({select_sql})")  # noqa: S608 - table/column names come from quote_identifier or module constants, values are bound
     cursor = duckdb_connection.execute(select_sql)
     copied = 0
     sqlite_connection.execute("BEGIN")

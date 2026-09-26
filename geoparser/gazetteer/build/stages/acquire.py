@@ -100,7 +100,7 @@ class Acquirer:
             total_size = int(response.headers.get("content-length", 0))
 
             with (
-                open(download_path, "wb") as output_file,
+                download_path.open("wb") as output_file,
                 item(
                     f"Downloading {download_path.name}", total=total_size or None
                 ) as progress_bar,

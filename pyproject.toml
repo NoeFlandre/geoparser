@@ -133,15 +133,53 @@ extend-exclude = ["docs/_build"]
 # E/W/F are the pyflakes+pycodestyle baseline black and autoflake used to cover
 # (F401 replaces autoflake's unused-import pass); I replaces isort; the rest are
 # the low-noise correctness and modernization rules worth enforcing here.
-select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+select = [
+    "E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF",
+    # Anti-pattern families (#58): blind excepts, naive datetimes, bandit
+    # security checks, stray prints, unused arguments, pylint, pathlib,
+    # return style, misc idioms, performance, no blanket noqa, complexity.
+    "BLE", "DTZ", "S", "T20", "ARG", "PL", "PTH", "RET", "PIE", "PERF", "PGH",
+    "C90",
+]
 ignore = [
     # Formatter owns line length; long strings and comments are not worth churning.
     "E501",
+    # Named constants for every literal compared against are more noise than
+    # signal in parsing and geometry code.
+    "PLR2004",
+    # Deferred imports are deliberate: they keep `geoparser --help` and the
+    # lazy module registry from importing torch and spaCy.
+    "PLC0415",
+    # try/except inside a loop is how per-item failures are isolated; the
+    # overhead ruff warns about is gone in Python 3.11+.
+    "PERF203",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 # Re-exports are the point of these files.
 "__init__.py" = ["F401"]
+# Tests assert, build throwaway paths and SQL, shell out to tools, and stub
+# signatures whose arguments they ignore; none of that is production code.
+"tests/**" = ["S", "ARG", "T20", "PLR", "PLW", "PTH", "DTZ", "BLE", "C90"]
+# Developer scripts report to the terminal and shell out to git, uv and
+# docker by name.
+"scripts/**" = ["T20", "S603", "S607"]
+# FastAPI injects route dependencies and exception-handler arguments by
+# signature, so handlers declare parameters they only need to exist.
+"geoparser/annotator/app.py" = ["ARG001"]
+"geoparser/annotator/exceptions.py" = ["ARG001"]
+# Typer builds each command's options from its signature: one parameter per
+# flag is the API, not a design smell.
+"geoparser/cli/**" = ["PLR0913", "PLR0917"]
+# The demo notebook reports its progress to the reader.
+"demo/**" = ["T20"]
+
+[tool.ruff.lint.mccabe]
+# Lock in the current ceiling next to the CRAP gate.
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 6
 
 [tool.ruff.lint.isort]
 known-first-party = ["geoparser"]

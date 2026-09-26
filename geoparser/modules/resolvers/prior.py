@@ -28,7 +28,7 @@ class PriorResolver(SentenceTransformerResolver):
     # to decide a near-tie between homonyms, too little to overturn context.
     DEFAULT_WEIGHT = 0.1
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917 - public API; make keyword-only in the next major release
         self,
         model_name: str = "dguzh/geo-all-MiniLM-L6-v2",
         gazetteer_name: str = "geonames",

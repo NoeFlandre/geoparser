@@ -249,7 +249,7 @@ class GazetteerArtifact:
         row = (
             self._connection()
             .execute(
-                f"SELECT {self._FEATURE_COLUMNS} FROM feature f WHERE f.identifier = ?",
+                f"SELECT {self._FEATURE_COLUMNS} FROM feature f WHERE f.identifier = ?",  # noqa: S608 - table/column names come from quote_identifier or module constants, values are bound
                 (str(identifier),),
             )
             .fetchone()
@@ -303,7 +303,7 @@ class GazetteerArtifact:
             WHERE name_fts MATCH ? AND length(n.text) = ?
             GROUP BY f.id
             LIMIT ?
-            """,
+            """,  # noqa: S608 - columns and match SQL are module constants, values are bound
                 (f'"{name}"', len(name), limit),
             )
             .fetchall()
@@ -342,7 +342,7 @@ class GazetteerArtifact:
             JOIN tiered t ON f.id = t.feature_id
             WHERE t.tier <= ?
             ORDER BY t.score ASC, f.id ASC
-            """,
+            """,  # noqa: S608 - columns and match SQL are module constants, values are bound
                 (*parameters, limit, tiers),
             )
             .fetchall()

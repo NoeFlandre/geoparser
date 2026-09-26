@@ -114,7 +114,7 @@ def chunks(items: Sequence[t.Any], size: int) -> list[list[t.Any]]:
     return [list(items[start : start + size]) for start in range(0, len(items), size)]
 
 
-def run_phase(
+def run_phase(  # noqa: PLR0913 - benchmark entry point mirrors its CLI flags
     phase: str,
     pipeline: str,
     documents: Sequence[Document],

@@ -25,7 +25,7 @@ class _DefaultStdoutHandler(logging.Handler):
             # Written to the stream directly: print()'s implicit stdout would
             # make `file=sys.stdout` a no-op mutation nothing could detect.
             sys.stdout.write(self.format(record) + "\n")
-        except Exception:
+        except Exception:  # noqa: BLE001 - a logging handler must never raise; errors go to handleError
             self.handleError(record)
 
 

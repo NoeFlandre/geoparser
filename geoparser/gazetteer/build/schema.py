@@ -391,7 +391,7 @@ class GazetteerConfig(BaseModel):
         Returns:
             Validated GazetteerConfig instance
         """
-        with open(path, encoding="utf-8") as config_file:
+        with Path(path).open(encoding="utf-8") as config_file:
             data = yaml.safe_load(config_file)
         config = cls.model_validate(data)
         base_dir = Path(path).resolve().parent

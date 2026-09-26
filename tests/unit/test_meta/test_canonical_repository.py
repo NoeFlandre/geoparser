@@ -69,8 +69,10 @@ def _repo_links() -> list[tuple[Path, int, str]]:
     found = []
     for path in _tracked_text_files():
         for number, line in enumerate(path.read_text("utf-8").splitlines(), start=1):
-            for match in REPO_LINK.finditer(line):
-                found.append((path, number, match.group("owner")))
+            found.extend(
+                (path, number, match.group("owner"))
+                for match in REPO_LINK.finditer(line)
+            )
     return found
 
 
@@ -89,7 +91,7 @@ class TestCanonicalRepository:
         stale = [
             f"{path.relative_to(ROOT)}:{number} -> {owner}/geoparser"
             for path, number, owner in _repo_links()
-            if owner != CANONICAL_SLUG.split("/")[0]
+            if owner != CANONICAL_SLUG.split("/", maxsplit=1)[0]
         ]
 
         # Assert
