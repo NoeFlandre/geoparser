@@ -146,6 +146,7 @@ def test_database_path_comes_from_sqlalchemy_url():
         _database_path("postgresql+psycopg://user:secret@localhost:5432/geoparser")
         == "geoparser"
     )
+    assert _database_path("sqlite://") == ""
 
 
 @pytest.mark.unit
