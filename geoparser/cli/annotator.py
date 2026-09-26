@@ -20,9 +20,7 @@ def annotator_cli(
     ] = False,
 ):
     """Launch the Irchel Geoparser Annotator web application."""
-    # Imported here rather than at module scope: building the FastAPI app
-    # pulls in spaCy and torch, which would make every CLI invocation --
-    # including `--help` -- pay for a web server nobody asked to start.
-    from geoparser.annotator.app import run
+    # Keep application imports lazy so CLI help does not import the web stack.
+    from geoparser.annotator.server import run
 
     run(use_reloader=reload, host=host, port=port, open_browser=browser)

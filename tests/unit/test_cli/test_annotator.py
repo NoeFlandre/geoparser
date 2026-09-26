@@ -13,7 +13,7 @@ import pytest
 class TestAnnotatorCli:
     """Test annotator_cli() function."""
 
-    @patch("geoparser.annotator.app.run")
+    @patch("geoparser.annotator.server.run")
     def test_calls_annotator_run(self, mock_run):
         """Test that annotator_cli calls the annotator run function."""
         # Arrange
@@ -25,7 +25,7 @@ class TestAnnotatorCli:
         # Assert
         mock_run.assert_called_once()
 
-    @patch("geoparser.annotator.app.run")
+    @patch("geoparser.annotator.server.run")
     def test_defaults_bind_to_localhost(self, mock_run):
         """By default the annotator is local-only and opens a browser."""
         # Arrange

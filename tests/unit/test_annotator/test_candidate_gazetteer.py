@@ -10,7 +10,14 @@ from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
+from geoparser.annotator.db.crud import (
+    DocumentRepository,
+    SessionRepository,
+    ToponymRepository,
+)
+from geoparser.annotator.db.db import get_db
 from geoparser.annotator.db.models.document import AnnotatorDocumentCreate
+from geoparser.annotator.db.models.session import AnnotatorSessionCreate
 
 
 @pytest.fixture
@@ -31,8 +38,6 @@ def annotator_client(monkeypatch):
     )
 
     annotator_app = import_module("geoparser.annotator.app")
-    if hasattr(annotator_app, "current_gazetteer_name"):
-        annotator_app.current_gazetteer_name = None
 
     engine = create_engine(
         "sqlite://",
@@ -45,22 +50,22 @@ def annotator_client(monkeypatch):
         with Session(engine) as db:
             yield db
 
-    annotator_app.app.dependency_overrides[annotator_app.get_db] = override_get_db
+    annotator_app.app.dependency_overrides[get_db] = override_get_db
     try:
         with TestClient(annotator_app.app, raise_server_exceptions=False) as client:
             yield client, engine, annotator_app
     finally:
-        annotator_app.app.dependency_overrides.pop(annotator_app.get_db, None)
+        annotator_app.app.dependency_overrides.pop(get_db, None)
         engine.dispose()
 
 
 def _create_session_with_document(engine, annotator_app, gazetteer: str) -> UUID:
     """Add one session and document so the candidate route can resolve them."""
     with Session(engine) as db:
-        session = annotator_app.SessionRepository.create(
-            db, annotator_app.AnnotatorSessionCreate(gazetteer=gazetteer)
+        session = SessionRepository.create(
+            db, AnnotatorSessionCreate(gazetteer=gazetteer)
         )
-        annotator_app.DocumentRepository.create(
+        DocumentRepository.create(
             db,
             AnnotatorDocumentCreate(
                 filename="place.txt",
@@ -87,7 +92,7 @@ def test_candidate_lookup_uses_its_session_after_another_session_is_opened(
         return {"gazetteer": gazetteer}
 
     monkeypatch.setattr(
-        annotator_app.ToponymRepository,
+        ToponymRepository,
         "get_candidates",
         classmethod(record_gazetteer),
     )
@@ -115,12 +120,11 @@ def test_candidate_lookup_survives_server_restart_without_a_page_load(
         return {"gazetteer": gazetteer}
 
     monkeypatch.setattr(
-        annotator_app.ToponymRepository,
+        ToponymRepository,
         "get_candidates",
         classmethod(record_gazetteer),
     )
-    if hasattr(annotator_app, "current_gazetteer_name"):
-        annotator_app.current_gazetteer_name = None
+    assert not hasattr(annotator_app, "current_gazetteer_name")
 
     response = client.post(f"/session/{session_id}/document/0/get_candidates", json={})
 
