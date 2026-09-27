@@ -1,5 +1,5 @@
 """
-The GeoVirus benchmark harness.
+The benchmark harness for GeoVirus, HIPE-2022 and NewsLi.
 
 Split so that the parts which must be correct -- corpus parsing, checkpoint
 handling and scoring -- can be tested without models, a gazetteer or a GPU.

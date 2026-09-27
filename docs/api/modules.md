@@ -19,7 +19,13 @@ resolvers map those spans to gazetteer identifiers.
 
 ::: geoparser.modules.resolvers.jina.JinaResolver
 
+::: geoparser.modules.resolvers.prior.PriorResolver
+
 ::: geoparser.modules.resolvers.sentencetransformer.SentenceTransformerResolver
+
+## Resolver ranking helpers
+
+::: geoparser.modules.resolvers.ranking
 
 ## Context sizing
 

@@ -15,37 +15,6 @@ class SimilarityMixin:
     context_embeddings: dict[str, torch.Tensor]
     candidate_embeddings: dict[int, torch.Tensor]
 
-    def _calculate_similarities(
-        self,
-        context_embedding: torch.Tensor,
-        candidate_embeddings: list[torch.Tensor],
-    ) -> list[float]:
-        """
-        Calculate cosine similarities between context and candidate embeddings.
-
-        Args:
-            context_embedding: Embedding tensor for the reference context
-            candidate_embeddings: List of embedding tensors for candidates
-
-        Returns:
-            List of similarity scores
-        """
-        if not candidate_embeddings:
-            return []
-
-        # Stack candidate embeddings
-        candidate_tensor = torch.stack(candidate_embeddings)
-
-        # Calculate cosine similarities
-        # pragma: no mutate start - dim=1 is also torch's default, so a
-        # mutant that drops it computes exactly the same similarities.
-        similarities = torch.nn.functional.cosine_similarity(
-            context_embedding.unsqueeze(0), candidate_tensor, dim=1
-        )
-        # pragma: no mutate end
-
-        return similarities.tolist()
-
     def _calculate_similarity_batches(
         self,
         contexts: list[str],

@@ -6,11 +6,11 @@ Give it a sentence, a document, or a corpus, and it returns the place names it f
 
 ``` python
 from geoparser import Geoparser
-from geoparser.modules import GLiNER2Recognizer, JinaResolver
+from geoparser.modules import GLiNER2Recognizer, PriorResolver
 
 geoparser = Geoparser(
     recognizer=GLiNER2Recognizer(),
-    resolver=JinaResolver(gazetteer_name="geonames"),
+    resolver=PriorResolver(gazetteer_name="geonames"),
 )
 
 document = geoparser.parse(
@@ -34,6 +34,8 @@ Basel → Basel, Switzerland (47.55839, 7.57327)
 Each name here has been tied to one specific entry in GeoNames, so besides the name and coordinates printed above you also have a stable identifier for the place, what kind of place it is, the administrative units it belongs to, and a geometry you can map, measure, or export.
 
 Start with [installation](installation.md), then parse your first text in the [quickstart](quickstart.md). The [demo](demo.md) maps every place mentioned in Jules Verne's *Around the World in Eighty Days*.
+
+See the [benchmark results](https://huggingface.co/datasets/NoeFlandre/geoparser-benchmark-results) for measured resolver performance across English and multilingual corpora.
 
 ## What It Does
 

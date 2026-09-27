@@ -10,17 +10,17 @@ A geoparser is made of two modules that you provide explicitly: a **recognizer**
 
 ``` python
 from geoparser import Geoparser
-from geoparser.modules import GLiNER2Recognizer, JinaResolver
+from geoparser.modules import GLiNER2Recognizer, PriorResolver
 
 geoparser = Geoparser(
     recognizer=GLiNER2Recognizer(),
-    resolver=JinaResolver(gazetteer_name="geonames"),
+    resolver=PriorResolver(gazetteer_name="geonames"),
 )
 ```
 
 Both arguments are required, and there are no defaults: omitting either raises a `TypeError`. You can pass `None` to skip a stage — `resolver=None` gives you recognition only — but that has to be said explicitly.
 
-The first time you run this it downloads the models the two modules need, printing something like `Downloading spaCy model 'en_core_web_sm'...`. That happens once. The modules chosen here are the fast ones, tuned for English and favouring speed over accuracy; [Changing the Pipeline](quickstart.md#changing-the-pipeline) below covers the alternatives.
+The first time you run this it downloads the models the two modules need. That happens once. GLiNER2 recognizes places in many languages; the default MiniLM resolver was fine-tuned on English news and works best with GeoNames. `PriorResolver` uses a small population prior to break close candidate ties. See the [benchmark results](https://huggingface.co/datasets/NoeFlandre/geoparser-benchmark-results) and [Changing the Pipeline](#changing-the-pipeline) for measured comparisons and alternatives.
 
 ## Parsing a Text
 

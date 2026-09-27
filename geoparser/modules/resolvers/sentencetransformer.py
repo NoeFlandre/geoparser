@@ -1,18 +1,17 @@
-import re
 import typing as t
 
 import spacy
 import spacy.tokens
 import torch
 from sentence_transformers import SentenceTransformer
-from transformers import AutoTokenizer, PreTrainedTokenizerBase, logging
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from geoparser._logging import get_logger
 from geoparser.gazetteer.description import (
     GAZETTEER_ATTRIBUTE_MAP as SHARED_ATTRIBUTE_MAP,
 )
 from geoparser.gazetteer.description import admin_levels, describe_feature
-from geoparser.gazetteer.gazetteer import Gazetteer
+from geoparser.gazetteer.gazetteer import Gazetteer, normalize_name
 from geoparser.modules._spacy import load_spacy_model
 from geoparser.modules.resolvers import Resolver
 from geoparser.modules.resolvers._context import ContextWindowMixin
@@ -24,9 +23,6 @@ logger = get_logger(__name__)
 
 if t.TYPE_CHECKING:
     from geoparser.gazetteer.feature import Feature
-
-# Suppress transformers tokenizer token length warnings
-logging.set_verbosity_error()
 
 
 # Throughput and display only: neither changes the embeddings that come back.
@@ -123,7 +119,6 @@ class SentenceTransformerResolver(
 
         # Caches for document processing to avoid recomputation
         self.doc_tokens: dict[str, int] = {}  # text -> token count
-        self.doc_objects: dict[str, spacy.tokens.Doc] = {}  # text -> spaCy doc object
 
         # Caches for embeddings to avoid recomputation
         self.context_embeddings: dict[str, torch.Tensor] = {}  # context -> embedding
@@ -135,10 +130,28 @@ class SentenceTransformerResolver(
         # resolver owns these because the values depend on its gazetteer and
         # attribute map.
         self.candidate_search_cache: dict[
-            tuple[str, str, int], tuple[Feature, ...]
+            tuple[str, str, int, int], tuple[Feature, ...]
         ] = {}
         self.candidate_descriptions: dict[int, str] = {}
         self.measured_sentences: dict[str, tuple[Sentence, ...]] = {}
+
+    def clear_caches(self) -> None:
+        """
+        Release everything this resolver has cached.
+
+        Caches grow with every document and candidate seen, embeddings
+        included, so a long-lived resolver can call this between batches.
+        Nothing is lost but speed: every value is recomputed on demand.
+        """
+        for cache in (
+            self.doc_tokens,
+            self.measured_sentences,
+            self.context_embeddings,
+            self.candidate_embeddings,
+            self.candidate_search_cache,
+            self.candidate_descriptions,
+        ):
+            cache.clear()
 
     def _load_transformer(self, model_name: str, **kwargs) -> SentenceTransformer:
         """
@@ -167,6 +180,9 @@ class SentenceTransformerResolver(
         Returns:
             The loaded tokenizer
         """
+        from transformers import logging
+
+        logging.set_verbosity_error()
         return AutoTokenizer.from_pretrained(model_name, **kwargs)
 
     def _validate_and_set_attribute_map(
@@ -481,14 +497,14 @@ class SentenceTransformerResolver(
                 self._merge_candidates(doc_candidates[ref_idx], found)
 
     def _search_candidates(
-        self, name: str, method: str, tiers: int
+        self, name: str, method: str, tiers: int, limit: int = 10000
     ) -> tuple["Feature", ...]:
         """Search the gazetteer once for each normalized query and tier."""
-        normalized_name = re.sub(r'"', "", name).strip()
-        key = (normalized_name, method, tiers)
+        normalized_name = normalize_name(name)
+        key = (normalized_name, method, tiers, limit)
         if key not in self.candidate_search_cache:
             self.candidate_search_cache[key] = tuple(
-                self.gazetteer.search(normalized_name, method, tiers=tiers)
+                self.gazetteer.search(normalized_name, method, limit=limit, tiers=tiers)
             )
         return self.candidate_search_cache[key]
 
@@ -669,7 +685,7 @@ class SentenceTransformerResolver(
         doc_candidates: list[list["Feature"]],
         doc_results: list[tuple[str, str] | None],
         min_similarity: float,
-        similarities: list[list[float] | None] | None = None,
+        similarities: list[list[float] | None],
     ) -> None:
         """
         Resolve one document's still-unresolved references, in place.
@@ -679,6 +695,8 @@ class SentenceTransformerResolver(
             doc_candidates: Candidate list per reference
             doc_results: Result slot per reference, filled in place
             min_similarity: Similarity a candidate must reach to be accepted
+            similarities: Precomputed scores per reference, None where the
+                reference was not pending
         """
         for ref_idx, (context, candidate_list, result) in enumerate(
             zip(doc_contexts, doc_candidates, doc_results, strict=True)
@@ -687,42 +705,39 @@ class SentenceTransformerResolver(
             if not self._is_pending(result, candidate_list):
                 continue
 
+            scores = similarities[ref_idx]
+            if scores is None:
+                msg = "a pending reference is missing precomputed similarities"
+                raise ValueError(msg)
             referent = self._best_referent(
                 context,
                 candidate_list,
                 min_similarity,
-                None if similarities is None else similarities[ref_idx],
+                scores,
             )
             if referent is not None:
                 doc_results[ref_idx] = referent
 
     def _best_referent(
         self,
-        context: str,
+        context: str,  # noqa: ARG002 - hook signature shared with PriorResolver
         candidate_list: list["Feature"],
         min_similarity: float,
-        similarities: list[float] | None = None,
+        similarities: list[float],
     ) -> tuple[str, str] | None:
         """
         Pick the candidate most similar to a reference's context.
 
         Args:
             context: The reference's context string
-            candidate_list: Candidates to rank, all already embedded
+            candidate_list: Candidates to rank
             min_similarity: Similarity a candidate must reach to be accepted
+            similarities: Each candidate's precomputed similarity
 
         Returns:
             A (gazetteer_name, identifier) pair, or None when the best
             candidate is not similar enough
         """
-        if similarities is None:
-            similarities = self._calculate_similarities(
-                self.context_embeddings[context],
-                [
-                    self.candidate_embeddings[candidate.id]
-                    for candidate in candidate_list
-                ],
-            )
         best_idx = max(range(len(similarities)), key=lambda j: similarities[j])
         if similarities[best_idx] < min_similarity:
             return None

@@ -92,13 +92,17 @@ class TestCollectRows:
 class TestRenderCard:
     """The dataset card."""
 
-    def test_declares_the_share_alike_license(self):
-        """Test that HIPE's CC-BY-NC-SA terms carry over to the results."""
+    def test_declares_mixed_corpus_licenses(self):
+        """The card names a neutral metadata license and source terms by corpus."""
         card = render_card([])
 
         assert card.startswith("---\n")
         assert f"license: {LICENSE}" in card
-        assert LICENSE == "cc-by-nc-sa-4.0"
+        assert LICENSE == "other"
+        assert "license_name: Mixed corpus terms; see the dataset card" in card
+        assert "HIPE-2022: CC BY-NC-SA 4.0" in card
+        assert "GeoVirus and NewsLi: Apache-2.0" in card
+        assert "following HIPE-2022" not in card
 
     def test_shows_one_compact_table_per_metric(self):
         """The card has a small table per metric, not one row per run."""
@@ -255,6 +259,14 @@ class TestPipelineDescriptions:
         assert "fastino/gliner2.5-multi-v1" in card
         assert "dguzh/geo-all-MiniLM-L6-v2" in card
 
+    def test_prior_description_matches_the_default_configuration(self):
+        """The published card describes the no-trimming population prior."""
+        card = render_card([])
+
+        assert "no inflection fallback" in card
+        assert "0.3 population prior" in card
+        assert "ending trimmed" not in card
+
 
 class TestCharts:
     """The card shows the results as charts, above the tables."""
@@ -407,7 +419,7 @@ class TestAblationSection:
         assert "| hybrid | off | 0 |" in card
         assert "| trim | on | 0 |" in card
         assert "| population | off | 0.1 |" in card
-        assert "| prior | on | 0.1 |" in card
+        assert "| prior | off | 0.3 |" in card
         assert "| population-0.2 | off | 0.2 |" in card
 
     def test_reports_means_and_wins_against_hybrid(self):

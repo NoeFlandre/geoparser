@@ -159,6 +159,7 @@ class TestBaseRepositoryUpdate:
 
         # Assert - Query to verify persistence
         retrieved = ProjectRepository.get(test_session, project.id)
+        assert retrieved is not None
         assert retrieved.name == "Modified"
 
     def test_only_updates_provided_fields(self, test_session: Session, project_factory):

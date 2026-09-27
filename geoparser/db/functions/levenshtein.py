@@ -6,7 +6,7 @@ from rapidfuzz import utils
 from rapidfuzz.distance import Levenshtein
 
 
-def levenshtein(query: str, candidate: str) -> int:
+def levenshtein(query: str | None, candidate: str | None) -> int:
     """
     Compute the Levenshtein edit distance between two strings using rapidfuzz.
 

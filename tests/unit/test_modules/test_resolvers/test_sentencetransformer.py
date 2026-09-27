@@ -4,13 +4,40 @@ Unit tests for geoparser/modules/resolvers/sentencetransformer.py
 Tests the SentenceTransformerResolver module with mocked dependencies.
 """
 
+import subprocess
+import sys
+from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import Mock, call, patch
 
 import pytest
 import torch
 
 from geoparser.modules._spacy import load_spacy_model
+
+
+@pytest.mark.unit
+def test_import_does_not_change_transformers_logging_verbosity():
+    """Importing the resolver must leave process-wide logging settings alone."""
+    project_root = Path(__file__).resolve().parents[4]
+    script = (
+        "from transformers import logging\n"
+        "logging.set_verbosity_warning()\n"
+        "verbosity = logging.get_verbosity()\n"
+        "import geoparser.modules.resolvers.sentencetransformer\n"
+        "assert logging.get_verbosity() == verbosity\n"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.unit
@@ -232,7 +259,6 @@ class TestSentenceTransformerResolverInitialization:
 
         # Assert
         assert resolver.doc_tokens == {}
-        assert resolver.doc_objects == {}
         assert resolver.context_embeddings == {}
         assert resolver.candidate_embeddings == {}
         assert resolver.candidate_search_cache == {}
@@ -718,10 +744,10 @@ class TestSentenceTransformerResolverPredict:
     )
     @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
     @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_caches_doc_objects(
+    def test_parses_each_document_once(
         self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
     ):
-        """Test that spaCy doc objects are cached to avoid recomputation."""
+        """Test that a document's sentences are measured once and reused."""
         # Arrange
         from geoparser.modules.resolvers.sentencetransformer import (
             SentenceTransformerResolver,
@@ -764,8 +790,8 @@ class TestSentenceTransformerResolverPredict:
         text = "Test text"
         resolver.predict(texts=[text], references=[[(0, 4), (5, 9)]])
 
-        # Assert - spaCy doc for text should be cached
-        assert text in resolver.doc_objects
+        # Assert - the document's sentences are cached
+        assert text in resolver.measured_sentences
 
         # Act - Count spaCy calls before second predict
         nlp_call_count_first = mock_nlp_instance.call_count
@@ -776,12 +802,26 @@ class TestSentenceTransformerResolverPredict:
 
         # Assert - spaCy should not be called again for the same text
         assert nlp_call_count_second == nlp_call_count_first
-        assert text in resolver.doc_objects
+        assert not hasattr(resolver, "doc_objects")
 
 
 @pytest.mark.unit
 class TestSentenceTransformerResolverHelperMethods:
     """Test SentenceTransformerResolver helper methods."""
+
+    def test_pending_reference_requires_precomputed_similarities(self):
+        """A pending candidate group always has scores from the search pass."""
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        resolver = SentenceTransformerResolver.__new__(SentenceTransformerResolver)
+        candidate = SimpleNamespace(identifier="Paris")
+
+        with pytest.raises(ValueError, match="precomputed similarities"):
+            resolver._evaluate_document(
+                ["Paris"], cast(Any, [[candidate]]), [None], 0.6, [None]
+            )
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
@@ -799,13 +839,14 @@ class TestSentenceTransformerResolverHelperMethods:
 
         resolver = SentenceTransformerResolver()
         candidate = SimpleNamespace(id=1)
-        resolver.gazetteer.search.return_value = [candidate]
+        gazetteer = cast(Mock, resolver.gazetteer)
+        gazetteer.search.return_value = [candidate]
 
         first = resolver._search_candidates(' "Paris" ', "exact", tiers=1)
         second = resolver._search_candidates("Paris", "exact", tiers=1)
 
         assert first == second == (candidate,)
-        resolver.gazetteer.search.assert_called_once_with("Paris", "exact", tiers=1)
+        gazetteer.search.assert_called_once_with("Paris", "exact", limit=10000, tiers=1)
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
@@ -825,8 +866,8 @@ class TestSentenceTransformerResolverHelperMethods:
         candidate = SimpleNamespace(id=1)
         resolver._generate_description = Mock(return_value="Paris (city)")
 
-        first = resolver._candidate_description(candidate)
-        second = resolver._candidate_description(candidate)
+        first = resolver._candidate_description(cast(Any, candidate))
+        second = resolver._candidate_description(cast(Any, candidate))
 
         assert first == second == "Paris (city)"
         resolver._generate_description.assert_called_once_with(candidate)
@@ -1083,3 +1124,34 @@ class TestConfigIdentity:
         assert customized.config["attribute_map"] == custom_map
         assert default.config["attribute_map"] is None
         assert customized.id != default.id
+
+
+@pytest.mark.unit
+@patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+@patch("geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained")
+@patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
+@patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
+def test_clear_caches_empties_every_cache(
+    mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
+):
+    """A long-lived resolver can release everything it has cached."""
+    from geoparser.modules.resolvers.sentencetransformer import (
+        SentenceTransformerResolver,
+    )
+
+    resolver = SentenceTransformerResolver()
+    caches = (
+        "doc_tokens",
+        "measured_sentences",
+        "context_embeddings",
+        "candidate_embeddings",
+        "candidate_search_cache",
+        "candidate_descriptions",
+    )
+    for name in caches:
+        getattr(resolver, name)["key"] = "value"
+
+    resolver.clear_caches()
+
+    for name in caches:
+        assert getattr(resolver, name) == {}, name

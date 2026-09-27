@@ -8,6 +8,7 @@ looks like a successful call while writing the wrong rows.
 
 import uuid
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -331,7 +332,7 @@ class TestRunModules:
             project.run_recognizer(recognizer)
 
         # Assert
-        project.context.update_recognizer_context.assert_called_once_with(
+        cast(Mock, project.context).update_recognizer_context.assert_called_once_with(
             "latest", "rec-1"
         )
 
@@ -349,7 +350,7 @@ class TestRunModules:
             project.run_recognizer(recognizer, tag="experiment")
 
         # Assert
-        project.context.update_recognizer_context.assert_called_once_with(
+        cast(Mock, project.context).update_recognizer_context.assert_called_once_with(
             "experiment", "rec-1"
         )
 
@@ -383,7 +384,7 @@ class TestRunModules:
             project.run_resolver(resolver)
 
         # Assert
-        project.context.update_resolver_context.assert_called_once_with(
+        cast(Mock, project.context).update_resolver_context.assert_called_once_with(
             "latest", "res-1"
         )
 
@@ -402,7 +403,7 @@ class TestRunModules:
 
         # Assert
         service.return_value.predict.assert_called_once_with(documents)
-        project.context.update_resolver_context.assert_called_once_with(
+        cast(Mock, project.context).update_resolver_context.assert_called_once_with(
             "experiment", "res-1"
         )
 

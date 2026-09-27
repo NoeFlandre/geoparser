@@ -134,6 +134,7 @@ class TestManualRecognizerPredict:
 
         # Assert
         assert len(results) == 1
+        assert results[0] is not None
         assert len(results[0]) == 2
         assert results[0] == [(0, 5), (10, 16)]
 

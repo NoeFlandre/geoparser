@@ -5,6 +5,7 @@ Tests the Geoparser class with mocked dependencies.
 """
 
 import uuid
+from typing import Any, cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -33,13 +34,13 @@ class TestGeoparserInitialization:
         """Test that Geoparser cannot be created without modules."""
         # Act & Assert
         with pytest.raises(TypeError):
-            Geoparser()
+            cast(Any, Geoparser)()
 
     def test_requires_resolver(self):
         """Test that Geoparser cannot be created with a recognizer alone."""
         # Act & Assert
         with pytest.raises(TypeError):
-            Geoparser(Mock())
+            cast(Any, Geoparser)(Mock())
 
     def test_accepts_none_for_recognizer(self):
         """Test that Geoparser accepts None for recognizer to skip recognition."""

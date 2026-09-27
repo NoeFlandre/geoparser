@@ -2,6 +2,8 @@ import typing as t
 import uuid
 
 from pyproj import Transformer
+from pyproj.exceptions import ProjError
+from shapely.errors import GEOSException
 from sqlmodel import Session as DBSession
 from sqlmodel import select
 
@@ -18,7 +20,7 @@ from geoparser.annotator.exceptions import (
 )
 from geoparser.annotator.models.api import CandidatesGet
 from geoparser.gazetteer.description import GAZETTEER_ATTRIBUTE_MAP, describe_feature
-from geoparser.gazetteer.gazetteer import Gazetteer
+from geoparser.gazetteer.gazetteer import get_gazetteer
 
 if t.TYPE_CHECKING:
     from geoparser.annotator.db.models.document import AnnotatorDocument
@@ -153,7 +155,7 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
             # Otherwise, transform to WGS84
             transformer = Transformer.from_crs(feature.crs, "EPSG:4326", always_xy=True)
             lon, lat = transformer.transform(centroid.x, centroid.y)
-        except Exception:  # noqa: BLE001 - a feature without a usable geometry or CRS is shown without a map pin
+        except (GEOSException, ProjError):
             return None, None
         else:
             return lat, lon
@@ -180,7 +182,7 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         query_text: str,
     ) -> tuple[list[dict], bool]:
         # Initialize gazetteer
-        gazetteer = Gazetteer(gazetteer_name)
+        gazetteer = get_gazetteer(gazetteer_name)
 
         # Use query_text if provided, else use toponym_text
         search_text = query_text if query_text else toponym_text

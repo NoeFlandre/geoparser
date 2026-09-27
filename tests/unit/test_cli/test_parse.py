@@ -263,6 +263,7 @@ class TestGeometry:
 
         geometry = parse_module._wgs84_geometry(feature)
 
+        assert geometry is not None
         longitude, latitude = geometry["coordinates"]
         assert longitude == pytest.approx(7.44, abs=0.01)
         assert latitude == pytest.approx(46.95, abs=0.01)

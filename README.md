@@ -33,12 +33,12 @@ See the [installation guide](https://docs.geoparser.app/installation.html) for e
 
 ```python
 from geoparser import Geoparser
-from geoparser.modules import GLiNER2Recognizer, JinaResolver
+from geoparser.modules import GLiNER2Recognizer, PriorResolver
 
 # Build a pipeline from a recognizer and a resolver
 geoparser = Geoparser(
     recognizer=GLiNER2Recognizer(),
-    resolver=JinaResolver(gazetteer_name="geonames"),
+    resolver=PriorResolver(gazetteer_name="geonames"),
 )
 
 # Parse text
@@ -66,6 +66,8 @@ Each name here has been tied to one specific entry in GeoNames, so besides the n
 ## Documentation
 
 Full documentation, including setup, guides, and the API reference, is available at **[docs.geoparser.app](https://docs.geoparser.app)**.
+
+The [benchmark results](https://huggingface.co/datasets/NoeFlandre/geoparser-benchmark-results) compare the built-in resolver pipelines across English and multilingual corpora.
 
 ## Project Status
 

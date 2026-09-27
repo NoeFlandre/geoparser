@@ -1,6 +1,7 @@
 """SentenceTransformerResolver similarity scoring (resolvers/_similarity.py)."""
 
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -10,69 +11,6 @@ import torch
 @pytest.mark.unit
 class TestSimilarity:
     """Cosine scoring of candidates against contexts."""
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_calculate_similarities_returns_list_of_floats(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _calculate_similarities returns list of similarity scores."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver()
-
-        context_embedding = torch.tensor([1.0, 0.0, 0.0])
-        candidate_embeddings = [
-            torch.tensor([1.0, 0.0, 0.0]),  # Perfect match
-            torch.tensor([0.0, 1.0, 0.0]),  # Orthogonal
-        ]
-
-        # Act
-        similarities = resolver._calculate_similarities(
-            context_embedding, candidate_embeddings
-        )
-
-        # Assert
-        assert isinstance(similarities, list)
-        assert len(similarities) == 2
-        assert all(isinstance(s, float) for s in similarities)
-        # First should be higher similarity than second
-        assert similarities[0] > similarities[1]
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_calculate_similarities_handles_empty_list(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _calculate_similarities handles empty candidate list."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver()
-
-        context_embedding = torch.tensor([1.0, 0.0, 0.0])
-        candidate_embeddings = []
-
-        # Act
-        similarities = resolver._calculate_similarities(
-            context_embedding, candidate_embeddings
-        )
-
-        # Assert
-        assert similarities == []
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
@@ -113,17 +51,11 @@ class TestSimilarity:
             wraps=torch.nn.functional.cosine_similarity,
         ) as cosine_similarity:
             batch = resolver._calculate_similarity_batches(
-                ["first", "second"], [[candidates[0], candidates[1]], []]
+                ["first", "second"],
+                cast(Any, [[candidates[0], candidates[1]], []]),
             )
 
-        scalar = [
-            resolver._calculate_similarities(
-                resolver.context_embeddings["first"],
-                [resolver.candidate_embeddings[1], resolver.candidate_embeddings[2]],
-            ),
-            [],
-        ]
-        assert batch[0] == pytest.approx(scalar[0])
+        assert batch[0] == pytest.approx([1.0, 0.0])
         assert batch[1] == []
         assert cosine_similarity.call_count == 1
 
@@ -155,7 +87,7 @@ class TestSimilarity:
         candidates = [[[first], [second]]]
         results = [[None, None]]
 
-        resolver._evaluate_candidates(contexts, candidates, results, 0.6)
+        resolver._evaluate_candidates(contexts, cast(Any, candidates), results, 0.6)
 
         resolver._calculate_similarity_batches.assert_called_once_with(
             ["first", "second"], [[first], [second]]
@@ -170,32 +102,31 @@ class TestSimilarity:
     )
     @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
     @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_calculate_similarities_returns_correct_values(
+    def test_similarity_batches_return_cosine_values(
         self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
     ):
-        """Test that _calculate_similarities returns correct cosine similarity values."""
+        """Batch scoring returns each candidate's cosine similarity, as floats."""
         # Arrange
         from geoparser.modules.resolvers.sentencetransformer import (
             SentenceTransformerResolver,
         )
 
         resolver = SentenceTransformerResolver()
-
-        # Create embeddings with known similarities
-        context_embedding = torch.tensor([1.0, 0.0, 0.0])
-        candidate_embeddings = [
-            torch.tensor([1.0, 0.0, 0.0]),  # Similarity = 1.0 (identical)
-            torch.tensor([0.5, 0.866, 0.0]),  # Similarity ≈ 0.5 (60 degree angle)
-            torch.tensor([-1.0, 0.0, 0.0]),  # Similarity = -1.0 (opposite)
-        ]
+        resolver.context_embeddings["ctx"] = torch.tensor([1.0, 0.0, 0.0])
+        resolver.candidate_embeddings.update(
+            {
+                1: torch.tensor([1.0, 0.0, 0.0]),  # identical: 1.0
+                2: torch.tensor([0.5, 0.866, 0.0]),  # 60 degrees: about 0.5
+                3: torch.tensor([-1.0, 0.0, 0.0]),  # opposite: -1.0
+            }
+        )
+        candidates = [SimpleNamespace(id=i) for i in (1, 2, 3)]
 
         # Act
-        similarities = resolver._calculate_similarities(
-            context_embedding, candidate_embeddings
+        (similarities,) = resolver._calculate_similarity_batches(
+            ["ctx"], cast(Any, [candidates])
         )
 
         # Assert
-        assert len(similarities) == 3
-        assert abs(similarities[0] - 1.0) < 0.01  # First is perfect match
-        assert abs(similarities[1] - 0.5) < 0.1  # Second is ~0.5
-        assert abs(similarities[2] - (-1.0)) < 0.01  # Third is opposite
+        assert all(isinstance(value, float) for value in similarities)
+        assert similarities == pytest.approx([1.0, 0.5, -1.0], abs=0.01)

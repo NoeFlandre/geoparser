@@ -34,7 +34,11 @@ class TrainingMixin:
 
         def _extract_context(self, text: str, start: int, end: int) -> str: ...
 
-        def _generate_description(self, candidate: "Feature") -> str: ...
+        def _search_candidates(
+            self, name: str, method: str, tiers: int, limit: int = 10000
+        ) -> tuple["Feature", ...]: ...
+
+        def _candidate_description(self, candidate: "Feature") -> str: ...
 
     def fit(  # noqa: PLR0913, PLR0917 - public API; make keyword-only in the next major release
         self,
@@ -74,7 +78,7 @@ class TrainingMixin:
         # Step 1: Gather training data from resolved references
         training_data = self._prepare_training_data(texts, references, referents)
 
-        if not training_data["sentence1"] or len(training_data["sentence1"]) == 0:
+        if not training_data["sentence1"]:
             msg = "No training examples found. Ensure documents contain references with referent annotations."
             raise ValueError(msg)
 
@@ -155,11 +159,13 @@ class TrainingMixin:
 
                 # Get all candidates for this reference text to create negative examples
                 reference_text = text[start:end]
-                candidates = self.gazetteer.search(reference_text)
+                candidates = self._search_candidates(
+                    reference_text, "exact", tiers=1, limit=10000
+                )
 
                 for candidate in candidates:
                     # Generate description for this candidate
-                    description = self._generate_description(candidate)
+                    description = self._candidate_description(candidate)
 
                     # Determine if this is a positive or negative example
                     label = 1 if candidate.identifier == identifier else 0

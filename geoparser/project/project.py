@@ -121,9 +121,9 @@ class Project:
 
     def create_referents(
         self,
-        texts: list[str],
-        references: list[list[tuple]],
-        referents: list[list[tuple | None]],
+        texts: t.Sequence[str],
+        references: t.Sequence[t.Sequence[tuple]],
+        referents: t.Sequence[t.Sequence[tuple | None]],
         tag: str,
     ) -> None:
         """

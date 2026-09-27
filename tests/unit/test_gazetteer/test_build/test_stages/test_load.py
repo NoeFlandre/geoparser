@@ -7,6 +7,7 @@ error paths around a spatial source's declared geometry column.
 
 import json
 from pathlib import Path
+from typing import cast
 
 import duckdb
 import pytest
@@ -206,7 +207,7 @@ class TestLoadTabular:
         data_file = tmp_path / "places.csv"
         write_delimited(data_file, '1,"Paris,\nthe capital"\n2,Berlin\n')
         proxy = _RefusesParallelPaddingConnection(connection)
-        loader = Loader(proxy)
+        loader = Loader(cast(duckdb.DuckDBPyConnection, proxy))
 
         row_count = loader.load(make_tabular_source(), data_file)
 
@@ -352,7 +353,7 @@ class TestLoadSpatial:
         real_connection = duckdb.connect()
         real_connection.load_extension("spatial")
         proxy = _FakeMultiGeometryConnection(real_connection)
-        loader = Loader(proxy)
+        loader = Loader(cast(duckdb.DuckDBPyConnection, proxy))
 
         with pytest.raises(ValueError, match="multiple geometry columns found"):
             loader._load_spatial(source, data_file)

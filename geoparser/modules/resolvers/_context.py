@@ -21,7 +21,6 @@ class ContextWindowMixin:
     tokenizer: PreTrainedTokenizerBase
     nlp: spacy.language.Language
     doc_tokens: dict[str, int]
-    doc_objects: dict[str, spacy.tokens.Doc]
     measured_sentences: dict[str, tuple[Sentence, ...]]
 
     def _extract_context(self, text: str, start: int, end: int) -> str:
@@ -112,7 +111,10 @@ class ContextWindowMixin:
 
     def _sentences(self, text: str) -> list["spacy.tokens.Span"]:
         """
-        The document's sentences, parsed once per document.
+        The document's sentences.
+
+        Parsed on every call; callers go through _measured_sentences, which
+        caches the result per document.
 
         Args:
             text: Full document text
@@ -120,9 +122,7 @@ class ContextWindowMixin:
         Returns:
             The document's sentence spans, in order
         """
-        if text not in self.doc_objects:
-            self.doc_objects[text] = self.nlp(text)
-        return list(self.doc_objects[text].sents)
+        return list(self.nlp(text).sents)
 
     def _sentence_tokens(self, sentence: "spacy.tokens.Span") -> int:
         """

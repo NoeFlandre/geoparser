@@ -3,6 +3,11 @@
 #
 #   ./scripts/g5k/submit.sh                  # default: 1 GPU, 2 hours
 #   WALLTIME=4:00 LIMIT=50 ./scripts/g5k/submit.sh
+#   CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
+#
+# PIPELINES accepts benchmark pipeline names, CORPORA accepts registered
+# corpus names or "all", and PHASES accepts recognition and/or resolution.
+# Each value is comma-separated and passed to the benchmark CLI on the node.
 #
 # Policy notes this script encodes:
 #   * one GPU on one host -- the workload is single-process inference, so more

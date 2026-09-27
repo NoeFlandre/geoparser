@@ -362,6 +362,7 @@ class TestSpacyRecognizerPredict:
 
         # Assert
         assert len(results) == 1
+        assert results[0] is not None
         assert len(results[0]) == 1  # Only GPE entity
         assert results[0][0] == (0, 8)
 
@@ -465,6 +466,7 @@ class TestSpacyRecognizerPredict:
         results = recognizer.predict(texts)
 
         # Assert
+        assert results[0] is not None
         assert results[0][0] == (10, 20)  # Character offsets, not token positions
 
 

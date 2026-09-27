@@ -4,6 +4,7 @@ Unit tests for geoparser/services/resolution.py
 Tests the ResolutionService class with mocked resolvers.
 """
 
+from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
@@ -329,18 +330,19 @@ class TestResolutionServicePredict:
 class TestResolutionServiceFit:
     """Test ResolutionService fit method."""
 
-    def test_raises_error_if_resolver_has_no_fit_method(self, mock_manual_resolver):
+    def test_raises_error_if_resolver_has_no_fit_method(self):
         """Test that fit raises error if resolver doesn't implement fit."""
-        # Arrange
-        # Remove fit method from mock
-        if hasattr(mock_manual_resolver, "fit"):
-            delattr(mock_manual_resolver, "fit")
+        from types import SimpleNamespace
 
-        service = ResolutionService(mock_manual_resolver)
+        # Arrange
+        mock_manual_resolver = SimpleNamespace(name="manual")
+        service = ResolutionService(cast(Any, mock_manual_resolver))
 
         # Act & Assert
-        with pytest.raises(ValueError, match="does not implement a fit method"):
+        with pytest.raises(ValueError) as error:
             service.fit([])
+
+        assert str(error.value) == ("Resolver 'manual' does not implement a fit method")
 
     def test_calls_resolver_fit_with_training_data(
         self,
@@ -358,3 +360,21 @@ class TestResolutionServiceFit:
         # For now, we just test that it doesn't error with empty documents
         # Act & Assert - Should not raise error
         service.fit([], output_path="/tmp/model")
+
+
+@pytest.mark.unit
+def test_training_reads_each_toponyms_location_once(mock_sentencetransformer_resolver):
+    """A referent's location opens the gazetteer, so it is read only once."""
+    from types import SimpleNamespace
+    from unittest.mock import PropertyMock
+
+    location = SimpleNamespace(gazetteer_name="geonames", identifier="1")
+    reads = PropertyMock(return_value=location)
+    reference_type = type("Ref", (), {"location": reads, "start": 0, "end": 5})
+    document = SimpleNamespace(toponyms=[reference_type()])
+    service = ResolutionService(mock_sentencetransformer_resolver)
+
+    spans, pairs = service._annotated_pairs(cast(Any, document))
+
+    assert (spans, pairs) == ([(0, 5)], [("geonames", "1")])
+    assert reads.call_count == 1

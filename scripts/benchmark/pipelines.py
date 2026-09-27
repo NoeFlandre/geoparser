@@ -5,8 +5,10 @@ Build the benchmark pipelines and place them on a device.
 recognition and the thesis' fine-tuned MiniLM for resolution. ``swapped`` is
 the GLiNER2 and Jina v5 pair. ``hybrid`` keeps GLiNER2 recognition but uses
 the upstream MiniLM resolver. ``prior`` is ``hybrid`` with the
-``PriorResolver``: the same MiniLM encoder, plus an inflection fallback for
-exact gazetteer misses and a population prior on the ranking.
+``PriorResolver``: the same MiniLM encoder, plus a population prior on the
+ranking. Its default weight is 0.3 and inflection fallback is off. Seven
+ablation pipelines vary these options and are available by name, but are not
+included in the default run.
 
 Device placement is done here rather than left to the libraries because they
 do not agree. ``SentenceTransformer`` selects CUDA by itself when it is
@@ -26,12 +28,13 @@ HYBRID = "hybrid"
 PRIOR = "prior"
 DEFAULT_PIPELINES = (UPSTREAM, SWAPPED, HYBRID, PRIOR)
 
-# PriorResolver settings as (population_weight, inflection_fallback). prior
-# turns both on; the ablations are hybrid with one factor changed at a time,
+# PriorResolver settings as (population_weight, inflection_fallback). The
+# default prior uses population weight 0.3 with fallback off. The ablations
+# vary one factor at a time,
 # plus a sweep of the prior's weight on its own. Their recognition is
 # hybrid's, so only their resolution phase needs running.
 PRIOR_SETTINGS = {
-    PRIOR: (0.1, True),
+    PRIOR: (0.3, False),
     "trim": (0.0, True),
     "population": (0.1, False),
     "population-0.05": (0.05, False),
