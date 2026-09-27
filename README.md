@@ -38,7 +38,7 @@ Use the module entry point to manage gazetteers and launch the annotator:
 ```bash
 python -m geoparser --help
 python -m geoparser install geonames
-geoparser annotator --host 0.0.0.0 --port 8000 --no-browser
+geoparser annotator --port 8000 --no-browser
 ```
 
 Text parsing is available through the Python API shown below.

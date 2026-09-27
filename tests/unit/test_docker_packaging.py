@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -133,6 +134,18 @@ class TestDockerSmokeWorkflow:
 
 @pytest.mark.unit
 class TestReadmeLinks:
+    def test_cli_annotator_example_stays_on_loopback(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        command = next(
+            line.strip()
+            for line in readme.splitlines()
+            if line.strip().startswith("geoparser annotator")
+        )
+        arguments = shlex.split(command)
+
+        if "--host" in arguments:
+            assert arguments[arguments.index("--host") + 1] == "127.0.0.1"
+
     def test_readme_documents_the_requested_sections(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         headings = {
