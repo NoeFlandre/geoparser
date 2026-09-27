@@ -34,9 +34,8 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
         try:
             return file.file.read().decode("utf-8")
         except UnicodeDecodeError as error:
-            raise InvalidUploadException(
-                f"Text file '{filename}' must be valid UTF-8."
-            ) from error
+            msg = f"Text file '{filename}' must be valid UTF-8."
+            raise InvalidUploadException(msg) from error
         finally:
             if rewind:
                 file.file.seek(0)
@@ -72,11 +71,11 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
     def _create_uploaded_document(
         cls,
         db: DBSession,
+        *,
         filename: str,
         text: str,
         session_id: uuid.UUID,
         spacy_model: str,
-        apply_spacy: bool,
         recognizer: t.Any | None,
     ) -> AnnotatorDocument:
         """Persist a decoded upload and any locations returned by spaCy."""
@@ -87,7 +86,7 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
                 spacy_model=spacy_model,
                 text=text,
                 toponyms=cls._extract_toponyms(text, recognizer),
-                spacy_applied=apply_spacy,
+                spacy_applied=recognizer is not None,
             ),
             additional={"session_id": session_id},
         )
@@ -162,12 +161,11 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
         return [
             cls._create_uploaded_document(
                 db,
-                filename,
-                text,
-                session_id,
-                spacy_model,
-                apply_spacy,
-                recognizer,
+                filename=filename,
+                text=text,
+                session_id=session_id,
+                spacy_model=spacy_model,
+                recognizer=recognizer,
             )
             for filename, text in decoded_files
         ]

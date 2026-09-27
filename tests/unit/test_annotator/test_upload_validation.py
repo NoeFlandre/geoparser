@@ -23,7 +23,7 @@ def client_and_engine(monkeypatch):
     spacy_package = ModuleType("spacy")
     spacy_package.__path__ = []
     spacy_util = ModuleType("spacy.util")
-    spacy_util.__dict__["get_installed_models"] = lambda: []
+    spacy_util.__dict__["get_installed_models"] = list
     spacy_package.__dict__["util"] = spacy_util
     monkeypatch.setitem(sys.modules, "spacy", spacy_package)
     monkeypatch.setitem(sys.modules, "spacy.util", spacy_util)

@@ -94,9 +94,8 @@ def continue_session_file(
         try:
             session_content = session_file.file.read().decode("utf-8")
         except UnicodeDecodeError as error:
-            raise InvalidUploadException(
-                "Session file must be valid UTF-8 JSON."
-            ) from error
+            msg = "Session file must be valid UTF-8 JSON."
+            raise InvalidUploadException(msg) from error
         session = SessionRepository.create_from_json(db, session_content, keep_id=False)
         return RedirectResponse(
             request.app.url_path_for("annotate", session_id=session.id, doc_index=0),

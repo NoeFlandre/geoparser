@@ -24,7 +24,7 @@ class ToponymOverlapException(Exception):  # noqa: N818
     pass
 
 
-class InvalidUploadException(Exception):
+class InvalidUploadException(Exception):  # noqa: N818 - matches the annotator's other *Exception names
     """An uploaded or legacy file cannot be decoded or validated."""
 
 

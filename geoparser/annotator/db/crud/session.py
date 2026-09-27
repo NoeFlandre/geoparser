@@ -73,7 +73,7 @@ class SessionRepository(BaseRepository[AnnotatorSession]):
         try:
             content = cls._parse_json_content(json_str)
             session = cls._session_create_from_import(content)
-            additional = cls._session_import_additional(content, keep_id)
+            additional = cls._session_import_additional(content, keep_id=keep_id)
         except (
             json.JSONDecodeError,
             KeyError,
@@ -81,9 +81,8 @@ class SessionRepository(BaseRepository[AnnotatorSession]):
             ValueError,
             ValidationError,
         ) as error:
-            raise InvalidUploadException(
-                "Invalid session JSON: required fields are missing or malformed."
-            ) from error
+            msg = "Invalid session JSON: required fields are missing or malformed."
+            raise InvalidUploadException(msg) from error
 
         return cls.create(db, session, additional=additional)
 
@@ -92,9 +91,11 @@ class SessionRepository(BaseRepository[AnnotatorSession]):
         """Load and check the outer structure of a serialized session."""
         content = json.loads(json_str)
         if not isinstance(content, dict):
-            raise ValueError("session JSON must contain an object")
+            msg = "session JSON must contain an object"
+            raise TypeError(msg)
         if not isinstance(content.get("documents"), list):
-            raise ValueError("session JSON must contain a documents list")
+            msg = "session JSON must contain a documents list"
+            raise TypeError(msg)
         return content
 
     @classmethod
@@ -125,7 +126,7 @@ class SessionRepository(BaseRepository[AnnotatorSession]):
 
     @staticmethod
     def _session_import_additional(
-        content: dict[str, t.Any], keep_id: bool
+        content: dict[str, t.Any], *, keep_id: bool
     ) -> dict[str, uuid.UUID]:
         """Return imported database fields not represented in the create model."""
         additional = {}

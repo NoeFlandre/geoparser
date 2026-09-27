@@ -324,7 +324,7 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
             candidate_descriptions,
             toponym,
             gazetteer_name,
-            existing_candidate_is_appended,
+            existing_candidate_is_appended=existing_candidate_is_appended,
         )
 
     @staticmethod
@@ -345,6 +345,7 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         candidate_descriptions: list[dict],
         toponym: AnnotatorToponym,
         gazetteer_name: str,
+        *,
         existing_candidate_is_appended: bool,
     ) -> dict:
         """Build the complete response payload for candidate lookup."""
