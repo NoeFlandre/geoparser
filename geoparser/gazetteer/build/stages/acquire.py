@@ -142,9 +142,13 @@ class Acquirer:
         """Download a file unless a matching local copy already exists."""
         filename = Path(urlparse(url).path).name or "download"
         download_path = self.downloads_directory / filename
-        if self._should_skip_download(url, download_path) and (
-            sha256 is None or self._matches_sha256(download_path, sha256)
-        ):
+        # A pinned digest identifies the cached file on its own, so it is
+        # reused even when the server sends no validators or is unreachable.
+        if sha256 is not None:
+            reusable = self._matches_sha256(download_path, sha256)
+        else:
+            reusable = self._should_skip_download(url, download_path)
+        if reusable:
             return download_path
         return self._stream_download(url, download_path, sha256)
 

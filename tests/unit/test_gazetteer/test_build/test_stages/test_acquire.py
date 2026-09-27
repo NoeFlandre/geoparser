@@ -703,3 +703,20 @@ def test_empty_keep_alive_chunks_are_skipped(acquirer, monkeypatch):
     path = acquirer._stream_download("https://example.com/places.csv", download_path)
 
     assert path.read_bytes() == b"1,Paris\n"
+
+
+@pytest.mark.unit
+def test_checksum_verified_download_is_reused_while_the_server_is_unreachable(
+    acquirer, requests_mock
+):
+    """A pinned digest identifies the cached file without any server metadata."""
+    url = "https://example.com/places.csv"
+    (acquirer.downloads_directory / "places.csv").write_bytes(b"1,Paris\n")
+    head = requests_mock.head(url, exc=requests.ConnectionError)
+    get_mock = requests_mock.get(url, exc=requests.ConnectionError)
+
+    path = acquirer._download_file(url, hashlib.sha256(b"1,Paris\n").hexdigest())
+
+    assert path.read_bytes() == b"1,Paris\n"
+    assert not head.called
+    assert not get_mock.called
