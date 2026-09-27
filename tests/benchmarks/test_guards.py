@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -40,10 +41,10 @@ def test_manual_recognizer_lookup_comparisons_scale_linearly():
     texts = [_CountingText(f"Place {index:04d}") for index in range(size)]
     query_texts = [_CountingText(str(text)) for text in texts]
     stored_references = [[(0, 5)] for _ in texts]
-    recognizer = ManualRecognizer("complexity", texts, stored_references)
+    recognizer = ManualRecognizer("complexity", cast(Any, texts), stored_references)
     _CountingText.comparisons = 0
 
-    predictions = recognizer.predict(query_texts)
+    predictions = recognizer.predict(cast(Any, query_texts))
 
     assert len(predictions) == size
     assert _CountingText.comparisons <= 4 * size
@@ -58,11 +59,13 @@ def test_manual_resolver_lookup_comparisons_scale_linearly():
     query_texts = [_CountingText(str(text)) for text in texts]
     query_references = [[_CountingSpan(0, 5)] for _ in texts]
     referents = [[("benchmark", str(index))] for index in range(size)]
-    resolver = ManualResolver("complexity", texts, references, referents)
+    resolver = ManualResolver(
+        "complexity", cast(Any, texts), cast(Any, references), referents
+    )
     _CountingText.comparisons = 0
     _CountingSpan.comparisons = 0
 
-    predictions = resolver.predict(query_texts, query_references)
+    predictions = resolver.predict(cast(Any, query_texts), cast(Any, query_references))
 
     assert len(predictions) == size
     assert _CountingText.comparisons <= 4 * size

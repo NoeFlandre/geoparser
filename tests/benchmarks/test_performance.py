@@ -1,6 +1,7 @@
 """Opt-in performance checks over synthetic data only."""
 
 from itertools import count
+from typing import Any, cast
 
 import pytest
 
@@ -132,7 +133,7 @@ def test_sentence_transformer_candidate_gathering_with_stub_encoder(
     references = [[(0, len(text))] for text in texts]
     resolver = object.__new__(SentenceTransformerResolver)
     resolver.gazetteer = synthetic_gazetteer
-    resolver.transformer = StubEncoder()
+    resolver.transformer = cast(Any, StubEncoder())
     resolver.candidate_search_cache = {}
 
     def gather():

@@ -13,24 +13,29 @@ def _medians(report: dict[str, Any]) -> dict[str, float]:
     """Return finite medians keyed by pytest-benchmark's stable full test name."""
     benchmarks = report.get("benchmarks")
     if not isinstance(benchmarks, list):
-        raise ValueError("benchmark report must contain a benchmarks list")
+        msg = "benchmark report must contain a benchmarks list"
+        raise TypeError(msg)
 
     medians = {}
     for benchmark in benchmarks:
         name = benchmark.get("fullname")
         median = benchmark.get("stats", {}).get("median")
         if not isinstance(name, str) or not name:
-            raise ValueError("every benchmark must have a fullname")
+            msg_0 = "every benchmark must have a fullname"
+            raise ValueError(msg_0)
         if name in medians:
-            raise ValueError(f"duplicate benchmark fullname: {name}")
+            msg_0 = f"duplicate benchmark fullname: {name}"
+            raise ValueError(msg_0)
         if (
             isinstance(median, bool)
             or not isinstance(median, int | float)
             or not math.isfinite(median)
         ):
-            raise ValueError(f"benchmark {name} must have a finite median")
+            msg_0 = f"benchmark {name} must have a finite median"
+            raise ValueError(msg_0)
         if median < 0:
-            raise ValueError(f"benchmark {name} median must not be negative")
+            msg_0 = f"benchmark {name} median must not be negative"
+            raise ValueError(msg_0)
         medians[name] = float(median)
     return medians
 
@@ -42,16 +47,19 @@ def compare_reports(
 ) -> list[str]:
     """Describe missing measurements and medians exceeding the allowed increase."""
     if not 0 <= maximum_regression < 1:
-        raise ValueError("maximum_regression must be in [0, 1)")
+        msg = "maximum_regression must be in [0, 1)"
+        raise ValueError(msg)
 
     baseline = _medians(baseline_report)
     candidate = _medians(candidate_report)
-    failures = []
-
-    for name in sorted(baseline.keys() - candidate.keys()):
-        failures.append(f"candidate is missing benchmark {name}")
-    for name in sorted(candidate.keys() - baseline.keys()):
-        failures.append(f"base is missing benchmark {name}")
+    failures = [
+        f"candidate is missing benchmark {name}"
+        for name in sorted(baseline.keys() - candidate.keys())
+    ]
+    failures.extend(
+        f"base is missing benchmark {name}"
+        for name in sorted(candidate.keys() - baseline.keys())
+    )
 
     limit = 1 + maximum_regression
     for name in sorted(baseline.keys() & candidate.keys()):
