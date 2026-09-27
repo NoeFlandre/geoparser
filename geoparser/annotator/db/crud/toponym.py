@@ -184,19 +184,6 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
             return lat, lon
 
     @classmethod
-    def _candidate_entry(cls, feature: "Feature", gazetteer_name: str) -> dict:
-        """Build the annotator's candidate dict for one gazetteer feature."""
-        # Coordinates from geometry, with CRS transformation if needed
-        lat, lon = cls._get_wgs84_coordinates(feature)
-        return {
-            "loc_id": feature.identifier,
-            "description": cls._generate_location_description(feature, gazetteer_name),
-            "attributes": feature.data,  # Include all attributes for filtering
-            "latitude": lat,
-            "longitude": lon,
-        }
-
-    @classmethod
     def _candidate_entry(cls, candidate: "Feature", gazetteer_name: str) -> dict:
         """Convert a gazetteer feature to the candidate payload used by the UI."""
         latitude, longitude = cls._get_wgs84_coordinates(candidate)

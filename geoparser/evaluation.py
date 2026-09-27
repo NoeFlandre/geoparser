@@ -49,11 +49,10 @@ class Annotation:
         ):
             msg = "latitude and longitude must be numeric coordinates"
             raise TypeError(msg)
+        # NaN compares false and infinities fall outside the range, so this
+        # also rejects non-finite coordinates.
         if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
             msg = "coordinates must have latitude in [-90, 90] and longitude in [-180, 180]"
-            raise ValueError(msg)
-        if not math.isfinite(latitude) or not math.isfinite(longitude):
-            msg = "coordinates must be finite"
             raise ValueError(msg)
 
     @property

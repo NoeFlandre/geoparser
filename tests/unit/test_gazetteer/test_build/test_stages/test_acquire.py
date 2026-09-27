@@ -531,3 +531,80 @@ class TestFindTargetFile:
         target.write_text("data")
 
         assert acquirer._find_target_file_quiet(directory, "found.csv") == target
+
+
+def _cache(acquirer, content: bytes) -> None:
+    """Write a cached download with an ETag sidecar describing it."""
+    download_path = acquirer.downloads_directory / "places.csv"
+    download_path.write_bytes(content)
+    download_path.with_name(f"{download_path.name}.meta").write_text(
+        json.dumps(
+            {"etag": '"v1"', "last_modified": None, "content_length": len(content)}
+        )
+    )
+
+
+@pytest.mark.unit
+class TestChecksums:
+    """Configured SHA-256 digests guard local sources and cached downloads."""
+
+    URL = "https://example.com/places.csv"
+
+    def test_local_source_matching_its_digest_is_returned(self, acquirer, tmp_path):
+        data_file = tmp_path / "places.csv"
+        data_file.write_bytes(b"1,Paris\n")
+        digest = hashlib.sha256(b"1,Paris\n").hexdigest()
+        source = make_source(path=str(data_file), sha256=digest)
+
+        assert acquirer._resolve_source_path(source) == data_file
+
+    def test_local_source_with_a_different_digest_is_rejected(self, acquirer, tmp_path):
+        data_file = tmp_path / "places.csv"
+        data_file.write_bytes(b"1,Paris\n")
+        source = make_source(path=str(data_file), sha256="0" * 64)
+
+        with pytest.raises(ValueError, match="SHA-256 mismatch"):
+            acquirer._resolve_source_path(source)
+
+    def test_digest_cannot_be_checked_for_a_local_directory(self, acquirer, tmp_path):
+        source = make_source(path=str(tmp_path), sha256="0" * 64)
+
+        with pytest.raises(ValueError, match="only be verified for a source file"):
+            acquirer._resolve_source_path(source)
+
+    def test_cached_download_matching_digest_is_reused(self, acquirer, requests_mock):
+        """Validators and digest both match, and HEAD sends no Content-Length."""
+        _cache(acquirer, b"1,Paris\n")
+        requests_mock.head(self.URL, headers={"etag": '"v1"'})
+        get_mock = requests_mock.get(self.URL, content=b"SHOULD NOT BE FETCHED")
+
+        path = acquirer._download_file(
+            self.URL, hashlib.sha256(b"1,Paris\n").hexdigest()
+        )
+
+        assert path.read_bytes() == b"1,Paris\n"
+        assert not get_mock.called
+
+    def test_cached_download_with_a_stale_digest_is_fetched_again(
+        self, acquirer, requests_mock
+    ):
+        _cache(acquirer, b"1,Paris\n")
+        requests_mock.head(self.URL, headers={"etag": '"v1"'})
+        requests_mock.get(self.URL, content=b"2,Bern\n")
+
+        path = acquirer._download_file(
+            self.URL, hashlib.sha256(b"2,Bern\n").hexdigest()
+        )
+
+        assert path.read_bytes() == b"2,Bern\n"
+
+    def test_unreadable_file_does_not_match_any_digest(self, acquirer, tmp_path):
+        assert not Acquirer._matches_sha256(tmp_path / "missing.csv", "0" * 64)
+
+    def test_negative_content_length_is_rejected(self, acquirer, requests_mock):
+        requests_mock.get(self.URL, content=b"x", headers={"Content-Length": "-1"})
+
+        with pytest.raises(ValueError, match="cannot be negative"):
+            acquirer._stream_download(
+                self.URL, acquirer.downloads_directory / "places.csv"
+            )

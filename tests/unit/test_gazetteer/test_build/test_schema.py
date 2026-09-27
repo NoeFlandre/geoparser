@@ -236,6 +236,15 @@ class TestSourceConfigValidation:
 
         assert config.sources[0].sha256 == "a" * 64
 
+    def test_explicit_null_sha256_is_accepted(self):
+        """An explicit null checksum means no verification."""
+        data = minimal_config()
+        data["sources"][0]["sha256"] = None
+
+        config = GazetteerConfig.model_validate(data)
+
+        assert config.sources[0].sha256 is None
+
     def test_rejects_invalid_sha256(self):
         """A configured checksum must be a 64-character hexadecimal digest."""
         data = minimal_config()
