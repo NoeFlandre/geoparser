@@ -94,12 +94,28 @@ EXPECTED_ROUTE_MAP = {
 def test_app_route_map_is_pinned(annotator_client):
     """The refactor preserves every registered method and URL path."""
     _, _, annotator_app = annotator_client
+    from geoparser.annotator.routes import (
+        annotations,
+        documents,
+        pages,
+        sessions,
+        settings,
+    )
+
+    # Newer FastAPI keeps included routers as wrapper objects in app.routes
+    # instead of flattening them, so read each router's own routes too. Every
+    # router is included without a prefix.
+    routes = [
+        *(route for route in annotator_app.app.routes if hasattr(route, "path")),
+        *(
+            route
+            for module in (pages, sessions, documents, annotations, settings)
+            for route in module.router.routes
+        ),
+    ]
     actual = {
-        (
-            route.path,
-            tuple(sorted(getattr(route, "methods", None) or ())),
-        )
-        for route in annotator_app.app.routes
+        (route.path, tuple(sorted(getattr(route, "methods", None) or ())))
+        for route in routes
     }
 
     assert actual == EXPECTED_ROUTE_MAP
