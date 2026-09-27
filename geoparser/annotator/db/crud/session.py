@@ -102,6 +102,9 @@ class SessionRepository(BaseRepository[AnnotatorSession]):
         cls, document_dict: dict[str, t.Any]
     ) -> AnnotatorDocumentCreate:
         """Validate one imported document and its toponym children."""
+        if not isinstance(document_dict, dict):
+            msg = "each imported document must be an object"
+            raise TypeError(msg)
         # An export always lists its toponyms, even when there are none.
         if not isinstance(document_dict.get("toponyms"), list):
             msg = "each imported document must contain a toponyms list"

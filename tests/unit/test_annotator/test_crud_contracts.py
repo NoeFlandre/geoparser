@@ -648,3 +648,12 @@ def test_imported_toponyms_are_kept(db):
     (document,) = session.documents
     assert [(t.text, t.loc_id) for t in document.toponyms] == [("Paris", "1")]
     assert document.spacy_applied is True
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("entry", ["null", "[]", '"text"'])
+def test_a_non_object_document_entry_is_an_invalid_upload(db, entry):
+    content = f'{{"gazetteer": "geonames", "documents": [{entry}]}}'
+
+    with pytest.raises(InvalidUploadException):
+        SessionRepository.create_from_json(db, content)
