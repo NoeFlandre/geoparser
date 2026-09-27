@@ -7,14 +7,14 @@ def download_cli(config: str):
 
     Use ``install`` instead::
 
-        python -m geoparser install geonames
+        geoparser install geonames
 
     Args:
         config: Either a gazetteer name (e.g., 'geonames', 'swissnames3d') or
                 a path to a custom YAML configuration file.
     """
     typer.secho(
-        f"Use 'install' instead:\n  python -m geoparser install {config}",
+        f"Use 'install' instead:\n  geoparser install {config}",
         fg=typer.colors.YELLOW,
         err=True,
     )

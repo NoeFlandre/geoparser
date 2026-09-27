@@ -48,10 +48,10 @@ def fetch_from_wikidata(qids: list[str]) -> dict[str, Located]:
             "format": "json",
         }
     )
-    request = urllib.request.Request(
+    request = urllib.request.Request(  # noqa: S310 - fixed https URL of the Wikidata endpoint
         f"{API_URL}?{query}", headers={"User-Agent": USER_AGENT}
     )
-    with urllib.request.urlopen(request, timeout=120) as response:
+    with urllib.request.urlopen(request, timeout=120) as response:  # noqa: S310 - fixed https URL of the Wikidata endpoint
         return coordinates_from_entities(json.load(response))
 
 

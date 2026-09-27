@@ -66,7 +66,8 @@ def scalar_int(connection: duckdb.DuckDBPyConnection, sql: str) -> int:
     """
     row = connection.execute(sql).fetchone()
     if row is None:  # pragma: no cover - an aggregate always returns one row
-        raise RuntimeError(f"Query returned no rows: {sql}")
+        msg = f"Query returned no rows: {sql}"
+        raise RuntimeError(msg)
     return int(row[0])
 
 
@@ -118,7 +119,7 @@ class Loader:
         else:
             self._load_spatial(source_config, file_path)
         table = quote_identifier(source_config.name)
-        return scalar_int(self.connection, f"SELECT count(*) FROM {table}")
+        return scalar_int(self.connection, f"SELECT count(*) FROM {table}")  # noqa: S608 - table/column names come from quote_identifier or module constants, values are bound
 
     def columns(self, table_name: str) -> list[str]:
         """
@@ -148,7 +149,8 @@ class Loader:
         with the single-threaded scanner rather than rejected.
         """
         if source_config.delimiter is None:  # pragma: no cover - is_tabular
-            raise ValueError(f"Source '{source_config.name}' has no delimiter")
+            msg = f"Source '{source_config.name}' has no delimiter"
+            raise ValueError(msg)
         options = [
             f"delim={quote_literal(source_config.delimiter)}",
             f"skip={source_config.skip_rows}",
@@ -193,7 +195,7 @@ class Loader:
         """Build the statement staging a delimited file into its table."""
         table = quote_identifier(source_config.name)
         return (
-            f"CREATE OR REPLACE TABLE {table} AS "
+            f"CREATE OR REPLACE TABLE {table} AS "  # noqa: S608 - table/column names come from quote_identifier or module constants, values are bound
             f"SELECT * FROM read_csv({quote_literal(str(file_path))}, "
             f"{', '.join(options)})"
         )
@@ -211,7 +213,7 @@ class Loader:
         """
         raw = quote_identifier(f"__raw_{source_config.name}")
         read_sql = (
-            f"CREATE OR REPLACE TABLE {raw} AS "
+            f"CREATE OR REPLACE TABLE {raw} AS "  # noqa: S608 - table/column names come from quote_identifier or module constants, values are bound
             f"SELECT * FROM ST_Read({quote_literal(str(file_path))})"
         )
         with item(f"Loading {source_config.name}", total=100) as bar:
@@ -229,7 +231,7 @@ class Loader:
         ]
         table = quote_identifier(source_config.name)
         cast_sql = (
-            f"CREATE OR REPLACE TABLE {table} AS "
+            f"CREATE OR REPLACE TABLE {table} AS "  # noqa: S608 - table/column names come from quote_identifier or module constants, values are bound
             f"SELECT {', '.join(select_parts)} FROM {raw}"
         )
         with item(f"Normalizing {source_config.name}", total=100) as bar:
@@ -267,15 +269,17 @@ class Loader:
             ).fetchall()
         ]
         if not geometry_columns:
-            raise ValueError(
+            msg = (
                 f"Source '{source_config.name}': no geometry column found in "
                 f"{file_path}"
             )
+            raise ValueError(msg)
         if len(geometry_columns) > 1:
-            raise ValueError(
+            msg = (
                 f"Source '{source_config.name}': multiple geometry columns found "
                 f"in {file_path}: {', '.join(geometry_columns)}"
             )
+            raise ValueError(msg)
         return geometry_columns[0]
 
     def _normalize_geometry_column(

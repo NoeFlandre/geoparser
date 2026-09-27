@@ -152,7 +152,7 @@ def _is_bare_reference(expression: str, match: re.Match[str], token: str) -> boo
         True for a bare column, False for literals, qualified parts and
         function names
     """
-    if token.startswith("'") or token.startswith('"'):
+    if token.startswith(("'", '"')):
         return False
     if expression[: match.start()].rstrip().endswith("."):
         return False
@@ -178,7 +178,7 @@ def qualify_expression(expression: str, replacements: t.Mapping[str, str]) -> st
 
     def replace(match: re.Match) -> str:
         token = match.group(0)
-        if token.startswith("'") or token.startswith('"'):
+        if token.startswith(("'", '"')):
             return token
         if token not in replacements:
             return token
@@ -240,7 +240,8 @@ class ProjectionCompiler:
         for item in feature.data:
             expression, alias = split_data_value(item)
             if alias is None:  # pragma: no cover - FeatureConfig.validate_data
-                raise ValueError(f"Data value '{item}' has no alias")
+                msg = f"Data value '{item}' has no alias"
+                raise ValueError(msg)
             value = self._resolve(feature, expression, f"data value '{alias}'")
             data_parts.append(f"{quote_literal(alias)}: {self._first(value)}")
         if data_parts:
@@ -322,7 +323,7 @@ class ProjectionCompiler:
         geometry = self._feature_geometry(feature)
         source = quote_identifier(feature.source)
         return (
-            f"WITH src_rows AS (\n"
+            f"WITH src_rows AS (\n"  # noqa: S608 - table/column names come from quote_identifier or module constants, values are bound
             f"    SELECT CAST(({identifier}) AS VARCHAR) AS identifier, "
             f"{geometry} AS geom\n"
             f"    FROM {source} AS src\n"
@@ -399,7 +400,8 @@ class ProjectionCompiler:
         source declares.
         """
         if feature.geometry is None:  # pragma: no cover - callers check first
-            raise ValueError(f"Feature '{feature.source}' declares no geometry")
+            msg = f"Feature '{feature.source}' declares no geometry"
+            raise ValueError(msg)
         expression = feature.geometry
         geometry = self._resolve_own(feature, expression, "geometry")
         if self._reads_geometry_column(feature, expression):
@@ -439,12 +441,13 @@ class ProjectionCompiler:
         joined = qualifiers(value) - {SOURCE_ALIAS}
         if joined:
             names = ", ".join("'" + name + "'" for name in sorted(joined))
-            raise CompileError(
+            msg = (
                 f"Feature '{feature.source}': {context} reads from {names}, but "
                 f"it must be derived from the block's own source "
                 f"'{feature.source}' alone. Move the joined value to 'data', or "
                 f"build the feature from the other source instead."
             )
+            raise CompileError(msg)
         return self._resolve(feature, value, context)
 
     def _resolve(self, feature: FeatureConfig, value: str, context: str) -> str:
@@ -461,11 +464,12 @@ class ProjectionCompiler:
         base_columns = set(self.catalog[feature.source])
         if _BARE_IDENTIFIER.match(value):
             if value not in base_columns:
-                raise CompileError(
+                msg = (
                     f"Feature '{feature.source}': {context} references unknown "
                     f"column '{value}' of source '{feature.source}'. "
                     f"{self._available_hint(base_columns)}"
                 )
+                raise CompileError(msg)
             return f"src.{quote_identifier(value)}"
         replacements = {column: f'src."{column}"' for column in base_columns}
         return f"({qualify_expression(value, replacements)})"

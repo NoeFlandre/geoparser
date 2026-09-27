@@ -76,7 +76,7 @@ class PriorResolver(SentenceTransformerResolver):
 
     def _best_referent(
         self,
-        context: str,
+        context: str,  # noqa: ARG002 - hook signature shared with the parent
         candidate_list: list[Feature],
         min_similarity: float,
         similarities: list[float],

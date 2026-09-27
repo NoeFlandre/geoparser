@@ -67,10 +67,12 @@ class Acquirer:
         if source_config.url:
             return self._download_file(source_config.url)
         if source_config.path is None:  # pragma: no cover - validate_source
-            raise ValueError(f"Source '{source_config.name}' has neither url nor path")
+            msg = f"Source '{source_config.name}' has neither url nor path"
+            raise ValueError(msg)
         local_path = Path(source_config.path)
         if not local_path.exists():
-            raise FileNotFoundError(f"Local path does not exist: {local_path}")
+            msg = f"Local path does not exist: {local_path}"
+            raise FileNotFoundError(msg)
         return local_path
 
     def _download_file(self, url: str) -> Path:
@@ -88,10 +90,10 @@ class Acquirer:
             response = requests.head(url, timeout=REQUEST_TIMEOUT)
             remote_size = int(response.headers.get("content-length", 0))
             local_size = local_path.stat().st_size
-            return remote_size == local_size and remote_size != 0
         except (requests.RequestException, ValueError):
             # If the HEAD request fails, proceed with the download
             return False
+        return remote_size == local_size and remote_size != 0
 
     def _stream_download(self, url: str, download_path: Path) -> Path:
         """Stream a file download with progress tracking."""
@@ -100,7 +102,7 @@ class Acquirer:
             total_size = int(response.headers.get("content-length", 0))
 
             with (
-                open(download_path, "wb") as output_file,
+                download_path.open("wb") as output_file,
                 item(
                     f"Downloading {download_path.name}", total=total_size or None
                 ) as progress_bar,
@@ -130,10 +132,11 @@ class Acquirer:
         if not zipfile.is_zipfile(source_path):
             if source_path.name == target_filename:
                 return source_path
-            raise FileNotFoundError(
+            msg = (
                 f"Source '{source_config.name}': file '{target_filename}' not "
                 f"found at {source_path}"
             )
+            raise FileNotFoundError(msg)
 
         extraction_dir = source_path.parent / source_path.stem
         if self._should_skip_extraction(source_path, extraction_dir, target_filename):
@@ -209,7 +212,8 @@ class Acquirer:
         for path in directory.glob("**/*"):
             if path.name == filename:
                 return path
-        raise FileNotFoundError(f"File '{filename}' not found in {directory}")
+        msg = f"File '{filename}' not found in {directory}"
+        raise FileNotFoundError(msg)
 
     def _find_target_file_quiet(self, directory: Path, filename: str) -> Path | None:
         """Find a file by name, returning None if not found."""

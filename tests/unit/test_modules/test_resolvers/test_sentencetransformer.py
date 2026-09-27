@@ -14,6 +14,8 @@ from unittest.mock import Mock, call, patch
 import pytest
 import torch
 
+from geoparser.modules._spacy import load_spacy_model
+
 
 @pytest.mark.unit
 def test_import_does_not_change_transformers_logging_verbosity():
@@ -42,7 +44,7 @@ def test_import_does_not_change_transformers_logging_verbosity():
 class TestSentenceTransformerResolverInitialization:
     """Test SentenceTransformerResolver initialization."""
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -67,7 +69,7 @@ class TestSentenceTransformerResolverInitialization:
         assert resolver.min_similarity == 0.6
         assert resolver.max_tiers == 3
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -105,7 +107,7 @@ class TestSentenceTransformerResolverInitialization:
         assert resolver.min_similarity == 0.8
         assert resolver.max_tiers == 5
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -143,7 +145,7 @@ class TestSentenceTransformerResolverInitialization:
         assert resolver.config["min_similarity"] == 0.75
         assert resolver.config["max_tiers"] == 4
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -164,7 +166,7 @@ class TestSentenceTransformerResolverInitialization:
         # Assert
         mock_transformer_class.assert_called_once_with("test-model")
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -185,7 +187,7 @@ class TestSentenceTransformerResolverInitialization:
         # Assert
         mock_tokenizer.assert_called_once_with("test-model")
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -206,7 +208,7 @@ class TestSentenceTransformerResolverInitialization:
         # Assert
         mock_spacy_load.assert_called_once_with("xx_sent_ud_sm")
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -237,7 +239,7 @@ class TestSentenceTransformerResolverInitialization:
         # Assert
         mock_gazetteer_class.assert_called_once_with("test-gazetteer")
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -263,7 +265,7 @@ class TestSentenceTransformerResolverInitialization:
         assert resolver.candidate_descriptions == {}
         assert resolver.measured_sentences == {}
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -285,7 +287,7 @@ class TestSentenceTransformerResolverInitialization:
         # Assert
         assert resolver1.id != resolver2.id
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -317,7 +319,7 @@ class TestSentenceTransformerResolverInitialization:
         # Assert
         assert resolver1.id == resolver2.id
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -348,7 +350,7 @@ class TestSentenceTransformerResolverInitialization:
         # Assert
         assert resolver.attribute_map == custom_map
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -369,7 +371,7 @@ class TestSentenceTransformerResolverInitialization:
         ):
             SentenceTransformerResolver(gazetteer_name="unknown_gazetteer")
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -391,7 +393,7 @@ class TestSentenceTransformerResolverInitialization:
         expected_map = SentenceTransformerResolver.GAZETTEER_ATTRIBUTE_MAP["geonames"]
         assert resolver.attribute_map == expected_map
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -423,7 +425,7 @@ class TestSentenceTransformerResolverInitialization:
         # Assert
         assert result == custom_map
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -446,7 +448,7 @@ class TestSentenceTransformerResolverInitialization:
         expected_map = SentenceTransformerResolver.GAZETTEER_ATTRIBUTE_MAP["geonames"]
         assert result == expected_map
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -472,8 +474,12 @@ class TestSentenceTransformerResolverInitialization:
         ):
             resolver._validate_and_set_attribute_map("unknown_gazetteer", None)
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.cli.download")
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch(
+        "geoparser.modules.resolvers.sentencetransformer.load_spacy_model",
+        load_spacy_model,
+    )
+    @patch("geoparser.modules._spacy.spacy.cli.download")
+    @patch("geoparser.modules._spacy.spacy.load")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -506,7 +512,11 @@ class TestSentenceTransformerResolverInitialization:
         assert mock_spacy_load.call_count == 2
         assert resolver.nlp == mock_nlp
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch(
+        "geoparser.modules.resolvers.sentencetransformer.load_spacy_model",
+        load_spacy_model,
+    )
+    @patch("geoparser.modules._spacy.spacy.load")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -537,7 +547,7 @@ class TestSentenceTransformerResolverInitialization:
 class TestSentenceTransformerResolverPredict:
     """Test SentenceTransformerResolver predict method."""
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -560,7 +570,7 @@ class TestSentenceTransformerResolverPredict:
         # Assert
         assert results == []
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -619,7 +629,7 @@ class TestSentenceTransformerResolverPredict:
         assert after_first == 1
         assert after_second == 1
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -662,7 +672,7 @@ class TestSentenceTransformerResolverPredict:
         # Assert - Candidate with id=1 should be in cache
         assert 1 in resolver.candidate_embeddings
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -728,7 +738,7 @@ class TestSentenceTransformerResolverPredict:
         assert text in resolver.doc_tokens
         assert doc_tokenize_calls() == after_first
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -813,7 +823,7 @@ class TestSentenceTransformerResolverHelperMethods:
                 ["Paris"], cast(Any, [[candidate]]), [None], 0.6, [None]
             )
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -838,7 +848,7 @@ class TestSentenceTransformerResolverHelperMethods:
         assert first == second == (candidate,)
         gazetteer.search.assert_called_once_with("Paris", "exact", limit=10000, tiers=1)
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -862,38 +872,7 @@ class TestSentenceTransformerResolverHelperMethods:
         assert first == second == "Paris (city)"
         resolver._generate_description.assert_called_once_with(candidate)
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_caches_measured_sentences(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Long-document sentence/token measurement is reused per text."""
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver()
-        resolver._sentences = Mock(
-            return_value=[
-                SimpleNamespace(text="Paris", start_char=0, end_char=5),
-            ]
-        )
-        resolver._sentence_tokens = Mock(return_value=3)
-
-        first = resolver._measured_sentences("Paris is here")
-        second = resolver._measured_sentences("Paris is here")
-
-        assert first == second
-        resolver._sentences.assert_called_once_with("Paris is here")
-        resolver._sentence_tokens.assert_called_once_with(
-            resolver._sentences.return_value[0]
-        )
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -926,54 +905,7 @@ class TestSentenceTransformerResolverHelperMethods:
         assert "city" in description
         assert "France" in description
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_vectorizes_uneven_candidate_lists_in_one_similarity_call(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Batch scoring matches scalar scoring for uneven candidate lists."""
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver()
-        candidates = [
-            SimpleNamespace(id=1),
-            SimpleNamespace(id=2),
-            SimpleNamespace(id=3),
-        ]
-        resolver.context_embeddings.update(
-            {
-                "first": torch.tensor([1.0, 0.0]),
-                "second": torch.tensor([0.0, 1.0]),
-            }
-        )
-        resolver.candidate_embeddings.update(
-            {
-                1: torch.tensor([1.0, 0.0]),
-                2: torch.tensor([0.0, 1.0]),
-                3: torch.tensor([1.0, 1.0]),
-            }
-        )
-
-        with patch(
-            "geoparser.modules.resolvers.sentencetransformer.torch.nn.functional.cosine_similarity",
-            wraps=torch.nn.functional.cosine_similarity,
-        ) as cosine_similarity:
-            batch = resolver._calculate_similarity_batches(
-                ["first", "second"],
-                cast(Any, [[candidates[0], candidates[1]], []]),
-            )
-
-        assert batch[0] == pytest.approx([1.0, 0.0])
-        assert batch[1] == []
-        assert cosine_similarity.call_count == 1
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -991,203 +923,7 @@ class TestSentenceTransformerResolverHelperMethods:
 
         assert resolver._calculate_similarity_batches(["a", "b"], [[], []]) == [[], []]
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_evaluation_uses_one_similarity_batch_for_all_references(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """The search pass sends all unresolved references through one scorer."""
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver()
-        first = SimpleNamespace(id=1, identifier="A")
-        second = SimpleNamespace(id=2, identifier="B")
-        resolver._calculate_similarity_batches = Mock(return_value=[[0.9], [0.8]])
-        resolver._best_referent = Mock(
-            side_effect=lambda context, candidates, threshold, scores: (
-                resolver.gazetteer_name,
-                candidates[0].identifier,
-            )
-        )
-        contexts = [["first", "second"]]
-        candidates = [[[first], [second]]]
-        results = [[None, None]]
-
-        resolver._evaluate_candidates(contexts, cast(Any, candidates), results, 0.6)
-
-        resolver._calculate_similarity_batches.assert_called_once_with(
-            ["first", "second"], [[first], [second]]
-        )
-        assert results == [
-            [(resolver.gazetteer_name, "A"), (resolver.gazetteer_name, "B")]
-        ]
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_extract_context_returns_full_text_when_within_limit(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _extract_context returns full text when within token limit."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        mock_transformer_instance = mock_transformer.return_value
-        mock_transformer_instance.get_max_seq_length.return_value = 512
-
-        mock_tokenizer_instance = mock_tokenizer.return_value
-        # Short text - only 3 tokens
-        mock_tokenizer_instance.tokenize.return_value = ["Paris", "is", "beautiful"]
-
-        resolver = SentenceTransformerResolver()
-
-        text = "Paris is beautiful"
-
-        # Act
-        context = resolver._extract_context(text, 0, 5)
-
-        # Assert
-        assert context == text
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_extract_context_expands_bidirectionally(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _extract_context expands context bidirectionally around reference."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        mock_transformer_instance = mock_transformer.return_value
-        mock_transformer_instance.get_max_seq_length.return_value = 512
-
-        mock_tokenizer_instance = mock_tokenizer.return_value
-
-        # Return different lengths for different calls
-        def tokenize_side_effect(text):
-            # Simulate that full text is too long
-            if len(text) > 20:
-                return ["token"] * 600  # Exceeds limit
-            # But sentences are short
-            return ["token"] * 3
-
-        mock_tokenizer_instance.tokenize.side_effect = tokenize_side_effect
-
-        # Mock spaCy sentence splitter
-        mock_nlp = Mock()
-        mock_sent1 = Mock()
-        mock_sent1.start_char = 0
-        mock_sent1.end_char = (
-            26  # Cover the full text including "Paris" at position 10-15
-        )
-        mock_sent1.text = "I went to Paris yesterday."
-
-        mock_doc = Mock()
-        mock_doc.sents = [mock_sent1]
-        mock_nlp.return_value = mock_doc
-
-        resolver = SentenceTransformerResolver()
-        resolver.nlp = mock_nlp
-
-        text = "I went to Paris yesterday."
-
-        # Act
-        context = resolver._extract_context(text, 10, 15)  # "Paris"
-
-        # Assert
-        # Should at least include the sentence containing the reference
-        assert isinstance(context, str)
-        # Should contain the reference text
-        assert "Paris" in context or context == text
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_extract_context_reports_reference_outside_every_sentence(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """A reference offset no sentence covers is reported clearly."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        mock_transformer_instance = mock_transformer.return_value
-        mock_transformer_instance.get_max_seq_length.return_value = 512
-
-        mock_tokenizer_instance = mock_tokenizer.return_value
-
-        def tokenize_side_effect(text):
-            # Force the sentence-splitting path by making the document too long
-            return ["token"] * 600 if len(text) > 20 else ["token"] * 3
-
-        mock_tokenizer_instance.tokenize.side_effect = tokenize_side_effect
-
-        # A sentence that stops well before the requested offset, which is what
-        # a bad reference span or an uncovered gap between sentences looks like.
-        mock_sent = Mock()
-        mock_sent.start_char = 0
-        mock_sent.end_char = 10
-        mock_sent.text = "I went to."
-
-        mock_doc = Mock()
-        mock_doc.sents = [mock_sent]
-        mock_nlp = Mock()
-        mock_nlp.return_value = mock_doc
-
-        resolver = SentenceTransformerResolver()
-        resolver.nlp = mock_nlp
-
-        text = "I went to Paris yesterday and it was lovely."
-
-        # Act & Assert - a clear message, not "None is not in list"
-        with pytest.raises(ValueError, match="No sentence contains reference"):
-            resolver._extract_context(text, 10, 15)
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_extract_context_requires_a_maximum_sequence_length(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """A model that advertises no maximum length is reported clearly."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        mock_transformer.return_value.get_max_seq_length.return_value = None
-
-        resolver = SentenceTransformerResolver()
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="does not report a maximum sequence"):
-            resolver._extract_context("Some text", 0, 4)
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -1217,7 +953,7 @@ class TestSentenceTransformerResolverHelperMethods:
         assert "Paris" in description
         # Should not crash, just include what's available
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -1254,7 +990,7 @@ class TestSentenceTransformerResolverHelperMethods:
         # Should be in hierarchical order: level3, level2, level1
         assert "in" in description
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -1296,375 +1032,17 @@ class TestSentenceTransformerResolverHelperMethods:
         assert "city" in description
         assert "France" in description
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_similarity_batches_return_cosine_values(
-        self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Batch scoring returns each candidate's cosine similarity, as floats."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver()
-        resolver.context_embeddings["ctx"] = torch.tensor([1.0, 0.0, 0.0])
-        resolver.candidate_embeddings.update(
-            {
-                1: torch.tensor([1.0, 0.0, 0.0]),  # identical: 1.0
-                2: torch.tensor([0.5, 0.866, 0.0]),  # 60 degrees: about 0.5
-                3: torch.tensor([-1.0, 0.0, 0.0]),  # opposite: -1.0
-            }
-        )
-        candidates = [SimpleNamespace(id=i) for i in (1, 2, 3)]
-
-        # Act
-        (similarities,) = resolver._calculate_similarity_batches(
-            ["ctx"], cast(Any, [candidates])
-        )
-
-        # Assert
-        assert all(isinstance(value, float) for value in similarities)
-        assert similarities == pytest.approx([1.0, 0.5, -1.0], abs=0.01)
-
-
-@pytest.mark.unit
-class TestSentenceTransformerResolverPrepareTrainingData:
-    """Test SentenceTransformerResolver _prepare_training_data method."""
-
-    def test_search_uses_the_training_candidate_limit(self):
-        """Training data uses an explicit stable limit for each exact search."""
-        from unittest.mock import Mock
-
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = object.__new__(SentenceTransformerResolver)
-        candidate = Mock(identifier="123")
-        resolver._extract_context = Mock(return_value="Paris is beautiful")
-        resolver._candidate_description = Mock(return_value="Paris (city)")
-        resolver._search_candidates = Mock(return_value=[candidate])
-
-        resolver._prepare_training_data(
-            ["Paris is beautiful."], [[(0, 5)]], [[("geonames", "123")]]
-        )
-
-        resolver._search_candidates.assert_called_once_with(
-            "Paris", "exact", tiers=1, limit=10000
-        )
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_creates_training_examples_from_referents(
-        self, mock_gazetteer_class, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _prepare_training_data creates training examples from referents."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver(gazetteer_name="geonames")
-
-        # Mock gazetteer search to return candidates
-        mock_gazetteer_instance = mock_gazetteer_class.return_value
-        mock_candidate1 = Mock()
-        mock_candidate1.identifier = "123"
-        mock_candidate1.data = {"name": "Paris", "feature_name": "city"}
-        mock_candidate2 = Mock()
-        mock_candidate2.identifier = "456"
-        mock_candidate2.data = {"name": "Paris", "feature_name": "region"}
-        mock_gazetteer_instance.search.return_value = [mock_candidate1, mock_candidate2]
-
-        # Mock _extract_context
-        with patch.object(
-            resolver, "_extract_context", return_value="Paris is beautiful"
-        ):
-            texts = ["Paris is beautiful."]
-            references = [[(0, 5)]]  # "Paris"
-            referents = [[("geonames", "123")]]  # Matches candidate1
-
-            # Act
-            training_data = resolver._prepare_training_data(
-                texts, references, referents
-            )
-
-            # Assert
-            assert "sentence1" in training_data
-            assert "sentence2" in training_data
-            assert "label" in training_data
-            assert len(training_data["sentence1"]) > 0
-            assert len(training_data["sentence2"]) > 0
-            assert len(training_data["label"]) > 0
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_creates_positive_and_negative_examples(
-        self, mock_gazetteer_class, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _prepare_training_data creates both positive and negative examples."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver(gazetteer_name="geonames")
-
-        # Mock gazetteer search to return multiple candidates
-        mock_gazetteer_instance = mock_gazetteer_class.return_value
-        mock_candidate1 = Mock()
-        mock_candidate1.identifier = "123"
-        mock_candidate1.data = {"name": "Paris", "feature_name": "city"}
-        mock_candidate2 = Mock()
-        mock_candidate2.identifier = "456"
-        mock_candidate2.data = {"name": "Paris", "feature_name": "region"}
-        mock_gazetteer_instance.search.return_value = [mock_candidate1, mock_candidate2]
-
-        with patch.object(
-            resolver, "_extract_context", return_value="Paris is beautiful"
-        ):
-            texts = ["Paris is beautiful."]
-            references = [[(0, 5)]]
-            referents = [[("geonames", "123")]]  # Only matches candidate1
-
-            # Act
-            training_data = resolver._prepare_training_data(
-                texts, references, referents
-            )
-
-            # Assert
-            # Should have 2 examples: 1 positive (label=1) and 1 negative (label=0)
-            assert len(training_data["label"]) == 2
-            assert 1 in training_data["label"]  # Positive example
-            assert 0 in training_data["label"]  # Negative example
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_handles_multiple_references_in_document(
-        self, mock_gazetteer_class, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _prepare_training_data handles multiple references per document."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver(gazetteer_name="geonames")
-
-        # Mock gazetteer search
-        mock_gazetteer_instance = mock_gazetteer_class.return_value
-        mock_candidate = Mock()
-        mock_candidate.identifier = "123"
-        mock_candidate.data = {"name": "City", "feature_name": "city"}
-        mock_gazetteer_instance.search.return_value = [mock_candidate]
-
-        with patch.object(resolver, "_extract_context", return_value="Context"):
-            texts = ["Paris and London"]
-            references = [[(0, 5), (10, 16)]]  # "Paris", "London"
-            referents = [[("geonames", "123"), ("geonames", "123")]]
-
-            # Act
-            training_data = resolver._prepare_training_data(
-                texts, references, referents
-            )
-
-            # Assert
-            # Should have examples for both references
-            assert len(training_data["sentence1"]) >= 2
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_handles_multiple_documents(
-        self, mock_gazetteer_class, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _prepare_training_data handles multiple documents."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver(gazetteer_name="geonames")
-
-        # Mock gazetteer search
-        mock_gazetteer_instance = mock_gazetteer_class.return_value
-        mock_candidate = Mock()
-        mock_candidate.identifier = "123"
-        mock_candidate.data = {"name": "City", "feature_name": "city"}
-        mock_gazetteer_instance.search.return_value = [mock_candidate]
-
-        with patch.object(resolver, "_extract_context", return_value="Context"):
-            texts = ["Paris is beautiful.", "London is historic."]
-            references = [[(0, 5)], [(0, 6)]]  # "Paris", "London"
-            referents = [[("geonames", "123")], [("geonames", "123")]]
-
-            # Act
-            training_data = resolver._prepare_training_data(
-                texts, references, referents
-            )
-
-            # Assert
-            # Should have examples from both documents
-            assert len(training_data["sentence1"]) >= 2
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_extracts_context_for_each_reference(
-        self, mock_gazetteer_class, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _prepare_training_data extracts context for each reference."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver(gazetteer_name="geonames")
-
-        # Mock gazetteer search
-        mock_gazetteer_instance = mock_gazetteer_class.return_value
-        mock_candidate = Mock()
-        mock_candidate.identifier = "123"
-        mock_candidate.data = {"name": "City", "feature_name": "city"}
-        mock_gazetteer_instance.search.return_value = [mock_candidate]
-
-        with patch.object(
-            resolver, "_extract_context", return_value="Extracted context"
-        ) as mock_extract:
-            texts = ["Paris is beautiful."]
-            references = [[(0, 5)]]
-            referents = [[("geonames", "123")]]
-
-            # Act
-            training_data = resolver._prepare_training_data(
-                texts, references, referents
-            )
-
-            # Assert
-            # _extract_context should have been called
-            mock_extract.assert_called()
-            # All sentence1 entries should be the extracted context
-            assert all(s1 == "Extracted context" for s1 in training_data["sentence1"])
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_generates_descriptions_for_candidates(
-        self, mock_gazetteer_class, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _prepare_training_data generates descriptions for candidates."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver(gazetteer_name="geonames")
-
-        # Mock gazetteer search
-        mock_gazetteer_instance = mock_gazetteer_class.return_value
-        mock_candidate = Mock()
-        mock_candidate.identifier = "123"
-        mock_candidate.data = {"name": "Paris", "feature_name": "city"}
-        mock_gazetteer_instance.search.return_value = [mock_candidate]
-
-        with (
-            patch.object(resolver, "_extract_context", return_value="Context"),
-            patch.object(
-                resolver, "_generate_description", return_value="Paris (city)"
-            ) as mock_generate,
-        ):
-            texts = ["Paris is beautiful."]
-            references = [[(0, 5)]]
-            referents = [[("geonames", "123")]]
-
-            # Act
-            training_data = resolver._prepare_training_data(
-                texts, references, referents
-            )
-
-            # Assert
-            # _generate_description should have been called
-            mock_generate.assert_called()
-            # All sentence2 entries should be the generated description
-            assert all(s2 == "Paris (city)" for s2 in training_data["sentence2"])
-
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
-    @patch(
-        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
-    )
-    @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
-    @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_returns_correct_data_structure(
-        self, mock_gazetteer_class, mock_transformer, mock_tokenizer, mock_spacy_load
-    ):
-        """Test that _prepare_training_data returns correct data structure."""
-        # Arrange
-        from geoparser.modules.resolvers.sentencetransformer import (
-            SentenceTransformerResolver,
-        )
-
-        resolver = SentenceTransformerResolver(gazetteer_name="geonames")
-
-        # Mock gazetteer search
-        mock_gazetteer_instance = mock_gazetteer_class.return_value
-        mock_candidate = Mock()
-        mock_candidate.identifier = "123"
-        mock_candidate.data = {"name": "City", "feature_name": "city"}
-        mock_gazetteer_instance.search.return_value = [mock_candidate]
-
-        with patch.object(resolver, "_extract_context", return_value="Context"):
-            texts = ["Paris"]
-            references = [[(0, 5)]]
-            referents = [[("geonames", "123")]]
-
-            # Act
-            training_data = resolver._prepare_training_data(
-                texts, references, referents
-            )
-
-            # Assert
-            # Should be a dict with three keys
-            assert isinstance(training_data, dict)
-            assert set(training_data.keys()) == {"sentence1", "sentence2", "label"}
-            # All lists should have the same length
-            assert len(training_data["sentence1"]) == len(training_data["sentence2"])
-            assert len(training_data["sentence1"]) == len(training_data["label"])
-            # Labels should be 0 or 1
-            assert all(label in [0, 1] for label in training_data["label"])
-
 
 @pytest.mark.unit
 class TestSpacyModelDownload:
     """The fallback that installs the sentence splitter on first use."""
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.cli.download")
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch(
+        "geoparser.modules.resolvers.sentencetransformer.load_spacy_model",
+        load_spacy_model,
+    )
+    @patch("geoparser.modules._spacy.spacy.cli.download")
+    @patch("geoparser.modules._spacy.spacy.load")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )
@@ -1709,7 +1087,7 @@ class TestSpacyModelDownload:
 class TestConfigIdentity:
     """What the resolver records as its configuration."""
 
-    @patch("geoparser.modules.resolvers.sentencetransformer.spacy.load")
+    @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
     )

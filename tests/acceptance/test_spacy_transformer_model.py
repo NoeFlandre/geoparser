@@ -66,7 +66,7 @@ def original_error_kept(model_state: dict[str, object]) -> None:
 
 def test_real_spacy_loader_reaches_missing_factory_fallback(tmp_path, monkeypatch):
     """Exercise the fallback through spaCy's real local-model loader."""
-    monkeypatch.setattr(registry._entry_point_factories, "get_all", lambda: {})
+    monkeypatch.setattr(registry._entry_point_factories, "get_all", dict)
     factory_key = (*registry.factories.namespace, "curated_transformer")
     monkeypatch.delitem(catalogue.REGISTRY, factory_key, raising=False)
 

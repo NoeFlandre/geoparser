@@ -24,7 +24,7 @@ pip install geoparser
 The library also needs a gazetteer, which is not bundled: it is the database of places that names are resolved against.
 
 ```bash
-python -m geoparser install geonames
+geoparser install geonames
 ```
 
 See the [installation guide](https://docs.geoparser.app/installation.html) for environment setup, the available gazetteers, and their disk requirements.

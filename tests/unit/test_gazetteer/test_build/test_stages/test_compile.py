@@ -67,8 +67,7 @@ def run_features(
         merged_geometry = {}
         duplicate_query = compiler.duplicate_geometry_query(feature)
         if duplicate_query is not None:
-            for identifier, geometry in connection.execute(duplicate_query).fetchall():
-                merged_geometry[identifier] = geometry
+            merged_geometry = dict(connection.execute(duplicate_query).fetchall())
         for identifier, source, data, geometry in connection.execute(
             compiler.feature_query(feature)
         ).fetchall():

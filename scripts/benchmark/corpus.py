@@ -71,7 +71,7 @@ def download_corpus(cache_path: Path, *, url: str = CORPUS_URL) -> Path:
         return cache_path
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     partial = cache_path.with_suffix(cache_path.suffix + ".partial")
-    with urllib.request.urlopen(url, timeout=120) as response:
+    with urllib.request.urlopen(url, timeout=120) as response:  # noqa: S310 - fixed https URL of the benchmark corpus
         partial.write_bytes(response.read())
     partial.replace(cache_path)
     return cache_path
@@ -108,7 +108,7 @@ def parse_corpus(path: Path, *, limit: int | None = None) -> list[Document]:
     Returns:
         The parsed documents, in corpus order
     """
-    root = ET.parse(path).getroot()
+    root = ET.parse(path).getroot()  # noqa: S314 - parses the benchmark corpus this script downloads itself
     documents: list[Document] = []
     for index, article in enumerate(root.findall("article")):
         text = article.findtext("text") or ""

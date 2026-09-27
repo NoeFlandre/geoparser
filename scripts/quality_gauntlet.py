@@ -68,8 +68,9 @@ def build_stages(
                     "geoparser",
                     "demo",
                     "--per-rule-ignores",
-                    # These packages are loaded through entry points rather
-                    # than imports, so deptry cannot see them being used.
+                    # These packages are loaded through entry points or by
+                    # other libraries rather than imported, so deptry cannot
+                    # see them being used; pyproject.toml says who needs each.
                     "DEP002=accelerate|python-multipart|peft|protobuf"
                     "|sentencepiece|spacy-curated-transformers,"
                     "DEP004=plotly",

@@ -74,7 +74,8 @@ def locate_sentence(sentences: t.Sequence[Sentence], start: int, end: int) -> in
     for index, sentence in enumerate(sentences):
         if sentence.covers(start):
             return index
-    raise ValueError(f"No sentence contains reference at position {start}-{end}")
+    msg = f"No sentence contains reference at position {start}-{end}"
+    raise ValueError(msg)
 
 
 @dataclass(frozen=True)

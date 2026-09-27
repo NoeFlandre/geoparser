@@ -2,10 +2,13 @@ import uuid
 from collections.abc import Sequence
 from typing import overload
 
+from geoparser._logging import get_logger
 from geoparser.db.models import Document
 from geoparser.modules.recognizers import Recognizer
 from geoparser.modules.resolvers import Resolver
 from geoparser.project import Project
+
+logger = get_logger(__name__)
 
 
 class Geoparser:
@@ -57,13 +60,15 @@ class Geoparser:
             project.run_resolver(self.resolver)
 
     @overload
-    def parse(self, texts: str, save: bool = False) -> Document: ...
+    def parse(self, texts: str, save: bool = False) -> Document: ...  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
 
     @overload
-    def parse(self, texts: Sequence[str], save: bool = False) -> list[Document]: ...
+    def parse(self, texts: Sequence[str], save: bool = False) -> list[Document]: ...  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
 
     def parse(
-        self, texts: str | Sequence[str], save: bool = False
+        self,
+        texts: str | Sequence[str],
+        save: bool = False,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
     ) -> Document | list[Document]:
         """
         Parse one or more texts with the configured recognizer and resolver.
@@ -106,7 +111,7 @@ class Geoparser:
 
             # If save is True, inform the user about the project name
             if save:
-                print(f"Results saved under project name: {project_name}")
+                logger.info(f"Results saved under project name: {project_name}")
 
             return documents[0] if single_text else documents
 

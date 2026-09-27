@@ -151,7 +151,7 @@ class TestLoadSpacyModel:
         else would silently give the recognizer a different pipeline.
         """
         # Arrange
-        with patch("geoparser.modules.recognizers.spacy.spacy") as mock_spacy:
+        with patch("geoparser.modules._spacy.spacy") as mock_spacy:
             nlp = Mock()
             nlp.pipe_names = []
             mock_spacy.load.side_effect = [OSError("missing"), nlp, nlp]

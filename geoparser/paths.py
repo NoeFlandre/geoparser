@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from appdirs import user_data_dir
+from platformdirs import user_data_dir
 
 
 def geoparser_data_dir() -> Path:
@@ -12,7 +12,8 @@ def geoparser_data_dir() -> Path:
     Returns:
         Path to the geoparser user data directory
     """
-    # The empty appauthor keeps the path free of a vendor directory on
-    # Windows; on every other platform appdirs ignores it entirely, so
-    # mutating it cannot change where the data lives here.
-    return Path(user_data_dir("geoparser", ""))  # pragma: no mutate
+    # appauthor=False keeps the path free of a vendor directory on Windows,
+    # matching where the former appdirs call (with appauthor="") put the
+    # data, so installed gazetteers are still found after the switch. Every
+    # other platform ignores appauthor.
+    return Path(user_data_dir("geoparser", appauthor=False))  # pragma: no mutate

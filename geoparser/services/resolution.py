@@ -262,9 +262,10 @@ class ResolutionService:
             self._gazetteers[gazetteer_name] = Gazetteer(gazetteer_name)
         feature = self._gazetteers[gazetteer_name].find(identifier)
         if feature is None:
-            raise ValueError(
+            msg = (
                 f"Feature '{identifier}' does not exist in gazetteer '{gazetteer_name}'"
             )
+            raise ValueError(msg)
 
         return Referent(
             reference_id=reference_id,

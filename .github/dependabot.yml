@@ -1,11 +1,27 @@
 version: 2
 
 updates:
-  # Third-party actions are pinned by tag or SHA, which means they never pick
-  # up security fixes on their own. Dependabot is what makes pinning safe.
+  # Every action is pinned to a full commit SHA (with the tag it came from in
+  # a trailing comment), so a moved or hijacked tag cannot change what runs
+  # with our tokens. Pins never pick up fixes on their own; Dependabot bumps
+  # the SHA and the comment together, which is what makes pinning safe.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
     commit-message:
       prefix: ci
+
+  # Python dependencies. Several runtime caps sit on a single 0.x minor, so
+  # without this nothing would propose the security releases behind them.
+  # Grouped so a month's bumps arrive as one PR gated by the test matrix.
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: deps
+    groups:
+      python:
+        patterns:
+          - "*"

@@ -54,5 +54,6 @@ def require_fit(module: _NamedModule, kind: str) -> Callable[..., None]:
     """Return a module's fit method or raise a consistent service error."""
     fit = getattr(module, "fit", None)
     if fit is None:
-        raise ValueError(f"{kind} '{module.name}' does not implement a fit method")
+        msg = f"{kind} '{module.name}' does not implement a fit method"
+        raise ValueError(msg)
     return fit

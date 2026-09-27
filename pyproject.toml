@@ -8,20 +8,26 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10,<3.15"
 dependencies = [
+    # Not imported directly: transformers' Trainer (behind
+    # SentenceTransformerTrainer in SentenceTransformerResolver.fit) requires it.
     "accelerate>=1.11.0,<2",
-    "appdirs>=1.4.4,<2",
+    "platformdirs>=4.2.0,<5",
     "datasets>=5.0.0,<6",
     "duckdb>=1.5.4,<2",
-    "fastapi>=0.121.0,<0.122",
+    "fastapi>=0.141.1,<1",
     "markupsafe>=3.0.3,<4",
     "pydantic>=2.12.3,<3",
     "pyproj>=3.7.1,<4",
-    "python-multipart>=0.0.20,<0.0.21",
+    # Not imported directly: FastAPI needs it to parse the annotator's
+    # Form/UploadFile request bodies.
+    "python-multipart>=0.0.31,<1",
     "pyyaml>=6.0.3,<7",
     "rapidfuzz>=3.14.5,<4",
     "requests>=2.32.5,<3",
     "rich>=15.0.0,<16",
     "gliner2[local]>=2.0.0,<3",
+    # Not imported directly: gliner2 imports it for its models and LoRA
+    # training code.
     "peft>=0.15.2,<1",
     # GLiNER2's tokenizer is a sentencepiece model, which transformers can only
     # convert to its fast tokenizer with protobuf available. Without these the
@@ -46,6 +52,9 @@ dependencies = [
     "uvicorn>=0.38.0,<0.39",
     "werkzeug>=3.1.3,<4",
 ]
+
+[project.scripts]
+geoparser = "geoparser.__main__:main"
 
 [project.urls]
 Homepage = "https://geoparser.app"
@@ -90,6 +99,11 @@ docs = [
 ]
 
 # spaCy models are not on PyPI; they are published as GitHub release artifacts.
+[tool.uv]
+# One uv for CI and the Docker image: setup-uv reads this setting, and the
+# Dockerfile's `ghcr.io/astral-sh/uv` tag must match it. Bump both together.
+required-version = "==0.11.16"
+
 [tool.uv.sources]
 en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0.tar.gz" }
 xx-sent-ud-sm = { url = "https://github.com/explosion/spacy-models/releases/download/xx_sent_ud_sm-3.8.0/xx_sent_ud_sm-3.8.0.tar.gz" }
@@ -119,15 +133,64 @@ extend-exclude = ["docs/_build"]
 # E/W/F are the pyflakes+pycodestyle baseline black and autoflake used to cover
 # (F401 replaces autoflake's unused-import pass); I replaces isort; the rest are
 # the low-noise correctness and modernization rules worth enforcing here.
-select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+select = [
+    "E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF",
+    # Anti-pattern families (#58): blind excepts, naive datetimes, bandit
+    # security checks, stray prints, unused arguments, pylint, pathlib,
+    # return style, misc idioms, performance, no blanket noqa, complexity.
+    "BLE", "DTZ", "S", "T20", "ARG", "PL", "PTH", "RET", "PIE", "PERF", "PGH",
+    "C90",
+    # Exception messages and API shape (#59). FBT and N818 hits in the public
+    # API are ratcheted with code-specific noqa comments, to be removed when
+    # the signatures and names change in the next major release.
+    "EM", "TRY", "FBT", "N",
+]
 ignore = [
     # Formatter owns line length; long strings and comments are not worth churning.
     "E501",
+    # Named constants for every literal compared against are more noise than
+    # signal in parsing and geometry code.
+    "PLR2004",
+    # Deferred imports are deliberate: they keep `geoparser --help` and the
+    # lazy module registry from importing torch and spaCy.
+    "PLC0415",
+    # try/except inside a loop is how per-item failures are isolated; the
+    # overhead ruff warns about is gone in Python 3.11+.
+    "PERF203",
+    # Descriptive exception messages are the point; EM already keeps them
+    # out of the raise line.
+    "TRY003",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 # Re-exports are the point of these files.
 "__init__.py" = ["F401"]
+# Tests assert, build throwaway paths and SQL, shell out to tools, and stub
+# signatures whose arguments they ignore; none of that is production code.
+"tests/**" = [
+    "S", "ARG", "T20", "PLR", "PLW", "PTH", "DTZ", "BLE", "C90",
+    "EM", "TRY", "FBT", "N802",
+]
+# Developer scripts report to the terminal and shell out to git, uv and
+# docker by name.
+"scripts/**" = ["T20", "S603", "S607"]
+# FastAPI injects route dependencies and exception-handler arguments by
+# signature, so handlers declare parameters they only need to exist.
+"geoparser/annotator/app.py" = ["ARG001"]
+"geoparser/annotator/exceptions.py" = ["ARG001"]
+# Typer builds each command's options from its signature: one parameter per
+# flag is the API, not a design smell.
+# Boolean parameters there are --flag options, not positional arguments.
+"geoparser/cli/**" = ["PLR0913", "PLR0917", "FBT001", "FBT002"]
+# The demo notebook reports its progress to the reader.
+"demo/**" = ["T20"]
+
+[tool.ruff.lint.mccabe]
+# Lock in the current ceiling next to the CRAP gate.
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 6
 
 [tool.ruff.lint.isort]
 known-first-party = ["geoparser"]

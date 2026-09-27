@@ -61,7 +61,10 @@ class SessionRepository(BaseRepository[AnnotatorSession]):
 
     @classmethod
     def create_from_json(
-        cls, db: DBSession, json_str: str, keep_id: bool = False
+        cls,
+        db: DBSession,
+        json_str: str,
+        keep_id: bool = False,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
     ) -> AnnotatorSession:
         # Parse the JSON input
         content = json.loads(json_str)

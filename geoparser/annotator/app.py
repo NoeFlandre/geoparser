@@ -1,11 +1,11 @@
 import json
-import os
 import threading
 import typing as t
 import uuid
 import webbrowser
 from datetime import datetime
 from io import StringIO
+from pathlib import Path
 
 import uvicorn
 from fastapi import Depends, FastAPI, Form, Request, Response, UploadFile, status
@@ -67,7 +67,7 @@ app = FastAPI(
 )
 app.mount(
     "/static",
-    StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")),
+    StaticFiles(directory=Path(__file__).parent / "static"),
     name="static",
 )
 # Starlette types a handler's second parameter as bare Exception, while the
@@ -94,9 +94,7 @@ app.add_exception_handler(
     ToponymOverlapException,
     toponym_overlap_exception_handler,  # ty: ignore[invalid-argument-type]
 )
-templates = Jinja2Templates(
-    directory=os.path.join(os.path.dirname(__file__), "templates")
-)
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 spacy_models = list(get_installed_models())
 
@@ -144,7 +142,7 @@ def annotate(
     # Response, not HTMLResponse: this route redirects when the session or
     # document is missing.
 ) -> Response:
-    global current_gazetteer_name
+    global current_gazetteer_name  # noqa: PLW0603 - single-user app state; replaced by app.state in a later refactor
 
     try:
         session = get_session(db, session_id)
@@ -163,24 +161,23 @@ def annotate(
                 url=app.url_path_for("annotate", session_id=session.id, doc_index=0),
                 status_code=status.HTTP_302_FOUND,
             )
-        else:
-            # If there is no document to begin with, render without documents
-            return templates.TemplateResponse(
-                request=request,
-                name="html/annotate.html",
-                context={
-                    "doc": None,
-                    "doc_index": None,
-                    "pre_annotated_text": None,
-                    "total_docs": 0,
-                    "gazetteer": session.gazetteer,
-                    "documents": [],
-                    "total_toponyms": 0,
-                    "annotated_toponyms": 0,
-                    "session_id": session.id,
-                    "spacy_models": spacy_models,
-                },
-            )
+        # If there is no document to begin with, render without documents
+        return templates.TemplateResponse(
+            request=request,
+            name="html/annotate.html",
+            context={
+                "doc": None,
+                "doc_index": None,
+                "pre_annotated_text": None,
+                "total_docs": 0,
+                "gazetteer": session.gazetteer,
+                "documents": [],
+                "total_toponyms": 0,
+                "annotated_toponyms": 0,
+                "session_id": session.id,
+                "spacy_models": spacy_models,
+            },
+        )
 
     # Prepare pre-annotated text
     pre_annotated_text = DocumentRepository.get_pre_annotated_text(db, doc.id)
@@ -213,7 +210,7 @@ def create_session(
     spacy_model: t.Annotated[str, Form()],
     db: t.Annotated[DBSession, Depends(get_db)],
 ) -> RedirectResponse:
-    global current_gazetteer_name
+    global current_gazetteer_name  # noqa: PLW0603 - single-user app state; replaced by app.state in a later refactor
 
     # Store the gazetteer name
     current_gazetteer_name = gazetteer
@@ -239,7 +236,7 @@ def create_from_legacy_files(
     files_failed = []
     for legacy_file in legacy_files:
         try:
-            with open(legacy_file) as infile:
+            with legacy_file.open() as infile:
                 content = infile.read()
             SessionRepository.create_from_json(db, content, keep_id=True)
             legacy_file.unlink()
@@ -258,7 +255,7 @@ def continue_session_cached(
     db: t.Annotated[DBSession, Depends(get_db)],
     session_id: t.Annotated[uuid.UUID, Form()],
 ) -> RedirectResponse:
-    global current_gazetteer_name
+    global current_gazetteer_name  # noqa: PLW0603 - single-user app state; replaced by app.state in a later refactor
 
     # Load selected session directly without creating a new session
     try:
@@ -281,7 +278,7 @@ def continue_session_file(
     db: t.Annotated[DBSession, Depends(get_db)],
     session_file: UploadFile | None = None,
 ) -> RedirectResponse:
-    global current_gazetteer_name
+    global current_gazetteer_name  # noqa: PLW0603 - single-user app state; replaced by app.state in a later refactor
 
     # Handle uploaded session file
     if session_file and session_file.filename:
@@ -296,10 +293,9 @@ def continue_session_file(
             app.url_path_for("annotate", session_id=session.id, doc_index=0),
             status_code=status.HTTP_302_FOUND,
         )
-    else:
-        return RedirectResponse(
-            app.url_path_for("continue_session"), status_code=status.HTTP_302_FOUND
-        )
+    return RedirectResponse(
+        app.url_path_for("continue_session"), status_code=status.HTTP_302_FOUND
+    )
 
 
 @app.delete("/session/{session_id}", tags=["session"])
@@ -385,7 +381,7 @@ def get_candidates(
     doc: t.Annotated[AnnotatorDocument, Depends(get_document)],
     candidates_request: CandidatesGet,
 ) -> dict[str, t.Any]:
-    global current_gazetteer_name
+    global current_gazetteer_name  # noqa: PLW0602 - reads the module-level gazetteer selection documented above
     # Set when the annotate page for this session was opened.
     if current_gazetteer_name is None:
         raise SessionNotFoundException
@@ -410,7 +406,8 @@ def create_annotation(
         additional={"document_id": doc.id},
     )
     SessionRepository.update(
-        db, AnnotatorSessionUpdate(id=session.id, last_updated=datetime.now())
+        db,
+        AnnotatorSessionUpdate(id=session.id, last_updated=datetime.now()),  # noqa: DTZ005 - the annotator DB stores naive local timestamps; mixing aware ones would break comparisons
     )
     return BaseResponse()
 
@@ -443,7 +440,8 @@ def overwrite_annotation(
 ) -> BaseResponse:
     ToponymRepository.annotate_many(db, doc, annotation)
     SessionRepository.update(
-        db, AnnotatorSessionUpdate(id=session.id, last_updated=datetime.now())
+        db,
+        AnnotatorSessionUpdate(id=session.id, last_updated=datetime.now()),  # noqa: DTZ005 - the annotator DB stores naive local timestamps; mixing aware ones would break comparisons
     )
     return BaseResponse()
 
@@ -475,7 +473,8 @@ def update_annotation(
     )
     # Update last_updated timestamp
     SessionRepository.update(
-        db, AnnotatorSessionUpdate(id=session.id, last_updated=datetime.now())
+        db,
+        AnnotatorSessionUpdate(id=session.id, last_updated=datetime.now()),  # noqa: DTZ005 - the annotator DB stores naive local timestamps; mixing aware ones would break comparisons
     )
     return BaseResponse()
 
@@ -497,7 +496,8 @@ def delete_annotation(
     ToponymRepository.delete(db, toponym.id)
     # Update last_updated timestamp
     SessionRepository.update(
-        db, AnnotatorSessionUpdate(id=session.id, last_updated=datetime.now())
+        db,
+        AnnotatorSessionUpdate(id=session.id, last_updated=datetime.now()),  # noqa: DTZ005 - the annotator DB stores naive local timestamps; mixing aware ones would break comparisons
     )
     return BaseResponse()
 
@@ -525,24 +525,30 @@ def put_session_settings(
 
 
 def run(
-    use_reloader=False, host="0.0.0.0", port=5000, open_browser=True
+    use_reloader=False,  # noqa: FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
+    host="127.0.0.1",
+    port=5000,
+    open_browser=True,  # noqa: FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
 ):  # pragma: no cover
     """
     Run the annotator web application.
 
     Args:
         use_reloader: Enable auto-reload for development (default: False)
-        host: Host to bind the server to (default: "0.0.0.0")
+        host: Host to bind the server to (default: "127.0.0.1", local only)
         port: Port to run the server on (default: 5000)
         open_browser: Automatically open browser on startup (default: True)
     """
 
     def launch_browser():
-        webbrowser.open_new(f"http://127.0.0.1:{port}/")
+        browser_host = "127.0.0.1" if host in ("0.0.0.0", "::") else host  # noqa: S104 - only maps a wildcard bind to a browsable loopback URL
+        webbrowser.open_new(f"http://{browser_host}:{port}/")
 
     create_db_and_tables(engine)
 
     if open_browser:
         threading.Timer(1.0, launch_browser).start()
 
-    uvicorn.run(app, host=host, port=port, reload=use_reloader)
+    # uvicorn can only reload an application it imports itself.
+    target = "geoparser.annotator.app:app" if use_reloader else app
+    uvicorn.run(target, host=host, port=port, reload=use_reloader)

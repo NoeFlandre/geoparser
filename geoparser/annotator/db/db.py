@@ -13,7 +13,7 @@ engine = create_engine(sqlite_url, echo=False)
 
 
 @event.listens_for(engine, "connect")
-def enable_foreign_keys(dbapi_connection: t.Any, connection_record: t.Any) -> None:
+def enable_foreign_keys(dbapi_connection: t.Any, connection_record: t.Any) -> None:  # noqa: ARG001 - signature fixed by SQLAlchemy's connect event
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
