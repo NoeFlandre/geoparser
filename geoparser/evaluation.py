@@ -239,10 +239,7 @@ def _located(
     return {
         annotation.identity: (annotation.latitude, annotation.longitude)
         for annotation in annotations
-        # pragma: no mutate start - both coordinates or neither (see
-        # Annotation), so `or` would behave identically.
         if annotation.latitude is not None and annotation.longitude is not None
-        # pragma: no mutate end
     }
 
 
