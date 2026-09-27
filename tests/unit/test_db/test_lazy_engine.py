@@ -58,6 +58,11 @@ class TestProjectDatabaseConfiguration:
         finally:
             engine.dispose()
 
+    def test_former_database_url_name_resolves_lazily(self, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", "sqlite:///lazy.db")
+
+        assert project_db.__getattr__("DATABASE_URL") == "sqlite:///lazy.db"
+
     def test_unknown_module_attributes_raise(self):
         with pytest.raises(AttributeError, match="no_such_name"):
             project_db.__getattr__("no_such_name")

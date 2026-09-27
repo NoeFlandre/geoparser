@@ -20,7 +20,12 @@ COPY pyproject.toml uv.lock README.md LICENSE ./
 RUN uv sync --locked --no-dev --no-install-project
 
 COPY geoparser ./geoparser
-RUN uv sync --locked --no-dev
+# The annotator lists installed spaCy models when a session is created, and
+# the runtime venv has no pip for `spacy download`, so install the small
+# English model (the one the test group locks) with uv.
+RUN uv sync --locked --no-dev \
+    && uv pip install --python /opt/venv/bin/python --no-deps \
+        "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0.tar.gz"
 
 RUN groupadd --gid 1000 geoparser \
     && useradd --uid 1000 --gid 1000 --create-home --shell /usr/sbin/nologin geoparser \

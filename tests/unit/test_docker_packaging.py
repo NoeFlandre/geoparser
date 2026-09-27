@@ -41,6 +41,15 @@ class TestRuntimeImage:
         assert re.search(r"(?m)^ENTRYPOINT\s+", dockerfile)
         assert re.search(r"(?m)^CMD\s+", dockerfile)
 
+    def test_installs_the_locked_spacy_model_the_annotator_offers(self):
+        """The annotator's session form needs at least one installed model."""
+        dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        url = re.search(r'en-core-web-sm = \{ url = "([^"]+)" \}', pyproject)
+
+        assert url is not None
+        assert f"en_core_web_sm @ {url.group(1)}" in dockerfile
+
     def test_compose_install_and_annotator_share_persistent_data(self):
         compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
         services = compose["services"]
