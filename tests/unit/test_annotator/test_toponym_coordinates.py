@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import pytest
 from pyproj.exceptions import ProjError
 from shapely.errors import GEOSException
+from shapely.geometry import Point
 
 from geoparser.annotator.db.crud.toponym import ToponymRepository
 
@@ -60,14 +61,27 @@ def test_coordinate_conversion_returns_none_for_missing_geometry():
 
 
 @pytest.mark.unit
-def test_coordinate_conversion_preserves_wgs84_centroid_order():
+def test_coordinate_conversion_returns_none_for_empty_geometry():
+    """Empty geometries do not provide coordinates."""
+    feature = SimpleNamespace(geometry=Point(), crs="EPSG:4326")
+
+    assert ToponymRepository._get_wgs84_coordinates(cast(Any, feature)) == (None, None)
+
+
+@pytest.mark.unit
+def test_coordinate_conversion_preserves_wgs84_centroid_order(monkeypatch):
     """WGS84 centroids are returned in latitude-longitude order."""
+    from geoparser.annotator.db.crud import toponym
+
+    from_crs = Mock()
+    monkeypatch.setattr(toponym.Transformer, "from_crs", from_crs)
     feature = SimpleNamespace(
         geometry=SimpleNamespace(centroid=SimpleNamespace(x=2.0, y=48.0)),
         crs="EPSG:4326",
     )
 
     assert ToponymRepository._get_wgs84_coordinates(cast(Any, feature)) == (48.0, 2.0)
+    from_crs.assert_not_called()
 
 
 @pytest.mark.unit
@@ -77,13 +91,15 @@ def test_coordinate_conversion_transforms_projected_centroid(monkeypatch):
 
     transformer = Mock()
     transformer.transform.return_value = (2.0, 48.0)
-    monkeypatch.setattr(toponym.Transformer, "from_crs", Mock(return_value=transformer))
+    from_crs = Mock(return_value=transformer)
+    monkeypatch.setattr(toponym.Transformer, "from_crs", from_crs)
     feature = SimpleNamespace(
         geometry=SimpleNamespace(centroid=SimpleNamespace(x=100.0, y=200.0)),
         crs="EPSG:2056",
     )
 
     assert ToponymRepository._get_wgs84_coordinates(cast(Any, feature)) == (48.0, 2.0)
+    from_crs.assert_called_once_with("EPSG:2056", "EPSG:4326", always_xy=True)
     transformer.transform.assert_called_once_with(100.0, 200.0)
 
 

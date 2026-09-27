@@ -631,15 +631,33 @@ def test_an_imported_document_must_list_its_toponyms(db):
         '[{"filename": "a.txt", "spacy_model": "m", "text": "Paris"}]}'
     )
 
-    with pytest.raises(InvalidUploadException):
+    with pytest.raises(InvalidUploadException) as error:
         SessionRepository.create_from_json(db, content)
+
+    assert isinstance(error.value.__cause__, TypeError)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("toponyms", ["null", "{}", '"Paris"'])
+def test_imported_document_rejects_non_list_toponyms(db, toponyms):
+    content = (
+        '{"gazetteer": "geonames", "documents": [{"filename": "a.txt", '
+        '"spacy_model": "m", "text": "Paris", "toponyms": '
+        f"{toponyms}" + "}] }"
+    )
+
+    with pytest.raises(InvalidUploadException) as error:
+        SessionRepository.create_from_json(db, content)
+
+    assert isinstance(error.value.__cause__, TypeError)
 
 
 @pytest.mark.unit
 def test_imported_toponyms_are_kept(db):
     content = (
         '{"gazetteer": "geonames", "documents": [{"filename": "a.txt", '
-        '"spacy_model": "m", "text": "Paris", "toponyms": '
+        '"spacy_model": "m", "text": "Paris", "spacy_applied": false, '
+        '"toponyms": '
         '[{"text": "Paris", "start": 0, "end": 5, "loc_id": "1"}]}]}'
     )
 
@@ -655,5 +673,7 @@ def test_imported_toponyms_are_kept(db):
 def test_a_non_object_document_entry_is_an_invalid_upload(db, entry):
     content = f'{{"gazetteer": "geonames", "documents": [{entry}]}}'
 
-    with pytest.raises(InvalidUploadException):
+    with pytest.raises(InvalidUploadException) as error:
         SessionRepository.create_from_json(db, content)
+
+    assert isinstance(error.value.__cause__, TypeError)

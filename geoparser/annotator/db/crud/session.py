@@ -103,11 +103,17 @@ class SessionRepository(BaseRepository[AnnotatorSession]):
     ) -> AnnotatorDocumentCreate:
         """Validate one imported document and its toponym children."""
         if not isinstance(document_dict, dict):
+            # pragma: no mutate start - wording is not behavior; tests pin the
+            # TypeError and invalid-document handling.
             msg = "each imported document must be an object"
+            # pragma: no mutate end
             raise TypeError(msg)
         # An export always lists its toponyms, even when there are none.
         if not isinstance(document_dict.get("toponyms"), list):
+            # pragma: no mutate start - wording is not behavior; tests pin the
+            # TypeError and malformed-toponyms handling.
             msg = "each imported document must contain a toponyms list"
+            # pragma: no mutate end
             raise TypeError(msg)
         return AnnotatorDocumentCreate.model_validate(
             {**document_dict, "spacy_applied": True}
