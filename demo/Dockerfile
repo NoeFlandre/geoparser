@@ -21,10 +21,12 @@ COPY geoparser ./geoparser
 # en_core_web_trf needs the spacy-curated-transformers>=0.3.1,<1 plugin, which
 # the locked project dependencies install on this Python 3.12 image. The
 # model is installed with uv because the uv-built venv has no pip for
-# `spacy download` to call.
+# `spacy download` to call. SentenceTransformerResolver also loads the
+# xx_sent_ud_sm sentence splitter, pinned as in the test group.
 RUN uv sync --locked --no-dev --group demo \
     && uv pip install --python /opt/venv/bin/python --no-deps \
-        "en_core_web_trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl"
+        "en_core_web_trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl" \
+        "xx_sent_ud_sm @ https://github.com/explosion/spacy-models/releases/download/xx_sent_ud_sm-3.8.0/xx_sent_ud_sm-3.8.0.tar.gz"
 
 WORKDIR /workspace
 COPY demo/demo.ipynb ./demo.ipynb

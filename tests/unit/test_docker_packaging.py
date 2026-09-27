@@ -50,6 +50,15 @@ class TestRuntimeImage:
         assert url is not None
         assert f"en_core_web_sm @ {url.group(1)}" in dockerfile
 
+    def test_demo_installs_the_locked_sentence_splitter(self):
+        """The notebook's resolver loads xx_sent_ud_sm when it is built."""
+        dockerfile = (ROOT / "demo" / "Dockerfile").read_text(encoding="utf-8")
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        url = re.search(r'xx-sent-ud-sm = \{ url = "([^"]+)" \}', pyproject)
+
+        assert url is not None
+        assert f"xx_sent_ud_sm @ {url.group(1)}" in dockerfile
+
     def test_compose_install_and_annotator_share_persistent_data(self):
         compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
         services = compose["services"]
@@ -88,7 +97,6 @@ class TestDemoImage:
         assert "JUPYTER_TOKEN" in dockerfile
         assert "en_core_web_trf" in dockerfile
         assert "en_core_web_sm" not in dockerfile
-        assert "xx_sent_ud_sm" not in dockerfile
         assert "build-essential" not in dockerfile
         assert "curl" not in dockerfile
 
