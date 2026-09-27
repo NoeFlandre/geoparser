@@ -5,8 +5,9 @@ Tests the RecognitionService class with mocked recognizers.
 """
 
 import uuid
+from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -316,3 +317,147 @@ class TestRecognitionFailures:
         reference = service._create_reference_record(cast(Any, document), 0, 8, "r")
 
         assert reference["text"] is None
+
+
+@pytest.mark.unit
+class TestRecordReferencePredictions:
+    """Writing a recognizer's spans."""
+
+    @staticmethod
+    def _record(documents, predictions):
+        """Run the recorder, returning the reference and recognition writes."""
+        service = RecognitionService(Mock())
+        references, recognitions = [], []
+        with (
+            patch.object(
+                service,
+                "_create_reference_record",
+                side_effect=lambda d, start, end, r: references.append(
+                    (d.id, start, end)
+                ),
+            ),
+            patch.object(
+                service,
+                "_create_recognition_record",
+                side_effect=lambda d, r: recognitions.append(d),
+            ),
+        ):
+            service._record_reference_predictions(Mock(), documents, predictions, "rec")
+        return references, recognitions
+
+    def test_tolerates_fewer_predictions_than_documents(self):
+        """
+        A recognizer that returns too few results is not an error.
+
+        The documents it did cover are recorded and the rest are left for a
+        later run, rather than the whole batch failing.
+        """
+        # Arrange
+        documents = [SimpleNamespace(id="d1"), SimpleNamespace(id="d2")]
+
+        # Act
+        references, recognitions = self._record(documents, [[(0, 5)]])
+
+        # Assert
+        assert references == [("d1", 0, 5)]
+        assert recognitions == ["d1"]
+
+    def test_skips_a_none_prediction_and_keeps_going(self):
+        """
+        None means "could not process this document", not "stop".
+
+        Breaking out here would silently drop every later document whenever
+        one came back unprocessed.
+        """
+        # Arrange
+        documents = [
+            SimpleNamespace(id="d1"),
+            SimpleNamespace(id="d2"),
+            SimpleNamespace(id="d3"),
+        ]
+
+        # Act
+        references, recognitions = self._record(documents, [[(0, 1)], None, [(2, 3)]])
+
+        # Assert
+        assert references == [("d1", 0, 1), ("d3", 2, 3)]
+        assert recognitions == ["d1", "d3"]
+
+    def test_marks_a_document_processed_only_once_per_recognizer(self):
+        """Each covered document gets exactly one recognition record."""
+        # Arrange
+        documents = [SimpleNamespace(id="d1")]
+
+        # Act
+        _, recognitions = self._record(documents, [[(0, 1), (2, 3)]])
+
+        # Assert
+        assert recognitions == ["d1"]
+
+
+@pytest.mark.unit
+class TestRecognitionBatchPersistence:
+    """The services stage validated mappings in core bulk writes."""
+
+    def test_recognition_core_inserts_ordered_rows_without_orm_adds(self):
+        """References and the processing marker retain values and client IDs."""
+        ids = [uuid.uuid4() for _ in range(3)]
+        document = SimpleNamespace(id=uuid.uuid4(), text="Paris Berlin")
+        service = RecognitionService(Mock())
+
+        session = Mock()
+        with patch("geoparser.services.recognition.uuid.uuid4", side_effect=ids):
+            service._record_reference_predictions(
+                session, cast(Any, [document]), [[(0, 5), (6, 12)]], "rec"
+            )
+
+        assert len(session.execute.call_args_list) == 2
+        reference_statement, reference_rows = session.execute.call_args_list[0].args
+        recognition_statement, recognition_rows = session.execute.call_args_list[1].args
+        assert reference_statement.table.name == "reference"
+        assert recognition_statement.table.name == "recognition"
+        assert reference_rows == [
+            {
+                "id": ids[0],
+                "start": 0,
+                "end": 5,
+                "text": "Paris",
+                "document_id": document.id,
+                "recognizer_id": "rec",
+            },
+            {
+                "id": ids[1],
+                "start": 6,
+                "end": 12,
+                "text": "Berlin",
+                "document_id": document.id,
+                "recognizer_id": "rec",
+            },
+        ]
+        assert recognition_rows == [
+            {"id": ids[2], "document_id": document.id, "recognizer_id": "rec"}
+        ]
+        session.add_all.assert_not_called()
+        session.commit.assert_not_called()
+
+
+@pytest.mark.unit
+class TestRecognitionBatchStatusQueries:
+    """Status filtering uses one set-based query per service batch."""
+
+    def test_recognition_filters_documents_with_one_lookup(self):
+        """Document status checks do not query once per document."""
+        documents = [SimpleNamespace(id="d1"), SimpleNamespace(id="d2")]
+        service = RecognitionService(Mock())
+        session = Mock()
+
+        with patch(
+            "geoparser.services.recognition.RecognitionRepository.get_processed_document_ids",
+            return_value={"d2"},
+        ) as lookup:
+            remaining = service._filter_unprocessed_documents(
+                session, cast(Any, documents), "rec"
+            )
+
+        assert remaining == [documents[0]]
+        lookup.assert_called_once_with(session, ["d1", "d2"], "rec")

@@ -4,8 +4,10 @@ Unit tests for geoparser/services/resolution.py
 Tests the ResolutionService class with mocked resolvers.
 """
 
+import uuid
+from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -438,3 +440,326 @@ def test_training_reads_each_toponyms_location_once(mock_sentencetransformer_res
 
     assert (spans, pairs) == ([(0, 5)], [("geonames", "1")])
     assert reads.call_count == 1
+
+
+def _toponym(start: int, end: int, gazetteer: str | None = None, identifier: str = ""):
+    """A reference, optionally resolved to a gazetteer feature."""
+    location = (
+        SimpleNamespace(gazetteer_name=gazetteer, identifier=identifier)
+        if gazetteer
+        else None
+    )
+    return SimpleNamespace(start=start, end=end, location=location)
+
+
+def _document(text: str, toponyms: list) -> Any:
+    """A document stub carrying only what the service reads."""
+    return SimpleNamespace(text=text, toponyms=toponyms)
+
+
+@pytest.mark.unit
+class TestAnnotatedPairs:
+    """Extracting one document's resolved toponyms."""
+
+    def test_pairs_each_span_with_its_referent(self):
+        """Spans and referents come back aligned, in document order."""
+        # Arrange
+        doc = _document(
+            "Paris and Berlin",
+            [_toponym(0, 5, "geonames", "1"), _toponym(10, 16, "geonames", "2")],
+        )
+
+        # Act
+        spans, referents = ResolutionService._annotated_pairs(doc)
+
+        # Assert
+        assert spans == [(0, 5), (10, 16)]
+        assert referents == [("geonames", "1"), ("geonames", "2")]
+
+    def test_drops_toponyms_that_were_never_resolved(self):
+        """An unresolved toponym contributes neither a span nor a referent."""
+        # Arrange
+        doc = _document(
+            "Paris and Nowhere",
+            [_toponym(0, 5, "geonames", "1"), _toponym(10, 17)],
+        )
+
+        # Act
+        spans, referents = ResolutionService._annotated_pairs(doc)
+
+        # Assert
+        assert spans == [(0, 5)]
+        assert referents == [("geonames", "1")]
+
+    def test_returns_two_empty_lists_for_an_unannotated_document(self):
+        """Nothing resolved means nothing to train on."""
+        # Arrange
+        doc = _document("Nothing here", [_toponym(0, 7)])
+
+        # Act
+        spans, referents = ResolutionService._annotated_pairs(doc)
+
+        # Assert
+        assert spans == []
+        assert referents == []
+
+
+@pytest.mark.unit
+class TestFitDataFlow:
+    """What reaches the resolver's own fit method."""
+
+    @staticmethod
+    def _service_with_resolver():
+        """A service whose resolver records how fit was called."""
+        resolver = Mock()
+        resolver.name = "TestResolver"
+        return ResolutionService(resolver), resolver
+
+    def test_passes_texts_references_and_referents_in_step(self):
+        """The three lists line up index for index."""
+        # Arrange
+        service, resolver = self._service_with_resolver()
+        documents = [
+            _document("Paris", [_toponym(0, 5, "geonames", "1")]),
+            _document("Berlin", [_toponym(0, 6, "geonames", "2")]),
+        ]
+
+        # Act
+        service.fit(documents)
+
+        # Assert
+        texts, references, referents = resolver.fit.call_args.args
+        assert texts == ["Paris", "Berlin"]
+        assert references == [[(0, 5)], [(0, 6)]]
+        assert referents == [[("geonames", "1")], [("geonames", "2")]]
+
+    def test_skips_documents_with_no_resolved_toponyms(self):
+        """A document with nothing annotated is left out of training."""
+        # Arrange
+        service, resolver = self._service_with_resolver()
+        documents = [
+            _document("Paris", [_toponym(0, 5, "geonames", "1")]),
+            _document("Unannotated", [_toponym(0, 5)]),
+        ]
+
+        # Act
+        service.fit(documents)
+
+        # Assert
+        texts, references, referents = resolver.fit.call_args.args
+        assert texts == ["Paris"]
+        assert references == [[(0, 5)]]
+        assert referents == [[("geonames", "1")]]
+
+    def test_forwards_training_parameters(self):
+        """Extra keyword arguments reach the resolver untouched."""
+        # Arrange
+        service, resolver = self._service_with_resolver()
+        documents = [_document("Paris", [_toponym(0, 5, "geonames", "1")])]
+
+        # Act
+        service.fit(documents, epochs=7, output_path="/tmp/out")
+
+        # Assert
+        assert resolver.fit.call_args.kwargs == {"epochs": 7, "output_path": "/tmp/out"}
+
+    def test_rejects_a_resolver_that_cannot_be_trained(self):
+        """A resolver without a fit method is reported by name."""
+        # Arrange
+        resolver = SimpleNamespace(name="ManualResolver")
+        service = ResolutionService(cast(Any, resolver))
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="ManualResolver"):
+            service.fit([_document("Paris", [_toponym(0, 5, "geonames", "1")])])
+
+
+@pytest.mark.unit
+class TestRecordReferentPredictions:
+    """Writing a resolver's referents."""
+
+    @staticmethod
+    def _record(references, predictions):
+        """Run the recorder, returning the referent and resolution writes."""
+        service = ResolutionService(Mock())
+        referents, resolutions = [], []
+        with (
+            patch.object(
+                service,
+                "_create_referent_record",
+                side_effect=lambda ref, g, i, r: referents.append((ref, g, i)),
+            ),
+            patch.object(
+                service,
+                "_create_resolution_record",
+                side_effect=lambda ref, r: resolutions.append(ref),
+            ),
+        ):
+            service._record_referent_prediction_groups(
+                Mock(), [references], [predictions], "res"
+            )
+        return referents, resolutions
+
+    def test_tolerates_fewer_referents_than_references(self):
+        """A short prediction list leaves the remaining references alone."""
+        # Arrange
+        references = [
+            SimpleNamespace(id="r1", start=0, end=1),
+            SimpleNamespace(id="r2", start=2, end=3),
+        ]
+
+        # Act
+        referents, resolutions = self._record(references, [("geonames", "1")])
+
+        # Assert
+        assert referents == [("r1", "geonames", "1")]
+        assert resolutions == ["r1"]
+
+    def test_skips_an_unresolved_reference_and_keeps_going(self):
+        """A None referent does not end the document's processing."""
+        # Arrange
+        references = [
+            SimpleNamespace(id="r1"),
+            SimpleNamespace(id="r2"),
+            SimpleNamespace(id="r3"),
+        ]
+
+        # Act
+        referents, resolutions = self._record(
+            references, [("geonames", "1"), None, ("geonames", "3")]
+        )
+
+        # Assert
+        assert referents == [("r1", "geonames", "1"), ("r3", "geonames", "3")]
+        assert resolutions == ["r1", "r3"]
+
+    def test_records_the_gazetteer_and_identifier_it_was_given(self):
+        """Both halves of the referent reach the repository."""
+        # Arrange
+        references = [SimpleNamespace(id="r1")]
+
+        # Act
+        referents, _ = self._record(references, [("swissnames3d", "42")])
+
+        # Assert
+        assert referents == [("r1", "swissnames3d", "42")]
+
+
+@pytest.mark.unit
+class TestReferentValidation:
+    """Checking a predicted referent against the installed gazetteer."""
+
+    @staticmethod
+    def _create(gazetteer_name, identifier, found=True):
+        """Run the record creation, returning the Gazetteer mock."""
+        service = ResolutionService(Mock())
+        feature = SimpleNamespace(identifier=identifier) if found else None
+        with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
+            gazetteer.return_value.find.return_value = feature
+            service._create_referent_record(
+                uuid.uuid4(), gazetteer_name, identifier, "res"
+            )
+        return gazetteer
+
+    def test_looks_the_identifier_up_in_the_named_gazetteer(self):
+        """
+        The lookup uses both halves of the predicted referent.
+
+        Opening the wrong gazetteer, or looking up the wrong identifier, would
+        either reject a valid prediction or accept a bogus one, depending on
+        what happened to be installed.
+        """
+        # Act
+        gazetteer = self._create("swissnames3d", "42")
+
+        # Assert
+        gazetteer.assert_called_once_with("swissnames3d")
+        gazetteer.return_value.find.assert_called_once_with("42")
+
+    def test_rejects_an_identifier_the_gazetteer_does_not_have(self):
+        """An unknown feature is an error naming both the id and gazetteer."""
+        # Act & Assert
+        with pytest.raises(ValueError, match=r"'999'.*'geonames'"):
+            self._create("geonames", "999", found=False)
+
+
+@pytest.mark.unit
+class TestResolutionBatchPersistence:
+    """The services stage validated mappings in core bulk writes."""
+
+    def test_resolution_core_inserts_ordered_rows_without_orm_adds(self):
+        """Referents and resolution markers retain values and client IDs."""
+        ids = [uuid.uuid4() for _ in range(4)]
+        references = [
+            SimpleNamespace(id=uuid.uuid4()),
+            SimpleNamespace(id=uuid.uuid4()),
+        ]
+        service = ResolutionService(Mock())
+        feature = SimpleNamespace(identifier="123")
+        session = Mock()
+
+        with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
+            gazetteer.return_value.find.return_value = feature
+            with patch("geoparser.services.resolution.uuid.uuid4", side_effect=ids):
+                service._record_referent_prediction_groups(
+                    session,
+                    cast(Any, [references]),
+                    [[("geonames", "123"), ("geonames", "123")]],
+                    "res",
+                )
+
+        assert len(session.execute.call_args_list) == 2
+        referent_statement, referent_rows = session.execute.call_args_list[0].args
+        resolution_statement, resolution_rows = session.execute.call_args_list[1].args
+        assert referent_statement.table.name == "referent"
+        assert resolution_statement.table.name == "resolution"
+        assert referent_rows == [
+            {
+                "id": ids[0],
+                "reference_id": references[0].id,
+                "gazetteer_name": "geonames",
+                "feature_identifier": "123",
+                "resolver_id": "res",
+            },
+            {
+                "id": ids[2],
+                "reference_id": references[1].id,
+                "gazetteer_name": "geonames",
+                "feature_identifier": "123",
+                "resolver_id": "res",
+            },
+        ]
+        assert resolution_rows == [
+            {"id": ids[1], "reference_id": references[0].id, "resolver_id": "res"},
+            {"id": ids[3], "reference_id": references[1].id, "resolver_id": "res"},
+        ]
+        session.add_all.assert_not_called()
+        session.commit.assert_not_called()
+
+
+@pytest.mark.unit
+class TestResolutionBatchStatusQueries:
+    """Status filtering uses one set-based query per service batch."""
+
+    def test_resolution_filters_references_with_one_lookup(self):
+        """Reference status checks do not query once per reference."""
+        references = [
+            SimpleNamespace(id="r1", start=0, end=1),
+            SimpleNamespace(id="r2", start=2, end=3),
+        ]
+        documents = [SimpleNamespace(text="text", references=references)]
+        service = ResolutionService(Mock())
+        session = Mock()
+
+        with patch(
+            "geoparser.services.resolution.ResolutionRepository.get_processed_reference_ids",
+            return_value={"r2"},
+        ) as lookup:
+            texts, boundaries, remaining = service._collect_unprocessed(
+                session, cast(Any, documents), "res"
+            )
+
+        assert texts == ["text"]
+        assert boundaries == [[(0, 1)]]
+        assert remaining == [[references[0]]]
+        lookup.assert_called_once_with(session, ["r1", "r2"], "res")
