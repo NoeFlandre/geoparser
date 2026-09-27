@@ -41,14 +41,22 @@ class TestRuntimeImage:
         assert re.search(r"(?m)^ENTRYPOINT\s+", dockerfile)
         assert re.search(r"(?m)^CMD\s+", dockerfile)
 
-    def test_installs_the_locked_spacy_model_the_annotator_offers(self):
-        """The annotator's session form needs at least one installed model."""
+    @pytest.mark.parametrize(
+        ("package", "source"),
+        [
+            # The annotator's session form lists installed models.
+            ("en_core_web_sm", "en-core-web-sm"),
+            # The default parse resolver loads the sentence splitter.
+            ("xx_sent_ud_sm", "xx-sent-ud-sm"),
+        ],
+    )
+    def test_installs_the_locked_spacy_models_it_needs(self, package, source):
         dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        url = re.search(r'en-core-web-sm = \{ url = "([^"]+)" \}', pyproject)
+        url = re.search(rf'{source} = \{{ url = "([^"]+)" \}}', pyproject)
 
         assert url is not None
-        assert f"en_core_web_sm @ {url.group(1)}" in dockerfile
+        assert f"{package} @ {url.group(1)}" in dockerfile
 
     def test_demo_installs_the_locked_sentence_splitter(self):
         """The notebook's resolver loads xx_sent_ud_sm when it is built."""
