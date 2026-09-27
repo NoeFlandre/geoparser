@@ -269,6 +269,7 @@ also_copy = [
     ".dockerignore",
     "CITATION.cff",
     "Dockerfile",
+    "compose.yaml",
     "mkdocs.yml",
 ]
 
