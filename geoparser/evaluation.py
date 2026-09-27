@@ -25,16 +25,20 @@ class Annotation:
     def __post_init__(self) -> None:
         """Reject spans and locations that cannot describe an annotation."""
         if isinstance(self.start, bool) or not isinstance(self.start, int):
-            raise TypeError("start offset must be an integer")
+            msg = "start offset must be an integer"
+            raise TypeError(msg)
         if isinstance(self.end, bool) or not isinstance(self.end, int):
-            raise TypeError("end offset must be an integer")
+            msg = "end offset must be an integer"
+            raise TypeError(msg)
         if self.start < 0 or self.end <= self.start:
-            raise ValueError("annotation span must satisfy 0 <= start < end")
+            msg = "annotation span must satisfy 0 <= start < end"
+            raise ValueError(msg)
 
         latitude = self.latitude
         longitude = self.longitude
         if (latitude is None) != (longitude is None):
-            raise ValueError("latitude and longitude must be provided together")
+            msg = "latitude and longitude must be provided together"
+            raise ValueError(msg)
         if latitude is None or longitude is None:
             return
         if (
@@ -43,13 +47,14 @@ class Annotation:
             or isinstance(longitude, bool)
             or not isinstance(longitude, (int, float))
         ):
-            raise TypeError("latitude and longitude must be numeric coordinates")
+            msg = "latitude and longitude must be numeric coordinates"
+            raise TypeError(msg)
         if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
-            raise ValueError(
-                "coordinates must have latitude in [-90, 90] and longitude in [-180, 180]"
-            )
+            msg = "coordinates must have latitude in [-90, 90] and longitude in [-180, 180]"
+            raise ValueError(msg)
         if not math.isfinite(latitude) or not math.isfinite(longitude):
-            raise ValueError("coordinates must be finite")
+            msg = "coordinates must be finite"
+            raise ValueError(msg)
 
     @property
     def span(self) -> tuple[int, int]:
@@ -93,21 +98,23 @@ def _validate_gold_annotations(annotations: Sequence[Annotation]) -> None:
                 previous_identifier is not None
                 and previous_identifier != annotation.identifier
             ):
-                raise ValueError(
+                msg = (
                     "conflicting gold annotations for span "
                     f"{identity}: identifiers {previous_identifier!r} and "
                     f"{annotation.identifier!r}"
                 )
+                raise ValueError(msg)
             identifiers[identity] = annotation.identifier
 
         if annotation.latitude is not None and annotation.longitude is not None:
             location = (annotation.latitude, annotation.longitude)
             previous_location = locations.get(identity)
             if previous_location is not None and previous_location != location:
-                raise ValueError(
+                msg = (
                     "conflicting gold annotations for span "
                     f"{identity}: coordinates {previous_location!r} and {location!r}"
                 )
+                raise ValueError(msg)
             locations[identity] = location
 
 
@@ -119,7 +126,8 @@ def _validate_unresolved_error_km(value: float) -> None:
         or value <= 0
         or (isinstance(value, float) and not math.isfinite(value))
     ):
-        raise ValueError("unresolved_error_km must be a finite positive number")
+        msg = "unresolved_error_km must be a finite positive number"
+        raise ValueError(msg)
 
 
 def _ratio(numerator: int, denominator: int) -> float:
@@ -274,7 +282,8 @@ def accuracy_at_km(
         or threshold_km < 0
         or (isinstance(threshold_km, float) and not math.isfinite(threshold_km))
     ):
-        raise ValueError("threshold_km must be a finite non-negative number")
+        msg = "threshold_km must be a finite non-negative number"
+        raise ValueError(msg)
     errors = resolution_errors_km(
         expected, predicted, unresolved_error_km=unresolved_error_km
     )
