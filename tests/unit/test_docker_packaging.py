@@ -68,7 +68,7 @@ class TestRuntimeImage:
         assert install["volumes"] == annotator["volumes"]
         assert install["volumes"] == ["geoparser-data:/data"]
         assert "geoparser-data" in compose["volumes"]
-        assert "8000:8000" in annotator["ports"]
+        assert annotator["ports"] == ["127.0.0.1:8000:8000"]
         assert annotator["command"] == [
             "annotator",
             "--host",

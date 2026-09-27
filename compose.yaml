@@ -21,7 +21,9 @@ services:
     image: geoparser:local
     command:
       [annotator, --host, 0.0.0.0, --port, "8000", --no-browser]
-    ports: ["8000:8000"]
+    # The annotator has no authentication: publish it on loopback only. Use
+    # "8000:8000" to expose it to the network deliberately.
+    ports: ["127.0.0.1:8000:8000"]
     volumes: [geoparser-data:/data]
     environment:
       GEOPARSER_DATA_DIR: /data/geoparser
