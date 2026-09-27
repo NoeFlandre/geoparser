@@ -271,6 +271,10 @@ also_copy = [
     "Dockerfile",
     "compose.yaml",
     "mkdocs.yml",
+    # Local link targets of README.md, checked by the packaging tests.
+    "ROADMAP.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
 ]
 
 [tool.coverage.report]
