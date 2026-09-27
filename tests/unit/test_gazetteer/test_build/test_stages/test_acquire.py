@@ -608,3 +608,40 @@ class TestChecksums:
             acquirer._stream_download(
                 self.URL, acquirer.downloads_directory / "places.csv"
             )
+
+
+@pytest.mark.unit
+def test_encoded_response_is_not_checked_against_its_encoded_length(
+    acquirer, monkeypatch
+):
+    """Content-Length counts encoded bytes; iter_content yields decoded ones."""
+    download_path = acquirer.downloads_directory / "places.csv"
+
+    class GzipResponse:
+        def __init__(self):
+            self.headers = {"Content-Length": "4", "Content-Encoding": "gzip"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def raise_for_status(self):
+            return None
+
+        def iter_content(self, chunk_size):
+            yield b"1,Paris\n"
+
+    requested = {}
+
+    def fake_get(url, **kwargs):
+        requested.update(kwargs)
+        return GzipResponse()
+
+    monkeypatch.setattr(requests, "get", fake_get)
+
+    path = acquirer._stream_download("https://example.com/places.csv", download_path)
+
+    assert path.read_bytes() == b"1,Paris\n"
+    assert requested["headers"] == {"Accept-Encoding": "identity"}

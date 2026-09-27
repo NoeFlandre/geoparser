@@ -19,9 +19,12 @@ RUN uv sync --locked --no-dev --no-install-project --group demo
 
 COPY geoparser ./geoparser
 # en_core_web_trf needs the spacy-curated-transformers>=0.3.1,<1 plugin, which
-# the locked project dependencies install on this Python 3.12 image.
+# the locked project dependencies install on this Python 3.12 image. The
+# model is installed with uv because the uv-built venv has no pip for
+# `spacy download` to call.
 RUN uv sync --locked --no-dev --group demo \
-    && uv run --no-sync python -m spacy download en_core_web_trf
+    && uv pip install --python /opt/venv/bin/python --no-deps \
+        "en_core_web_trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl"
 
 WORKDIR /workspace
 COPY demo/demo.ipynb ./demo.ipynb

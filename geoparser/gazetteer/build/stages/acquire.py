@@ -151,7 +151,12 @@ class Acquirer:
         received_size = 0
 
         try:
-            with requests.get(url, stream=True, timeout=REQUEST_TIMEOUT) as response:
+            with requests.get(
+                url,
+                stream=True,
+                timeout=REQUEST_TIMEOUT,
+                headers={"Accept-Encoding": "identity"},
+            ) as response:
                 response.raise_for_status()
                 content_length = response.headers.get("Content-Length")
                 total_size = int(content_length) if content_length is not None else 0
@@ -173,7 +178,14 @@ class Acquirer:
                                 digest.update(chunk)
                             progress_bar.update(len(chunk))
 
-                if content_length is not None and received_size != total_size:
+                # Content-Length counts encoded bytes, but iter_content yields
+                # decoded ones, so the sizes only compare for identity bodies.
+                encoding = response.headers.get("Content-Encoding", "identity")
+                if (
+                    content_length is not None
+                    and encoding.lower() == "identity"
+                    and received_size != total_size
+                ):
                     msg = (
                         f"Downloaded {received_size} bytes but Content-Length "
                         f"declared {total_size} bytes"
