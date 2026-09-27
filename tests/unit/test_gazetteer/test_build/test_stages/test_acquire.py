@@ -133,6 +133,25 @@ class TestDownload:
         assert path.read_bytes() == content
         assert not get_mock.called
 
+    def test_redownloads_when_cache_metadata_is_not_utf8(self, acquirer, requests_mock):
+        """Invalid sidecar encoding marks a cached download as stale."""
+        url = "https://example.com/places.csv"
+        content = b"OLD"
+        download_path = acquirer.downloads_directory / "places.csv"
+        download_path.write_bytes(content)
+        download_path.with_name(f"{download_path.name}.meta").write_bytes(b"\xff")
+        assert Acquirer._read_download_metadata(download_path) is None
+        requests_mock.head(
+            url,
+            headers={"content-length": str(len(content)), "etag": '"v1"'},
+        )
+        get_mock = requests_mock.get(url, content=b"NEW", headers={"etag": '"v1"'})
+
+        path = acquirer._download_file(url)
+
+        assert get_mock.called
+        assert path.read_bytes() == b"NEW"
+
     def test_redownloads_same_size_file_when_etag_changes(
         self, acquirer, requests_mock
     ):

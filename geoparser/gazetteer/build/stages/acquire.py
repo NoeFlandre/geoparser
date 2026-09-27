@@ -285,7 +285,7 @@ class Acquirer:
         """Read a download's validator sidecar, treating invalid data as stale."""
         try:
             metadata = json.loads(cls._metadata_path(path).read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             return None
         return metadata if isinstance(metadata, dict) else None
 
