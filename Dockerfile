@@ -8,6 +8,10 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH="/opt/venv/bin:$PATH" \
+    GEOPARSER_DATA_DIR=/data/geoparser \
+    HF_HOME=/data/hf \
+    HF_HUB_CACHE=/data/hf/hub \
+    HF_DATASETS_CACHE=/data/hf/datasets \
     PYTHONUNBUFFERED=1
 
 # Install locked runtime dependencies before copying source so dependency
@@ -16,6 +20,23 @@ COPY pyproject.toml uv.lock README.md LICENSE ./
 RUN uv sync --locked --no-dev --no-install-project
 
 COPY geoparser ./geoparser
-RUN uv sync --locked --no-dev
+# The annotator lists installed spaCy models when a session is created, and
+# the runtime venv has no pip for `spacy download`, so install the small
+# English model with uv, plus the xx_sent_ud_sm sentence splitter that the
+# default parse resolver loads (both as locked in the test group).
+RUN uv sync --locked --no-dev \
+    && uv pip install --python /opt/venv/bin/python --no-deps \
+        "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0.tar.gz" \
+        "xx_sent_ud_sm @ https://github.com/explosion/spacy-models/releases/download/xx_sent_ud_sm-3.8.0/xx_sent_ud_sm-3.8.0.tar.gz"
 
-CMD ["python", "-m", "geoparser", "--help"]
+RUN groupadd --gid 1000 geoparser \
+    && useradd --uid 1000 --gid 1000 --create-home --shell /usr/sbin/nologin geoparser \
+    && mkdir -p /data/geoparser /data/hf \
+    && chown -R 1000:1000 /data
+
+VOLUME ["/data"]
+EXPOSE 8000
+USER 1000:1000
+
+ENTRYPOINT ["python", "-m", "geoparser"]
+CMD ["--help"]

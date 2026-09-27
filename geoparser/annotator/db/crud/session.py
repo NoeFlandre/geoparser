@@ -3,6 +3,7 @@ import typing as t
 import uuid
 
 from fastapi.encoders import jsonable_encoder
+from pydantic import ValidationError
 from sqlmodel import Session as DBSession
 
 from geoparser.annotator.db.crud.base import BaseRepository
@@ -15,8 +16,10 @@ from geoparser.annotator.db.models.session import (
     AnnotatorSessionDownload,
     AnnotatorSessionUpdate,
 )
-from geoparser.annotator.db.models.toponym import AnnotatorToponymCreate
-from geoparser.annotator.exceptions import SessionNotFoundException
+from geoparser.annotator.exceptions import (
+    InvalidUploadException,
+    SessionNotFoundException,
+)
 
 
 class SessionRepository(BaseRepository[AnnotatorSession]):
@@ -66,30 +69,78 @@ class SessionRepository(BaseRepository[AnnotatorSession]):
         json_str: str,
         keep_id: bool = False,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
     ) -> AnnotatorSession:
-        # Parse the JSON input
+        try:
+            content = cls._parse_json_content(json_str)
+            session = cls._session_create_from_import(content)
+            additional = cls._session_import_additional(content, keep_id=keep_id)
+        except (
+            json.JSONDecodeError,
+            KeyError,
+            TypeError,
+            ValueError,
+            ValidationError,
+        ) as error:
+            msg = "Invalid session JSON: required fields are missing or malformed."
+            raise InvalidUploadException(msg) from error
+
+        return cls.create(db, session, additional=additional)
+
+    @staticmethod
+    def _parse_json_content(json_str: str) -> dict[str, t.Any]:
+        """Load and check the outer structure of a serialized session."""
         content = json.loads(json_str)
-        session = AnnotatorSessionCreate.model_validate(
-            {
-                **content,
-                "documents": [
-                    AnnotatorDocumentCreate.model_validate(
-                        {
-                            **document_dict,
-                            "toponyms": [
-                                AnnotatorToponymCreate.model_validate(toponym_dict)
-                                for toponym_dict in document_dict["toponyms"]
-                            ],
-                            "spacy_applied": True,
-                        }
-                    )
-                    for document_dict in content["documents"]
-                ],
-            }
+        if not isinstance(content, dict):
+            msg = "session JSON must contain an object"
+            raise TypeError(msg)
+        if not isinstance(content.get("documents"), list):
+            msg = "session JSON must contain a documents list"
+            raise TypeError(msg)
+        return content
+
+    @classmethod
+    def _document_create_from_import(
+        cls, document_dict: dict[str, t.Any]
+    ) -> AnnotatorDocumentCreate:
+        """Validate one imported document and its toponym children."""
+        if not isinstance(document_dict, dict):
+            # pragma: no mutate start - TypeError text is not behavior; tests pin
+            # the exception type and invalid-document handling.
+            msg = "each imported document must be an object"
+            raise TypeError(msg)
+            # pragma: no mutate end
+        # An export always lists its toponyms, even when there are none.
+        if not isinstance(document_dict.get("toponyms"), list):
+            # pragma: no mutate start - TypeError text is not behavior; tests pin
+            # the exception type and malformed-toponyms handling.
+            msg = "each imported document must contain a toponyms list"
+            raise TypeError(msg)
+            # pragma: no mutate end
+        return AnnotatorDocumentCreate.model_validate(
+            {**document_dict, "spacy_applied": True}
         )
+
+    @classmethod
+    def _session_create_from_import(
+        cls, content: dict[str, t.Any]
+    ) -> AnnotatorSessionCreate:
+        """Validate a session and materialize its nested document inputs."""
+        documents = [
+            cls._document_create_from_import(document_dict)
+            for document_dict in content["documents"]
+        ]
+        return AnnotatorSessionCreate.model_validate(
+            {**content, "documents": documents}
+        )
+
+    @staticmethod
+    def _session_import_additional(
+        content: dict[str, t.Any], *, keep_id: bool
+    ) -> dict[str, uuid.UUID]:
+        """Return imported database fields not represented in the create model."""
         additional = {}
         if keep_id and (session_id := content.get("session_id")):
             additional["id"] = uuid.UUID(session_id)
-        return cls.create(db, session, additional=additional)
+        return additional
 
     @classmethod
     def read(cls, db: DBSession, id: uuid.UUID) -> AnnotatorSession:

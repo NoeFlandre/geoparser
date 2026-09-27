@@ -56,6 +56,12 @@ class TestAnnotatorApp:
         # Assert
         assert schema["paths"]
 
+    def test_server_entrypoint_module_imports(self):
+        """The process launcher imports without starting a server or browser."""
+        from geoparser.annotator.server import run
+
+        assert callable(run)
+
 
 @pytest.mark.unit
 class TestDocumentRepositoryDefaults:

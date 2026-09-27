@@ -98,6 +98,7 @@ class SourceConfig(BaseModel):
     url: str | None = None
     path: str | None = None
     file: str
+    sha256: str | None = None
 
     # Tabular options
     delimiter: str | None = None
@@ -131,6 +132,18 @@ class SourceConfig(BaseModel):
             )
             raise ValueError(msg)
         return value
+
+    @field_validator("sha256")
+    @classmethod
+    def validate_sha256(cls, value: str | None) -> str | None:
+        """Normalize and validate an optional source file checksum."""
+        if value is None:
+            return None
+        normalized = value.lower()
+        if not re.fullmatch(r"[0-9a-f]{64}", normalized):
+            msg = "sha256 must be a 64-character hexadecimal SHA-256 digest"
+            raise ValueError(msg)
+        return normalized
 
     @model_validator(mode="after")
     def validate_source(self) -> SourceConfig:

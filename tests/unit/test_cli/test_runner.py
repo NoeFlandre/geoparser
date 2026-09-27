@@ -94,7 +94,7 @@ class TestInstallErrors:
 class TestAnnotatorOptions:
     """Test that annotator flags reach ``run``."""
 
-    @patch("geoparser.annotator.app.run")
+    @patch("geoparser.annotator.server.run")
     def test_flags_are_passed_through(self, mock_run):
         result = runner.invoke(
             app,
@@ -114,7 +114,7 @@ class TestAnnotatorOptions:
             use_reloader=True, host="0.0.0.0", port=8080, open_browser=False
         )
 
-    @patch("geoparser.annotator.app.run")
+    @patch("geoparser.annotator.server.run")
     def test_default_host_is_localhost(self, mock_run):
         result = runner.invoke(app, ["annotator"])
 

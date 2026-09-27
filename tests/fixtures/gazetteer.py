@@ -2,9 +2,9 @@
 Gazetteer fixtures for testing.
 
 Provides fixtures for working with the Andorra gazetteer in tests. The
-gazetteer is built once per test session into a temporary gazetteers
-directory; individual tests activate it by pointing the
-``GEOPARSER_GAZETTEERS_DIR`` environment variable at that directory.
+gazetteer is built once per test session into a temporary application data
+directory; individual tests activate it by pointing ``GEOPARSER_DATA_DIR`` at
+that directory.
 """
 
 import os
@@ -25,35 +25,40 @@ def andorra_config_path() -> Path:
 
 
 @pytest.fixture(scope="session")
-def session_gazetteers_dir(tmp_path_factory, andorra_config_path: Path) -> Path:
+def session_geoparser_data_dir(tmp_path_factory, andorra_config_path: Path) -> Path:
     """
     Build the Andorra gazetteer artifact once for the whole test session.
 
     Returns:
-        Path to a temporary gazetteers directory containing the artifact
+        Path to a temporary application data directory containing the artifact
     """
     from geoparser.gazetteer.build import GazetteerBuilder
 
-    directory = tmp_path_factory.mktemp("gazetteers")
-    original = os.environ.get("GEOPARSER_GAZETTEERS_DIR")
-    os.environ["GEOPARSER_GAZETTEERS_DIR"] = str(directory)
+    directory = tmp_path_factory.mktemp("geoparser-data")
+    original_data_dir = os.environ.get("GEOPARSER_DATA_DIR")
+    original_gazetteers_dir = os.environ.get("GEOPARSER_GAZETTEERS_DIR")
+    os.environ["GEOPARSER_DATA_DIR"] = str(directory)
+    os.environ.pop("GEOPARSER_GAZETTEERS_DIR", None)
     try:
         GazetteerBuilder().build(andorra_config_path)
     finally:
-        if original is None:
-            os.environ.pop("GEOPARSER_GAZETTEERS_DIR", None)
+        if original_data_dir is None:
+            os.environ.pop("GEOPARSER_DATA_DIR", None)
         else:
-            os.environ["GEOPARSER_GAZETTEERS_DIR"] = original
+            os.environ["GEOPARSER_DATA_DIR"] = original_data_dir
+        if original_gazetteers_dir is not None:
+            os.environ["GEOPARSER_GAZETTEERS_DIR"] = original_gazetteers_dir
     return directory
 
 
 @pytest.fixture(scope="function")
-def andorra_gazetteer(session_gazetteers_dir: Path, monkeypatch) -> None:
+def andorra_gazetteer(session_geoparser_data_dir: Path, monkeypatch) -> None:
     """
     Make the pre-built Andorra gazetteer available to the test.
 
-    Points the gazetteers directory at the session-scoped build so that
+    Points the application data directory at the session-scoped build so that
     ``Gazetteer("andorranames")`` resolves to the test artifact instead of
     any gazetteers installed on the machine.
     """
-    monkeypatch.setenv("GEOPARSER_GAZETTEERS_DIR", str(session_gazetteers_dir))
+    monkeypatch.setenv("GEOPARSER_DATA_DIR", str(session_geoparser_data_dir))
+    monkeypatch.delenv("GEOPARSER_GAZETTEERS_DIR", raising=False)

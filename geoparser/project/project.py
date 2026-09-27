@@ -405,7 +405,7 @@ class Project:
         """
         # Load JSON file
         file_path = Path(path)
-        with open(file_path) as f:  # noqa: PTH123 - tests substitute builtins.open for the annotation file
+        with open(file_path, encoding="utf-8") as f:  # noqa: PTH123 - tests substitute builtins.open for the annotation file
             data = json.load(f)
 
         # Extract gazetteer name from annotations

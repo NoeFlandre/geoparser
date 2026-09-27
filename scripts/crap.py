@@ -26,9 +26,8 @@ from coverage import Coverage
 from coverage.exceptions import NoSource
 from radon.complexity import cc_visit
 
-# Mirrors [tool.coverage.run] omit: the annotator is a server-rendered UI that
-# the test suite does not measure, so it has no coverage to compute CRAP from.
-DEFAULT_OMIT = ("geoparser/annotator",)
+# The default CRAP run measures the full package, including the annotator.
+DEFAULT_OMIT: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

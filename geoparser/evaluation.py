@@ -1,8 +1,40 @@
 """Pure evaluation metrics for recognition and resolution pilots."""
 
 import math
+import typing as t
 from collections.abc import Sequence
 from dataclasses import dataclass
+
+
+def _is_integer(value: object) -> bool:
+    """Whether a value is an int, excluding bool."""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_number(value: object) -> bool:
+    """Whether a value is an int or float, excluding bool."""
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _is_finite_number(value: object) -> bool:
+    """Whether a value is a finite int or float, excluding bool."""
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
+
+
+def _validate_coordinates(latitude: float, longitude: float) -> None:
+    """Require numeric coordinates within the WGS 84 ranges."""
+    if not (_is_number(latitude) and _is_number(longitude)):
+        msg = "latitude and longitude must be numeric coordinates"
+        raise TypeError(msg)
+    # NaN compares false and infinities fall outside the range, so this
+    # also rejects non-finite coordinates.
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        msg = "coordinates must have latitude in [-90, 90] and longitude in [-180, 180]"
+        raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +53,34 @@ class Annotation:
     """Where the annotation places the span. Gold data often gives coordinates
     without a gazetteer identifier, and two gazetteers disagree on identifiers
     for the same place, so distance is what compares across them."""
+
+    def __post_init__(self) -> None:
+        """Reject spans and locations that cannot describe an annotation."""
+        self._validate_span()
+        self._validate_location()
+
+    def _validate_span(self) -> None:
+        """Require integer offsets that bound a non-empty span."""
+        if not _is_integer(self.start):
+            msg = "start offset must be an integer"
+            raise TypeError(msg)
+        if not _is_integer(self.end):
+            msg = "end offset must be an integer"
+            raise TypeError(msg)
+        if self.start < 0 or self.end <= self.start:
+            msg = "annotation span must satisfy 0 <= start < end"
+            raise ValueError(msg)
+
+    def _validate_location(self) -> None:
+        """Require both coordinates or neither, and valid ones when given."""
+        latitude = self.latitude
+        longitude = self.longitude
+        if (latitude is None) != (longitude is None):
+            msg = "latitude and longitude must be provided together"
+            raise ValueError(msg)
+        if latitude is None or longitude is None:
+            return
+        _validate_coordinates(latitude, longitude)
 
     @property
     def span(self) -> tuple[int, int]:
@@ -50,6 +110,44 @@ def _resolved_pairs(
         for annotation in annotations
         if annotation.identifier is not None
     }
+
+
+def _record_unique(
+    seen: dict[Identity, t.Any], identity: Identity, value: t.Any, kind: str
+) -> None:
+    """Remember a span's value, rejecting a different one for the same span."""
+    previous = seen.get(identity)
+    if previous is not None and previous != value:
+        msg = (
+            "conflicting gold annotations for span "
+            f"{identity}: {kind} {previous!r} and {value!r}"
+        )
+        raise ValueError(msg)
+    seen[identity] = value
+
+
+def _validate_gold_annotations(annotations: Sequence[Annotation]) -> None:
+    """Reject one gold span assigned multiple identifiers or locations."""
+    identifiers: dict[Identity, str] = {}
+    locations: dict[Identity, tuple[float, float]] = {}
+    for annotation in annotations:
+        if annotation.identifier is not None:
+            _record_unique(
+                identifiers, annotation.identity, annotation.identifier, "identifiers"
+            )
+        # pragma: no mutate start - Annotation guarantees both coordinates or
+        # neither, so `or` here would behave identically.
+        if annotation.latitude is not None and annotation.longitude is not None:
+            # pragma: no mutate end
+            location = (annotation.latitude, annotation.longitude)
+            _record_unique(locations, annotation.identity, location, "coordinates")
+
+
+def _validate_unresolved_error_km(value: float) -> None:
+    """Require a finite, positive penalty for an unplaced gold span."""
+    if not (_is_finite_number(value) and value > 0):
+        msg = "unresolved_error_km must be a finite positive number"
+        raise ValueError(msg)
 
 
 def _ratio(numerator: int, denominator: int) -> float:
@@ -90,6 +188,7 @@ def resolution_accuracy(
     expected: Sequence[Annotation], predicted: Sequence[Annotation]
 ) -> float:
     """Measure exact span-and-identifier matches against resolved gold pairs."""
+    _validate_gold_annotations(expected)
     expected_pairs = _resolved_pairs(expected)
     predicted_pairs = _resolved_pairs(predicted)
     correct = len(expected_pairs & predicted_pairs)
@@ -166,6 +265,8 @@ def resolution_errors_km(
     Returns:
         Distance errors in kilometres, in descending order
     """
+    _validate_unresolved_error_km(unresolved_error_km)
+    _validate_gold_annotations(expected)
     predictions = _located(predicted)
     errors = [
         haversine_km(latitude, longitude, *predictions[identity])
@@ -195,6 +296,9 @@ def accuracy_at_km(
     Returns:
         The fraction placed close enough, where an empty comparison is perfect
     """
+    if not (_is_finite_number(threshold_km) and threshold_km >= 0):
+        msg = "threshold_km must be a finite non-negative number"
+        raise ValueError(msg)
     errors = resolution_errors_km(
         expected, predicted, unresolved_error_km=unresolved_error_km
     )
@@ -246,11 +350,12 @@ def area_under_error_curve(
     """
     Summarize the whole error distribution as one number, lower being better.
 
-    Errors are compressed with ``ln(1 + error)`` and normalized by
-    ``ln(1 + MAX_ERROR_KM)``, then averaged. The log scale is what makes the
-    number informative: on a linear scale a few hemisphere-scale mistakes
-    would drown out every difference between a 5 km and a 500 km error, which
-    is the range an improvement actually moves.
+    Errors are capped at ``MAX_ERROR_KM``, compressed with
+    ``ln(1 + error)``, normalized by ``ln(1 + MAX_ERROR_KM)``, and averaged.
+    An unplaced toponym receives ``unresolved_error_km`` before that cap. The
+    log scale makes the number informative: on a linear scale a few
+    hemisphere-scale mistakes would drown out every difference between a 5 km
+    and a 500 km error, which is the range an improvement actually moves.
 
     This follows the shape of the AUC used in the toponym resolution
     literature, but the exact normalization here is this repository's own --
@@ -270,5 +375,14 @@ def area_under_error_curve(
     )
     if not errors:
         return 0.0
-    ceiling = math.log(1 + unresolved_error_km)
-    return sum(math.log(1 + error) / ceiling for error in errors) / len(errors)
+    if unresolved_error_km == MAX_ERROR_KM:
+        # Preserve the legacy default's exact floating-point rounding.
+        ceiling = math.log(1 + MAX_ERROR_KM)
+        return sum(
+            math.log(1 + min(error, MAX_ERROR_KM)) / ceiling for error in errors
+        ) / len(errors)
+
+    ceiling = math.log1p(MAX_ERROR_KM)
+    return sum(
+        math.log1p(min(error, MAX_ERROR_KM)) / ceiling for error in errors
+    ) / len(errors)

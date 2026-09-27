@@ -147,7 +147,8 @@ def test_runtime_packaging_is_locked_and_does_not_copy_local_state() -> None:
     dockerignore_content = dockerignore.read_text(encoding="utf-8")
     assert "python:3.12-slim" in dockerfile_content
     assert "uv sync --locked --no-dev" in dockerfile_content
-    assert 'CMD ["python", "-m", "geoparser", "--help"]' in dockerfile_content
+    assert 'ENTRYPOINT ["python", "-m", "geoparser"]' in dockerfile_content
+    assert 'CMD ["--help"]' in dockerfile_content
     assert ".git" in dockerignore_content
     assert ".venv" in dockerignore_content
     assert "secrets" in dockerignore_content

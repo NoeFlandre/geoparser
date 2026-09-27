@@ -93,10 +93,13 @@ jupyter lab demo/demo.ipynb
 
 Expect the parse to take a few minutes: the transformer recognizer is slow on CPU, and there are 37 chapters. A GPU makes a substantial difference — see [Using a GPU](installation.md#using-a-gpu).
 
-Alternatively, a pre-built Docker image has everything including the gazetteer already installed:
+Alternatively, run the notebook in Docker. The demo image is built locally from this checkout and its lockfile; it does not contain the gazetteer, which is installed once into a persistent volume shared with the runtime image:
 
 ``` bash
-docker run -p 8888:8888 dguzh/geoparser-demo:latest
+export JUPYTER_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe())')"
+docker compose --profile demo build demo
+docker compose --profile install run --rm install
+docker compose --profile demo up demo
 ```
 
-Then open `http://localhost:8888` and run `demo.ipynb`. The image is convenient but large — around 10 GB compressed, expanding to roughly 30 GB, mostly the GeoNames gazetteer — so the first pull takes a while. Later runs start immediately.
+Then open `http://localhost:8888/lab/tree/demo.ipynb` and enter the value of `JUPYTER_TOKEN`. See `demo/README.md` in the repository for details.

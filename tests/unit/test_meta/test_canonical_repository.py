@@ -45,6 +45,10 @@ def _tracked_text_files() -> list[Path]:
             text=True,
         )
         candidates = [ROOT / name for name in listing.stdout.split("\0") if name]
+        if not candidates:
+            # mutmut's untracked ``mutants`` copy sits inside the checkout, so
+            # git answers successfully there but lists nothing.
+            raise FileNotFoundError(ROOT)
     except (OSError, subprocess.CalledProcessError):
         ignored_parts = {".git", ".hypothesis", ".pytest_cache", ".ruff_cache"}
         candidates = sorted(
