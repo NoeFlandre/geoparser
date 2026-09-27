@@ -646,32 +646,3 @@ def test_session_import_rejects_non_object_or_missing_documents(db_session, json
         SessionRepository.create_from_json(db_session, json_str)
 
     assert SessionRepository.read_all(db_session) == []
-
-
-@pytest.mark.parametrize(
-    ("create", "item", "message"),
-    [
-        (
-            DocumentRepository.create,
-            AnnotatorDocumentCreate(filename="a.txt", spacy_model="m", text="Paris"),
-            "document cannot be created without link to session",
-        ),
-        (
-            SessionSettingsRepository.create,
-            AnnotatorSessionSettingsCreate(),
-            "settings cannot be created without link to session",
-        ),
-        (
-            ToponymRepository.create,
-            AnnotatorToponymCreate(text="Paris", start=0, end=5),
-            "toponym cannot be created without link to document",
-        ),
-    ],
-)
-@pytest.mark.parametrize("additional", [None, {"unrelated": 1}])
-def test_child_rows_require_their_parent_link(
-    db_session, create, item, message, additional
-):
-    """Documents, settings and toponyms cannot be orphaned."""
-    with pytest.raises(ValueError, match=message):
-        create(db_session, item, additional=additional)

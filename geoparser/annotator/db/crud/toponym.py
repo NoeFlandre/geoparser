@@ -91,12 +91,15 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         toponym: AnnotatorToponymBase | AnnotatorToponymUpdate,
         document_id: uuid.UUID | str | None,
     ) -> bool:
-        if not cls._has_complete_overlap_span(toponym, document_id):
+        start, end = toponym.start, toponym.end
+        # A partial update that names no document, or leaves the span alone,
+        # cannot introduce an overlap.
+        if document_id is None or start is None or end is None:
             return True
 
         overlapping = db.exec(
             select(AnnotatorToponym).where(
-                *cls._overlap_filter_args(toponym, document_id)
+                *cls._overlap_filter_args(toponym, document_id, start, end)
             )
         ).all()
         if overlapping:
@@ -107,25 +110,13 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
         return True
 
     @staticmethod
-    def _has_complete_overlap_span(
-        toponym: AnnotatorToponymBase | AnnotatorToponymUpdate,
-        document_id: uuid.UUID | str | None,
-    ) -> bool:
-        """Return whether both the document and candidate span are known."""
-        return (
-            document_id is not None
-            and toponym.start is not None
-            and toponym.end is not None
-        )
-
-    @staticmethod
     def _overlap_filter_args(
         toponym: AnnotatorToponymBase | AnnotatorToponymUpdate,
-        document_id: uuid.UUID | str | None,
+        document_id: uuid.UUID | str,
+        start: int,
+        end: int,
     ) -> list[t.Any]:
         """Build the SQL filters while excluding an updated row by its ID."""
-        start = t.cast(int, toponym.start)
-        end = t.cast(int, toponym.end)
         filter_args = [
             AnnotatorToponym.document_id == document_id,
             (AnnotatorToponym.start < end) & (AnnotatorToponym.end > start),
@@ -176,7 +167,9 @@ class ToponymRepository(BaseRepository[AnnotatorToponym]):
                 return centroid.y, centroid.x  # lat, lon
 
             # Otherwise, transform to WGS84
+            # pragma: no mutate start - pyproj treats CRS names case-insensitively
             transformer = Transformer.from_crs(feature.crs, "EPSG:4326", always_xy=True)
+            # pragma: no mutate end
             lon, lat = transformer.transform(centroid.x, centroid.y)
         except (GEOSException, ProjError):
             return None, None

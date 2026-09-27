@@ -5,6 +5,8 @@ import pytest
 
 from geoparser.evaluation import (
     Annotation,
+    accuracy_at_km,
+    area_under_error_curve,
     recognition_f1,
     recognition_precision,
     recognition_recall,
@@ -193,3 +195,112 @@ def test_resolution_accuracy_rejects_conflicting_gold_identifiers_for_one_span()
 
 def test_resolution_accuracy_is_one_without_resolvable_gold_annotations() -> None:
     assert resolution_accuracy([], [Annotation(0, 4, "3041563")]) == 1.0
+
+
+# Exact contracts pinned for mutation testing.
+
+
+@pytest.mark.parametrize(
+    ("latitude", "longitude", "error", "message"),
+    [
+        (
+            "47",
+            8.0,
+            TypeError,
+            "latitude and longitude must be numeric coordinates",
+        ),
+        (
+            91.0,
+            8.0,
+            ValueError,
+            "coordinates must have latitude in [-90, 90] and longitude in [-180, 180]",
+        ),
+    ],
+)
+def test_coordinate_errors_are_exact(latitude, longitude, error, message) -> None:
+    with pytest.raises(error) as raised:
+        Annotation(0, 4, latitude=latitude, longitude=longitude)
+
+    assert str(raised.value) == message
+
+
+@pytest.mark.parametrize(("latitude", "longitude"), [(90.0, 0.0), (0.0, -180.0)])
+def test_the_closed_coordinate_bounds_are_accepted(latitude, longitude) -> None:
+    Annotation(0, 4, latitude=latitude, longitude=longitude)
+
+
+def test_conflicting_gold_identifiers_are_named_exactly() -> None:
+    gold = [Annotation(0, 4, identifier="a"), Annotation(0, 4, identifier="b")]
+
+    with pytest.raises(ValueError) as raised:
+        resolution_accuracy(gold, [])
+
+    assert str(raised.value) == (
+        "conflicting gold annotations for span (None, 0, 4): identifiers 'a' and 'b'"
+    )
+
+
+def test_conflicting_gold_coordinates_are_named_exactly() -> None:
+    gold = [
+        Annotation(0, 4, latitude=1.0, longitude=2.0),
+        Annotation(0, 4, latitude=3.0, longitude=4.0),
+    ]
+
+    with pytest.raises(ValueError) as raised:
+        accuracy_at_km(gold, [])
+
+    assert str(raised.value) == (
+        "conflicting gold annotations for span (None, 0, 4): "
+        "coordinates (1.0, 2.0) and (3.0, 4.0)"
+    )
+
+
+def test_invalid_unresolved_penalty_is_named_exactly() -> None:
+    with pytest.raises(ValueError) as raised:
+        accuracy_at_km([], [], unresolved_error_km=0)
+
+    assert str(raised.value) == "unresolved_error_km must be a finite positive number"
+
+
+def test_invalid_threshold_is_named_exactly() -> None:
+    with pytest.raises(ValueError) as raised:
+        accuracy_at_km([], [], threshold_km=-1)
+
+    assert str(raised.value) == "threshold_km must be a finite non-negative number"
+
+
+def test_a_zero_km_threshold_counts_exact_placements() -> None:
+    gold = [Annotation(0, 4, latitude=1.0, longitude=2.0)]
+
+    assert accuracy_at_km(gold, gold, threshold_km=0) == 1.0
+
+
+def test_area_under_error_curve_averages_over_every_toponym() -> None:
+    gold = [
+        Annotation(0, 4, latitude=0.0, longitude=0.0),
+        Annotation(5, 9, latitude=0.0, longitude=0.0),
+    ]
+    predicted = [Annotation(0, 4, latitude=0.0, longitude=0.0)]
+
+    assert area_under_error_curve(gold, predicted) == pytest.approx(0.5)
+
+
+def test_custom_penalty_curve_averages_over_every_toponym() -> None:
+    gold = [
+        Annotation(0, 4, latitude=0.0, longitude=0.0),
+        Annotation(5, 9, latitude=0.0, longitude=0.0),
+    ]
+    predicted = [Annotation(0, 4, latitude=0.0, longitude=0.0)]
+
+    assert area_under_error_curve(
+        gold, predicted, unresolved_error_km=50_000
+    ) == pytest.approx(0.5)
+
+
+def test_a_half_located_prediction_is_not_treated_as_located() -> None:
+    """Defensive: only annotations carrying both coordinates are placed."""
+    gold = [Annotation(0, 4, latitude=0.0, longitude=0.0)]
+    half = Annotation(0, 4, latitude=0.0, longitude=0.0)
+    object.__setattr__(half, "longitude", None)
+
+    assert accuracy_at_km(gold, [half]) == 0.0

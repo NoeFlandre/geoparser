@@ -32,7 +32,9 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
     def _read_uploaded_text(file: UploadFile, *, rewind: bool = False) -> str:
         filename = secure_filename(file.filename or "uploaded file")
         try:
+            # pragma: no mutate start - codec names are case-insensitive
             return file.file.read().decode("utf-8")
+            # pragma: no mutate end
         except UnicodeDecodeError as error:
             msg = f"Text file '{filename}' must be valid UTF-8."
             raise InvalidUploadException(msg) from error
@@ -185,7 +187,7 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
     def get_pre_annotated_text(cls, db: DBSession, id: uuid.UUID) -> str:
         document = cls.read(db, id)
         html_parts = []
-        last_idx = 0
+        last_idx = 0  # pragma: no mutate - text[None:] slices like text[0:]
         for toponym in document.toponyms:
             start_char = toponym.start
             end_char = toponym.end

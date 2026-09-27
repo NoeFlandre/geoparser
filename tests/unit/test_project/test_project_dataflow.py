@@ -203,6 +203,26 @@ class TestLoadAnnotations:
             project.load_annotations(str(path), "annotator_a", **kwargs)
         return create_documents, create_references, create_referents
 
+    def test_reads_the_export_as_utf8(self, tmp_path, monkeypatch):
+        """Exports are UTF-8 regardless of the platform's default encoding."""
+        import builtins
+
+        project = Project.__new__(Project)
+        path = self._export(tmp_path, [{"text": "Zürich", "toponyms": []}])
+        real_open = builtins.open
+        encodings = []
+
+        def recording_open(file, *args, **kwargs):
+            if str(file) == str(path):
+                encodings.append(kwargs.get("encoding"))
+            return real_open(file, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "open", recording_open)
+
+        self._load(project, path)
+
+        assert encodings == ["utf-8"]
+
     def test_registers_every_toponym_as_a_reference(self, tmp_path):
         """Spans come through per document, in file order."""
         # Arrange

@@ -18,7 +18,11 @@ def _is_number(value: object) -> bool:
 
 def _is_finite_number(value: object) -> bool:
     """Whether a value is a finite int or float, excluding bool."""
-    return _is_number(value) and math.isfinite(t.cast(float, value))
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
 
 
 def _validate_coordinates(latitude: float, longitude: float) -> None:
@@ -131,7 +135,10 @@ def _validate_gold_annotations(annotations: Sequence[Annotation]) -> None:
             _record_unique(
                 identifiers, annotation.identity, annotation.identifier, "identifiers"
             )
+        # pragma: no mutate start - Annotation guarantees both coordinates or
+        # neither, so `or` here would behave identically.
         if annotation.latitude is not None and annotation.longitude is not None:
+            # pragma: no mutate end
             location = (annotation.latitude, annotation.longitude)
             _record_unique(locations, annotation.identity, location, "coordinates")
 
@@ -232,7 +239,10 @@ def _located(
     return {
         annotation.identity: (annotation.latitude, annotation.longitude)
         for annotation in annotations
+        # pragma: no mutate start - both coordinates or neither (see
+        # Annotation), so `or` would behave identically.
         if annotation.latitude is not None and annotation.longitude is not None
+        # pragma: no mutate end
     }
 
 

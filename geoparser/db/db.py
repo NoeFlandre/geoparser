@@ -58,7 +58,8 @@ def get_engine() -> Engine:
     patched_engine = globals().get("engine")
     if patched_engine is not None:
         return patched_engine
-    engine = _engine
+    # A stale read here only costs taking the lock; the check inside decides.
+    engine = _engine  # pragma: no mutate
     if engine is None:
         with _engine_lock:
             engine = _engine
