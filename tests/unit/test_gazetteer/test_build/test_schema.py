@@ -500,7 +500,7 @@ class TestFromYaml:
         }
         assert shipped == set(expected)
         for name, disk in expected.items():
-            config = GazetteerConfig.from_yaml(configs_dir / name)
+            config = GazetteerConfig.from_yaml(str(configs_dir / name))
             assert config.disk == disk, name
 
     def test_documented_example_config_is_valid(self):

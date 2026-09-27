@@ -5,6 +5,7 @@ Tests the RecognitionService class with mocked recognizers.
 """
 
 import uuid
+from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
@@ -237,7 +238,9 @@ class TestRecognitionFailures:
         document = SimpleNamespace(id=uuid.uuid4(), text="New York is a city.")
         service = RecognitionService(mock_spacy_recognizer)
 
-        reference = service._create_reference_record(document, 0, 8, "recognizer")
+        reference = service._create_reference_record(
+            cast(Any, document), 0, 8, "recognizer"
+        )
 
         assert reference.text == "New York"
         assert reference.document_id == document.id
@@ -252,4 +255,7 @@ class TestRecognitionFailures:
         document = SimpleNamespace(id=uuid.uuid4())
         service = RecognitionService(mock_spacy_recognizer)
 
-        assert service._create_reference_record(document, 0, 8, "r").text is None
+        assert (
+            service._create_reference_record(cast(Any, document), 0, 8, "r").text
+            is None
+        )

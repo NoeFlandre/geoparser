@@ -42,6 +42,23 @@ def _candidate(identifier: str) -> Mock:
 class TestPrepareTrainingData:
     """Building sentence1/sentence2/label triples."""
 
+    def test_reuses_candidate_search_and_description_caches(self, resolver):
+        """Repeated training toponyms share their search and description work."""
+        candidate = _candidate("1")
+        resolver.gazetteer.search = Mock(return_value=[candidate])
+        resolver._generate_description = Mock(return_value="desc[1]")
+        with patch.object(resolver, "_extract_context", return_value="ctx"):
+            resolver._prepare_training_data(
+                ["Paris Paris"],
+                [[(0, 5), (6, 11)]],
+                [[("geonames", "1"), ("geonames", "1")]],
+            )
+
+        resolver.gazetteer.search.assert_called_once_with(
+            "Paris", "exact", limit=10000, tiers=1
+        )
+        resolver._generate_description.assert_called_once_with(candidate)
+
     @staticmethod
     def _prepare(resolver, texts, references, referents, candidates):
         """Run the builder with context and description generation stubbed."""

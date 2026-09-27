@@ -9,6 +9,7 @@ like a successful call.
 """
 
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import Mock
 
 import pytest
@@ -26,7 +27,7 @@ def _toponym(start: int, end: int, gazetteer: str | None = None, identifier: str
     return SimpleNamespace(start=start, end=end, location=location)
 
 
-def _document(text: str, toponyms: list) -> SimpleNamespace:
+def _document(text: str, toponyms: list) -> Any:
     """A document stub carrying only what the service reads."""
     return SimpleNamespace(text=text, toponyms=toponyms)
 
@@ -141,7 +142,7 @@ class TestFitDataFlow:
         """A resolver without a fit method is reported by name."""
         # Arrange
         resolver = SimpleNamespace(name="ManualResolver")
-        service = ResolutionService(resolver)
+        service = ResolutionService(cast(Any, resolver))
 
         # Act & Assert
         with pytest.raises(ValueError, match="ManualResolver"):

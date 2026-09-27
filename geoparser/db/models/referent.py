@@ -56,9 +56,9 @@ class Referent(ReferentBase, table=True):
             ValueError: If the referent's gazetteer is not installed
         """
         # Lazy import to avoid circular dependency
-        from geoparser.gazetteer.gazetteer import Gazetteer
+        from geoparser.gazetteer.gazetteer import get_gazetteer
 
-        return Gazetteer(self.gazetteer_name).find(self.feature_identifier)
+        return get_gazetteer(self.gazetteer_name).find(self.feature_identifier)
 
 
 class ReferentCreate(ReferentBase):

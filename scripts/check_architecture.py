@@ -91,7 +91,7 @@ class _ImportVisitor(ast.NodeVisitor):
 def _resolve_from_import(
     current: str,
     module: str | None,
-    dots: str | None,
+    dots: str,
     names: tuple[str, ...],
     packages: set[str],
 ) -> Iterable[str]:

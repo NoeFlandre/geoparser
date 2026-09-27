@@ -2,6 +2,7 @@
 
 import sys
 from types import ModuleType, SimpleNamespace
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -16,16 +17,16 @@ def _patch_module_classes(monkeypatch, **classes):
     package.__path__ = []
     modules = ModuleType("geoparser.modules")
 
-    def get_module_class(name):
+    def get_module_class(name: str) -> Any:
         if name not in classes:
             raise AttributeError(name)
         return classes[name]
 
-    modules.__getattr__ = get_module_class
+    modules.__dict__["__getattr__"] = get_module_class
     gazetteer = ModuleType("geoparser.gazetteer")
-    gazetteer.Gazetteer = Mock()
-    package.modules = modules
-    package.gazetteer = gazetteer
+    gazetteer.__dict__["Gazetteer"] = Mock()
+    package.__dict__["modules"] = modules
+    package.__dict__["gazetteer"] = gazetteer
     monkeypatch.setitem(sys.modules, "geoparser", package)
     monkeypatch.setitem(sys.modules, "geoparser.modules", modules)
     monkeypatch.setitem(sys.modules, "geoparser.gazetteer", gazetteer)
@@ -119,8 +120,8 @@ def test_prior_uses_the_prior_resolver_on_the_upstream_model(monkeypatch):
         model_name=pipelines.UPSTREAM_RESOLVER_MODEL,
         gazetteer_name="geonames",
         min_similarity=0.0,
-        population_weight=0.1,
-        inflection_fallback=True,
+        population_weight=0.3,
+        inflection_fallback=False,
     )
     resolver.transformer.to.assert_called_once_with("cuda")
 

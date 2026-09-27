@@ -17,7 +17,8 @@ def test_annotation_is_an_immutable_value_object() -> None:
     assert annotation == Annotation(2, 8, "3041563")
     assert annotation.span == (2, 8)
     with pytest.raises(FrozenInstanceError):
-        annotation.start = 3  # type: ignore[misc]
+        field_name = "start"
+        setattr(annotation, field_name, 3)
 
 
 def test_annotation_identity_is_the_span_until_a_document_qualifies_it() -> None:

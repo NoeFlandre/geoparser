@@ -20,6 +20,12 @@ class GLiNER2Recognizer(Recognizer):
     The model is asked for the configured entity types and returns the spans
     it found for each of them; those spans are flattened into one list of
     (start, end) offsets per document, in the order they appear in the text.
+
+    Texts longer than 10,000 characters use GLiNER2's long-document mode,
+    which scans fixed word chunks. This keeps GPU memory bounded: long inputs
+    can require excessive memory because attention cost grows rapidly with
+    input length, and noisy OCR can contain many more tokens per character.
+    Shorter texts are passed to the model whole.
     """
 
     NAME = "GLiNER2Recognizer"

@@ -195,12 +195,13 @@ class TestEvaluateDocument:
         """Run _evaluate_document with _best_referent stubbed."""
         seen = []
 
-        def _best(context, candidate_list, min_similarity, similarities=None):
-            seen.append(context)
+        def _best(context, candidate_list, min_similarity, similarities):
+            seen.append((context, similarities))
             return ("geonames", best) if best else None
 
+        scores = [[0.9] * len(c) if c else None for c in candidates]
         with patch.object(resolver, "_best_referent", side_effect=_best):
-            resolver._evaluate_document(contexts, candidates, results, 0.5)
+            resolver._evaluate_document(contexts, candidates, results, 0.5, scores)
         return seen
 
     def test_assigns_the_best_referent_to_an_unresolved_reference(self, resolver):
@@ -209,10 +210,11 @@ class TestEvaluateDocument:
         results = [None]
 
         # Act
-        self._evaluate(resolver, ["ctx"], [["cand"]], results)
+        seen = self._evaluate(resolver, ["ctx"], [["cand"]], results)
 
         # Assert
         assert results == [("geonames", "referent")]
+        assert seen == [("ctx", [0.9])]
 
     def test_leaves_a_reference_alone_when_nothing_is_similar_enough(self, resolver):
         """No candidate above the threshold means no referent."""
@@ -274,7 +276,7 @@ class TestEvaluateDocument:
             patch.object(resolver, "_best_referent", return_value=None),
             pytest.raises(ValueError),
         ):
-            resolver._evaluate_document(["a", "b"], [["cand"]], [None], 0.5)
+            resolver._evaluate_document(["a", "b"], [["cand"]], [None], 0.5, [None])
 
 
 @pytest.mark.unit
@@ -468,13 +470,8 @@ class TestBestReferent:
         candidates = [
             Mock(id=i, identifier=f"id-{i}") for i in range(len(similarities))
         ]
-        resolver.context_embeddings = {"ctx": "context-embedding"}
-        resolver.candidate_embeddings = {c.id: f"emb-{c.id}" for c in candidates}
         resolver.gazetteer_name = "geonames"
-        with patch.object(
-            resolver, "_calculate_similarities", return_value=similarities
-        ):
-            return resolver._best_referent("ctx", candidates, min_similarity)
+        return resolver._best_referent("ctx", candidates, min_similarity, similarities)
 
     def test_picks_the_most_similar_candidate(self, resolver):
         """

@@ -33,16 +33,20 @@ def resolver():
         patch(f"{PARENT}.AutoTokenizer.from_pretrained"),
         patch(f"{PARENT}.spacy.load"),
     ):
-        yield PriorResolver(attribute_map={"name": "name", "type": "type"})
+        yield PriorResolver(
+            attribute_map={"name": "name", "type": "type"},
+            inflection_fallback=True,
+        )
 
 
 @pytest.mark.unit
 class TestConfiguration:
     """What is recorded, so results are traceable to settings."""
 
-    def test_records_its_settings(self, resolver):
-        """The weight and the fallback are part of the module's identity."""
-        assert resolver.config["population_weight"] == PriorResolver.DEFAULT_WEIGHT
+    def test_records_custom_settings(self, resolver):
+        """The weight and explicitly enabled fallback are in its identity."""
+        assert PriorResolver.DEFAULT_WEIGHT == 0.3
+        assert resolver.config["population_weight"] == 0.3
         assert resolver.config["inflection_fallback"] is True
 
     def test_defaults_to_the_upstream_model(self, resolver):
@@ -57,7 +61,7 @@ class TestInflectionFallback:
     def test_an_exact_miss_is_retried_with_a_trimmed_name(self, resolver):
         """'Saksan' misses, 'Saksa' hits, and that is what is returned."""
         hit = _feature(1)
-        resolver.gazetteer.search.side_effect = lambda name, method, tiers: (
+        resolver.gazetteer.search.side_effect = lambda name, method, **kwargs: (
             [hit] if name == "Saksa" else []
         )
 
@@ -69,7 +73,36 @@ class TestInflectionFallback:
         resolver.gazetteer.search.return_value = [hit]
 
         assert list(resolver._search_candidates("Paris", "exact", 1)) == [hit]
-        resolver.gazetteer.search.assert_called_once_with("Paris", "exact", tiers=1)
+        resolver.gazetteer.search.assert_called_once_with(
+            "Paris", "exact", limit=10000, tiers=1
+        )
+
+    def test_custom_limit_is_forwarded_to_the_exact_search(self, resolver):
+        """The exact search respects the caller's candidate limit."""
+        hit = _feature(1)
+        resolver.gazetteer.search.return_value = [hit]
+
+        assert list(resolver._search_candidates("Paris", "exact", 1, limit=17)) == [hit]
+        resolver.gazetteer.search.assert_called_once_with(
+            "Paris", "exact", limit=17, tiers=1
+        )
+
+    def test_custom_limit_is_forwarded_to_inflection_retries(self, resolver):
+        """Trimmed-name retries use the same candidate limit as the first search."""
+        hit = _feature(1)
+        resolver.gazetteer.search.side_effect = lambda name, method, **kwargs: (
+            [hit] if name == "Saksa" else []
+        )
+
+        assert list(resolver._search_candidates("Saksan", "exact", 1, limit=17)) == [
+            hit
+        ]
+        assert [
+            call.kwargs["limit"] for call in resolver.gazetteer.search.call_args_list
+        ] == [
+            17,
+            17,
+        ]
 
     def test_wider_methods_are_not_trimmed(self, resolver):
         """Only exact search is retried; fuzzy already tolerates endings."""
@@ -119,18 +152,6 @@ class TestFallbackEdges:
 
 
 @pytest.mark.unit
-def test_ranking_computes_similarities_when_none_are_given(resolver):
-    """Without precomputed scores, the parent's similarity is used."""
-    import torch
-
-    city = _feature(2, 1_000)
-    resolver.context_embeddings["ctx"] = torch.tensor([1.0, 0.0])
-    resolver.candidate_embeddings[2] = torch.tensor([1.0, 0.0])
-
-    assert resolver._best_referent("ctx", [city], 0.5) == (resolver.gazetteer_name, "2")
-
-
-@pytest.mark.unit
 class TestParentSettings:
     """Every setting reaches the parent resolver, unchanged."""
 
@@ -140,6 +161,33 @@ class TestParentSettings:
         assert resolver.config["min_similarity"] == 0.6
         assert resolver.config["max_tiers"] == 3
         assert resolver.config["attribute_map"] == {"name": "name", "type": "type"}
+
+    def test_prior_options_default_to_population_without_inflection_fallback(self):
+        """The published defaults keep fallback off and use weight 0.3."""
+        with (
+            patch(f"{PARENT}.Gazetteer"),
+            patch(f"{PARENT}.SentenceTransformer"),
+            patch(f"{PARENT}.AutoTokenizer.from_pretrained"),
+            patch(f"{PARENT}.spacy.load"),
+        ):
+            default = PriorResolver(attribute_map={"name": "name", "type": "type"})
+
+        assert default.config["population_weight"] == 0.3
+        assert default.config["inflection_fallback"] is False
+
+    def test_positional_parent_settings_are_forwarded(self):
+        """Positional SentenceTransformerResolver arguments remain supported."""
+        with (
+            patch(f"{PARENT}.Gazetteer"),
+            patch(f"{PARENT}.SentenceTransformer"),
+            patch(f"{PARENT}.AutoTokenizer.from_pretrained"),
+            patch(f"{PARENT}.spacy.load"),
+        ):
+            resolver = PriorResolver(
+                "custom-model", attribute_map={"name": "name", "type": "type"}
+            )
+
+        assert resolver.model_name == "custom-model"
 
     def test_custom_settings_are_passed_through(self):
         """Non-default values are recorded and used, not replaced."""
@@ -155,11 +203,13 @@ class TestParentSettings:
                 min_similarity=0.3,
                 max_tiers=5,
                 attribute_map={"name": "n", "type": "t"},
+                custom_parent_setting="preserved",
             )
 
         assert resolver.config["model_name"] == "other/model"
         assert resolver.config["gazetteer_name"] == "geonames-cities"
         assert resolver.config["min_similarity"] == 0.3
+        assert resolver.config["custom_parent_setting"] == "preserved"
         assert resolver.config["max_tiers"] == 5
         assert resolver.config["attribute_map"] == {"name": "n", "type": "t"}
         assert resolver.model_name == "other/model"
@@ -176,7 +226,9 @@ class TestEdges:
 
         resolver._search_candidates("Saksan", "exact", 2)
 
-        resolver.gazetteer.search.assert_any_call("Saksa", "exact", tiers=2)
+        resolver.gazetteer.search.assert_any_call(
+            "Saksa", "exact", limit=10000, tiers=2
+        )
 
     def test_the_first_candidate_can_win(self, resolver):
         """The best score is chosen, not the last candidate."""

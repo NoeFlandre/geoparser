@@ -26,56 +26,46 @@ class PriorResolver(SentenceTransformerResolver):
 
     # Chosen so a million-person city gains about 0.06 of similarity: enough
     # to decide a near-tie between homonyms, too little to overturn context.
-    DEFAULT_WEIGHT = 0.1
+    DEFAULT_WEIGHT = 0.3
 
     def __init__(
         self,
-        model_name: str = "dguzh/geo-all-MiniLM-L6-v2",
-        gazetteer_name: str = "geonames",
-        min_similarity: float = 0.6,
-        max_tiers: int = 3,
-        attribute_map: dict | None = None,
+        *args,
         population_weight: float = DEFAULT_WEIGHT,
-        inflection_fallback: bool = True,
+        inflection_fallback: bool = False,
+        **kwargs,
     ):
         """
         Initialize the resolver.
 
         Args:
-            model_name: HuggingFace model name for SentenceTransformer
-            gazetteer_name: Name of the gazetteer to search
-            min_similarity: Raw similarity a candidate must reach; the prior
-                ranks candidates but cannot lift one over this threshold
-            max_tiers: Maximum number of tiers to expand through search methods
-            attribute_map: Optional custom attribute mapping for the gazetteer
+            *args: Positional arguments accepted by SentenceTransformerResolver
+            **kwargs: Keyword arguments accepted by SentenceTransformerResolver
             population_weight: How much the population prior counts
             inflection_fallback: Retry exact misses with trimmed names
         """
         super().__init__(
-            model_name=model_name,
-            gazetteer_name=gazetteer_name,
-            min_similarity=min_similarity,
-            max_tiers=max_tiers,
-            attribute_map=attribute_map,
+            *args,
             population_weight=population_weight,
             inflection_fallback=inflection_fallback,
+            **kwargs,
         )
         self.population_weight = population_weight
         self.inflection_fallback = inflection_fallback
 
     def _search_candidates(
-        self, name: str, method: str, tiers: int
+        self, name: str, method: str, tiers: int, limit: int = 10000
     ) -> tuple[Feature, ...]:
         """Search as the parent does, retrying an exact miss with trimmed names."""
         search = super()._search_candidates
-        found = search(name, method, tiers)
+        found = search(name, method, tiers, limit=limit)
         if found or not self._falls_back(method):
             return found
         return next(
             (
                 variant_found
                 for variant in inflection_variants(name)
-                if (variant_found := search(variant, method, tiers))
+                if (variant_found := search(variant, method, tiers, limit=limit))
             ),
             found,
         )
@@ -89,11 +79,9 @@ class PriorResolver(SentenceTransformerResolver):
         context: str,
         candidate_list: list[Feature],
         min_similarity: float,
-        similarities: list[float] | None = None,
+        similarities: list[float],
     ) -> tuple[str, str] | None:
         """Pick the candidate with the best similarity plus population prior."""
-        if similarities is None:
-            similarities = self._context_similarities(context, candidate_list)
         scores = combined_scores(
             similarities,
             [(candidate.data or {}).get("population") for candidate in candidate_list],
@@ -103,12 +91,3 @@ class PriorResolver(SentenceTransformerResolver):
         if similarities[best] < min_similarity:
             return None
         return self.gazetteer_name, candidate_list[best].identifier
-
-    def _context_similarities(
-        self, context: str, candidate_list: list[Feature]
-    ) -> list[float]:
-        """Score each candidate against the context, from cached embeddings."""
-        return self._calculate_similarities(
-            self.context_embeddings[context],
-            [self.candidate_embeddings[candidate.id] for candidate in candidate_list],
-        )

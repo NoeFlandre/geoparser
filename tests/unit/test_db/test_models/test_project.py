@@ -5,6 +5,7 @@ Tests the Project model, including creation, validation, and relationships.
 """
 
 import uuid
+from typing import Any, cast
 
 import pytest
 from pydantic import ValidationError
@@ -116,7 +117,7 @@ class TestProjectCreate:
         """Test that ProjectCreate validates required fields."""
         # Arrange & Act & Assert
         with pytest.raises(ValidationError):
-            ProjectCreate()  # Missing required 'name' field
+            cast(Any, ProjectCreate)()  # Missing required 'name' field
 
 
 @pytest.mark.unit
