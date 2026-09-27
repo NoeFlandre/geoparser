@@ -70,7 +70,9 @@ dev = [
     { include-group = "test" },
     { include-group = "docs" },
     { include-group = "demo" },
-    "deptry>=0.23.1,<0.24",
+    # scripts/benchmark/publish.py uploads to the Hub; declared here rather
+    # than relied on transitively through datasets.
+    "huggingface-hub>=0.36.2,<1",
 ]
 # Kept separate so CI can install the linters without pulling torch and the
 # CUDA stack; this is what keeps the lint job at a few seconds.
@@ -82,6 +84,7 @@ lint = [
     # with coverage; coverage also backs the combined report in CI.
     "radon>=6.0.1,<7",
     "coverage[toml]>=7.0,<8",
+    "deptry>=0.23.1,<0.24",
 ]
 test = [
     "toml>=0.10.2,<1",
@@ -129,6 +132,29 @@ packages = ["geoparser"]
 
 [tool.hatch.build.targets.sdist]
 include = ["geoparser", "LICENSE", "README.md", "ROADMAP.md", "CHANGELOG.md"]
+
+[tool.deptry]
+# The lint job runs deptry without installing the project, so import names
+# that differ from distribution names are spelled out here.
+package_module_name_map = { pyyaml = "yaml", huggingface-hub = "huggingface_hub" }
+
+[tool.deptry.per_rule_ignores]
+# DEP002: used without a direct import. accelerate, peft, protobuf and
+# sentencepiece are loaded at runtime by transformers/gliner2;
+# python-multipart backs FastAPI's form uploads; spacy-curated-transformers
+# registers the curated_transformer factory for spaCy's trf pipelines.
+DEP002 = [
+    "accelerate",
+    "peft",
+    "protobuf",
+    "python-multipart",
+    "sentencepiece",
+    "spacy-curated-transformers",
+]
+# DEP004: dev-only imports outside the package: scripts/crap.py (coverage,
+# radon), scripts/benchmark/publish.py (huggingface_hub) and the demo
+# notebook (plotly). None of them ship in the wheel.
+DEP004 = ["coverage", "huggingface_hub", "plotly", "radon"]
 
 [tool.ruff]
 line-length = 88

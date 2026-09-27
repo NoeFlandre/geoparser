@@ -63,18 +63,8 @@ def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI fla
             "dependencies",
             (
                 lock_command,
-                _uv(
-                    "deptry",
-                    "geoparser",
-                    "demo",
-                    "--per-rule-ignores",
-                    # These packages are loaded through entry points or by
-                    # other libraries rather than imported, so deptry cannot
-                    # see them being used; pyproject.toml says who needs each.
-                    "DEP002=accelerate|python-multipart|peft|protobuf"
-                    "|sentencepiece|spacy-curated-transformers,"
-                    "DEP004=plotly",
-                ),
+                # Ignores are documented in pyproject.toml's [tool.deptry].
+                _uv("deptry", "."),
             ),
             root,
         ),

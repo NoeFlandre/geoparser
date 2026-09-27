@@ -44,6 +44,9 @@ jobs:
       - name: ruff format
         run: uv run --no-sync ruff format --check --diff .
 
+      - name: deptry
+        run: uv run --no-sync deptry .
+
   ty:
     if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
     runs-on: ubuntu-latest

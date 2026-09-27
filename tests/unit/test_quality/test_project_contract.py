@@ -374,3 +374,46 @@ def test_quality_workflow_mutates_changed_python_modules_on_pull_requests() -> N
     assert any("changed_mutation_patterns.py" in command for command in commands)
     assert any("mutmut run" in command for command in commands)
     assert any("--max-no-tests 0" in command for command in commands)
+
+
+def test_deptry_is_installed_and_run_by_the_lightweight_lint_job() -> None:
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
+        project = tomllib.load(pyproject_file)
+    lint_dependencies = {
+        _package_name(dependency)
+        for dependency in project["dependency-groups"]["lint"]
+        if isinstance(dependency, str)
+    }
+    workflow = yaml.safe_load(
+        (PROJECT_ROOT / ".github/workflows/lint.yml").read_text(encoding="utf-8")
+    )
+    ruff_steps = workflow["jobs"]["ruff"]["steps"]
+    commands = [step.get("run", "") for step in ruff_steps]
+
+    assert "deptry" in lint_dependencies
+    assert any("deptry ." in command for command in commands)
+
+
+def test_deptry_ignores_only_documented_runtime_and_tool_dependencies() -> None:
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
+        project = tomllib.load(pyproject_file)
+    ignored = project["tool"]["deptry"]["per_rule_ignores"]
+
+    assert set(ignored["DEP002"]) == {
+        "accelerate",
+        "peft",
+        "protobuf",
+        "python-multipart",
+        "sentencepiece",
+        "spacy-curated-transformers",
+    }
+    assert "DEP003" not in ignored
+    assert set(ignored["DEP004"]) == {
+        "coverage",
+        "huggingface_hub",
+        "plotly",
+        "radon",
+    }
+    pyproject_text = (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "# DEP002:" in pyproject_text
+    assert "# DEP004:" in pyproject_text

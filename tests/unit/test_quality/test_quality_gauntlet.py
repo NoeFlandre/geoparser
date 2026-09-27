@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from scripts.quality_gauntlet import (
-    Stage,
     build_stages,
     cleanup_docker_image,
     main,
@@ -53,31 +52,19 @@ def test_quality_cli_accepts_skip_baseline(monkeypatch) -> None:
     assert "tests" in names
 
 
-def _dep002_ignores(stages: list[Stage]) -> set[str]:
-    dependencies = next(stage for stage in stages if stage.name == "dependencies")
-    deptry = next(command for command in dependencies.commands if "deptry" in command)
-    ignores = deptry[deptry.index("--per-rule-ignores") + 1]
-    rule = next(part for part in ignores.split(",") if part.startswith("DEP002="))
-    return set(rule.removeprefix("DEP002=").split("|"))
-
-
-def test_dependency_stage_ignores_only_entry_point_loaded_packages(
+def test_dependency_stage_uses_the_documented_pyproject_config(
     tmp_path: Path,
 ) -> None:
-    """deptry cannot see packages that a runtime loads through entry points.
+    """The gauntlet and the lint job read one deptry config from pyproject.
 
-    spacy-curated-transformers supplies the ``curated_transformer`` factory that
-    SpacyRecognizer names as a string, so it is used without ever being
-    imported. Pinning the set keeps the allowance from quietly widening.
+    The allowed ignores are pinned by the project contract tests; repeating them
+    on the command line would let the two lists drift apart.
     """
-    assert _dep002_ignores(build_stages(Path("/repo"), tmp_path)) == {
-        "accelerate",
-        "peft",
-        "protobuf",
-        "python-multipart",
-        "sentencepiece",
-        "spacy-curated-transformers",
-    }
+    stages = build_stages(Path("/repo"), tmp_path)
+    dependencies = next(stage for stage in stages if stage.name == "dependencies")
+    deptry = next(command for command in dependencies.commands if "deptry" in command)
+
+    assert deptry[deptry.index("deptry") :] == ("deptry", ".")
 
 
 def test_uv_quality_commands_do_not_resolve_network_dependencies(
