@@ -18,6 +18,8 @@ COPY pyproject.toml uv.lock README.md LICENSE ./
 RUN uv sync --locked --no-dev --no-install-project --group demo
 
 COPY geoparser ./geoparser
+# en_core_web_trf needs the spacy-curated-transformers>=0.3.1,<1 plugin, which
+# the locked project dependencies install on this Python 3.12 image.
 RUN uv sync --locked --no-dev --group demo \
     && uv run --no-sync python -m spacy download en_core_web_trf
 

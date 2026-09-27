@@ -20,6 +20,6 @@ docker compose --profile demo up demo
 
 Open [http://localhost:8888/lab/tree/demo.ipynb](http://localhost:8888/lab/tree/demo.ipynb) and enter the value of `JUPYTER_TOKEN` when prompted. The token is required; the container exits with an error if it is missing. Set `HF_TOKEN` in the shell only if a Hugging Face resource you use requires authentication.
 
-The notebook uses the `en_core_web_trf` spaCy model installed in the image. The install command above downloads GeoNames into the named volume once; the gazetteer is not baked into the image. `docker compose down` stops the services and keeps the named data volume.
+The notebook uses the `en_core_web_trf` spaCy model installed in the image. That transformer pipeline needs the `spacy-curated-transformers` plugin, which the image installs from the lockfile. The plugin has no Python 3.14 release yet; outside the image on that interpreter, use a non-transformer model for the requested language, for example `en_core_web_lg` for English. The install command above downloads GeoNames into the named volume once; the gazetteer is not baked into the image. `docker compose down` stops the services and keeps the named data volume.
 
 See the project [README](../README.md) for the Python and CLI workflows, citation metadata, data paths, and runtime container.

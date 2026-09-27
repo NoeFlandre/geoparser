@@ -122,3 +122,17 @@ class TestReadmeLinks:
         missing = [target for target in _links(readme) if not target.exists()]
 
         assert not missing, f"{readme.relative_to(ROOT)} has broken links: {missing}"
+
+    def test_docs_do_not_point_at_the_upstream_demo_image(self):
+        pages = [
+            ROOT / "README.md",
+            *ROOT.glob("demo/*.md"),
+            *ROOT.glob("docs/**/*.md"),
+        ]
+        stale = [
+            page.relative_to(ROOT)
+            for page in pages
+            if "dguzh/geoparser-demo" in page.read_text(encoding="utf-8")
+        ]
+
+        assert not stale, f"pages reference the upstream demo image: {stale}"
