@@ -13,6 +13,7 @@ not supposed to. This test asks mutmut itself which lines it will skip and
 fails when a pragma is not among them.
 """
 
+import ast
 from pathlib import Path
 
 import libcst as cst
@@ -100,6 +101,36 @@ class TestPragmaPlacement:
             "use `# pragma: no mutate start` / `end`, or a trailing pragma, "
             "instead of the open-ended block form:\n" + "\n".join(offenders)
         )
+
+    def test_import_validation_typeerror_messages_are_exempt_from_mutation(self):
+        """Removing an optional exception message does not change behavior."""
+        path = PACKAGE / "annotator/db/crud/session.py"
+        source = path.read_text("utf-8")
+        repository = next(
+            node
+            for node in ast.parse(source).body
+            if isinstance(node, ast.ClassDef) and node.name == "SessionRepository"
+        )
+        method = next(
+            node
+            for node in repository.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "_document_create_from_import"
+        )
+        message_lines = {
+            node.lineno
+            for node in ast.walk(method)
+            if isinstance(node, ast.Raise)
+            and isinstance(node.exc, ast.Call)
+            and isinstance(node.exc.func, ast.Name)
+            and node.exc.func.id == "TypeError"
+            and len(node.exc.args) == 1
+            and isinstance(node.exc.args[0], ast.Name)
+            and node.exc.args[0].id == "msg"
+        }
+
+        assert len(message_lines) == 2
+        assert message_lines <= _ignored(path, source)
 
     def test_no_line_is_exempt_without_a_marker_delimiting_it(self):
         """
