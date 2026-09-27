@@ -26,6 +26,52 @@ REQUEST_TIMEOUT = 30
 DOWNLOAD_CHUNK_SIZE = 8192
 
 
+# Ask for the stored bytes: Content-Length and sizes then describe the file.
+IDENTITY_ENCODING = {"Accept-Encoding": "identity"}
+
+
+def _is_identity(response: requests.Response) -> bool:
+    """Whether a response body is sent without a content encoding."""
+    return response.headers.get("Content-Encoding", "identity").lower() == "identity"
+
+
+def _declared_size(response: requests.Response) -> int | None:
+    """The Content-Length a response declares, rejecting negative values."""
+    content_length = response.headers.get("Content-Length")
+    if content_length is None:
+        return None
+    declared_size = int(content_length)
+    if declared_size < 0:
+        msg = "Content-Length cannot be negative"
+        raise ValueError(msg)
+    return declared_size
+
+
+def _check_received_size(
+    response: requests.Response, received_size: int, declared_size: int | None
+) -> None:
+    """Reject a truncated identity body."""
+    # Content-Length counts encoded bytes, but iter_content yields decoded
+    # ones, so the sizes only compare for identity bodies.
+    if declared_size is None or not _is_identity(response):
+        return
+    if received_size != declared_size:
+        msg = (
+            f"Downloaded {received_size} bytes but Content-Length "
+            f"declared {declared_size} bytes"
+        )
+        raise ValueError(msg)
+
+
+def _check_digest(url: str, digest: "hashlib._Hash | None", sha256: str | None) -> None:
+    """Reject a body whose SHA-256 differs from the configured digest."""
+    if digest is not None and digest.hexdigest() != sha256:
+        msg = (
+            f"SHA-256 mismatch for '{url}': expected {sha256}, got {digest.hexdigest()}"
+        )
+        raise ValueError(msg)
+
+
 class Acquirer:
     """
     Downloads and extracts gazetteer source files.
@@ -75,15 +121,21 @@ class Acquirer:
         if source_config.path is None:  # pragma: no cover - validate_source
             msg = f"Source '{source_config.name}' has neither url nor path"
             raise ValueError(msg)
-        local_path = Path(source_config.path)
+        return self._validate_local_source(
+            Path(source_config.path), source_config.sha256
+        )
+
+    def _validate_local_source(self, local_path: Path, sha256: str | None) -> Path:
+        """Check that a local source exists and matches its optional digest."""
         if not local_path.exists():
             msg = f"Local path does not exist: {local_path}"
             raise FileNotFoundError(msg)
-        if source_config.sha256 is not None:
-            if not local_path.is_file():
-                msg = "sha256 can only be verified for a source file"
-                raise ValueError(msg)
-            self._verify_sha256(local_path, source_config.sha256)
+        if sha256 is None:
+            return local_path
+        if not local_path.is_file():
+            msg = "sha256 can only be verified for a source file"
+            raise ValueError(msg)
+        self._verify_sha256(local_path, sha256)
         return local_path
 
     def _download_file(self, url: str, sha256: str | None = None) -> Path:
@@ -101,7 +153,9 @@ class Acquirer:
         if not local_path.is_file():
             return False
         try:
-            response = requests.head(url, timeout=REQUEST_TIMEOUT)
+            response = requests.head(
+                url, timeout=REQUEST_TIMEOUT, headers=IDENTITY_ENCODING
+            )
             response.raise_for_status()
             matches = self._cached_copy_matches(response, local_path)
         except (requests.RequestException, OSError, ValueError):
@@ -123,24 +177,36 @@ class Acquirer:
         self, response: requests.Response, local_path: Path
     ) -> bool:
         """Compare a HEAD response with the sidecar recorded for a download."""
-        validator = self._remote_validator(response)
         metadata = self._read_download_metadata(local_path)
-        if validator is None or metadata is None:
+        if metadata is None:
+            return False
+        return self._validator_matches(response, metadata) and self._sizes_match(
+            response, metadata, local_path.stat().st_size
+        )
+
+    def _validator_matches(
+        self, response: requests.Response, metadata: dict[str, t.Any]
+    ) -> bool:
+        """Whether the server's validator is the one recorded for the file."""
+        validator = self._remote_validator(response)
+        if validator is None:
             return False
         validator_key, validator_value = validator
-        if metadata.get(validator_key) != validator_value:
-            return False
+        return metadata.get(validator_key) == validator_value
 
-        local_size = local_path.stat().st_size
+    @staticmethod
+    def _sizes_match(
+        response: requests.Response, metadata: dict[str, t.Any], local_size: int
+    ) -> bool:
+        """Whether the recorded and remote sizes still describe the file."""
         recorded_size = metadata.get("content_length")
         if not isinstance(recorded_size, int) or recorded_size != local_size:
             return False
-
         content_length = response.headers.get("Content-Length")
-        if content_length is None:
+        # An encoded Content-Length describes compressed bytes, not the file.
+        if content_length is None or not _is_identity(response):
             return True
-        remote_size = int(content_length)
-        return remote_size >= 0 and remote_size == local_size
+        return int(content_length) == local_size
 
     def _stream_download(
         self, url: str, download_path: Path, sha256: str | None = None
@@ -148,57 +214,18 @@ class Acquirer:
         """Stream, validate, then atomically publish a file download."""
         partial_path = self._partial_path(download_path)
         digest = hashlib.sha256() if sha256 is not None else None
-        received_size = 0
 
         try:
             with requests.get(
-                url,
-                stream=True,
-                timeout=REQUEST_TIMEOUT,
-                headers={"Accept-Encoding": "identity"},
+                url, stream=True, timeout=REQUEST_TIMEOUT, headers=IDENTITY_ENCODING
             ) as response:
                 response.raise_for_status()
-                content_length = response.headers.get("Content-Length")
-                total_size = int(content_length) if content_length is not None else 0
-                if total_size < 0:
-                    msg = "Content-Length cannot be negative"
-                    raise ValueError(msg)
-
-                with (
-                    partial_path.open("wb") as output_file,
-                    item(
-                        f"Downloading {download_path.name}", total=total_size or None
-                    ) as progress_bar,
-                ):
-                    for chunk in response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
-                        if chunk:
-                            output_file.write(chunk)
-                            received_size += len(chunk)
-                            if digest is not None:
-                                digest.update(chunk)
-                            progress_bar.update(len(chunk))
-
-                # Content-Length counts encoded bytes, but iter_content yields
-                # decoded ones, so the sizes only compare for identity bodies.
-                encoding = response.headers.get("Content-Encoding", "identity")
-                if (
-                    content_length is not None
-                    and encoding.lower() == "identity"
-                    and received_size != total_size
-                ):
-                    msg = (
-                        f"Downloaded {received_size} bytes but Content-Length "
-                        f"declared {total_size} bytes"
-                    )
-                    raise ValueError(msg)
-
-                if digest is not None and digest.hexdigest() != sha256:
-                    msg = (
-                        f"SHA-256 mismatch for '{url}': expected {sha256}, "
-                        f"got {digest.hexdigest()}"
-                    )
-                    raise ValueError(msg)
-
+                declared_size = _declared_size(response)
+                received_size = self._write_chunks(
+                    response, partial_path, download_path.name, declared_size, digest
+                )
+                _check_received_size(response, received_size, declared_size)
+                _check_digest(url, digest, sha256)
                 partial_path.replace(download_path)
                 self._write_download_metadata(
                     download_path,
@@ -214,6 +241,30 @@ class Acquirer:
         advance()
 
         return download_path
+
+    @staticmethod
+    def _write_chunks(
+        response: requests.Response,
+        partial_path: Path,
+        name: str,
+        declared_size: int | None,
+        digest: "hashlib._Hash | None",
+    ) -> int:
+        """Write the response body to the partial file, returning its size."""
+        received_size = 0
+        with (
+            partial_path.open("wb") as output_file,
+            item(f"Downloading {name}", total=declared_size or None) as progress_bar,
+        ):
+            for chunk in response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+                if not chunk:
+                    continue
+                output_file.write(chunk)
+                received_size += len(chunk)
+                if digest is not None:
+                    digest.update(chunk)
+                progress_bar.update(len(chunk))
+        return received_size
 
     @staticmethod
     def _partial_path(path: Path) -> Path:

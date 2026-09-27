@@ -139,13 +139,20 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
                 **additional,
             },
         )
-        # Create toponyms if provided
-        if item.toponyms:
-            for toponym in item.toponyms:
-                ToponymRepository.create(
-                    db, toponym, additional={"document_id": document.id}
-                )
+        cls._create_toponyms(db, document, item.toponyms)
         return document
+
+    @staticmethod
+    def _create_toponyms(
+        db: DBSession,
+        document: AnnotatorDocument,
+        toponyms: "list[AnnotatorToponymCreate] | None",
+    ) -> None:
+        """Create the toponyms that arrived with a new document."""
+        for toponym in toponyms or []:
+            ToponymRepository.create(
+                db, toponym, additional={"document_id": document.id}
+            )
 
     @classmethod
     def create_from_text_files(

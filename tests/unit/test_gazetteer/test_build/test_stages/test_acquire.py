@@ -645,3 +645,61 @@ def test_encoded_response_is_not_checked_against_its_encoded_length(
 
     assert path.read_bytes() == b"1,Paris\n"
     assert requested["headers"] == {"Accept-Encoding": "identity"}
+
+
+@pytest.mark.unit
+def test_encoded_head_length_does_not_invalidate_the_cache(acquirer, requests_mock):
+    """A HEAD answered with gzip reports the compressed size, not the file's."""
+    url = "https://example.com/places.csv"
+    _cache(acquirer, b"1,Paris\n")
+    head = requests_mock.head(
+        url,
+        headers={"etag": '"v1"', "Content-Length": "3", "Content-Encoding": "gzip"},
+    )
+    get_mock = requests_mock.get(url, content=b"SHOULD NOT BE FETCHED")
+
+    path = acquirer._download_file(url)
+
+    assert path.read_bytes() == b"1,Paris\n"
+    assert not get_mock.called
+    assert head.last_request.headers["Accept-Encoding"] == "identity"
+
+
+@pytest.mark.unit
+def test_cached_copy_without_a_server_validator_is_fetched_again(
+    acquirer, requests_mock
+):
+    url = "https://example.com/places.csv"
+    _cache(acquirer, b"1,Paris\n")
+    requests_mock.head(url)
+    requests_mock.get(url, content=b"2,Bern\n")
+
+    assert acquirer._download_file(url).read_bytes() == b"2,Bern\n"
+
+
+@pytest.mark.unit
+def test_empty_keep_alive_chunks_are_skipped(acquirer, monkeypatch):
+    class ChunkedResponse:
+        def __init__(self):
+            self.headers = {"Content-Length": "8"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def raise_for_status(self):
+            return None
+
+        def iter_content(self, chunk_size):
+            yield b"1,Pa"
+            yield b""
+            yield b"ris\n"
+
+    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: ChunkedResponse())
+    download_path = acquirer.downloads_directory / "places.csv"
+
+    path = acquirer._stream_download("https://example.com/places.csv", download_path)
+
+    assert path.read_bytes() == b"1,Paris\n"

@@ -1,8 +1,36 @@
 """Pure evaluation metrics for recognition and resolution pilots."""
 
 import math
+import typing as t
 from collections.abc import Sequence
 from dataclasses import dataclass
+
+
+def _is_integer(value: object) -> bool:
+    """Whether a value is an int, excluding bool."""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_number(value: object) -> bool:
+    """Whether a value is an int or float, excluding bool."""
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _is_finite_number(value: object) -> bool:
+    """Whether a value is a finite int or float, excluding bool."""
+    return _is_number(value) and math.isfinite(t.cast(float, value))
+
+
+def _validate_coordinates(latitude: float, longitude: float) -> None:
+    """Require numeric coordinates within the WGS 84 ranges."""
+    if not (_is_number(latitude) and _is_number(longitude)):
+        msg = "latitude and longitude must be numeric coordinates"
+        raise TypeError(msg)
+    # NaN compares false and infinities fall outside the range, so this
+    # also rejects non-finite coordinates.
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        msg = "coordinates must have latitude in [-90, 90] and longitude in [-180, 180]"
+        raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,16 +52,23 @@ class Annotation:
 
     def __post_init__(self) -> None:
         """Reject spans and locations that cannot describe an annotation."""
-        if isinstance(self.start, bool) or not isinstance(self.start, int):
+        self._validate_span()
+        self._validate_location()
+
+    def _validate_span(self) -> None:
+        """Require integer offsets that bound a non-empty span."""
+        if not _is_integer(self.start):
             msg = "start offset must be an integer"
             raise TypeError(msg)
-        if isinstance(self.end, bool) or not isinstance(self.end, int):
+        if not _is_integer(self.end):
             msg = "end offset must be an integer"
             raise TypeError(msg)
         if self.start < 0 or self.end <= self.start:
             msg = "annotation span must satisfy 0 <= start < end"
             raise ValueError(msg)
 
+    def _validate_location(self) -> None:
+        """Require both coordinates or neither, and valid ones when given."""
         latitude = self.latitude
         longitude = self.longitude
         if (latitude is None) != (longitude is None):
@@ -41,19 +76,7 @@ class Annotation:
             raise ValueError(msg)
         if latitude is None or longitude is None:
             return
-        if (
-            isinstance(latitude, bool)
-            or not isinstance(latitude, (int, float))
-            or isinstance(longitude, bool)
-            or not isinstance(longitude, (int, float))
-        ):
-            msg = "latitude and longitude must be numeric coordinates"
-            raise TypeError(msg)
-        # NaN compares false and infinities fall outside the range, so this
-        # also rejects non-finite coordinates.
-        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
-            msg = "coordinates must have latitude in [-90, 90] and longitude in [-180, 180]"
-            raise ValueError(msg)
+        _validate_coordinates(latitude, longitude)
 
     @property
     def span(self) -> tuple[int, int]:
@@ -85,46 +108,37 @@ def _resolved_pairs(
     }
 
 
+def _record_unique(
+    seen: dict[Identity, t.Any], identity: Identity, value: t.Any, kind: str
+) -> None:
+    """Remember a span's value, rejecting a different one for the same span."""
+    previous = seen.get(identity)
+    if previous is not None and previous != value:
+        msg = (
+            "conflicting gold annotations for span "
+            f"{identity}: {kind} {previous!r} and {value!r}"
+        )
+        raise ValueError(msg)
+    seen[identity] = value
+
+
 def _validate_gold_annotations(annotations: Sequence[Annotation]) -> None:
     """Reject one gold span assigned multiple identifiers or locations."""
     identifiers: dict[Identity, str] = {}
     locations: dict[Identity, tuple[float, float]] = {}
     for annotation in annotations:
-        identity = annotation.identity
         if annotation.identifier is not None:
-            previous_identifier = identifiers.get(identity)
-            if (
-                previous_identifier is not None
-                and previous_identifier != annotation.identifier
-            ):
-                msg = (
-                    "conflicting gold annotations for span "
-                    f"{identity}: identifiers {previous_identifier!r} and "
-                    f"{annotation.identifier!r}"
-                )
-                raise ValueError(msg)
-            identifiers[identity] = annotation.identifier
-
+            _record_unique(
+                identifiers, annotation.identity, annotation.identifier, "identifiers"
+            )
         if annotation.latitude is not None and annotation.longitude is not None:
             location = (annotation.latitude, annotation.longitude)
-            previous_location = locations.get(identity)
-            if previous_location is not None and previous_location != location:
-                msg = (
-                    "conflicting gold annotations for span "
-                    f"{identity}: coordinates {previous_location!r} and {location!r}"
-                )
-                raise ValueError(msg)
-            locations[identity] = location
+            _record_unique(locations, annotation.identity, location, "coordinates")
 
 
 def _validate_unresolved_error_km(value: float) -> None:
     """Require a finite, positive penalty for an unplaced gold span."""
-    if (
-        isinstance(value, bool)
-        or not isinstance(value, (int, float))
-        or value <= 0
-        or (isinstance(value, float) and not math.isfinite(value))
-    ):
+    if not (_is_finite_number(value) and value > 0):
         msg = "unresolved_error_km must be a finite positive number"
         raise ValueError(msg)
 
@@ -275,12 +289,7 @@ def accuracy_at_km(
     Returns:
         The fraction placed close enough, where an empty comparison is perfect
     """
-    if (
-        isinstance(threshold_km, bool)
-        or not isinstance(threshold_km, (int, float))
-        or threshold_km < 0
-        or (isinstance(threshold_km, float) and not math.isfinite(threshold_km))
-    ):
+    if not (_is_finite_number(threshold_km) and threshold_km >= 0):
         msg = "threshold_km must be a finite non-negative number"
         raise ValueError(msg)
     errors = resolution_errors_km(
