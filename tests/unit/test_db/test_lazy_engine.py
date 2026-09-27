@@ -234,7 +234,7 @@ class TestDatabaseLookups:
 
         engine = SimpleNamespace(url=make_url("sqlite:////x/geoparser.db"))
         monkeypatch.setattr(project_db, "_engine", engine)
-        assert project_db.__getattr__("db_path") == "/x/geoparser.db"
+        assert project_db.__getattr__("db_path") == str(Path("/x/geoparser.db"))
 
         engine.url = make_url("sqlite://")
         assert project_db.__getattr__("db_path") is None
