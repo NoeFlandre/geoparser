@@ -5,6 +5,7 @@ import sys
 from importlib import import_module
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 from uuid import UUID
 
 import pytest
@@ -105,7 +106,7 @@ def test_app_route_map_is_pinned(annotator_client):
     # Newer FastAPI keeps included routers as wrapper objects in app.routes
     # instead of flattening them, so read each router's own routes too. Every
     # router is included without a prefix.
-    routes = [
+    routes: list[Any] = [
         *(route for route in annotator_app.app.routes if hasattr(route, "path")),
         *(
             route
