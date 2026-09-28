@@ -483,6 +483,20 @@ def test_quality_workflow_mutates_changed_python_modules_on_pull_requests() -> N
     assert any("--max-no-tests 0" in command for command in commands)
 
 
+def test_changed_mutation_job_installs_project_and_test_dependencies() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    install_step = next(
+        step
+        for step in workflow["jobs"]["changed-mutation"]["steps"]
+        if step.get("name") == "Install locked test dependencies"
+    )
+
+    assert install_step["run"] == "uv sync --locked --no-default-groups --group test"
+
+
 def test_quality_workflow_skips_the_full_mutation_sweep_on_pull_requests() -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),

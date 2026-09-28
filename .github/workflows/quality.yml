@@ -77,7 +77,7 @@ jobs:
           enable-cache: true
 
       - name: Install locked test dependencies
-        run: uv sync --locked --no-default-groups --only-group test
+        run: uv sync --locked --no-default-groups --group test
 
       - name: Mutate changed package modules
         env:
