@@ -120,9 +120,9 @@ jobs:
           rm -f mutants/mutmut-cicd-stats.json
           run_status=0
           if [[ "$full_mutation" == true ]]; then
-            uv run --no-sync mutmut run || run_status=$?
+            uv run --no-sync mutmut run --max-children 1 || run_status=$?
           else
-            uv run --no-sync mutmut run "${patterns[@]}" || run_status=$?
+            uv run --no-sync mutmut run --max-children 1 "${patterns[@]}" || run_status=$?
           fi
           export_status=0
           uv run --no-sync mutmut export-cicd-stats || export_status=$?

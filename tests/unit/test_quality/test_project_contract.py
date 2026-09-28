@@ -621,6 +621,20 @@ def test_test_only_changes_run_the_full_mutation_sweep() -> None:
     assert job["timeout-minutes"] == "240"
 
 
+def test_changed_mutation_runs_serially_to_avoid_pytest_temp_races() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    script = next(
+        step["run"]
+        for step in workflow["jobs"]["changed-mutation"]["steps"]
+        if step.get("name") == "Mutate changed package modules"
+    )
+
+    assert script.count("mutmut run --max-children 1") == 2
+
+
 def test_changed_mutation_job_installs_project_and_test_dependencies() -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
