@@ -354,6 +354,8 @@ class Acquirer:
 
         extraction_dir = source_path.parent / source_path.stem
         if self._should_skip_extraction(source_path, extraction_dir, target_filename):
+            if extraction_dir.name == target_filename:
+                return extraction_dir
             return self._find_target_file(extraction_dir, target_filename)
         return self._extract_zip(source_path, extraction_dir, target_filename)
 
@@ -363,10 +365,6 @@ class Acquirer:
         """Check if a previous extraction is still up to date."""
         if not extraction_dir.exists():
             return False
-
-        # Local directories are already in their final form
-        if not archive_path.is_file():
-            return True
 
         if extraction_dir.name == target_filename:
             return self._is_fresh(archive_path, extraction_dir)

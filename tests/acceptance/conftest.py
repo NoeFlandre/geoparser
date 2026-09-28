@@ -1,4 +1,5 @@
 import socket
+from collections.abc import Iterator
 from ipaddress import ip_address
 
 import pytest
@@ -24,31 +25,33 @@ def _require_loopback_address(address: object) -> None:
     raise RuntimeError("network access is disabled in acceptance tests")
 
 
-@pytest.fixture(autouse=True)
-def disable_external_network(monkeypatch: pytest.MonkeyPatch) -> None:
-    original_getaddrinfo = socket.getaddrinfo
-    original_connect = socket.socket.connect
-    original_connect_ex = socket.socket.connect_ex
-    original_sendto = socket.socket.sendto
+@pytest.fixture(scope="session", autouse=True)
+def disable_external_network() -> Iterator[None]:
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        original_getaddrinfo = socket.getaddrinfo
+        original_connect = socket.socket.connect
+        original_connect_ex = socket.socket.connect_ex
+        original_sendto = socket.socket.sendto
 
-    def getaddrinfo(host, *args, **kwargs):
-        if host is not None and not _is_loopback_host(host):
-            raise RuntimeError("network access is disabled in acceptance tests")
-        return original_getaddrinfo(host, *args, **kwargs)
+        def getaddrinfo(host, *args, **kwargs):
+            if host is not None and not _is_loopback_host(host):
+                raise RuntimeError("network access is disabled in acceptance tests")
+            return original_getaddrinfo(host, *args, **kwargs)
 
-    def connect(sock, address):
-        _require_loopback_address(address)
-        return original_connect(sock, address)
+        def connect(sock, address):
+            _require_loopback_address(address)
+            return original_connect(sock, address)
 
-    def connect_ex(sock, address):
-        _require_loopback_address(address)
-        return original_connect_ex(sock, address)
+        def connect_ex(sock, address):
+            _require_loopback_address(address)
+            return original_connect_ex(sock, address)
 
-    def sendto(sock, data, *args):
-        _require_loopback_address(args[-1])
-        return original_sendto(sock, data, *args)
+        def sendto(sock, data, *args):
+            _require_loopback_address(args[-1])
+            return original_sendto(sock, data, *args)
 
-    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
-    monkeypatch.setattr(socket.socket, "connect", connect)
-    monkeypatch.setattr(socket.socket, "connect_ex", connect_ex)
-    monkeypatch.setattr(socket.socket, "sendto", sendto)
+        monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+        monkeypatch.setattr(socket.socket, "connect", connect)
+        monkeypatch.setattr(socket.socket, "connect_ex", connect_ex)
+        monkeypatch.setattr(socket.socket, "sendto", sendto)
+        yield

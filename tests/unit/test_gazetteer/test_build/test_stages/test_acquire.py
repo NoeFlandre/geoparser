@@ -434,10 +434,12 @@ class TestResolveFilePath:
         archive_path = tmp_path / "places.csv.zip"
         with zipfile.ZipFile(archive_path, "w") as zip_file:
             zip_file.writestr("contents.txt", "irrelevant")
-        source = make_source(file="places.csv")
+        source = make_source(file="places.csv", path=str(archive_path))
 
-        result = acquirer._resolve_file_path(source, archive_path)
+        first = acquirer.acquire(source)
+        result = acquirer.acquire(source)
 
+        assert first == result
         assert result == archive_path.parent / "places.csv"
 
 
