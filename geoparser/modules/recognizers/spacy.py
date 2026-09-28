@@ -201,10 +201,9 @@ class SpacyRecognizer(Recognizer):
         Raises:
             ValueError: If no training examples can be created from the provided documents
         """
-        # Progress log wording is informational, not a behavioral contract.
-        logger.info(
-            "Preparing training data from reference annotations..."
-        )  # pragma: no mutate
+        # pragma: no mutate start - progress log wording is informational.
+        logger.info("Preparing training data from reference annotations...")
+        # pragma: no mutate end
 
         # Prepare training data
         examples = self._prepare_training_data(texts, references)
@@ -240,10 +239,9 @@ class SpacyRecognizer(Recognizer):
         Path(output_path).mkdir(parents=True, exist_ok=True)
         self.nlp.to_disk(output_path)
 
-        # Progress log wording is informational, not a behavioral contract.
-        logger.info(
-            f"Model fine-tuning completed and saved to: {output_path}"
-        )  # pragma: no mutate
+        # pragma: no mutate start - progress log wording is informational.
+        logger.info(f"Model fine-tuning completed and saved to: {output_path}")
+        # pragma: no mutate end
 
     def _get_distilled_label(
         self, start: int, end: int, base_doc: spacy.tokens.Doc

@@ -73,10 +73,9 @@ class TrainingMixin:
         Raises:
             ValueError: If no training examples can be created from the provided documents
         """
-        # Progress log wording is informational, not a behavioral contract.
-        logger.info(
-            "Preparing training data from referent annotations..."
-        )  # pragma: no mutate
+        # pragma: no mutate start - progress log wording is informational.
+        logger.info("Preparing training data from referent annotations...")
+        # pragma: no mutate end
 
         # Step 1: Gather training data from resolved references
         training_data = self._prepare_training_data(texts, references, referents)
@@ -86,10 +85,9 @@ class TrainingMixin:
             msg = "No training examples found. Ensure documents contain references with referent annotations."  # pragma: no mutate
             raise ValueError(msg)
 
-        # Progress log wording is informational, not a behavioral contract.
-        logger.info(
-            f"Created {len(training_data['sentence1'])} training examples"
-        )  # pragma: no mutate
+        # pragma: no mutate start - progress log wording is informational.
+        logger.info(f"Created {len(training_data['sentence1'])} training examples")
+        # pragma: no mutate end
 
         # Step 2: Create training dataset
         train_dataset = Dataset.from_dict(training_data)
@@ -129,10 +127,9 @@ class TrainingMixin:
         # Step 7: Save the final model
         self.transformer.save_pretrained(str(output_path))
 
-        # Progress log wording is informational, not a behavioral contract.
-        logger.info(
-            f"Model fine-tuning completed and saved to: {output_path}"
-        )  # pragma: no mutate
+        # pragma: no mutate start - progress log wording is informational.
+        logger.info(f"Model fine-tuning completed and saved to: {output_path}")
+        # pragma: no mutate end
 
     def _prepare_training_data(
         self,
