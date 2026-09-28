@@ -44,7 +44,12 @@ class ManualRecognizer(Recognizer):
         self.texts = texts
         self.references = references
         self._text_indices: dict[str, int] = {}
-        for idx, text in enumerate(texts):
+        self._refresh_text_indices()
+
+    def _refresh_text_indices(self) -> None:
+        """Rebuild the lookup to reflect mutations to the stored text list."""
+        self._text_indices.clear()
+        for idx, text in enumerate(self.texts):
             self._text_indices.setdefault(text, idx)
 
     def predict(self, texts: list[str]) -> list[list[tuple[int, int]] | None]:
@@ -65,6 +70,7 @@ class ManualRecognizer(Recognizer):
             reference spans for annotated documents, or None for documents without annotations
             (which won't be marked as processed).
         """
+        self._refresh_text_indices()
         results = []
         for text in texts:
             idx = self._text_indices.get(text)

@@ -210,6 +210,23 @@ class TestManualRecognizerPredict:
         # Assert
         assert results[0] == [(10, 15), (5, 8), (0, 3)]  # Order preserved
 
+    def test_tracks_mutations_to_caller_owned_annotations(self):
+        """Test that lookup follows changes to the original annotation lists."""
+        stored_texts = ["Old text"]
+        stored_references = [[(0, 3)]]
+        recognizer = ManualRecognizer("test", stored_texts, stored_references)
+
+        stored_texts[0] = "Updated text"
+        stored_references[0] = [(1, 4)]
+        stored_texts.append("Added text")
+        stored_references.append([(2, 5)])
+
+        assert recognizer.predict(["Old text", "Updated text", "Added text"]) == [
+            None,
+            [(1, 4)],
+            [(2, 5)],
+        ]
+
     def test_duplicate_text_uses_first_annotation(self):
         recognizer = ManualRecognizer(
             label="test",

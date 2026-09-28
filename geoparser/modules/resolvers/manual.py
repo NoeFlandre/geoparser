@@ -61,6 +61,10 @@ class ManualResolver(Resolver):
         self.texts = list(texts)
         self.references = [list(document) for document in references]
         self.referents = [list(document) for document in referents]
+        self._refresh_indices()
+
+    def _refresh_indices(self) -> None:
+        """Rebuild lookups to reflect mutations to the public annotation lists."""
         self._text_indices = _first_indices(self.texts)
         self._reference_indices = [
             _first_indices(doc_references) for doc_references in self.references
@@ -86,6 +90,7 @@ class ManualResolver(Resolver):
             for annotated references, or None for references without annotations (which won't
             be marked as processed).
         """
+        self._refresh_indices()
         results = []
         for text, doc_references in zip(texts, references, strict=True):
             text_idx = self._text_indices.get(text)
