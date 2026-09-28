@@ -79,9 +79,7 @@ def main() -> None:
         path in {"pyproject.toml", "MUTATION_TESTING.md"} for path in paths
     )
 
-    if mutation_config_changed or (
-        test_paths and not patterns and not quality_only_tests
-    ):
+    if mutation_config_changed or (test_paths and not quality_only_tests):
         print("FULL_MUTATION")
     else:
         print("\n".join(patterns))

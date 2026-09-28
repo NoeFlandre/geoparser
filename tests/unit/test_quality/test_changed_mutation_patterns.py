@@ -131,6 +131,31 @@ def test_main_requests_full_mutation_for_test_only_changes(monkeypatch, capsys) 
     assert capsys.readouterr().out == "FULL_MUTATION\n"
 
 
+def test_main_requests_full_mutation_for_mixed_source_and_test_changes(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.setattr(
+        changed_patterns,
+        "changed_paths",
+        lambda base, head: [
+            "geoparser/db/db.py",
+            "tests/unit/test_db/test_crud/test_document.py",
+        ],
+        raising=False,
+    )
+    monkeypatch.setattr(
+        changed_patterns,
+        "module_patterns_for_paths",
+        lambda paths: ["geoparser.db.db.*"],
+        raising=False,
+    )
+    monkeypatch.setattr(sys, "argv", ["changed_mutation_patterns.py", "base", "head"])
+
+    changed_patterns.main()
+
+    assert capsys.readouterr().out == "FULL_MUTATION\n"
+
+
 def test_main_requests_full_mutation_for_mutation_configuration_changes(
     monkeypatch, capsys
 ) -> None:
