@@ -8,7 +8,7 @@ numbers and the checklist below whenever you work on it.
 ```bash
 uv run mutmut run                 # full sweep, regenerates mutants/
 uv run mutmut export-cicd-stats
-uv run python scripts/mutation_gate.py --max-survivors <baseline>
+uv run python scripts/mutation_gate.py --max-survivors 0 --max-no-tests 69
 ```
 
 Inspect one function's survivors with `uv run mutmut results` and
@@ -25,9 +25,12 @@ Pragmas only take effect when the mutant tree is regenerated, so delete
 | Baseline, whole package | 3871 | 2480 | 931 | 290 | — | 164 | 9.7/s |
 | After excluding the build pipeline | 2021 | 1427 | 307 | 286 | — | 0 | 34.0/s |
 | Clean sweep after model pass | 1999 | 1786 | **0** | 212 | 1 | 0 | 31.2/s |
+| Fit coverage, before latest assertions | 3568 | 3424 | **62** | 69 | 13 | 0 | — |
 
-The quality gauntlet passes `--max-survivors 0` to the mutation gate. Keep it
-at zero: a new survivor is a line the unit suite runs but does not check.
+The quality gauntlet passes `--max-survivors 0 --max-no-tests 69` to the
+mutation gate. Keep survivors at zero. The no-tests count is a ratchet: it
+must never rise above the measured baseline of 69. The fit tests brought that
+count below 100, meeting the no-tests portion of issue #85.
 
 ## Scope, and why
 
@@ -147,9 +150,18 @@ Two practical consequences:
 - A filtered run (`mutmut run <pattern>`) needs the mapping a full run builds.
   Do not delete `mutants/` before one.
 
-The 212 no-test mutants are an intentional scope boundary: the mutation run
-uses `tests/unit`, while the integration and e2e suites plus the 100% coverage
-gate cover the paths that the unit suite does not reach. They remain visible in
-the exported stats but are not survivors. No `MAX_NO_TESTS` ratchet is used,
-because this count describes the established test-scope split rather than an
-unbounded survival budget.
+The fit tests reduced the no-test count from 212 to 69. The remaining baseline
+is recorded by function:
+
+- `Context.update_recognizer_context` — 18
+- `Context.update_resolver_context` — 18
+- `RecognitionService.fit` — 17
+- `Project.train_recognizer` — 7
+- `Project.train_resolver` — 7
+- `GazetteerArtifact.count_names` — 2
+
+The last completed fit-coverage campaign killed 3,424 mutants, left 62
+survivors, and recorded 13 tolerated timeouts. That snapshot predates the
+latest assertions for fit defaults, shuffling, directory creation, and logging
+intervals. Rerun mutation testing before treating 62 as the current survivor
+count. The zero-survivor gate remains required.

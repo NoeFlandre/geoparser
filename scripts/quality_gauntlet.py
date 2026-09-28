@@ -27,10 +27,11 @@ def _uv(*arguments: str) -> Command:
     return ("uv", "run", "--no-sync", "--offline", *arguments)
 
 
-def build_stages(
+def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI flags
     root: Path,
     artifact_dir: Path,
     *,
+    skip_baseline: bool = False,
     skip_mutation: bool = False,
     skip_docker: bool = False,
     offline: bool = False,
@@ -49,7 +50,6 @@ def build_stages(
     demo_docker_tag = f"{docker_tag}-demo"
 
     stages = [
-        Stage("baseline", (_uv("pytest", "--cov-fail-under=100"),), root),
         Stage(
             "ruff",
             (
@@ -63,18 +63,8 @@ def build_stages(
             "dependencies",
             (
                 lock_command,
-                _uv(
-                    "deptry",
-                    "geoparser",
-                    "demo",
-                    "--per-rule-ignores",
-                    # These packages are loaded through entry points or by
-                    # other libraries rather than imported, so deptry cannot
-                    # see them being used; pyproject.toml says who needs each.
-                    "DEP002=accelerate|python-multipart|peft|protobuf"
-                    "|sentencepiece|spacy-curated-transformers,"
-                    "DEP004=plotly",
-                ),
+                # Ignores are documented in pyproject.toml's [tool.deptry].
+                _uv("deptry", "."),
             ),
             root,
         ),
@@ -110,7 +100,14 @@ def build_stages(
         ),
         Stage(
             "architecture",
-            (_uv("python", "scripts/check_architecture.py", "--package", "geoparser"),),
+            (
+                _uv(
+                    "python",
+                    "scripts/check_architecture.py",
+                    "--package",
+                    "geoparser",
+                ),
+            ),
             root,
         ),
         Stage(
@@ -128,6 +125,10 @@ def build_stages(
             root,
         ),
     ]
+    if not skip_baseline:
+        stages.insert(
+            0, Stage("baseline", (_uv("pytest", "--cov-fail-under=100"),), root)
+        )
 
     if not skip_mutation:
         stages.append(
@@ -141,6 +142,8 @@ def build_stages(
                         "scripts/mutation_gate.py",
                         "--max-survivors",
                         "0",
+                        "--max-no-tests",
+                        "69",
                         "--stats",
                         "mutants/mutmut-cicd-stats.json",
                     ),
@@ -256,6 +259,11 @@ def main(argv: list[str] | None = None) -> int:
     """Run all quality stages unless an explicitly diagnostic flag is used."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--skip-baseline",
+        action="store_true",
+        help="Skip the redundant first test run; the later tests stage still enforces coverage.",
+    )
+    parser.add_argument(
         "--skip-mutation",
         action="store_true",
         help="Skip mutation testing for local diagnosis; CI must not use this.",
@@ -291,6 +299,7 @@ def main(argv: list[str] | None = None) -> int:
         stages = build_stages(
             root,
             artifact_dir,
+            skip_baseline=args.skip_baseline,
             skip_mutation=args.skip_mutation,
             skip_docker=args.skip_docker,
             offline=args.offline,

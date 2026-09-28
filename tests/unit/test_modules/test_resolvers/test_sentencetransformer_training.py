@@ -4,6 +4,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from geoparser.modules.resolvers import _training
+from geoparser.modules.resolvers._training import TrainingMixin
+
 
 @pytest.mark.unit
 class TestSentenceTransformerResolverPrepareTrainingData:
@@ -28,6 +31,145 @@ class TestSentenceTransformerResolverPrepareTrainingData:
         resolver._search_candidates.assert_called_once_with(
             "Paris", "exact", tiers=1, limit=10000
         )
+
+
+@pytest.mark.unit
+class TestTrainingMixinFit:
+    """Test the public model fine-tuning workflow without external training."""
+
+    def test_trains_from_prepared_examples_and_saves_the_model(
+        self, monkeypatch, tmp_path
+    ):
+        transformer = Mock()
+
+        class Resolver(TrainingMixin):
+            def __init__(self):
+                self.transformer = transformer
+
+        resolver = Resolver()
+        texts = ["Paris"]
+        references = [[(0, 5)]]
+        referents = [[("geonames", "123")]]
+        training_data = {
+            "sentence1": [f"context {index}" for index in range(220)],
+            "sentence2": [f"candidate {index}" for index in range(220)],
+            "label": [float(index % 2) for index in range(220)],
+        }
+        resolver._prepare_training_data = Mock(return_value=training_data)
+        dataset = object()
+        dataset_factory = Mock(return_value=dataset)
+        monkeypatch.setattr(_training.Dataset, "from_dict", dataset_factory)
+        loss = object()
+        loss_factory = Mock(return_value=loss)
+        monkeypatch.setattr(_training, "ContrastiveLoss", loss_factory)
+        args = object()
+        args_factory = Mock(return_value=args)
+        monkeypatch.setattr(
+            _training, "SentenceTransformerTrainingArguments", args_factory
+        )
+        trainer = Mock()
+        trainer_factory = Mock(return_value=trainer)
+        monkeypatch.setattr(_training, "SentenceTransformerTrainer", trainer_factory)
+
+        output_path = tmp_path / "fine-tuned-model"
+        resolver.fit(
+            texts,
+            references,
+            referents,
+            output_path,
+            epochs=2,
+            batch_size=2,
+            learning_rate=3e-5,
+            warmup_ratio=0.15,
+            save_strategy="steps",
+        )
+
+        resolver._prepare_training_data.assert_called_once_with(
+            texts, references, referents
+        )
+        dataset_factory.assert_called_once_with(training_data)
+        loss_factory.assert_called_once_with(resolver.transformer)
+        args_factory.assert_called_once_with(
+            output_dir=str(output_path),
+            num_train_epochs=2,
+            per_device_train_batch_size=2,
+            learning_rate=3e-5,
+            warmup_ratio=0.15,
+            save_strategy="steps",
+            logging_strategy="steps",
+            logging_steps=11,
+            eval_strategy="no",
+            save_total_limit=2,
+            load_best_model_at_end=False,
+        )
+        logging_steps = args_factory.call_args.kwargs["logging_steps"]
+        assert isinstance(logging_steps, int) and not isinstance(logging_steps, bool)
+        trainer_factory.assert_called_once_with(
+            model=resolver.transformer,
+            args=args,
+            train_dataset=dataset,
+            loss=loss,
+        )
+        trainer.train.assert_called_once_with()
+        transformer.save_pretrained.assert_called_once_with(str(output_path))
+
+    def test_uses_default_training_settings(self, monkeypatch, tmp_path):
+        transformer = Mock()
+
+        class Resolver(TrainingMixin):
+            def __init__(self):
+                self.transformer = transformer
+
+        resolver = Resolver()
+        training_data = {
+            "sentence1": [f"context {index}" for index in range(9)],
+            "sentence2": [f"candidate {index}" for index in range(9)],
+            "label": [float(index % 2) for index in range(9)],
+        }
+        resolver._prepare_training_data = Mock(return_value=training_data)
+        dataset = object()
+        monkeypatch.setattr(_training.Dataset, "from_dict", Mock(return_value=dataset))
+        monkeypatch.setattr(_training, "ContrastiveLoss", Mock())
+        args_factory = Mock(return_value=object())
+        monkeypatch.setattr(
+            _training, "SentenceTransformerTrainingArguments", args_factory
+        )
+        trainer = Mock()
+        monkeypatch.setattr(
+            _training, "SentenceTransformerTrainer", Mock(return_value=trainer)
+        )
+        output_path = tmp_path / "fine-tuned-model"
+
+        resolver.fit(["Paris"], [[(0, 5)]], [[("geonames", "123")]], output_path)
+
+        assert args_factory.call_args.kwargs == {
+            "output_dir": str(output_path),
+            "num_train_epochs": 1,
+            "per_device_train_batch_size": 8,
+            "learning_rate": 2e-5,
+            "warmup_ratio": 0.1,
+            "save_strategy": "epoch",
+            "logging_strategy": "steps",
+            "logging_steps": 1,
+            "eval_strategy": "no",
+            "save_total_limit": 2,
+            "load_best_model_at_end": False,
+        }
+        trainer.train.assert_called_once_with()
+        transformer.save_pretrained.assert_called_once_with(str(output_path))
+
+    def test_rejects_empty_training_data(self, tmp_path):
+        class Resolver(TrainingMixin):
+            def __init__(self):
+                self.transformer = Mock()
+
+        resolver = Resolver()
+        resolver._prepare_training_data = Mock(return_value={"sentence1": []})
+
+        with pytest.raises(ValueError) as error:
+            resolver.fit([], [], [], tmp_path / "unused")
+
+        assert str(error.value).strip() not in {"", "None"}
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(

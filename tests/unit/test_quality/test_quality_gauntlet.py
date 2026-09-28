@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from scripts.quality_gauntlet import (
-    Stage,
     build_stages,
     cleanup_docker_image,
     main,
@@ -30,31 +29,42 @@ def test_quality_stages_have_the_required_order(tmp_path: Path) -> None:
     assert ty_command[-3:] == ("geoparser", "scripts", "tests")
 
 
-def _dep002_ignores(stages: list[Stage]) -> set[str]:
-    dependencies = next(stage for stage in stages if stage.name == "dependencies")
-    deptry = next(command for command in dependencies.commands if "deptry" in command)
-    ignores = deptry[deptry.index("--per-rule-ignores") + 1]
-    rule = next(part for part in ignores.split(",") if part.startswith("DEP002="))
-    return set(rule.removeprefix("DEP002=").split("|"))
+def test_quality_stages_can_skip_the_redundant_baseline(tmp_path: Path) -> None:
+    """CI can keep the coverage test stage without repeating its baseline."""
+    stages = build_stages(Path("/repo"), tmp_path, skip_baseline=True)
+
+    assert "baseline" not in {stage.name for stage in stages}
+    assert "tests" in {stage.name for stage in stages}
 
 
-def test_dependency_stage_ignores_only_entry_point_loaded_packages(
+def test_quality_cli_accepts_skip_baseline(monkeypatch) -> None:
+    """The workflow can request the lean CI stage list explicitly."""
+    names = []
+
+    def fake_run_stages(stages, environment):
+        names.extend(stage.name for stage in stages)
+        return 0
+
+    monkeypatch.setattr("scripts.quality_gauntlet.run_stages", fake_run_stages)
+
+    assert main(["--skip-baseline", "--skip-mutation", "--skip-docker"]) == 0
+    assert "baseline" not in names
+    assert "tests" in names
+
+
+def test_dependency_stage_uses_the_documented_pyproject_config(
     tmp_path: Path,
 ) -> None:
-    """deptry cannot see packages that a runtime loads through entry points.
+    """The gauntlet and the lint job read one deptry config from pyproject.
 
-    spacy-curated-transformers supplies the ``curated_transformer`` factory that
-    SpacyRecognizer names as a string, so it is used without ever being
-    imported. Pinning the set keeps the allowance from quietly widening.
+    The allowed ignores are pinned by the project contract tests; repeating them
+    on the command line would let the two lists drift apart.
     """
-    assert _dep002_ignores(build_stages(Path("/repo"), tmp_path)) == {
-        "accelerate",
-        "peft",
-        "protobuf",
-        "python-multipart",
-        "sentencepiece",
-        "spacy-curated-transformers",
-    }
+    stages = build_stages(Path("/repo"), tmp_path)
+    dependencies = next(stage for stage in stages if stage.name == "dependencies")
+    deptry = next(command for command in dependencies.commands if "deptry" in command)
+
+    assert deptry[deptry.index("deptry") :] == ("deptry", ".")
 
 
 def test_uv_quality_commands_do_not_resolve_network_dependencies(
@@ -97,6 +107,18 @@ def test_quality_stages_can_skip_expensive_local_checks(tmp_path: Path) -> None:
     assert "mutation" not in {stage.name for stage in stages}
     smoke = next(stage for stage in stages if stage.name == "smoke")
     assert all(command[0] != "docker" for command in smoke.commands)
+
+
+def test_mutation_gate_uses_the_measured_no_tests_baseline(tmp_path: Path) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+    mutation = next(stage for stage in stages if stage.name == "mutation")
+    gate_command = next(
+        command
+        for command in mutation.commands
+        if any("mutation_gate.py" in part for part in command)
+    )
+
+    assert gate_command[gate_command.index("--max-no-tests") + 1] == "69"
 
 
 def test_quality_runner_uses_the_requested_ephemeral_docker_tag(tmp_path: Path) -> None:

@@ -183,3 +183,7 @@ mutants/
 # `python -m scripts.benchmark`.
 /benchmark-results/
 .tmp/
+
+# Generated benchmark recovery state is mirrored to the public HF dataset.
+/benchmark-evidence/**/checkpoint-*.json
+/benchmark-evidence/**/logs/

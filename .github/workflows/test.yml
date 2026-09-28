@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, edited]
   # The trunk itself is also tested. This is what keeps the README badges alive,
   # seeds the default-branch Actions cache that every pull request restores from
   # (caches written by a pull request are scoped to that pull request alone), and
@@ -17,12 +18,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-{0}', github.run_id) || 'validation' }}
   # Superseding a pull request commit is free; superseding a trunk commit would
   # leave a commit on main permanently untested.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null) }}
 
 env:
+  HYPOTHESIS_PROFILE: ci
   # The hard coverage gate, applied to the combined report across the whole
   # matrix. Single cells are not gated: platform-specific branches are
   # unreachable off their own operating system, so only the combination is a
@@ -36,11 +38,30 @@ env:
 
 jobs:
   pytest:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-edit-ignored (pytest {0}, {1})', matrix.os, matrix.python-version) || format('pytest ({0}, {1})', matrix.os, matrix.python-version) }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        include:
+          - os: ubuntu-latest
+            python-version: '3.10'
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: ubuntu-latest
+            python-version: '3.13'
+          - os: ubuntu-latest
+            python-version: '3.14'
+          - os: windows-latest
+            python-version: '3.10'
+          - os: windows-latest
+            python-version: '3.14'
+          - os: macos-latest
+            python-version: '3.10'
+          - os: macos-latest
+            python-version: '3.14'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -95,6 +116,8 @@ jobs:
           include-hidden-files: true
 
   coverage:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (coverage)' || 'coverage' }}
     needs: [pytest]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -165,7 +188,8 @@ jobs:
   # matrix values, so requiring those directly deadlocks the ruleset as soon as
   # the matrix changes; this name never does.
   tests-passed:
-    if: always()
+    if: always() && (github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null)
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (tests-passed)' || 'tests-passed' }}
     needs: [pytest, coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 5

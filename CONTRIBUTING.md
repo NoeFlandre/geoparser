@@ -8,9 +8,10 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management. In
 
 ```bash
 uv sync --locked
+uv run pre-commit install
 ```
 
-That creates `.venv/`, installs runtime and development dependencies (including the spaCy models used in tests) at the versions pinned in `uv.lock`, and installs geoparser itself in editable mode. uv downloads a suitable interpreter automatically, so no separate Python install is needed.
+That creates `.venv/`, installs runtime and development dependencies (including the spaCy models used in tests) at the versions pinned in `uv.lock`, installs geoparser itself in editable mode, and installs the repository's pre-commit hooks. uv downloads a suitable interpreter automatically, so no separate Python install is needed.
 
 Run tools through uv:
 
@@ -53,6 +54,8 @@ Tests live under `tests/` and are organized as:
 - `tests/e2e/` — full pipeline tests
 
 Markers `unit`, `integration`, and `e2e` are declared under `[tool.pytest.ini_options]` in `pyproject.toml`, which is the single source of pytest configuration.
+
+Hypothesis uses registered `dev`, `ci`, and `nightly` profiles. Local runs use `dev` by default; set `HYPOTHESIS_PROFILE=ci` for deterministic CI-sized examples or `HYPOTHESIS_PROFILE=nightly` for the larger randomized run. The workflows select `ci` for pull requests and `nightly` for the scheduled quality run.
 
 Two integration files are opt-in, and skip with an explicit reason unless
 `GEOPARSER_TEST_REMOTE_MODELS=1` is set:

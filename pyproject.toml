@@ -59,6 +59,7 @@ geoparser = "geoparser.__main__:main"
 [project.urls]
 Homepage = "https://geoparser.app"
 Repository = "https://github.com/NoeFlandre/geoparser"
+Changelog = "https://github.com/NoeFlandre/geoparser/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 # Everything needed to develop, test and document the project. `uv sync`
@@ -69,19 +70,25 @@ dev = [
     { include-group = "test" },
     { include-group = "docs" },
     { include-group = "demo" },
-    "deptry>=0.23.1,<0.24",
+    # scripts/benchmark/publish.py uploads to the Hub; declared here rather
+    # than relied on transitively through datasets.
+    "huggingface-hub>=0.36.2,<1",
 ]
 # Kept separate so CI can install the linters without pulling torch and the
 # CUDA stack; this is what keeps the lint job at a few seconds.
 lint = [
     "ruff==0.16.6",
     "ty==0.0.78",
+    "pre-commit>=4.3.0,<5",
+    "toml>=0.10.2,<1",
     # radon + coverage are what scripts/crap.py needs to combine complexity
     # with coverage; coverage also backs the combined report in CI.
     "radon>=6.0.1,<7",
     "coverage[toml]>=7.0,<8",
+    "deptry>=0.23.1,<0.24",
 ]
 test = [
+    "toml>=0.10.2,<1",
     "pytest>=8.4.2,<10",
     "pytest-cov>=7.0.0,<8",
     "hypothesis>=6.140.0,<7",
@@ -125,7 +132,32 @@ build-backend = "hatchling.build"
 packages = ["geoparser"]
 
 [tool.hatch.build.targets.sdist]
-include = ["geoparser", "LICENSE", "README.md", "ROADMAP.md"]
+include = ["geoparser", "LICENSE", "README.md", "ROADMAP.md", "CHANGELOG.md"]
+
+[tool.deptry]
+# The lint job runs deptry without installing the project, so import names
+# that differ from distribution names are spelled out here.
+package_module_name_map = { pyyaml = "yaml", huggingface-hub = "huggingface_hub" }
+
+[tool.deptry.per_rule_ignores]
+# DEP002: used without a direct import. accelerate, peft, protobuf and
+# sentencepiece are loaded at runtime by transformers/gliner2;
+# python-multipart backs FastAPI's form uploads; spacy-curated-transformers
+# registers the curated_transformer factory for spaCy's trf pipelines.
+DEP002 = [
+    "accelerate",
+    "peft",
+    "protobuf",
+    "python-multipart",
+    "sentencepiece",
+    "spacy-curated-transformers",
+]
+# DEP004: dev-only imports outside the package: scripts/crap.py (coverage,
+# radon), scripts/benchmark/publish.py (huggingface_hub),
+# scripts/changed_mutation_patterns.py (mutmut, toml) and the demo notebook
+# (plotly).
+# None of them ship in the wheel.
+DEP004 = ["coverage", "huggingface_hub", "mutmut", "plotly", "radon", "toml"]
 
 [tool.ruff]
 line-length = 88
@@ -267,6 +299,8 @@ also_copy = [
     "scripts",
     ".github",
     ".dockerignore",
+    ".pre-commit-config.yaml",
+    "CHANGELOG.md",
     "CITATION.cff",
     "Dockerfile",
     "compose.yaml",

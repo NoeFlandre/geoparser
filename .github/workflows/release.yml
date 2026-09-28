@@ -70,6 +70,9 @@ jobs:
             *)    echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
           esac
 
+      - name: Extract curated release notes
+        run: python3 scripts/changelog.py "$GITHUB_REF_NAME" > "$RUNNER_TEMP/release-notes.md"
+
       - name: Build a binary wheel and a source tarball
         run: uv build
 
@@ -78,6 +81,12 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
+
+      - name: Store curated release notes
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/release-notes.md
 
   publish:
     needs: [build]
@@ -94,6 +103,12 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
+
+      - name: Download curated release notes
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-notes
+          path: release-notes
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
@@ -116,6 +131,12 @@ jobs:
           name: python-package-distributions
           path: dist/
 
+      - name: Download curated release notes
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-notes
+          path: release-notes
+
       - name: Sign the dists with Sigstore
         uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9 # v3.5.0
         with:
@@ -136,5 +157,6 @@ jobs:
           else
             gh release create "$GITHUB_REF_NAME" dist/** \
               --repo "$GITHUB_REPOSITORY" \
-              --generate-notes --title "$GITHUB_REF_NAME"
+              --notes-file release-notes/release-notes.md \
+              --title "$GITHUB_REF_NAME"
           fi

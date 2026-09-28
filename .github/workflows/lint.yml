@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, edited]
   push:
     branches:
       - main
@@ -13,11 +14,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-{0}', github.run_id) || 'validation' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null) }}
 
 jobs:
   ruff:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (ruff)' || 'ruff' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -41,3 +44,29 @@ jobs:
 
       - name: ruff format
         run: uv run --no-sync ruff format --check --diff .
+
+      - name: deptry
+        run: uv run --no-sync deptry .
+
+  ty:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (ty)' || 'ty' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+
+      # This environment intentionally installs just the lint group. The
+      # dedicated config ignores unresolved third-party modules here; the full
+      # Quality workflow runs ty with the project dependencies installed.
+      - name: Install lint tools
+        run: uv sync --locked --no-default-groups --only-group lint --no-install-project
+
+      - name: ty check
+        run: uv run --no-sync ty check --config-file ty-lint.toml geoparser scripts tests

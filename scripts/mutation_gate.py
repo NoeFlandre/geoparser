@@ -17,12 +17,22 @@ raising the threshold.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 
 STATS_PATH = Path("mutants/mutmut-cicd-stats.json")
+MUTATION_OUTCOMES = (
+    "killed",
+    "survived",
+    "timeout",
+    "suspicious",
+    "no_tests",
+    "skipped",
+)
 
 
 def summarize(stats: dict[str, int]) -> str:
@@ -92,6 +102,7 @@ def mutation_diagnostics() -> str:
         ": survived",
         ": timeout",
         ": suspicious",
+        ": no tests",
         ": segfault",
         ": caught by type check",
         ": check was interrupted by user",
@@ -100,6 +111,37 @@ def mutation_diagnostics() -> str:
         line
         for line in result.stdout.splitlines()
         if any(status in line for status in actionable_statuses)
+    )
+
+
+def scoped_mutants(output: str, patterns: list[str]) -> list[tuple[str, str]]:
+    """Return mutant records whose names match one of the requested patterns."""
+    mutants = []
+    for line in output.splitlines():
+        record = line.strip()
+        if ": " not in record:
+            continue
+        name, status = record.rsplit(": ", maxsplit=1)
+        if any(fnmatch.fnmatchcase(name, pattern) for pattern in patterns):
+            mutants.append((name, status.lower()))
+    return mutants
+
+
+def summarize_scoped_mutants(mutants: list[tuple[str, str]]) -> dict[str, int]:
+    """Build mutation-gate counts from the selected mutmut result records."""
+    status_keys = {"no tests": "no_tests"}
+    status_keys.update({outcome: outcome for outcome in MUTATION_OUTCOMES})
+    counts = Counter(
+        status_keys[status] for _, status in mutants if status in status_keys
+    )
+    counts["total"] = len(mutants)
+    return dict(counts)
+
+
+def scoped_diagnostics(mutants: list[tuple[str, str]]) -> str:
+    """Render selected mutants that do not have a killed result."""
+    return "\n".join(
+        f"    {name}: {status}" for name, status in mutants if status != "killed"
     )
 
 
@@ -115,7 +157,9 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-survivors", type=int, required=True)
+    parser.add_argument("--max-no-tests", type=int)
     parser.add_argument("--stats", type=Path, default=STATS_PATH)
+    parser.add_argument("--patterns", nargs="+")
     args = parser.parse_args(argv)
 
     if not args.stats.exists():
@@ -126,7 +170,46 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    stats = json.loads(args.stats.read_text(encoding="utf-8"))
+    exported_stats = json.loads(args.stats.read_text(encoding="utf-8"))
+    stats = exported_stats
+    scoped_error: str | None = None
+    scoped_diagnostic_text: str | None = None
+    if args.patterns:
+        result = subprocess.run(
+            (sys.executable, "-m", "mutmut", "results", "--all", "true"),
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode:
+            detail = result.stderr.strip() or result.stdout.strip() or "no output"
+            scoped_error = (
+                f"mutmut results failed with exit code {result.returncode}: {detail}"
+            )
+        else:
+            mutants = scoped_mutants(result.stdout, args.patterns)
+            if not mutants:
+                scoped_error = "No mutmut results matched the changed-module patterns."
+            else:
+                stats = summarize_scoped_mutants(mutants)
+                exported_checked = sum(
+                    exported_stats.get(outcome, 0) for outcome in MUTATION_OUTCOMES
+                )
+                scoped_checked = sum(
+                    stats.get(outcome, 0) for outcome in MUTATION_OUTCOMES
+                )
+                if scoped_checked != exported_checked:
+                    scoped_error = (
+                        "Changed-module results account for "
+                        f"{scoped_checked} mutant(s), but mutmut stats report "
+                        f"{exported_checked} checked mutant(s)."
+                    )
+                scoped_diagnostic_text = scoped_diagnostics(mutants)
+
+    if scoped_error:
+        print(scoped_error, file=sys.stderr)
+        return 1
+
     print(f"Mutation testing: {summarize(stats)}")
 
     unchecked = unaccounted_mutants(stats)
@@ -143,7 +226,7 @@ def main(argv: list[str] | None = None) -> int:
 
     survived = stats.get("survived", 0)
     if survived > args.max_survivors:
-        diagnostics = mutation_diagnostics()
+        diagnostic_text = scoped_diagnostic_text or mutation_diagnostics()
         print(
             f"\n{survived} mutant(s) survived, more than the agreed "
             f"{args.max_survivors}. Strengthen the tests that should have "
@@ -152,12 +235,34 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(
             "\nMutation diagnostics:\n"
-            + (diagnostics or "No actionable mutant details were returned."),
+            + (diagnostic_text or "No actionable mutant details were returned."),
             file=sys.stderr,
         )
         return 1
 
-    print(f"Within the agreed baseline of {args.max_survivors} surviving mutant(s).")
+    no_tests = stats.get("no_tests", 0)
+    if args.max_no_tests is not None and no_tests > args.max_no_tests:
+        diagnostic_text = scoped_diagnostic_text or mutation_diagnostics()
+        print(
+            f"\n{no_tests} mutant(s) have no covering tests, more than the "
+            f"agreed {args.max_no_tests}. Add a focused unit test or justify "
+            f"the scope in MUTATION_TESTING.md.",
+            file=sys.stderr,
+        )
+        print(
+            "\nMutation diagnostics:\n"
+            + (diagnostic_text or "No actionable mutant details were returned."),
+            file=sys.stderr,
+        )
+        return 1
+
+    no_tests_baseline = (
+        str(args.max_no_tests) if args.max_no_tests is not None else "unconfigured"
+    )
+    print(
+        "Within the agreed baselines of "
+        f"{args.max_survivors} surviving and {no_tests_baseline} untested mutant(s)."
+    )
     return 0
 
 

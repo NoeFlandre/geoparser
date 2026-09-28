@@ -201,22 +201,27 @@ class SpacyRecognizer(Recognizer):
         Raises:
             ValueError: If no training examples can be created from the provided documents
         """
+        # pragma: no mutate start - progress log wording is informational.
         logger.info("Preparing training data from reference annotations...")
+        # pragma: no mutate end
 
         # Prepare training data
         examples = self._prepare_training_data(texts, references)
 
         if not examples:
-            msg = "No training examples found. Ensure documents contain reference annotations."
+            # The exception type is the contract; keep its wording flexible.
+            msg = "No training examples found. Ensure documents contain reference annotations."  # pragma: no mutate
             raise ValueError(msg)
 
-        logger.info(f"Created {len(examples)} training examples")
+        # Progress log wording is informational, not a behavioral contract.
+        logger.info(f"Created {len(examples)} training examples")  # pragma: no mutate
 
         # Initialize optimizer
         optimizer = self.nlp.resume_training()
         optimizer.learn_rate = learning_rate
 
-        logger.info("Starting model fine-tuning...")
+        # Progress log wording is informational, not a behavioral contract.
+        logger.info("Starting model fine-tuning...")  # pragma: no mutate
 
         # Training loop
         losses = {}
@@ -234,7 +239,9 @@ class SpacyRecognizer(Recognizer):
         Path(output_path).mkdir(parents=True, exist_ok=True)
         self.nlp.to_disk(output_path)
 
+        # pragma: no mutate start - progress log wording is informational.
         logger.info(f"Model fine-tuning completed and saved to: {output_path}")
+        # pragma: no mutate end
 
     def _get_distilled_label(
         self, start: int, end: int, base_doc: spacy.tokens.Doc

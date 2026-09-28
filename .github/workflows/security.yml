@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, edited]
   push:
     branches:
       - main
@@ -16,11 +17,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-{0}', github.run_id) || 'validation' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null) }}
 
 jobs:
   dependency-audit:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (dependency-audit)' || 'dependency-audit' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -54,6 +57,8 @@ jobs:
             --ignore-vuln PYSEC-2026-3929
 
   codeql:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-edit-ignored (codeql {0})', matrix.language) || format('codeql ({0})', matrix.language) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -80,6 +85,8 @@ jobs:
           category: /language:${{ matrix.language }}
 
   workflow-lint:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (workflow-lint)' || 'workflow-lint' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
