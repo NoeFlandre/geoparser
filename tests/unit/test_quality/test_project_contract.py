@@ -776,4 +776,8 @@ def test_benchmark_dispatch_uses_base_ref_and_its_locked_environment() -> None:
     assert dispatch["inputs"]["base_ref"]["default"] == "main"
     assert '"$BASE_REF"' in base_step["run"]
     assert "uv sync --locked --project .tmp/main" in base_step["run"]
+    assert (
+        'uv pip install --python .tmp/main/.venv/bin/python "pytest-benchmark==5.3.0"'
+        in base_step["run"]
+    )
     assert "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python" in base_step["run"]

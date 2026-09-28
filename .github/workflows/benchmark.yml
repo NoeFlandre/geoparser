@@ -68,6 +68,7 @@ jobs:
           uv sync --locked --project .tmp/main --no-default-groups --group test \
             --no-install-package en-core-web-sm \
             --no-install-package xx-sent-ud-sm
+          uv pip install --python .tmp/main/.venv/bin/python "pytest-benchmark==5.3.0"
           cd .tmp/main
           "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python" -m pytest \
             --confcutdir=tests/benchmarks \
