@@ -260,6 +260,31 @@ class TestManualResolverPredict:
         assert results[0][1] == ("geonames", "123")  # Exact match (0, 4)
         assert results[0][2] is None  # Different position (1, 4)
 
+    def test_tracks_mutations_to_public_annotation_lists(self):
+        """Test that lookup follows changes to the resolver's public lists."""
+        resolver = ManualResolver(
+            label="test",
+            texts=["Old text"],
+            references=[[(0, 3)]],
+            referents=[[("geonames", "old")]],
+        )
+
+        resolver.texts[0] = "Updated text"
+        resolver.references[0][0] = (1, 4)
+        resolver.referents[0][0] = ("geonames", "updated")
+        resolver.texts.append("Added text")
+        resolver.references.append([(2, 5)])
+        resolver.referents.append([("geonames", "added")])
+
+        assert resolver.predict(
+            texts=["Old text", "Updated text", "Added text"],
+            references=[[(0, 3)], [(1, 4)], [(2, 5)]],
+        ) == [
+            [None],
+            [("geonames", "updated")],
+            [("geonames", "added")],
+        ]
+
     def test_preserves_referent_order(self):
         """Test that predict preserves the order of referents."""
         # Arrange
