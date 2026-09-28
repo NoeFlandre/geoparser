@@ -6,6 +6,16 @@ if t.TYPE_CHECKING:
     pass
 
 
+_IndexedValue = t.TypeVar("_IndexedValue", bound=t.Hashable)
+
+
+def _first_indices(values: t.Sequence[_IndexedValue]) -> dict[_IndexedValue, int]:
+    indices: dict[_IndexedValue, int] = {}
+    for idx, value in enumerate(values):
+        indices.setdefault(value, idx)
+    return indices
+
+
 class ManualResolver(Resolver):
     """
     A resolution module for manually annotated referents.
@@ -51,16 +61,10 @@ class ManualResolver(Resolver):
         self.texts = list(texts)
         self.references = [list(document) for document in references]
         self.referents = [list(document) for document in referents]
-        self._text_indices: dict[str, int] = {}
-        for idx, text in enumerate(self.texts):
-            self._text_indices.setdefault(text, idx)
-
-        self._reference_indices: list[dict[tuple[int, int], int]] = []
-        for doc_references in self.references:
-            reference_indices: dict[tuple[int, int], int] = {}
-            for idx, reference in enumerate(doc_references):
-                reference_indices.setdefault(reference, idx)
-            self._reference_indices.append(reference_indices)
+        self._text_indices = _first_indices(self.texts)
+        self._reference_indices = [
+            _first_indices(doc_references) for doc_references in self.references
+        ]
 
     def predict(
         self, texts: list[str], references: list[list[tuple[int, int]]]
