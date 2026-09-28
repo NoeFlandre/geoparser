@@ -2,11 +2,16 @@ import socket
 
 import pytest
 
+from tests.fixtures.network import external_network_disabled
+
 
 @pytest.fixture(scope="session")
-def session_network_guard(disable_external_network):
+def session_network_guard():
     """Confirm the guard is active in session-scoped setup."""
-    with pytest.raises(RuntimeError, match="network access is disabled"):
+    with (
+        external_network_disabled(),
+        pytest.raises(RuntimeError, match="network access is disabled"),
+    ):
         socket.getaddrinfo("203.0.113.1", 443)
     return True
 
