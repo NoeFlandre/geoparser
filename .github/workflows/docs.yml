@@ -18,13 +18,14 @@ permissions:
 jobs:
   build:
     if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (build)' || 'build' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Per-ref, so PRs build side by side and a new push cancels the PR's
     # superseded build; main is never cancelled mid-build.
     concurrency:
-      group: docs-${{ github.ref }}
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+      group: docs-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-{0}', github.run_id) || 'validation' }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

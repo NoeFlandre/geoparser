@@ -16,13 +16,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-{0}', github.run_id) || 'validation' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null) }}
 
 jobs:
   quality:
     if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
-    name: quality-gate
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (quality-gate)' || 'quality-gate' }}
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -63,7 +63,7 @@ jobs:
 
   changed-mutation:
     if: github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null)
-    name: changed-mutation
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (changed-mutation)' || 'changed-mutation' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

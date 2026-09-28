@@ -18,10 +18,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-{0}', github.run_id) || 'validation' }}
   # Superseding a pull request commit is free; superseding a trunk commit would
   # leave a commit on main permanently untested.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null) }}
 
 env:
   HYPOTHESIS_PROFILE: ci
@@ -39,6 +39,7 @@ env:
 jobs:
   pytest:
     if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-edit-ignored (pytest {0}, {1})', matrix.os, matrix.python-version) || format('pytest ({0}, {1})', matrix.os, matrix.python-version) }}
     strategy:
       fail-fast: false
       matrix:
@@ -116,6 +117,7 @@ jobs:
 
   coverage:
     if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (coverage)' || 'coverage' }}
     needs: [pytest]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -187,6 +189,7 @@ jobs:
   # the matrix changes; this name never does.
   tests-passed:
     if: always() && (github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null)
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (tests-passed)' || 'tests-passed' }}
     needs: [pytest, coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 5

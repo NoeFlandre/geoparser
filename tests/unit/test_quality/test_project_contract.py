@@ -255,6 +255,39 @@ def test_pull_request_base_edits_trigger_guarded_ci() -> None:
             "github.event.changes.base" in guard and "edited" in guard
             for guard in guards
         )
+        for job in workflow["jobs"].values():
+            if "github.event.changes.base" in str(job.get("if", "")):
+                assert "metadata-edit-ignored" in str(job.get("name", ""))
+        cancellation_policies = []
+        if "cancel-in-progress" in workflow.get("concurrency", {}):
+            cancellation_policies.append(workflow["concurrency"])
+        cancellation_policies.extend(
+            job["concurrency"]
+            for job in workflow["jobs"].values()
+            if "cancel-in-progress" in job.get("concurrency", {})
+            and "github.event.changes.base" in str(job.get("if", ""))
+        )
+        for policy in cancellation_policies:
+            cancel_condition = str(policy["cancel-in-progress"])
+            group = str(policy["group"])
+            assert "github.event.action != 'edited'" in cancel_condition
+            assert "github.event.changes.base != null" in cancel_condition
+            assert "metadata-" in group
+            assert "github.run_id" in group
+
+
+def test_metadata_edits_do_not_cancel_or_satisfy_the_test_gate() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    cancel_condition = str(workflow["concurrency"]["cancel-in-progress"])
+    test_gate = workflow["jobs"]["tests-passed"]
+
+    assert "github.event.action != 'edited'" in cancel_condition
+    assert "github.event.changes.base != null" in cancel_condition
+    assert "metadata-edit-ignored" in test_gate["name"]
+    assert "tests-passed" in test_gate["name"]
 
 
 def test_github_workflows_have_no_duplicate_yaml_keys() -> None:
