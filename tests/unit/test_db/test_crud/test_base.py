@@ -102,6 +102,23 @@ class TestBaseRepositoryCreate:
         _, rows = session.execute.call_args.args
         assert rows == [{"id": project_id, "name": "First"}]
 
+    def test_generates_id_when_caller_explicitly_passes_none(self, monkeypatch):
+        from unittest.mock import Mock
+
+        from geoparser.db.crud import base
+
+        generated_id = uuid.uuid4()
+        monkeypatch.setattr(base.uuid, "uuid4", lambda: generated_id)
+        session = Mock()
+
+        returned_ids = ProjectRepository.create_many(
+            session, [Project.model_construct(id=None, name="First")]
+        )
+
+        assert returned_ids == [generated_id]
+        _, rows = session.execute.call_args.args
+        assert rows == [{"id": generated_id, "name": "First"}]
+
 
 @pytest.mark.unit
 class TestBaseRepositoryGet:

@@ -19,7 +19,7 @@ def _batch_row(
     model: type[SQLModel], obj: SQLModel, column_names: set[str]
 ) -> dict[str, Any]:
     row = {key: value for key, value in obj.model_dump().items() if key in column_names}
-    if "id" not in row:
+    if row.get("id") is None:
         generated_id = _default_batch_id(model)
         if generated_id is not None:
             row["id"] = generated_id
