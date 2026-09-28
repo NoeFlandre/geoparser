@@ -8,7 +8,15 @@ import pytest
 from sqlmodel import Session
 
 from geoparser.db.crud import ResolutionRepository
-from geoparser.db.models import ResolutionCreate
+from geoparser.db.crud.reference import ReferenceRepository
+from geoparser.db.models import (
+    Document,
+    DocumentCreate,
+    Project,
+    ProjectCreate,
+    ReferenceCreate,
+    ResolutionCreate,
+)
 
 
 @pytest.mark.unit
@@ -367,3 +375,114 @@ class TestGetProcessedReferenceIdsScope:
         assert ResolutionRepository.get_processed_reference_ids(
             test_session, [asked.id], "mine"
         ) == {asked.id}
+
+
+@pytest.mark.unit
+class TestResolutionByReferenceAndResolver:
+    """Which reference a resolver has already processed."""
+
+    @pytest.fixture(autouse=True)
+    def resolutions(self, session: Session, world):
+        """Every combination of the two references and two resolvers."""
+        for reference in world["references"]:
+            for resolver in world["resolvers"]:
+                ResolutionRepository.create(
+                    session,
+                    ResolutionCreate(
+                        reference_id=reference.id, resolver_id=resolver.id
+                    ),
+                )
+
+    def test_matches_on_both_the_reference_and_the_resolver(
+        self, session: Session, world
+    ):
+        """Exactly the one row for that pair comes back."""
+        found = ResolutionRepository.get_by_reference_and_resolver(
+            session, world["references"][0].id, world["resolvers"][1].id
+        )
+
+        assert found is not None
+        assert (found.reference_id, found.resolver_id) == (
+            world["references"][0].id,
+            world["resolvers"][1].id,
+        )
+
+    def test_ignores_the_same_resolver_on_another_reference(
+        self, session: Session, world
+    ):
+        """The other reference's row for the same resolver is excluded."""
+        found = ResolutionRepository.get_by_reference_and_resolver(
+            session, world["references"][1].id, world["resolvers"][0].id
+        )
+
+        assert found is not None
+        assert found.reference_id == world["references"][1].id
+
+
+@pytest.mark.unit
+class TestUnprocessedReferences:
+    """Which references a resolver has still to see."""
+
+    def test_excludes_references_this_resolver_already_resolved(
+        self, session: Session, world
+    ):
+        ResolutionRepository.create(
+            session,
+            ResolutionCreate(
+                reference_id=world["references"][0].id,
+                resolver_id=world["resolvers"][0].id,
+            ),
+        )
+        project_id = world["documents"][0].project_id
+
+        pending = ResolutionRepository.get_unprocessed_references(
+            session, project_id, world["resolvers"][0].id
+        )
+
+        assert [row.id for row in pending] == [world["references"][1].id]
+
+    def test_another_resolvers_work_does_not_count(self, session: Session, world):
+        ResolutionRepository.create(
+            session,
+            ResolutionCreate(
+                reference_id=world["references"][0].id,
+                resolver_id=world["resolvers"][1].id,
+            ),
+        )
+        project_id = world["documents"][0].project_id
+
+        pending = ResolutionRepository.get_unprocessed_references(
+            session, project_id, world["resolvers"][0].id
+        )
+
+        assert {row.id for row in pending} == {
+            world["references"][0].id,
+            world["references"][1].id,
+        }
+
+    def test_references_in_another_project_are_not_returned(
+        self, session: Session, world, add_row
+    ):
+        other_project = add_row(Project(**ProjectCreate(name="other").model_dump()))
+        other_document = add_row(
+            Document(
+                **DocumentCreate(
+                    text="Vienna", project_id=other_project.id
+                ).model_dump()
+            )
+        )
+        ReferenceRepository.create(
+            session,
+            ReferenceCreate(
+                start=0,
+                end=6,
+                document_id=other_document.id,
+                recognizer_id=world["recognizers"][0].id,
+            ),
+        )
+
+        pending = ResolutionRepository.get_unprocessed_references(
+            session, other_project.id, world["resolvers"][0].id
+        )
+
+        assert [row.document_id for row in pending] == [other_document.id]

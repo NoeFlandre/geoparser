@@ -310,6 +310,8 @@ def test_a_half_located_prediction_is_not_treated_as_located() -> None:
     object.__setattr__(half, "longitude", None)
 
     assert accuracy_at_km(gold, [half]) == 0.0
+
+
 ZURICH = (47.3769, 8.5417)
 
 

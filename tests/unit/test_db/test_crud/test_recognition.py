@@ -358,3 +358,45 @@ class TestGetProcessedDocumentIdsScope:
         assert RecognitionRepository.get_processed_document_ids(
             test_session, [asked.id], "mine"
         ) == {asked.id}
+
+
+@pytest.mark.unit
+class TestRecognitionByDocumentAndRecognizer:
+    """Which document a recognizer has already processed."""
+
+    @pytest.fixture(autouse=True)
+    def recognitions(self, session: Session, world):
+        """Every combination of the two documents and two recognizers."""
+        for document in world["documents"]:
+            for recognizer in world["recognizers"]:
+                RecognitionRepository.create(
+                    session,
+                    RecognitionCreate(
+                        document_id=document.id, recognizer_id=recognizer.id
+                    ),
+                )
+
+    def test_matches_on_both_the_document_and_the_recognizer(
+        self, session: Session, world
+    ):
+        """Exactly the one row for that pair comes back."""
+        found = RecognitionRepository.get_by_document_and_recognizer(
+            session, world["documents"][0].id, world["recognizers"][1].id
+        )
+
+        assert found is not None
+        assert (found.document_id, found.recognizer_id) == (
+            world["documents"][0].id,
+            world["recognizers"][1].id,
+        )
+
+    def test_ignores_the_same_recognizer_on_another_document(
+        self, session: Session, world
+    ):
+        """The other document's row for the same recognizer is excluded."""
+        found = RecognitionRepository.get_by_document_and_recognizer(
+            session, world["documents"][1].id, world["recognizers"][0].id
+        )
+
+        assert found is not None
+        assert found.document_id == world["documents"][1].id

@@ -7,7 +7,7 @@ Tests the Resolver model.
 import pytest
 from sqlmodel import Session
 
-from geoparser.db.models import ResolverCreate, ResolverUpdate
+from geoparser.db.models import Resolver, ResolverCreate, ResolverUpdate
 
 
 @pytest.mark.unit
@@ -201,3 +201,13 @@ class TestResolverUpdate:
         assert resolver_update.id == "test_id"
         assert resolver_update.name is None
         assert resolver_update.config is None
+
+
+@pytest.mark.unit
+class TestResolverConfigRendering:
+    """The exact string form of resolver configuration."""
+
+    def test_entries_are_separated_by_a_comma_and_a_space(self):
+        row = Resolver(id="m-1", name="M", config={"a": 1, "b": 2})
+
+        assert str(row) == "M(a=1, b=2)"

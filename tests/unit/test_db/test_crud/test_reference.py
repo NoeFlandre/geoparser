@@ -8,7 +8,16 @@ import pytest
 from sqlmodel import Session
 
 from geoparser.db.crud import ReferenceRepository
-from geoparser.db.models import ReferenceUpdate
+from geoparser.db.models import (
+    Document,
+    DocumentCreate,
+    Project,
+    ProjectCreate,
+    Recognizer,
+    RecognizerCreate,
+    ReferenceCreate,
+    ReferenceUpdate,
+)
 
 
 @pytest.mark.unit
@@ -182,3 +191,175 @@ class TestReferenceRepositoryGetByDocumentAndSpan:
         assert found_ref1.id == ref1.id
         assert found_ref2.id == ref2.id
         assert found_ref1.id != found_ref2.id
+
+
+@pytest.fixture
+def reference(session):
+    """A reference over "Paris and Berlin", covering "Paris"."""
+    project = Project(**ProjectCreate(name="demo").model_dump())
+    session.add(project)
+    session.commit()
+    session.refresh(project)
+
+    document = Document(
+        **DocumentCreate(text="Paris and Berlin", project_id=project.id).model_dump()
+    )
+    session.add(document)
+    session.commit()
+    session.refresh(document)
+
+    recognizer = Recognizer(
+        **RecognizerCreate(id="rec-1", name="TestRecognizer", config={}).model_dump()
+    )
+    session.add(recognizer)
+    session.commit()
+
+    return ReferenceRepository.create(
+        session,
+        ReferenceCreate(
+            start=0, end=5, document_id=document.id, recognizer_id=recognizer.id
+        ),
+    )
+
+
+@pytest.mark.unit
+class TestReferenceText:
+    """The cached slice of document text."""
+
+    def test_create_stores_the_span_text(self, reference):
+        assert reference.text == "Paris"
+
+    def test_moving_only_the_end_keeps_the_existing_start(self, session, reference):
+        updated = ReferenceRepository.update(
+            session,
+            db_obj=reference,
+            obj_in=ReferenceUpdate(id=reference.id, end=16),
+        )
+
+        assert (updated.start, updated.end) == (0, 16)
+        assert updated.text == "Paris and Berlin"
+
+    def test_moving_only_the_start_keeps_the_existing_end(self, session, reference):
+        updated = ReferenceRepository.update(
+            session,
+            db_obj=reference,
+            obj_in=ReferenceUpdate(id=reference.id, start=1),
+        )
+
+        assert (updated.start, updated.end) == (1, 5)
+        assert updated.text == "aris"
+
+    def test_moving_both_ends_re_slices_the_text(self, session, reference):
+        updated = ReferenceRepository.update(
+            session,
+            db_obj=reference,
+            obj_in=ReferenceUpdate(id=reference.id, start=10, end=16),
+        )
+
+        assert updated.text == "Berlin"
+
+
+@pytest.mark.unit
+class TestAdditionalReferenceSpanLookups:
+    """References are identified by both their document and span."""
+
+    def test_finds_the_reference_at_that_span(self, session, reference):
+        found = ReferenceRepository.get_by_document_and_span(
+            session, reference.document_id, 0, 5
+        )
+
+        assert found is not None
+        assert found.id == reference.id
+
+    @pytest.mark.parametrize(("start", "end"), [(0, 4), (1, 5), (10, 16)])
+    def test_returns_nothing_for_a_different_span(self, session, reference, start, end):
+        assert (
+            ReferenceRepository.get_by_document_and_span(
+                session, reference.document_id, start, end
+            )
+            is None
+        )
+
+    def test_create_slices_from_the_start_offset(self, session, reference):
+        created = ReferenceRepository.create(
+            session,
+            ReferenceCreate(
+                start=10,
+                end=16,
+                document_id=reference.document_id,
+                recognizer_id=reference.recognizer_id,
+            ),
+        )
+
+        assert created.text == "Berlin"
+
+    def test_moving_only_the_end_keeps_a_non_zero_start(self, session, reference):
+        middle = ReferenceRepository.create(
+            session,
+            ReferenceCreate(
+                start=6,
+                end=9,
+                document_id=reference.document_id,
+                recognizer_id=reference.recognizer_id,
+            ),
+        )
+        updated = ReferenceRepository.update(
+            session,
+            db_obj=middle,
+            obj_in=ReferenceUpdate(id=middle.id, end=16),
+        )
+
+        assert (updated.start, updated.end) == (6, 16)
+        assert updated.text == "and Berlin"
+
+    def test_returns_only_the_references_of_that_document(self, session, reference):
+        original = session.get(Document, reference.document_id)
+        other = Document(
+            **DocumentCreate(
+                text="Rome and Milan", project_id=original.project_id
+            ).model_dump()
+        )
+        session.add(other)
+        session.commit()
+        session.refresh(other)
+        ReferenceRepository.create(
+            session,
+            ReferenceCreate(
+                start=0,
+                end=4,
+                document_id=other.id,
+                recognizer_id=reference.recognizer_id,
+            ),
+        )
+
+        found = ReferenceRepository.get_by_document(session, reference.document_id)
+
+        assert [item.id for item in found] == [reference.id]
+
+    def test_the_same_span_in_another_document_is_not_returned(
+        self, session, reference
+    ):
+        original = session.get(Document, reference.document_id)
+        other = Document(
+            **DocumentCreate(
+                text="Paris and Berlin", project_id=original.project_id
+            ).model_dump()
+        )
+        session.add(other)
+        session.commit()
+        session.refresh(other)
+        twin = ReferenceRepository.create(
+            session,
+            ReferenceCreate(
+                start=0,
+                end=5,
+                document_id=other.id,
+                recognizer_id=reference.recognizer_id,
+            ),
+        )
+
+        found = ReferenceRepository.get_by_document_and_span(session, other.id, 0, 5)
+
+        assert found is not None
+        assert found.id == twin.id
+        assert found.id != reference.id
