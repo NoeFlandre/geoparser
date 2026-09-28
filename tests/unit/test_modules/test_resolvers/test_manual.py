@@ -348,58 +348,58 @@ class TestManualResolverPredict:
 
         assert resolver.predict(["known"], [[(0, 2)]]) == [[("gaz", "id")]]
 
-    @settings(max_examples=80, derandomize=True, deadline=None)
-    @given(
-        annotations=st.lists(
-            st.tuples(
-                st.text(max_size=8),
-                st.lists(
-                    st.tuples(
-                        st.tuples(st.integers(0, 20), st.integers(0, 20)),
-                        st.one_of(
-                            st.none(),
-                            st.tuples(st.text(max_size=5), st.text(max_size=8)),
-                        ),
+
+@pytest.mark.unit
+@settings(max_examples=80, derandomize=True, deadline=None)
+@given(
+    annotations=st.lists(
+        st.tuples(
+            st.text(max_size=8),
+            st.lists(
+                st.tuples(
+                    st.tuples(st.integers(0, 20), st.integers(0, 20)),
+                    st.one_of(
+                        st.none(),
+                        st.tuples(st.text(max_size=5), st.text(max_size=8)),
                     ),
-                    max_size=6,
                 ),
+                max_size=6,
             ),
-            max_size=12,
         ),
-        queries=st.lists(
-            st.tuples(
-                st.text(max_size=8),
-                st.lists(st.tuples(st.integers(0, 20), st.integers(0, 20)), max_size=6),
-            ),
-            max_size=12,
+        max_size=12,
+    ),
+    queries=st.lists(
+        st.tuples(
+            st.text(max_size=8),
+            st.lists(st.tuples(st.integers(0, 20), st.integers(0, 20)), max_size=6),
         ),
-    )
-    def test_predict_matches_first_list_index_semantics(self, annotations, queries):
-        texts = [text for text, _ in annotations]
-        references = [[span for span, _ in entries] for _, entries in annotations]
-        referents = [
-            [referent for _, referent in entries] for _, entries in annotations
-        ]
-        query_texts = [text for text, _ in queries]
-        query_references = [spans for _, spans in queries]
-        resolver = ManualResolver("test", texts, references, referents)
+        max_size=12,
+    ),
+)
+def test_predict_matches_first_list_index_semantics(annotations, queries):
+    texts = [text for text, _ in annotations]
+    references = [[span for span, _ in entries] for _, entries in annotations]
+    referents = [[referent for _, referent in entries] for _, entries in annotations]
+    query_texts = [text for text, _ in queries]
+    query_references = [spans for _, spans in queries]
+    resolver = ManualResolver("test", texts, references, referents)
 
-        expected = []
-        for text, spans in queries:
+    expected = []
+    for text, spans in queries:
+        try:
+            text_idx = texts.index(text)
+        except ValueError:
+            expected.append([None] * len(spans))
+            continue
+
+        doc_result = []
+        for span in spans:
             try:
-                text_idx = texts.index(text)
+                span_idx = references[text_idx].index(span)
             except ValueError:
-                expected.append([None] * len(spans))
-                continue
+                doc_result.append(None)
+            else:
+                doc_result.append(referents[text_idx][span_idx])
+        expected.append(doc_result)
 
-            doc_result = []
-            for span in spans:
-                try:
-                    span_idx = references[text_idx].index(span)
-                except ValueError:
-                    doc_result.append(None)
-                else:
-                    doc_result.append(referents[text_idx][span_idx])
-            expected.append(doc_result)
-
-        assert resolver.predict(query_texts, query_references) == expected
+    assert resolver.predict(query_texts, query_references) == expected

@@ -740,3 +740,21 @@ def test_benchmark_checkout_disables_persisted_credentials() -> None:
 
     assert checkout["with"]["persist-credentials"] is False
     assert checkout["with"]["fetch-depth"] == 0
+
+
+def test_benchmark_workflow_runs_algorithmic_guards_without_timings() -> None:
+    workflow = yaml.safe_load(
+        (PROJECT_ROOT / ".github/workflows/benchmark.yml").read_text(encoding="utf-8")
+    )
+    guard_step = next(
+        (
+            step
+            for step in workflow["jobs"]["compare"]["steps"]
+            if step.get("name") == "Run algorithmic guards"
+        ),
+        None,
+    )
+
+    assert guard_step is not None
+    assert "--benchmark-disable" in guard_step["run"]
+    assert "test_guards.py" in guard_step["run"]

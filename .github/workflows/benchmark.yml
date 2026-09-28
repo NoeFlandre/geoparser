@@ -37,6 +37,18 @@ jobs:
           --no-install-package en-core-web-sm
           --no-install-package xx-sent-ud-sm
 
+      - name: Run algorithmic guards
+        env:
+          TMPDIR: ${{ github.workspace }}/.tmp
+          HF_HOME: ${{ github.workspace }}/.tmp/huggingface
+        run: |
+          "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest \
+            --confcutdir=tests/benchmarks \
+            -o addopts='' \
+            -m benchmark \
+            --benchmark-disable \
+            tests/benchmarks/test_guards.py
+
       - name: Benchmark pull request base
         env:
           TMPDIR: ${{ github.workspace }}/.tmp

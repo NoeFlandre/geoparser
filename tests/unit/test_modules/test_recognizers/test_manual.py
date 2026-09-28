@@ -234,27 +234,29 @@ class TestManualRecognizerPredict:
 
         assert recognizer.predict(["known"]) == [[(0, 2)]]
 
-    @settings(max_examples=80, derandomize=True, deadline=None)
-    @given(
-        annotations=st.lists(
-            st.tuples(
-                st.text(max_size=8),
-                st.lists(st.tuples(st.integers(0, 20), st.integers(0, 20)), max_size=6),
-            ),
-            max_size=12,
+
+@pytest.mark.unit
+@settings(max_examples=80, derandomize=True, deadline=None)
+@given(
+    annotations=st.lists(
+        st.tuples(
+            st.text(max_size=8),
+            st.lists(st.tuples(st.integers(0, 20), st.integers(0, 20)), max_size=6),
         ),
-        queries=st.lists(st.text(max_size=8), max_size=12),
-    )
-    def test_predict_matches_first_list_index_semantics(self, annotations, queries):
-        texts = [text for text, _ in annotations]
-        references = [spans for _, spans in annotations]
-        recognizer = ManualRecognizer("test", texts, references)
+        max_size=12,
+    ),
+    queries=st.lists(st.text(max_size=8), max_size=12),
+)
+def test_predict_matches_first_list_index_semantics(annotations, queries):
+    texts = [text for text, _ in annotations]
+    references = [spans for _, spans in annotations]
+    recognizer = ManualRecognizer("test", texts, references)
 
-        expected = []
-        for query in queries:
-            try:
-                expected.append(references[texts.index(query)])
-            except ValueError:
-                expected.append(None)
+    expected = []
+    for query in queries:
+        try:
+            expected.append(references[texts.index(query)])
+        except ValueError:
+            expected.append(None)
 
-        assert recognizer.predict(queries) == expected
+    assert recognizer.predict(queries) == expected
