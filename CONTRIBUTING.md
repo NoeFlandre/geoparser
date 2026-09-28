@@ -8,9 +8,10 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management. In
 
 ```bash
 uv sync --locked
+uv run pre-commit install
 ```
 
-That creates `.venv/`, installs runtime and development dependencies (including the spaCy models used in tests) at the versions pinned in `uv.lock`, and installs geoparser itself in editable mode. uv downloads a suitable interpreter automatically, so no separate Python install is needed.
+That creates `.venv/`, installs runtime and development dependencies (including the spaCy models used in tests) at the versions pinned in `uv.lock`, installs geoparser itself in editable mode, and installs the repository's pre-commit hooks. uv downloads a suitable interpreter automatically, so no separate Python install is needed.
 
 Run tools through uv:
 

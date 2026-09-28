@@ -8,7 +8,7 @@ numbers and the checklist below whenever you work on it.
 ```bash
 uv run mutmut run                 # full sweep, regenerates mutants/
 uv run mutmut export-cicd-stats
-uv run python scripts/mutation_gate.py --max-survivors 0 --max-no-tests 212
+uv run python scripts/mutation_gate.py --max-survivors 0 --max-no-tests 69
 ```
 
 Inspect one function's survivors with `uv run mutmut results` and
@@ -25,11 +25,12 @@ Pragmas only take effect when the mutant tree is regenerated, so delete
 | Baseline, whole package | 3871 | 2480 | 931 | 290 | — | 164 | 9.7/s |
 | After excluding the build pipeline | 2021 | 1427 | 307 | 286 | — | 0 | 34.0/s |
 | Clean sweep after model pass | 1999 | 1786 | **0** | 212 | 1 | 0 | 31.2/s |
+| Fit coverage and mutation annotations | 3568 | 3424 | **62** | 69 | 13 | 0 | — |
 
-The quality gauntlet passes `--max-survivors 0 --max-no-tests 212` to the
+The quality gauntlet passes `--max-survivors 0 --max-no-tests 69` to the
 mutation gate. Keep survivors at zero. The no-tests count is a ratchet: it
-must never rise above the last measured baseline, and the project is working
-towards bringing it below 100 (issue #85).
+must never rise above the measured baseline of 69. The fit tests brought that
+count below 100, meeting the no-tests portion of issue #85.
 
 ## Scope, and why
 
@@ -149,8 +150,16 @@ Two practical consequences:
 - A filtered run (`mutmut run <pattern>`) needs the mapping a full run builds.
   Do not delete `mutants/` before one.
 
-The current 212 no-test mutants are still unclassified by function. The gate
-now rejects any increase above that measured baseline, and the fast PR job runs
-mutation only for changed package modules with a zero no-tests budget. The
-full baseline must be regenerated after adding focused unit tests; record the
-resulting function names here before reducing the 212 budget.
+The fit tests reduced the no-test count from 212 to 69. The remaining baseline
+is recorded by function:
+
+- `Context.update_recognizer_context` — 18
+- `Context.update_resolver_context` — 18
+- `RecognitionService.fit` — 17
+- `Project.train_recognizer` — 7
+- `Project.train_resolver` — 7
+- `GazetteerArtifact.count_names` — 2
+
+The current fit-coverage campaign killed 3,424 mutants, left 62 survivors,
+and recorded 13 tolerated timeouts. The zero-survivor gate is still failing
+until those survivors are killed or justified with evidence-backed pragmas.

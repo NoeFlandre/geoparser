@@ -143,7 +143,7 @@ def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI fla
                         "--max-survivors",
                         "0",
                         "--max-no-tests",
-                        "212",
+                        "69",
                         "--stats",
                         "mutants/mutmut-cicd-stats.json",
                     ),

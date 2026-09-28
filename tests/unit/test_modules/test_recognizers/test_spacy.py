@@ -4,7 +4,7 @@ Unit tests for geoparser/modules/recognizers/spacy.py
 Tests the SpacyRecognizer module with mocked spaCy models.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 
@@ -688,3 +688,69 @@ class TestSpacyRecognizerPrepareTrainingData:
 
             # Assert
             assert len(examples) == 2
+
+
+@pytest.mark.unit
+class TestSpacyRecognizerFit:
+    """Test the public spaCy fine-tuning workflow with a stub pipeline."""
+
+    def test_trains_in_batches_and_saves_the_model(self, monkeypatch, tmp_path):
+        recognizer = SpacyRecognizer.__new__(SpacyRecognizer)
+        examples = [Mock(name=f"example_{index}") for index in range(3)]
+        recognizer._prepare_training_data = Mock(return_value=examples)
+        optimizer = Mock()
+        nlp = Mock()
+        nlp.resume_training.return_value = optimizer
+        recognizer.nlp = nlp
+        shuffle = Mock(side_effect=lambda values: None)
+        monkeypatch.setattr(spacy_module.random, "shuffle", shuffle)
+
+        output_path = str(tmp_path / "nested" / "trained-model")
+        recognizer.fit(
+            ["Paris"],
+            [[(0, 5)]],
+            output_path,
+            epochs=2,
+            batch_size=2,
+            dropout=0.25,
+            learning_rate=0.004,
+        )
+
+        recognizer._prepare_training_data.assert_called_once_with(["Paris"], [[(0, 5)]])
+        nlp.resume_training.assert_called_once_with()
+        assert optimizer.learn_rate == 0.004
+        shuffle.assert_has_calls([call(examples), call(examples)])
+        assert nlp.update.call_args_list == [
+            call(examples[:2], drop=0.25, sgd=optimizer, losses={}),
+            call(examples[2:], drop=0.25, sgd=optimizer, losses={}),
+            call(examples[:2], drop=0.25, sgd=optimizer, losses={}),
+            call(examples[2:], drop=0.25, sgd=optimizer, losses={}),
+        ]
+        nlp.to_disk.assert_called_once_with(output_path)
+        assert (tmp_path / "nested" / "trained-model").is_dir()
+
+    def test_uses_default_training_settings(self, monkeypatch, tmp_path):
+        recognizer = SpacyRecognizer.__new__(SpacyRecognizer)
+        examples = [Mock(name=f"example_{index}") for index in range(9)]
+        recognizer._prepare_training_data = Mock(return_value=examples)
+        optimizer = Mock()
+        nlp = Mock()
+        nlp.resume_training.return_value = optimizer
+        recognizer.nlp = nlp
+        monkeypatch.setattr(spacy_module.random, "shuffle", lambda values: None)
+        output_path = tmp_path / "already-created" / "model"
+        output_path.mkdir(parents=True)
+
+        recognizer.fit(["Paris"], [[(0, 5)]], output_path)
+
+        assert optimizer.learn_rate == 0.001
+        assert nlp.update.call_count == 20
+        assert [len(item.args[0]) for item in nlp.update.call_args_list] == [8, 1] * 10
+        assert {item.kwargs["drop"] for item in nlp.update.call_args_list} == {0.1}
+
+    def test_rejects_empty_training_data(self):
+        recognizer = SpacyRecognizer.__new__(SpacyRecognizer)
+        recognizer._prepare_training_data = Mock(return_value=[])
+
+        with pytest.raises(ValueError):
+            recognizer.fit([], [], "unused")

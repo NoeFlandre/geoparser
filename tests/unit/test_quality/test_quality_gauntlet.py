@@ -109,6 +109,18 @@ def test_quality_stages_can_skip_expensive_local_checks(tmp_path: Path) -> None:
     assert all(command[0] != "docker" for command in smoke.commands)
 
 
+def test_mutation_gate_uses_the_measured_no_tests_baseline(tmp_path: Path) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+    mutation = next(stage for stage in stages if stage.name == "mutation")
+    gate_command = next(
+        command
+        for command in mutation.commands
+        if any("mutation_gate.py" in part for part in command)
+    )
+
+    assert gate_command[gate_command.index("--max-no-tests") + 1] == "69"
+
+
 def test_quality_runner_uses_the_requested_ephemeral_docker_tag(tmp_path: Path) -> None:
     stages = build_stages(Path("/repo"), tmp_path, docker_tag="geoparser:test")
     smoke = next(stage for stage in stages if stage.name == "smoke")

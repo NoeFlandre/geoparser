@@ -1,7 +1,11 @@
 import re
+import subprocess
 from pathlib import Path
+from typing import Any
 
 import yaml
+import yaml.constructor
+import yaml.resolver
 
 from tests.unit import test_docs as docs_guard
 
@@ -11,6 +15,31 @@ except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10 CI.
     import tomli as tomllib
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+class _UniqueKeyLoader(yaml.SafeLoader):
+    pass
+
+
+def _construct_unique_mapping(
+    loader: Any, node: Any, deep: bool = False
+) -> dict[Any, Any]:
+    loader.flatten_mapping(node)
+    mapping: dict[Any, Any] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in mapping:
+            raise yaml.constructor.ConstructorError(
+                None, None, f"duplicate key {key!r}", key_node.start_mark
+            )
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_UniqueKeyLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_unique_mapping,
+)
 
 
 def test_citation_version_matches_project_version() -> None:
@@ -75,6 +104,8 @@ def test_mutation_runner_copies_quality_support_modules() -> None:
         ".dockerignore",
         "CITATION.cff",
         "Dockerfile",
+        ".pre-commit-config.yaml",
+        "CHANGELOG.md",
         "mkdocs.yml",
     } <= copied_paths
     # The documentation guard reads these public surfaces directly, so a
@@ -184,13 +215,14 @@ def test_ci_runs_the_full_gate_and_publishes_strict_mkdocs() -> None:
 
 def test_pull_request_base_edits_trigger_guarded_ci() -> None:
     """Changing a PR base starts CI, while title and description edits do not."""
-    workflows = ["test.yml", "lint.yml", "docs.yml", "quality.yml"]
-
-    for filename in workflows:
+    workflows_dir = PROJECT_ROOT / ".github/workflows"
+    for path in sorted(workflows_dir.glob("*.yml")):
         workflow = yaml.load(
-            (PROJECT_ROOT / ".github/workflows" / filename).read_text(encoding="utf-8"),
+            path.read_text(encoding="utf-8"),
             Loader=yaml.BaseLoader,
         )
+        if "pull_request" not in workflow.get("on", {}):
+            continue
         pull_request = workflow["on"]["pull_request"]
         assert {"opened", "synchronize", "reopened", "edited"} <= set(
             pull_request["types"]
@@ -202,6 +234,48 @@ def test_pull_request_base_edits_trigger_guarded_ci() -> None:
             "github.event.changes.base" in guard and "edited" in guard
             for guard in guards
         )
+
+
+def test_github_workflows_have_no_duplicate_yaml_keys() -> None:
+    workflows_dir = PROJECT_ROOT / ".github/workflows"
+    for workflow in workflows_dir.glob("*.yml"):
+        yaml.load(workflow.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
+
+
+def test_github_workflow_bash_scripts_parse() -> None:
+    workflows_dir = PROJECT_ROOT / ".github/workflows"
+    for workflow_path in workflows_dir.glob("*.yml"):
+        workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+        for job_name, job in workflow.get("jobs", {}).items():
+            for step in job["steps"]:
+                if step.get("shell", "bash") != "bash" or "run" not in step:
+                    continue
+                result = subprocess.run(
+                    ["bash", "-n"],
+                    input=step["run"],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                assert result.returncode == 0, (
+                    f"{workflow_path.name}:{job_name}: {result.stderr}"
+                )
+
+
+def test_docker_workflow_runs_the_runtime_cli() -> None:
+    workflow = yaml.safe_load(
+        (PROJECT_ROOT / ".github/workflows/docker.yml").read_text(encoding="utf-8")
+    )
+    commands = [
+        step["run"]
+        for job in workflow["jobs"].values()
+        for step in job["steps"]
+        if "run" in step
+    ]
+
+    assert any(
+        "docker run --rm geoparser:smoke --help" in command for command in commands
+    )
 
 
 def test_test_matrix_runs_every_python_on_ubuntu_and_endpoints_elsewhere() -> None:
@@ -312,10 +386,40 @@ def test_precommit_config_runs_ruff_format_and_basic_file_checks() -> None:
     assert {"ruff", "ruff-format", "check-yaml", "check-toml"} <= hooks
     assert "trailing-whitespace" in hooks
     assert "end-of-file-fixer" in hooks
+    assert {"check-added-large-files", "check-merge-conflict"} <= hooks
+
+    ruff_repository = next(
+        repository
+        for repository in config["repos"]
+        if repository["repo"] == "https://github.com/astral-sh/ruff-pre-commit"
+    )
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
+        project = tomllib.load(pyproject_file)
+    ruff_requirement = next(
+        requirement
+        for requirement in project["dependency-groups"]["lint"]
+        if requirement.startswith("ruff==")
+    )
+    assert ruff_requirement == f"ruff=={ruff_repository['rev'].removeprefix('v')}"
+    contributing = (PROJECT_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    assert "uv run pre-commit install" in contributing
+
+
+def test_precommit_is_available_after_the_documented_sync() -> None:
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
+        project = tomllib.load(pyproject_file)
+
+    lint_dependencies = project["dependency-groups"]["lint"]
+    assert any(
+        dependency.startswith("pre-commit")
+        for dependency in lint_dependencies
+        if isinstance(dependency, str)
+    )
 
 
 def test_github_templates_cover_bug_feature_and_release_notes() -> None:
     issue_dir = PROJECT_ROOT / ".github" / "ISSUE_TEMPLATE"
+    issue_config_path = issue_dir / "config.yml"
     bug_report = (issue_dir / "bug_report.yml").read_text(encoding="utf-8")
     feature_request = (issue_dir / "feature_request.yml").read_text(encoding="utf-8")
     pull_request = (PROJECT_ROOT / ".github" / "PULL_REQUEST_TEMPLATE.md").read_text(
@@ -323,9 +427,12 @@ def test_github_templates_cover_bug_feature_and_release_notes() -> None:
     )
     bug_form = yaml.safe_load(bug_report)
     feature_form = yaml.safe_load(feature_request)
+    assert issue_config_path.is_file()
+    issue_config = yaml.safe_load(issue_config_path.read_text(encoding="utf-8"))
 
     assert bug_form["name"] == "Bug report"
     assert feature_form["name"] == "Feature request"
+    assert issue_config["blank_issues_enabled"] is False
     assert "steps to reproduce" in bug_report.lower()
     assert "proposed solution" in feature_request.lower()
     assert "CHANGELOG.md" in pull_request
@@ -374,6 +481,23 @@ def test_quality_workflow_mutates_changed_python_modules_on_pull_requests() -> N
     assert any("changed_mutation_patterns.py" in command for command in commands)
     assert any("mutmut run" in command for command in commands)
     assert any("--max-no-tests 0" in command for command in commands)
+
+
+def test_quality_workflow_skips_the_full_mutation_sweep_on_pull_requests() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    quality_step = next(
+        step
+        for step in workflow["jobs"]["quality"]["steps"]
+        if step.get("name") == "Run the complete deterministic quality gauntlet"
+    )
+
+    assert (
+        "quality_gauntlet.py --skip-baseline --skip-docker --skip-mutation"
+        in quality_step["run"]
+    )
 
 
 def test_deptry_is_installed_and_run_by_the_lightweight_lint_job() -> None:

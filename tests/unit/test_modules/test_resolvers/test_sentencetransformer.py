@@ -547,6 +547,75 @@ class TestSentenceTransformerResolverInitialization:
 class TestSentenceTransformerResolverPredict:
     """Test SentenceTransformerResolver predict method."""
 
+    def test_rejects_different_document_and_reference_counts(self):
+        """Public prediction rejects document annotations with mismatched shape."""
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        resolver = SentenceTransformerResolver.__new__(SentenceTransformerResolver)
+
+        with pytest.raises(ValueError):
+            resolver.predict(texts=["A", "B"], references=[[]])
+
+    def test_later_tiers_score_only_unresolved_references(self, monkeypatch):
+        """Resolved candidates do not consume another reference's scores."""
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        first = SimpleNamespace(id=1, identifier="first")
+        second = SimpleNamespace(id=2, identifier="second")
+        resolver = SentenceTransformerResolver.__new__(SentenceTransformerResolver)
+        resolver.context_embeddings = {
+            "first context": torch.tensor([1.0, 0.0]),
+            "second context": torch.tensor([0.0, 1.0]),
+        }
+        resolver.candidate_embeddings = {
+            1: torch.tensor([1.0, 0.0]),
+            2: torch.tensor([0.0, 1.0]),
+        }
+        resolver.max_tiers = 1
+        resolver.min_similarity = 0.6
+        resolver.gazetteer_name = "fixture"
+        monkeypatch.setattr(
+            SentenceTransformerResolver, "SEARCH_METHODS", ("exact", "phrase")
+        )
+        resolver._extract_contexts = Mock(
+            return_value=[["first context", "second context"]]
+        )
+
+        def search_candidates(name, method, tiers):
+            if name == "A" and method == "exact":
+                return (first,)
+            if name == "B" and method == "phrase":
+                return (second,)
+            return ()
+
+        resolver._search_candidates = Mock(side_effect=search_candidates)
+
+        with (
+            patch(
+                "geoparser.modules.resolvers._similarity.torch.tensor",
+                wraps=torch.tensor,
+            ) as tensor,
+            patch(
+                "geoparser.modules.resolvers._similarity.torch.nn.functional.cosine_similarity",
+                wraps=torch.nn.functional.cosine_similarity,
+            ) as cosine_similarity,
+        ):
+            results = resolver.predict(texts=["A B"], references=[[(0, 1), (2, 3)]])
+
+        assert results == [[("fixture", "first"), ("fixture", "second")]]
+        assert [call.args[0].shape for call in cosine_similarity.call_args_list] == [
+            torch.Size([1, 2]),
+            torch.Size([1, 2]),
+        ]
+        assert [call.kwargs["device"] for call in tensor.call_args_list] == [
+            torch.device("cpu"),
+            torch.device("cpu"),
+        ]
+
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"

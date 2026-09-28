@@ -58,7 +58,8 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
             uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline
           else
-            uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline --skip-docker
+            uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline --skip-docker --skip-mutation
+          fi
 
   changed-mutation:
     if: github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null)
@@ -69,7 +70,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-        with:
           fetch-depth: 0
 
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -109,4 +109,3 @@ jobs:
             exit "$run_status"
           fi
           exit "$gate_status"
-          fi

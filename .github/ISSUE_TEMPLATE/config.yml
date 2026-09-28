@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GeoParser documentation
+    url: https://docs.geoparser.app/
+    about: Check the installation and usage guides before opening an issue.
