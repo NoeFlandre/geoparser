@@ -531,6 +531,30 @@ def test_release_workflow_requires_changelog_notes_for_the_tag() -> None:
     assert "--generate-notes" not in release_step["run"]
 
 
+def test_github_release_downloads_notes_from_the_build_job() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    steps = workflow["jobs"]["github-release"]["steps"]
+    download_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Download curated release notes"
+    )
+    release_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Publish the GitHub Release"
+    )
+
+    assert steps[download_index]["with"] == {
+        "name": "release-notes",
+        "path": "release-notes",
+    }
+    assert download_index < release_index
+
+
 def test_changelog_is_distributed_with_the_source_archive() -> None:
     with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
         project = tomllib.load(pyproject_file)

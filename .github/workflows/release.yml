@@ -131,6 +131,12 @@ jobs:
           name: python-package-distributions
           path: dist/
 
+      - name: Download curated release notes
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-notes
+          path: release-notes
+
       - name: Sign the dists with Sigstore
         uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9 # v3.5.0
         with:
