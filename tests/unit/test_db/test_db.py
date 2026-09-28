@@ -637,3 +637,57 @@ class TestForeignKeyIndexes:
             assert set(rows_after.values()) == {256}
         finally:
             engine.dispose()
+
+    def test_non_sqlite_engine_skips_foreign_key_indexes(self):
+        from unittest.mock import Mock, patch
+
+        import geoparser.db.db as db
+
+        engine = Mock()
+        engine.dialect.name = "postgresql"
+
+        with patch.object(db, "get_engine", return_value=engine):
+            db._ensure_foreign_key_indexes()
+
+        engine.begin.assert_not_called()
+
+    def test_missing_foreign_key_column_is_skipped(self):
+        from unittest.mock import patch
+
+        import geoparser.db.db as db
+
+        engine = self._make_engine()
+        try:
+            with engine.begin() as connection:
+                connection.exec_driver_sql("CREATE TABLE project (id TEXT PRIMARY KEY)")
+
+            with (
+                patch.object(db, "get_engine", return_value=engine),
+                patch.object(db, "_FOREIGN_KEY_INDEXES", (("project", "missing"),)),
+            ):
+                db._ensure_foreign_key_indexes()
+        finally:
+            engine.dispose()
+
+    def test_missing_model_index_definition_raises(self):
+        from unittest.mock import patch
+
+        import geoparser.db.db as db
+        import geoparser.db.models  # noqa: F401 - register tables in SQLModel metadata
+
+        engine = self._make_engine()
+        try:
+            with engine.begin() as connection:
+                connection.exec_driver_sql("CREATE TABLE project (id TEXT PRIMARY KEY)")
+
+            with (
+                patch.object(db, "get_engine", return_value=engine),
+                patch.object(db, "_FOREIGN_KEY_INDEXES", (("project", "id"),)),
+                pytest.raises(
+                    RuntimeError,
+                    match=r"Missing model index definition for project\.id",
+                ),
+            ):
+                db._ensure_foreign_key_indexes()
+        finally:
+            engine.dispose()
