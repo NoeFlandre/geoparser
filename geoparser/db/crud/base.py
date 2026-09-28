@@ -8,6 +8,45 @@ from sqlmodel import Session, SQLModel, select
 T = TypeVar("T", bound=SQLModel)
 
 
+def _default_batch_id(model: type[SQLModel]) -> uuid.UUID | None:
+    id_field = model.model_fields.get("id")
+    if id_field is None or id_field.default_factory is None:
+        return None
+    return uuid.uuid4()
+
+
+def _batch_row(
+    model: type[SQLModel], obj: SQLModel, column_names: set[str]
+) -> dict[str, Any]:
+    row = {key: value for key, value in obj.model_dump().items() if key in column_names}
+    if "id" not in row:
+        generated_id = _default_batch_id(model)
+        if generated_id is not None:
+            row["id"] = generated_id
+    return row
+
+
+def _batch_rows(
+    model: type[SQLModel], objects: Iterable[SQLModel], column_names: set[str]
+) -> tuple[list[dict[str, Any]], list[uuid.UUID | str]]:
+    rows: list[dict[str, Any]] = []
+    identifiers: list[uuid.UUID | str] = []
+    for obj in objects:
+        row = _batch_row(model, obj, column_names)
+        identifiers.append(row["id"])
+        rows.append(row)
+    return rows, identifiers
+
+
+def _insert_batch(db: Session, table: Any, rows: list[dict[str, Any]]) -> None:
+    try:
+        db.execute(insert(table), rows)  # ty: ignore[deprecated]
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
 class BaseRepository(Generic[T]):
     """
     Base repository with common CRUD operations for all models.
@@ -45,30 +84,12 @@ class BaseRepository(Generic[T]):
         """Create and commit a batch without one transaction per row."""
         table = cls.model.__table__  # ty: ignore[unresolved-attribute]
         column_names = set(table.columns.keys())
-        rows: list[dict[str, Any]] = []
-        identifiers: list[uuid.UUID | str] = []
-        for obj in objects:
-            row = {
-                key: value
-                for key, value in obj.model_dump().items()
-                if key in column_names
-            }
-            if "id" not in row:
-                id_field = cls.model.model_fields.get("id")
-                if id_field is not None and id_field.default_factory is not None:
-                    row["id"] = uuid.uuid4()
-            identifiers.append(row["id"])
-            rows.append(row)
+        rows, identifiers = _batch_rows(cls.model, objects, column_names)
 
         if not rows:
             return []
 
-        try:
-            db.execute(insert(table), rows)  # ty: ignore[deprecated]
-            db.commit()
-        except Exception:
-            db.rollback()
-            raise
+        _insert_batch(db, table, rows)
         return identifiers
 
     @classmethod

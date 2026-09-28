@@ -9,8 +9,10 @@ from threading import Lock
 
 from sqlalchemy import Engine, event, inspect, text
 from sqlalchemy.engine import Connection
+from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.pool import NullPool
+from sqlalchemy.sql.schema import Index
 from sqlmodel import Session, SQLModel, create_engine
 
 import geoparser.db.models  # noqa: F401
@@ -188,6 +190,42 @@ def _check_database_compatibility() -> None:
             # pragma: no mutate end
 
 
+def _columns_for_table(
+    inspector: Inspector,
+    table_name: str,
+    columns_by_table: dict[str, set[str]],
+) -> set[str]:
+    if table_name not in columns_by_table:
+        columns_by_table[table_name] = {
+            column["name"] for column in inspector.get_columns(table_name)
+        }
+    return columns_by_table[table_name]
+
+
+def _foreign_key_index(table_name: str, column_name: str) -> Index:
+    table = SQLModel.metadata.tables[table_name]
+    index_name = f"ix_{table_name}_{column_name}"
+    for index in table.indexes:
+        if index.name == index_name:
+            return index
+
+    msg = f"Missing model index definition for {table_name}.{column_name}"
+    raise RuntimeError(msg)
+
+
+def _ensure_foreign_key_index(
+    connection: Connection,
+    inspector: Inspector,
+    table_name: str,
+    column_name: str,
+    columns_by_table: dict[str, set[str]],
+) -> None:
+    columns = _columns_for_table(inspector, table_name, columns_by_table)
+    if column_name not in columns:
+        return
+    _foreign_key_index(table_name, column_name).create(connection, checkfirst=True)
+
+
 def _ensure_foreign_key_indexes() -> None:
     """Add missing SQLite foreign-key indexes without rebuilding tables."""
     engine = get_engine()
@@ -198,22 +236,9 @@ def _ensure_foreign_key_indexes() -> None:
         inspector = inspect(connection)
         columns_by_table: dict[str, set[str]] = {}
         for table_name, column_name in _FOREIGN_KEY_INDEXES:
-            if table_name not in columns_by_table:
-                columns_by_table[table_name] = {
-                    column["name"] for column in inspector.get_columns(table_name)
-                }
-            if column_name not in columns_by_table[table_name]:
-                continue
-
-            table = SQLModel.metadata.tables[table_name]
-            index_name = f"ix_{table_name}_{column_name}"
-            index = next(
-                (index for index in table.indexes if index.name == index_name), None
+            _ensure_foreign_key_index(
+                connection, inspector, table_name, column_name, columns_by_table
             )
-            if index is None:
-                msg = f"Missing model index definition for {table_name}.{column_name}"
-                raise RuntimeError(msg)
-            index.create(connection, checkfirst=True)
 
 
 def create_db_and_tables() -> None:

@@ -10,7 +10,7 @@ import pytest
 from sqlmodel import Session
 
 from geoparser.db.crud import ProjectRepository
-from geoparser.db.models import ProjectCreate, ProjectUpdate
+from geoparser.db.models import Project, ProjectCreate, ProjectUpdate
 
 
 @pytest.mark.unit
@@ -87,6 +87,20 @@ class TestBaseRepositoryCreate:
         ]
         session.add_all.assert_not_called()
         session.commit.assert_called_once_with()
+
+    def test_preserves_ids_supplied_by_the_caller(self):
+        from unittest.mock import Mock
+
+        project_id = uuid.uuid4()
+        session = Mock()
+
+        returned_ids = ProjectRepository.create_many(
+            session, [Project(id=project_id, name="First")]
+        )
+
+        assert returned_ids == [project_id]
+        _, rows = session.execute.call_args.args
+        assert rows == [{"id": project_id, "name": "First"}]
 
 
 @pytest.mark.unit
@@ -306,3 +320,19 @@ class TestBaseRepositoryCreateManyFailure:
 
         session.rollback.assert_called_once_with()
         session.commit.assert_not_called()
+
+
+@pytest.mark.unit
+def test_default_batch_id_is_missing_without_a_generated_id_field():
+    from sqlmodel import SQLModel
+
+    from geoparser.db.crud.base import _default_batch_id
+
+    class ModelWithoutId(SQLModel):
+        name: str
+
+    class ModelWithRequiredId(SQLModel):
+        id: str
+
+    assert _default_batch_id(ModelWithoutId) is None
+    assert _default_batch_id(ModelWithRequiredId) is None

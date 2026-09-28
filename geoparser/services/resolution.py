@@ -1,7 +1,6 @@
 import typing as t
 import uuid
 
-from sqlalchemy import insert
 from sqlmodel import Session
 
 from geoparser.db.crud import (
@@ -17,7 +16,7 @@ from geoparser.db.models import (
     ResolverCreate,
 )
 from geoparser.gazetteer.gazetteer import Gazetteer
-from geoparser.services._shared import ensure_module_record, require_fit
+from geoparser.services._shared import ensure_module_record, insert_rows, require_fit
 
 if t.TYPE_CHECKING:
     from geoparser.db.models import Document, Reference
@@ -209,27 +208,50 @@ class ResolutionService:
         group_pairs = zip(reference_groups, predicted_groups, strict=False)
         # pragma: no mutate end
         for references, predictions in group_pairs:
-            # pragma: no mutate start - as above, strict=False is the default.
-            pairs = zip(references, predictions, strict=False)
-            # pragma: no mutate end
-            for reference, referent in pairs:
-                # Skip references where predictions are not available
-                # (None indicates the resolver couldn't process this reference)
-                if referent is not None:
-                    referent_row, resolution_row = self._reference_records(
-                        reference, referent, resolver_id
-                    )
-                    if referent_row is not None:
-                        referent_rows.append(referent_row)
-                    if resolution_row is not None:
-                        resolution_rows.append(resolution_row)
+            self._append_group_prediction_rows(
+                references,
+                predictions,
+                resolver_id,
+                referent_rows,
+                resolution_rows,
+            )
 
-        if referent_rows:
-            table = Referent.__table__  # ty: ignore[unresolved-attribute]
-            session.execute(insert(table), referent_rows)  # ty: ignore[deprecated]
-        if resolution_rows:
-            table = Resolution.__table__  # ty: ignore[unresolved-attribute]
-            session.execute(insert(table), resolution_rows)  # ty: ignore[deprecated]
+        insert_rows(session, Referent, referent_rows)
+        insert_rows(session, Resolution, resolution_rows)
+
+    def _append_group_prediction_rows(
+        self,
+        references: list["Reference"],
+        predictions: list[tuple[str, str] | None],
+        resolver_id: str,
+        referent_rows: list[dict[str, t.Any]],
+        resolution_rows: list[dict[str, t.Any]],
+    ) -> None:
+        # pragma: no mutate start - strict=False is the default.
+        pairs = zip(references, predictions, strict=False)
+        # pragma: no mutate end
+        for reference, referent in pairs:
+            self._append_reference_prediction_rows(
+                reference, referent, resolver_id, referent_rows, resolution_rows
+            )
+
+    def _append_reference_prediction_rows(
+        self,
+        reference: "Reference",
+        referent: tuple[str, str] | None,
+        resolver_id: str,
+        referent_rows: list[dict[str, t.Any]],
+        resolution_rows: list[dict[str, t.Any]],
+    ) -> None:
+        if referent is None:
+            return
+        referent_row, resolution_row = self._reference_records(
+            reference, referent, resolver_id
+        )
+        if referent_row is not None:
+            referent_rows.append(referent_row)
+        if resolution_row is not None:
+            resolution_rows.append(resolution_row)
 
     def _reference_records(
         self,

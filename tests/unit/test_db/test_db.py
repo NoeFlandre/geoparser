@@ -669,6 +669,39 @@ class TestForeignKeyIndexes:
         finally:
             engine.dispose()
 
+    def test_missing_foreign_key_column_does_not_skip_later_indexes(self):
+        from unittest.mock import patch
+
+        from sqlmodel import SQLModel
+
+        import geoparser.db.db as db
+
+        engine = self._make_engine()
+        table_name, column_name = db._FOREIGN_KEY_INDEXES[0]
+        try:
+            SQLModel.metadata.create_all(engine)
+
+            with (
+                patch.object(db, "get_engine", return_value=engine),
+                patch.object(
+                    db,
+                    "_FOREIGN_KEY_INDEXES",
+                    ((table_name, "missing"), (table_name, column_name)),
+                ),
+            ):
+                db._ensure_foreign_key_indexes()
+
+            with engine.connect() as connection:
+                indexes = {
+                    row[1]
+                    for row in connection.exec_driver_sql(
+                        f"PRAGMA index_list('{table_name}')"
+                    )
+                }
+            assert f"ix_{table_name}_{column_name}" in indexes
+        finally:
+            engine.dispose()
+
     def test_missing_model_index_definition_raises(self):
         from unittest.mock import patch
 

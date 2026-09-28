@@ -1,7 +1,6 @@
 import typing as t
 import uuid
 
-from sqlalchemy import insert
 from sqlmodel import Session
 
 from geoparser.db.crud import (
@@ -17,7 +16,7 @@ from geoparser.db.models import (
     Reference,
     ReferenceCreate,
 )
-from geoparser.services._shared import ensure_module_record, require_fit
+from geoparser.services._shared import ensure_module_record, insert_rows, require_fit
 
 if t.TYPE_CHECKING:
     from geoparser.modules.recognizers.base import Recognizer
@@ -151,24 +150,33 @@ class RecognitionService:
         reference_rows: list[dict[str, t.Any]] = []
         recognition_rows: list[dict[str, t.Any]] = []
         for document, references in pairs:
-            # Skip documents where predictions are not available
-            # (None indicates the recognizer couldn't process this document)
-            if references is not None:
-                reference_records, recognition_record = self._document_records(
-                    document, references, recognizer_id
-                )
-                reference_rows.extend(
-                    row for row in reference_records if row is not None
-                )
-                if recognition_record is not None:
-                    recognition_rows.append(recognition_record)
+            self._append_document_prediction_rows(
+                document,
+                references,
+                recognizer_id,
+                reference_rows,
+                recognition_rows,
+            )
 
-        if reference_rows:
-            table = Reference.__table__  # ty: ignore[unresolved-attribute]
-            session.execute(insert(table), reference_rows)  # ty: ignore[deprecated]
-        if recognition_rows:
-            table = Recognition.__table__  # ty: ignore[unresolved-attribute]
-            session.execute(insert(table), recognition_rows)  # ty: ignore[deprecated]
+        insert_rows(session, Reference, reference_rows)
+        insert_rows(session, Recognition, recognition_rows)
+
+    def _append_document_prediction_rows(
+        self,
+        document: "Document",
+        references: list[tuple[int, int]] | None,
+        recognizer_id: str,
+        reference_rows: list[dict[str, t.Any]],
+        recognition_rows: list[dict[str, t.Any]],
+    ) -> None:
+        if references is None:
+            return
+        document_references, recognition_record = self._document_records(
+            document, references, recognizer_id
+        )
+        reference_rows.extend(row for row in document_references if row is not None)
+        if recognition_record is not None:
+            recognition_rows.append(recognition_record)
 
     def _document_records(
         self,
