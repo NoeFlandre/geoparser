@@ -101,9 +101,12 @@ class Project:
             document_creates = [
                 DocumentCreate(text=text, project_id=self.id) for text in texts
             ]
-            documents = DocumentRepository.create_many(session, document_creates)
+            document_ids = DocumentRepository.create_many(session, document_creates)
 
-        return [document.id for document in documents]
+        # Document creation schemas omit IDs, so this batch can only return UUIDs.
+        # pragma: no mutate start - typing.cast has no runtime behavior.
+        return t.cast(list[uuid.UUID], document_ids)
+        # pragma: no mutate end
 
     def create_references(
         self, texts: list[str], references: list[list[tuple]], tag: str

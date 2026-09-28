@@ -8,9 +8,15 @@ from geoparser.db.crud import (
     ResolverRepository,
 )
 from geoparser.db.db import get_session
-from geoparser.db.models import Referent, Resolution, ResolverCreate
+from geoparser.db.models import (
+    Referent,
+    ReferentCreate,
+    Resolution,
+    ResolutionCreate,
+    ResolverCreate,
+)
 from geoparser.gazetteer.gazetteer import Gazetteer
-from geoparser.services._shared import ensure_module_record, require_fit
+from geoparser.services._shared import ensure_module_record, insert_rows, require_fit
 
 if t.TYPE_CHECKING:
     from geoparser.db.models import Document, Reference
@@ -193,7 +199,8 @@ class ResolutionService:
         resolver_id: str,
     ) -> None:
         """Validate and stage grouped referent/resolution records."""
-        pending: list[Referent | Resolution] = []
+        referent_rows: list[dict[str, t.Any]] = []
+        resolution_rows: list[dict[str, t.Any]] = []
         # Process each reference with its predicted referent; see above on
         # why a short prediction list is tolerated rather than rejected.
         # pragma: no mutate start - strict=False is the default, so a mutant
@@ -201,24 +208,57 @@ class ResolutionService:
         group_pairs = zip(reference_groups, predicted_groups, strict=False)
         # pragma: no mutate end
         for references, predictions in group_pairs:
-            # pragma: no mutate start - as above, strict=False is the default.
-            pairs = zip(references, predictions, strict=False)
-            # pragma: no mutate end
-            for reference, referent in pairs:
-                # Skip references where predictions are not available
-                # (None indicates the resolver couldn't process this reference)
-                if referent is not None:
-                    pending += self._reference_records(reference, referent, resolver_id)
+            self._append_group_prediction_rows(
+                references,
+                predictions,
+                resolver_id,
+                referent_rows,
+                resolution_rows,
+            )
 
-        if pending:
-            session.add_all(pending)
+        insert_rows(session, Referent, referent_rows)
+        insert_rows(session, Resolution, resolution_rows)
+
+    def _append_group_prediction_rows(
+        self,
+        references: list["Reference"],
+        predictions: list[tuple[str, str] | None],
+        resolver_id: str,
+        referent_rows: list[dict[str, t.Any]],
+        resolution_rows: list[dict[str, t.Any]],
+    ) -> None:
+        # pragma: no mutate start - strict=False is the default.
+        pairs = zip(references, predictions, strict=False)
+        # pragma: no mutate end
+        for reference, referent in pairs:
+            self._append_reference_prediction_rows(
+                reference, referent, resolver_id, referent_rows, resolution_rows
+            )
+
+    def _append_reference_prediction_rows(
+        self,
+        reference: "Reference",
+        referent: tuple[str, str] | None,
+        resolver_id: str,
+        referent_rows: list[dict[str, t.Any]],
+        resolution_rows: list[dict[str, t.Any]],
+    ) -> None:
+        if referent is None:
+            return
+        referent_row, resolution_row = self._reference_records(
+            reference, referent, resolver_id
+        )
+        if referent_row is not None:
+            referent_rows.append(referent_row)
+        if resolution_row is not None:
+            resolution_rows.append(resolution_row)
 
     def _reference_records(
         self,
         reference: "Reference",
         referent: tuple[str, str],
         resolver_id: str,
-    ) -> list[Referent | Resolution]:
+    ) -> tuple[dict[str, t.Any] | None, dict[str, t.Any] | None]:
         """
         Build one reference's referent record and its processed marker.
 
@@ -228,15 +268,14 @@ class ResolutionService:
             resolver_id: ID of the resolver that made the prediction
 
         Returns:
-            The records to stage, referent first
+            The referent and resolution mappings
         """
         gazetteer_name, identifier = referent
-        return [
-            self._create_referent_record(
-                reference.id, gazetteer_name, identifier, resolver_id
-            ),
-            self._create_resolution_record(reference.id, resolver_id),
-        ]
+        referent_record = self._create_referent_record(
+            reference.id, gazetteer_name, identifier, resolver_id
+        )
+        resolution_record = self._create_resolution_record(reference.id, resolver_id)
+        return referent_record, resolution_record
 
     def _create_referent_record(
         self,
@@ -244,7 +283,7 @@ class ResolutionService:
         gazetteer_name: str,
         identifier: str,
         resolver_id: str,
-    ) -> Referent:
+    ) -> dict[str, t.Any]:
         """
         Create a referent record with the resolver ID.
 
@@ -267,16 +306,18 @@ class ResolutionService:
             )
             raise ValueError(msg)
 
-        return Referent(
+        row = ReferentCreate(
             reference_id=reference_id,
             gazetteer_name=gazetteer_name,
             feature_identifier=feature.identifier,
             resolver_id=resolver_id,
-        )
+        ).model_dump()
+        row["id"] = uuid.uuid4()
+        return row
 
     def _create_resolution_record(
         self, reference_id: uuid.UUID, resolver_id: str
-    ) -> Resolution:
+    ) -> dict[str, t.Any]:
         """
         Create a resolution record for a reference processed by a specific resolver.
 
@@ -284,7 +325,9 @@ class ResolutionService:
             reference_id: ID of the reference that was processed
             resolver_id: ID of the resolver that processed it
         """
-        return Resolution(
+        row = ResolutionCreate(
             reference_id=reference_id,
             resolver_id=resolver_id,
-        )
+        ).model_dump()
+        row["id"] = uuid.uuid4()
+        return row

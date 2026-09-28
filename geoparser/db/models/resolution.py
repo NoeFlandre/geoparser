@@ -24,12 +24,18 @@ class Resolution(ResolutionBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     reference_id: uuid.UUID = Field(
         sa_column=Column(
-            UUID, ForeignKey("reference.id", ondelete="CASCADE"), nullable=False
+            UUID,
+            ForeignKey("reference.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
         )
     )
     resolver_id: str = Field(
         sa_column=Column(
-            String, ForeignKey("resolver.id", ondelete="CASCADE"), nullable=False
+            String,
+            ForeignKey("resolver.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
         )
     )
     reference: "Reference" = Relationship(back_populates="resolutions")

@@ -1,10 +1,50 @@
 import uuid
 from collections.abc import Iterable
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
+from sqlalchemy import insert
 from sqlmodel import Session, SQLModel, select
 
 T = TypeVar("T", bound=SQLModel)
+
+
+def _default_batch_id(model: type[SQLModel]) -> uuid.UUID | None:
+    id_field = model.model_fields.get("id")
+    if id_field is None or id_field.default_factory is None:
+        return None
+    return uuid.uuid4()
+
+
+def _batch_row(
+    model: type[SQLModel], obj: SQLModel, column_names: set[str]
+) -> dict[str, Any]:
+    row = {key: value for key, value in obj.model_dump().items() if key in column_names}
+    if row.get("id") is None:
+        generated_id = _default_batch_id(model)
+        if generated_id is not None:
+            row["id"] = generated_id
+    return row
+
+
+def _batch_rows(
+    model: type[SQLModel], objects: Iterable[SQLModel], column_names: set[str]
+) -> tuple[list[dict[str, Any]], list[uuid.UUID | str]]:
+    rows: list[dict[str, Any]] = []
+    identifiers: list[uuid.UUID | str] = []
+    for obj in objects:
+        row = _batch_row(model, obj, column_names)
+        identifiers.append(row["id"])
+        rows.append(row)
+    return rows, identifiers
+
+
+def _insert_batch(db: Session, table: Any, rows: list[dict[str, Any]]) -> None:
+    try:
+        db.execute(insert(table), rows)  # ty: ignore[deprecated]
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 class BaseRepository(Generic[T]):
@@ -38,19 +78,19 @@ class BaseRepository(Generic[T]):
         return db_obj
 
     @classmethod
-    def create_many(cls, db: Session, objects: Iterable[SQLModel]) -> list[T]:
+    def create_many(
+        cls, db: Session, objects: Iterable[SQLModel]
+    ) -> list[uuid.UUID | str]:
         """Create and commit a batch without one transaction per row."""
-        db_objects = [cls.model(**obj.model_dump()) for obj in objects]
-        if not db_objects:
+        table = cls.model.__table__  # ty: ignore[unresolved-attribute]
+        column_names = set(table.columns.keys())
+        rows, identifiers = _batch_rows(cls.model, objects, column_names)
+
+        if not rows:
             return []
 
-        try:
-            db.add_all(db_objects)
-            db.commit()
-        except Exception:
-            db.rollback()
-            raise
-        return db_objects
+        _insert_batch(db, table, rows)
+        return identifiers
 
     @classmethod
     def get(cls, db: Session, id: uuid.UUID | str) -> T | None:

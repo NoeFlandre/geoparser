@@ -66,6 +66,20 @@ def test_citation_version_matches_project_version() -> None:
     assert citation["version"] == project["project"]["version"]
 
 
+def test_manual_resolver_constructor_stays_within_crap_complexity_limit() -> None:
+    radon = pytest.importorskip("radon.complexity")
+    source = (PROJECT_ROOT / "geoparser/modules/resolvers/manual.py").read_text(
+        encoding="utf-8"
+    )
+    constructor = next(
+        block
+        for block in radon.cc_visit(source)
+        if block.fullname == "ManualResolver.__init__"
+    )
+
+    assert constructor.complexity <= 5
+
+
 def _package_name(requirement: str) -> str:
     return re.split(r"[\[<>=!~;]", requirement, maxsplit=1)[0].strip().lower()
 
@@ -726,3 +740,58 @@ def test_deptry_ignores_only_documented_runtime_and_tool_dependencies() -> None:
     pyproject_text = (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert "# DEP002:" in pyproject_text
     assert "# DEP004:" in pyproject_text
+
+
+def test_benchmark_checkout_disables_persisted_credentials() -> None:
+    workflow = yaml.safe_load(
+        (PROJECT_ROOT / ".github/workflows/benchmark.yml").read_text(encoding="utf-8")
+    )
+    checkout = next(
+        step
+        for step in workflow["jobs"]["compare"]["steps"]
+        if step.get("uses", "").startswith("actions/checkout@")
+    )
+
+    assert checkout["with"]["persist-credentials"] is False
+    assert checkout["with"]["fetch-depth"] == 0
+
+
+def test_benchmark_workflow_runs_algorithmic_guards_without_timings() -> None:
+    workflow = yaml.safe_load(
+        (PROJECT_ROOT / ".github/workflows/benchmark.yml").read_text(encoding="utf-8")
+    )
+    guard_step = next(
+        (
+            step
+            for step in workflow["jobs"]["compare"]["steps"]
+            if step.get("name") == "Run algorithmic guards"
+        ),
+        None,
+    )
+
+    assert guard_step is not None
+    assert "--benchmark-disable" in guard_step["run"]
+    assert "test_guards.py" in guard_step["run"]
+
+
+def test_benchmark_dispatch_uses_base_ref_and_its_locked_environment() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/benchmark.yml").read_text(encoding="utf-8"),
+        Loader=_UniqueKeyLoader,
+    )
+    triggers = workflow.get("on", workflow.get(True))
+    dispatch = triggers["workflow_dispatch"]
+    base_step = next(
+        step
+        for step in workflow["jobs"]["compare"]["steps"]
+        if step.get("name") == "Benchmark pull request base"
+    )
+
+    assert dispatch["inputs"]["base_ref"]["default"] == "main"
+    assert '"$BASE_REF"' in base_step["run"]
+    assert "uv sync --locked --project .tmp/main" in base_step["run"]
+    assert (
+        'uv pip install --python .tmp/main/.venv/bin/python "pytest-benchmark==5.3.0"'
+        in base_step["run"]
+    )
+    assert "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python" in base_step["run"]

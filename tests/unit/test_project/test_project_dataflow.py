@@ -117,7 +117,7 @@ class TestCreateDocuments:
             patch("geoparser.project.project.get_session"),
             patch(
                 "geoparser.project.project.DocumentRepository.create_many",
-                return_value=[SimpleNamespace(id=i) for i in ids],
+                return_value=list(ids),
             ),
         ):
             # Act

@@ -1,8 +1,9 @@
 """Helpers shared by the recognition and resolution services."""
 
 from collections.abc import Callable
-from typing import Protocol
+from typing import Any, Protocol
 
+from sqlalchemy import insert
 from sqlmodel import Session, SQLModel
 
 from geoparser.db.db import get_session
@@ -57,3 +58,12 @@ def require_fit(module: _NamedModule, kind: str) -> Callable[..., None]:
         msg = f"{kind} '{module.name}' does not implement a fit method"
         raise ValueError(msg)
     return fit
+
+
+def insert_rows(
+    session: Session, model: type[SQLModel], rows: list[dict[str, Any]]
+) -> None:
+    """Insert a batch of service records when it contains rows."""
+    if rows:
+        table = model.__table__  # ty: ignore[unresolved-attribute]
+        session.execute(insert(table), rows)  # ty: ignore[deprecated]

@@ -5,8 +5,17 @@ Tests the ManualRecognizer module for handling manually annotated references.
 """
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from geoparser.modules.recognizers.manual import ManualRecognizer
+
+
+class NoIndexList(list):
+    """A list that exposes accidental repeated linear searches."""
+
+    def index(self, *args, **kwargs):
+        raise AssertionError("predict should use an index built at initialization")
 
 
 @pytest.mark.unit
@@ -200,3 +209,71 @@ class TestManualRecognizerPredict:
 
         # Assert
         assert results[0] == [(10, 15), (5, 8), (0, 3)]  # Order preserved
+
+    def test_tracks_mutations_to_caller_owned_annotations(self):
+        """Test that lookup follows changes to the original annotation lists."""
+        stored_texts = ["Old text"]
+        stored_references = [[(0, 3)]]
+        recognizer = ManualRecognizer("test", stored_texts, stored_references)
+
+        stored_texts[0] = "Updated text"
+        stored_references[0] = [(1, 4)]
+        stored_texts.append("Added text")
+        stored_references.append([(2, 5)])
+
+        assert recognizer.predict(["Old text", "Updated text", "Added text"]) == [
+            None,
+            [(1, 4)],
+            [(2, 5)],
+        ]
+
+    def test_duplicate_text_uses_first_annotation(self):
+        recognizer = ManualRecognizer(
+            label="test",
+            texts=["same", "same"],
+            references=[[(0, 1)], [(2, 3)]],
+        )
+
+        assert recognizer.predict(["same"]) == [[(0, 1)]]
+
+    def test_empty_query_and_empty_annotations(self):
+        recognizer = ManualRecognizer(label="test", texts=[], references=[])
+
+        assert recognizer.predict([]) == []
+        assert recognizer.predict(["unknown"]) == [None]
+
+    def test_predict_does_not_call_list_index(self):
+        recognizer = ManualRecognizer(
+            label="test",
+            texts=NoIndexList(["known"]),
+            references=[[(0, 2)]],
+        )
+
+        assert recognizer.predict(["known"]) == [[(0, 2)]]
+
+
+@pytest.mark.unit
+@settings(max_examples=80, derandomize=True, deadline=None)
+@given(
+    annotations=st.lists(
+        st.tuples(
+            st.text(max_size=8),
+            st.lists(st.tuples(st.integers(0, 20), st.integers(0, 20)), max_size=6),
+        ),
+        max_size=12,
+    ),
+    queries=st.lists(st.text(max_size=8), max_size=12),
+)
+def test_predict_matches_first_list_index_semantics(annotations, queries):
+    texts = [text for text, _ in annotations]
+    references = [spans for _, spans in annotations]
+    recognizer = ManualRecognizer("test", texts, references)
+
+    expected = []
+    for query in queries:
+        try:
+            expected.append(references[texts.index(query)])
+        except ValueError:
+            expected.append(None)
+
+    assert recognizer.predict(queries) == expected

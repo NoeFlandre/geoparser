@@ -8,8 +8,8 @@ from sqlmodel import select
 
 from geoparser.db.crud import RecognizerRepository
 from geoparser.db.db import get_session
-from geoparser.db.models import Recognizer, RecognizerCreate
-from geoparser.services._shared import ensure_module_record, require_fit
+from geoparser.db.models import Project, Recognizer, RecognizerCreate
+from geoparser.services._shared import ensure_module_record, insert_rows, require_fit
 
 
 @pytest.mark.unit
@@ -51,3 +51,18 @@ def test_require_fit_names_modules_without_fit_methods():
         match="Resolver 'ManualResolver' does not implement a fit method",
     ):
         require_fit(module, "Resolver")
+
+
+@pytest.mark.unit
+def test_insert_rows_skips_empty_batches_and_executes_one_bulk_insert():
+    """Shared service writes skip empty rows and insert a batch together."""
+    session = Mock()
+    rows = [{"id": "one", "name": "First"}, {"id": "two", "name": "Second"}]
+
+    insert_rows(session, Project, [])
+    insert_rows(session, Project, rows)
+
+    session.execute.assert_called_once()
+    statement, inserted_rows = session.execute.call_args.args
+    assert statement.table.name == "project"
+    assert inserted_rows == rows

@@ -6,6 +6,16 @@ if t.TYPE_CHECKING:
     pass
 
 
+_IndexedValue = t.TypeVar("_IndexedValue", bound=t.Hashable)
+
+
+def _first_indices(values: t.Sequence[_IndexedValue]) -> dict[_IndexedValue, int]:
+    indices: dict[_IndexedValue, int] = {}
+    for idx, value in enumerate(values):
+        indices.setdefault(value, idx)
+    return indices
+
+
 class ManualResolver(Resolver):
     """
     A resolution module for manually annotated referents.
@@ -51,6 +61,14 @@ class ManualResolver(Resolver):
         self.texts = list(texts)
         self.references = [list(document) for document in references]
         self.referents = [list(document) for document in referents]
+        self._refresh_indices()
+
+    def _refresh_indices(self) -> None:
+        """Rebuild lookups to reflect mutations to the public annotation lists."""
+        self._text_indices = _first_indices(self.texts)
+        self._reference_indices = [
+            _first_indices(doc_references) for doc_references in self.references
+        ]
 
     def predict(
         self, texts: list[str], references: list[list[tuple[int, int]]]
@@ -72,26 +90,27 @@ class ManualResolver(Resolver):
             for annotated references, or None for references without annotations (which won't
             be marked as processed).
         """
+        self._refresh_indices()
         results = []
         for text, doc_references in zip(texts, references, strict=True):
-            try:
-                text_idx = self.texts.index(text)
-                stored_references = self.references[text_idx]
-                stored_referents = self.referents[text_idx]
-
-                doc_results = []
-                for reference in doc_references:
-                    try:
-                        reference_idx = stored_references.index(reference)
-                        doc_results.append(stored_referents[reference_idx])
-                    except ValueError:
-                        # Reference not in stored annotations - return None
-                        # This signals to the service that no annotation is available
-                        doc_results.append(None)
-
-                results.append(doc_results)
-            except ValueError:
+            text_idx = self._text_indices.get(text)
+            if text_idx is None:
                 # Text not in stored annotations - return None for all references in this document
                 results.append([None] * len(doc_references))
+                continue
+
+            stored_referents = self.referents[text_idx]
+            reference_indices = self._reference_indices[text_idx]
+
+            doc_results = []
+            for reference in doc_references:
+                reference_idx = reference_indices.get(reference)
+                if reference_idx is None:
+                    # Reference not in stored annotations - return None
+                    doc_results.append(None)
+                else:
+                    doc_results.append(stored_referents[reference_idx])
+
+            results.append(doc_results)
 
         return results

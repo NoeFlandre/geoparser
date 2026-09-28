@@ -10,7 +10,7 @@ import pytest
 from sqlmodel import Session
 
 from geoparser.db.crud import ProjectRepository
-from geoparser.db.models import ProjectCreate, ProjectUpdate
+from geoparser.db.models import Project, ProjectCreate, ProjectUpdate
 
 
 @pytest.mark.unit
@@ -50,10 +50,74 @@ class TestBaseRepositoryCreate:
             ProjectCreate(name="Second"),
         ]
 
-        created = ProjectRepository.create_many(test_session, projects)
+        created_ids = ProjectRepository.create_many(test_session, projects)
 
-        assert [project.name for project in created] == ["First", "Second"]
-        assert all(project.id is not None for project in created)
+        assert all(isinstance(project_id, uuid.UUID) for project_id in created_ids)
+        stored = [
+            ProjectRepository.get(test_session, project_id)
+            for project_id in created_ids
+        ]
+        assert [
+            project.name if project is not None else None for project in stored
+        ] == ["First", "Second"]
+
+    def test_uses_one_core_insert_and_returns_client_ids_in_input_order(
+        self, monkeypatch
+    ):
+        from unittest.mock import Mock
+
+        from geoparser.db.crud import base
+
+        ids = [uuid.uuid4(), uuid.uuid4()]
+        id_iter = iter(ids)
+        monkeypatch.setattr(base.uuid, "uuid4", lambda: next(id_iter))
+        session = Mock()
+
+        returned_ids = ProjectRepository.create_many(
+            session, [ProjectCreate(name="First"), ProjectCreate(name="Second")]
+        )
+
+        assert returned_ids == ids
+        session.execute.assert_called_once()
+        statement, rows = session.execute.call_args.args
+        assert statement.table.name == "project"
+        assert rows == [
+            {"id": ids[0], "name": "First"},
+            {"id": ids[1], "name": "Second"},
+        ]
+        session.add_all.assert_not_called()
+        session.commit.assert_called_once_with()
+
+    def test_preserves_ids_supplied_by_the_caller(self):
+        from unittest.mock import Mock
+
+        project_id = uuid.uuid4()
+        session = Mock()
+
+        returned_ids = ProjectRepository.create_many(
+            session, [Project(id=project_id, name="First")]
+        )
+
+        assert returned_ids == [project_id]
+        _, rows = session.execute.call_args.args
+        assert rows == [{"id": project_id, "name": "First"}]
+
+    def test_generates_id_when_caller_explicitly_passes_none(self, monkeypatch):
+        from unittest.mock import Mock
+
+        from geoparser.db.crud import base
+
+        generated_id = uuid.uuid4()
+        monkeypatch.setattr(base.uuid, "uuid4", lambda: generated_id)
+        session = Mock()
+
+        returned_ids = ProjectRepository.create_many(
+            session, [Project.model_construct(id=None, name="First")]
+        )
+
+        assert returned_ids == [generated_id]
+        _, rows = session.execute.call_args.args
+        assert rows == [{"id": generated_id, "name": "First"}]
 
 
 @pytest.mark.unit
@@ -258,4 +322,34 @@ class TestBaseRepositoryCreateManyFailure:
         session = Mock()
 
         assert ProjectRepository.create_many(session, []) == []
+        session.execute.assert_not_called()
         session.add_all.assert_not_called()
+        session.commit.assert_not_called()
+
+    def test_rolls_back_and_reraises_when_the_bulk_insert_fails(self):
+        from unittest.mock import Mock
+
+        session = Mock()
+        session.execute.side_effect = RuntimeError("constraint failed")
+
+        with pytest.raises(RuntimeError, match="constraint failed"):
+            ProjectRepository.create_many(session, [ProjectCreate(name="x")])
+
+        session.rollback.assert_called_once_with()
+        session.commit.assert_not_called()
+
+
+@pytest.mark.unit
+def test_default_batch_id_is_missing_without_a_generated_id_field():
+    from sqlmodel import SQLModel
+
+    from geoparser.db.crud.base import _default_batch_id
+
+    class ModelWithoutId(SQLModel):
+        name: str
+
+    class ModelWithRequiredId(SQLModel):
+        id: str
+
+    assert _default_batch_id(ModelWithoutId) is None
+    assert _default_batch_id(ModelWithRequiredId) is None
