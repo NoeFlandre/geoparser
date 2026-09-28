@@ -403,6 +403,14 @@ class TestResolveFilePath:
         with pytest.raises(FileNotFoundError, match="not found at"):
             acquirer._resolve_file_path(source, file_path)
 
+    def test_raises_when_matching_plain_file_is_missing(self, acquirer, tmp_path):
+        """A missing path is not accepted just because its name matches."""
+        file_path = tmp_path / "places.csv"
+        source = make_source(file="places.csv")
+
+        with pytest.raises(FileNotFoundError, match="not found at"):
+            acquirer._resolve_file_path(source, file_path)
+
     def test_extracts_zip_and_finds_target_file(self, acquirer, tmp_path):
         """A ZIP archive is extracted and its target file located."""
         archive_path = tmp_path / "places.zip"
