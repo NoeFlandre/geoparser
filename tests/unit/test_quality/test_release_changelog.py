@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import yaml
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -54,3 +56,19 @@ def test_release_changelog_rejects_missing_version_section(tmp_path: Path) -> No
 
     assert result.returncode == 1
     assert "No changelog section for 0.7.0" in result.stderr
+
+
+def test_existing_github_release_keeps_handwritten_notes() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    publish_script = next(
+        step["run"]
+        for step in workflow["jobs"]["github-release"]["steps"]
+        if step.get("name") == "Publish the GitHub Release"
+    )
+    existing_release_script, new_release_script = publish_script.split("else", 1)
+
+    assert "gh release edit" not in existing_release_script
+    assert "--notes-file release-notes/release-notes.md" in new_release_script
