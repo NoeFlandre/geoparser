@@ -9,7 +9,6 @@ import pytest
 import yaml
 import yaml.constructor
 import yaml.resolver
-from radon.complexity import cc_visit
 
 from tests.unit import test_docs as docs_guard
 
@@ -68,12 +67,13 @@ def test_citation_version_matches_project_version() -> None:
 
 
 def test_manual_resolver_constructor_stays_within_crap_complexity_limit() -> None:
+    radon = pytest.importorskip("radon.complexity")
     source = (PROJECT_ROOT / "geoparser/modules/resolvers/manual.py").read_text(
         encoding="utf-8"
     )
     constructor = next(
         block
-        for block in cc_visit(source)
+        for block in radon.cc_visit(source)
         if block.fullname == "ManualResolver.__init__"
     )
 
