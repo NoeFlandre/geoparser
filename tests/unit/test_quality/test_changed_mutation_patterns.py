@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import scripts.changed_mutation_patterns as changed_patterns
 
 
-def test_mutation_patterns_select_only_changed_geoparser_modules() -> None:
+def test_mutation_patterns_select_only_mutable_changed_geoparser_modules() -> None:
     assert changed_patterns.module_patterns_for_paths(
         [
             "geoparser/modules/recognizers/manual.py",
@@ -13,7 +13,7 @@ def test_mutation_patterns_select_only_changed_geoparser_modules() -> None:
             "scripts/quality_gauntlet.py",
             "geoparser/py.typed",
         ]
-    ) == ["geoparser.db.__init__.*", "geoparser.modules.recognizers.manual.*"]
+    ) == ["geoparser.modules.recognizers.manual.*"]
 
 
 def test_mutation_patterns_skip_modules_excluded_by_mutmut_config() -> None:

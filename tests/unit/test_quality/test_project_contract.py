@@ -672,6 +672,7 @@ def test_deptry_ignores_only_documented_runtime_and_tool_dependencies() -> None:
     assert set(ignored["DEP004"]) == {
         "coverage",
         "huggingface_hub",
+        "mutmut",
         "plotly",
         "radon",
         "toml",

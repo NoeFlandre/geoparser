@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path, PurePosixPath
 
 import toml
+from mutmut.mutation.file_mutation import mutate_file_contents
 
 
 def _excluded_paths() -> list[str]:
@@ -33,6 +34,9 @@ def module_patterns_for_paths(paths: list[str]) -> list[str]:
             fnmatch.fnmatchcase(source.as_posix(), pattern)
             for pattern in excluded_paths
         ):
+            continue
+        source_text = Path(source).read_text(encoding="utf-8")
+        if not mutate_file_contents(source.as_posix(), source_text).mutant_names:
             continue
         module_parts = (*source.parts[:-1], source.stem)
         patterns.add(f"{'.'.join(module_parts)}.*")

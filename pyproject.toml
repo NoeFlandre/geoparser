@@ -154,9 +154,10 @@ DEP002 = [
 ]
 # DEP004: dev-only imports outside the package: scripts/crap.py (coverage,
 # radon), scripts/benchmark/publish.py (huggingface_hub),
-# scripts/changed_mutation_patterns.py (toml) and the demo notebook (plotly).
+# scripts/changed_mutation_patterns.py (mutmut, toml) and the demo notebook
+# (plotly).
 # None of them ship in the wheel.
-DEP004 = ["coverage", "huggingface_hub", "plotly", "radon", "toml"]
+DEP004 = ["coverage", "huggingface_hub", "mutmut", "plotly", "radon", "toml"]
 
 [tool.ruff]
 line-length = 88
