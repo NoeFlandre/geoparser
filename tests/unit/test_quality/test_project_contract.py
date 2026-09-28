@@ -758,3 +758,22 @@ def test_benchmark_workflow_runs_algorithmic_guards_without_timings() -> None:
     assert guard_step is not None
     assert "--benchmark-disable" in guard_step["run"]
     assert "test_guards.py" in guard_step["run"]
+
+
+def test_benchmark_dispatch_uses_base_ref_and_its_locked_environment() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/benchmark.yml").read_text(encoding="utf-8"),
+        Loader=_UniqueKeyLoader,
+    )
+    triggers = workflow.get("on", workflow.get(True))
+    dispatch = triggers["workflow_dispatch"]
+    base_step = next(
+        step
+        for step in workflow["jobs"]["compare"]["steps"]
+        if step.get("name") == "Benchmark pull request base"
+    )
+
+    assert dispatch["inputs"]["base_ref"]["default"] == "main"
+    assert '"$BASE_REF"' in base_step["run"]
+    assert "uv sync --locked --project .tmp/main" in base_step["run"]
+    assert "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python" in base_step["run"]
