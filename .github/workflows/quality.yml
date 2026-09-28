@@ -108,7 +108,8 @@ jobs:
           uv run --no-sync python scripts/mutation_gate.py \
             --max-survivors 0 \
             --max-no-tests 0 \
-            --stats mutants/mutmut-cicd-stats.json || gate_status=$?
+            --stats mutants/mutmut-cicd-stats.json \
+            --patterns "${patterns[@]}" || gate_status=$?
           if (( gate_status != 0 )); then
             while IFS= read -r mutant; do
               [[ -z "$mutant" ]] || uv run --no-sync mutmut show "$mutant"

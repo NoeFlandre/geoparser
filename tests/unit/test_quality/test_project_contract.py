@@ -581,6 +581,10 @@ def test_quality_workflow_mutates_changed_python_modules_on_pull_requests() -> N
     assert any("changed_mutation_patterns.py" in command for command in commands)
     assert any("mutmut run" in command for command in commands)
     assert any("--max-no-tests 0" in command for command in commands)
+    assert any(
+        "mutation_gate.py" in command and "--patterns" in command
+        for command in commands
+    )
     assert any("mutmut results --all true" in command for command in commands)
     assert any("mutmut show" in command for command in commands)
 
