@@ -35,7 +35,10 @@ def module_patterns_for_paths(paths: list[str]) -> list[str]:
             for pattern in excluded_paths
         ):
             continue
-        source_text = Path(source).read_text(encoding="utf-8")
+        source_path = Path(source)
+        if not source_path.is_file():
+            continue
+        source_text = source_path.read_text(encoding="utf-8")
         if not mutate_file_contents(source.as_posix(), source_text).mutant_names:
             continue
         module_parts = (*source.parts[:-1], source.stem)
@@ -44,16 +47,14 @@ def module_patterns_for_paths(paths: list[str]) -> list[str]:
 
 
 def changed_paths(base: str, head: str) -> list[str]:
-    """List added or modified package paths between two fetched commits."""
+    """List added, modified, and deleted paths between fetched commits."""
     result = subprocess.run(
         (
             "git",
             "diff",
             "--name-only",
-            "--diff-filter=ACMRT",
+            "--diff-filter=ACMRTD",
             f"{base}...{head}",
-            "--",
-            "geoparser",
         ),
         check=True,
         capture_output=True,
@@ -67,7 +68,23 @@ def main() -> None:
     parser.add_argument("base")
     parser.add_argument("head")
     args = parser.parse_args()
-    print("\n".join(module_patterns_for_paths(changed_paths(args.base, args.head))))
+    paths = changed_paths(args.base, args.head)
+    patterns = module_patterns_for_paths(paths)
+    test_paths = [path for path in paths if path.startswith("tests/")]
+    quality_only_tests = all(
+        path.startswith(("tests/unit/test_quality/", "tests/unit/test_meta/"))
+        for path in test_paths
+    )
+    mutation_config_changed = any(
+        path in {"pyproject.toml", "MUTATION_TESTING.md"} for path in paths
+    )
+
+    if mutation_config_changed or (
+        test_paths and not patterns and not quality_only_tests
+    ):
+        print("FULL_MUTATION")
+    else:
+        print("\n".join(patterns))
 
 
 if __name__ == "__main__":

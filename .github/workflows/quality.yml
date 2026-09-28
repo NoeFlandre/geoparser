@@ -21,11 +21,20 @@ concurrency:
 
 jobs:
   quality:
-    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
+    needs: [changed-mutation]
+    if: always() && (github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null)
     name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (quality-gate)' || 'quality-gate' }}
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
+      - name: Require the changed mutation gate to pass
+        if: >-
+          always() && github.event_name == 'pull_request' &&
+          needs.changed-mutation.result != 'success'
+        run: |
+          echo "::error::The changed mutation gate did not pass."
+          exit 1
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
@@ -65,7 +74,7 @@ jobs:
     if: github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null)
     name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (changed-mutation)' || 'changed-mutation' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -89,27 +98,53 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         shell: bash
         run: |
-          patterns_text="$(uv run --no-sync python scripts/changed_mutation_patterns.py "$BASE_SHA" "$HEAD_SHA")"
-          if [[ -z "$patterns_text" ]]; then
+          scope_text="$(uv run --no-sync python scripts/changed_mutation_patterns.py "$BASE_SHA" "$HEAD_SHA")"
+          full_mutation=false
+          if [[ "$scope_text" == "FULL_MUTATION" ]]; then
+            full_mutation=true
+            patterns_text=""
+          else
+            patterns_text="$scope_text"
+          fi
+          if [[ -z "$patterns_text" && "$full_mutation" == false ]]; then
             echo "No changed geoparser Python modules to mutate."
             exit 0
           fi
-          mapfile -t patterns <<< "$patterns_text"
+          if [[ "$full_mutation" == true ]]; then
+            echo "Test or mutation configuration changes require a full mutation sweep."
+            patterns=()
+          else
+            mapfile -t patterns <<< "$patterns_text"
+          fi
           mkdir -p mutants
           rm -f mutants/mutmut-cicd-stats.json
           run_status=0
-          uv run --no-sync mutmut run "${patterns[@]}" || run_status=$?
+          if [[ "$full_mutation" == true ]]; then
+            uv run --no-sync mutmut run || run_status=$?
+          else
+            uv run --no-sync mutmut run "${patterns[@]}" || run_status=$?
+          fi
           export_status=0
           uv run --no-sync mutmut export-cicd-stats || export_status=$?
           if (( export_status != 0 )); then
             exit "$export_status"
           fi
           gate_status=0
-          uv run --no-sync python scripts/mutation_gate.py \
-            --max-survivors 0 \
-            --max-no-tests 0 \
-            --stats mutants/mutmut-cicd-stats.json \
-            --patterns "${patterns[@]}" || gate_status=$?
+          if [[ "$full_mutation" == true ]]; then
+            gate_args=(
+              --max-survivors 0
+              --max-no-tests 69
+              --stats mutants/mutmut-cicd-stats.json
+            )
+          else
+            gate_args=(
+              --max-survivors 0
+              --max-no-tests 0
+              --stats mutants/mutmut-cicd-stats.json
+              --patterns "${patterns[@]}"
+            )
+          fi
+          uv run --no-sync python scripts/mutation_gate.py "${gate_args[@]}" || gate_status=$?
           if (( gate_status != 0 )); then
             while IFS= read -r mutant; do
               [[ -z "$mutant" ]] || uv run --no-sync mutmut show "$mutant"

@@ -589,6 +589,38 @@ def test_quality_workflow_mutates_changed_python_modules_on_pull_requests() -> N
     assert any("mutmut show" in command for command in commands)
 
 
+def test_quality_gate_fails_when_changed_mutation_fails() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    job = workflow["jobs"]["quality"]
+    guard = job["steps"][0]
+
+    assert job["needs"] == ["changed-mutation"]
+    assert "always()" in job["if"]
+    assert "always()" in guard["if"]
+    assert "needs.changed-mutation.result != 'success'" in guard["if"]
+    assert "exit 1" in guard["run"]
+
+
+def test_test_only_changes_run_the_full_mutation_sweep() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    job = workflow["jobs"]["changed-mutation"]
+    script = next(
+        step["run"]
+        for step in job["steps"]
+        if step.get("name") == "Mutate changed package modules"
+    )
+
+    assert '"FULL_MUTATION"' in script
+    assert "--max-no-tests 69" in script
+    assert job["timeout-minutes"] == "240"
+
+
 def test_changed_mutation_job_installs_project_and_test_dependencies() -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
