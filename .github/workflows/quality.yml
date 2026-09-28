@@ -109,6 +109,14 @@ jobs:
             --max-survivors 0 \
             --max-no-tests 0 \
             --stats mutants/mutmut-cicd-stats.json || gate_status=$?
+          if (( gate_status != 0 )); then
+            while IFS= read -r mutant; do
+              [[ -z "$mutant" ]] || uv run --no-sync mutmut show "$mutant"
+            done < <(
+              uv run --no-sync mutmut results --all true \
+                | sed -n 's/^[[:space:]]*\(geoparser\..*\): survived$/\1/p'
+            )
+          fi
           if (( run_status != 0 )); then
             exit "$run_status"
           fi
