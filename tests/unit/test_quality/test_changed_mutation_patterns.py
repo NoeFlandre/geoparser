@@ -16,6 +16,12 @@ def test_mutation_patterns_select_only_changed_geoparser_modules() -> None:
     ) == ["geoparser.db.__init__.*", "geoparser.modules.recognizers.manual.*"]
 
 
+def test_mutation_patterns_skip_modules_excluded_by_mutmut_config() -> None:
+    assert changed_patterns.module_patterns_for_paths(
+        ["geoparser/cli/parse.py", "geoparser/db/db.py"]
+    ) == ["geoparser.db.db.*"]
+
+
 def test_changed_paths_requests_only_added_or_modified_package_files(
     monkeypatch,
 ) -> None:

@@ -153,9 +153,10 @@ DEP002 = [
     "spacy-curated-transformers",
 ]
 # DEP004: dev-only imports outside the package: scripts/crap.py (coverage,
-# radon), scripts/benchmark/publish.py (huggingface_hub) and the demo
-# notebook (plotly). None of them ship in the wheel.
-DEP004 = ["coverage", "huggingface_hub", "plotly", "radon"]
+# radon), scripts/benchmark/publish.py (huggingface_hub),
+# scripts/changed_mutation_patterns.py (toml) and the demo notebook (plotly).
+# None of them ship in the wheel.
+DEP004 = ["coverage", "huggingface_hub", "plotly", "radon", "toml"]
 
 [tool.ruff]
 line-length = 88
