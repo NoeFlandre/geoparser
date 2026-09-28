@@ -25,7 +25,7 @@ Pragmas only take effect when the mutant tree is regenerated, so delete
 | Baseline, whole package | 3871 | 2480 | 931 | 290 | — | 164 | 9.7/s |
 | After excluding the build pipeline | 2021 | 1427 | 307 | 286 | — | 0 | 34.0/s |
 | Clean sweep after model pass | 1999 | 1786 | **0** | 212 | 1 | 0 | 31.2/s |
-| Fit coverage and mutation annotations | 3568 | 3424 | **62** | 69 | 13 | 0 | — |
+| Fit coverage, before latest assertions | 3568 | 3424 | **62** | 69 | 13 | 0 | — |
 
 The quality gauntlet passes `--max-survivors 0 --max-no-tests 69` to the
 mutation gate. Keep survivors at zero. The no-tests count is a ratchet: it
@@ -160,6 +160,8 @@ is recorded by function:
 - `Project.train_resolver` — 7
 - `GazetteerArtifact.count_names` — 2
 
-The current fit-coverage campaign killed 3,424 mutants, left 62 survivors,
-and recorded 13 tolerated timeouts. The zero-survivor gate is still failing
-until those survivors are killed or justified with evidence-backed pragmas.
+The last completed fit-coverage campaign killed 3,424 mutants, left 62
+survivors, and recorded 13 tolerated timeouts. That snapshot predates the
+latest assertions for fit defaults, shuffling, directory creation, and logging
+intervals. Rerun mutation testing before treating 62 as the current survivor
+count. The zero-survivor gate remains required.
