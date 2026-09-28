@@ -1,8 +1,11 @@
 import re
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 import yaml.constructor
 import yaml.resolver
@@ -15,6 +18,17 @@ except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10 CI.
     import tomli as tomllib
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _bash_executable() -> str:
+    if sys.platform == "win32":
+        git = shutil.which("git")
+        if git is not None:
+            git_bash = Path(git).parent.parent / "bin" / "bash.exe"
+            if git_bash.is_file():
+                return str(git_bash)
+        raise FileNotFoundError("Git Bash is required to parse workflow shell scripts")
+    return shutil.which("bash") or "bash"
 
 
 class _UniqueKeyLoader(yaml.SafeLoader):
@@ -206,7 +220,14 @@ def test_ci_runs_the_full_gate_and_publishes_strict_mkdocs() -> None:
 
     assert "pull_request" in quality_triggers
     assert any("scripts/quality_gauntlet.py" in command for command in quality_commands)
-    assert not any("--skip-mutation" in command for command in quality_commands)
+    quality_run = next(
+        step["run"]
+        for step in quality_steps
+        if step.get("name") == "Run the complete deterministic quality gauntlet"
+    )
+    scheduled_run = quality_run.split("else", maxsplit=1)[0]
+    assert "--skip-mutation" not in scheduled_run
+    assert "--skip-mutation" in quality_run
     assert any(
         "mkdocs build --strict" in step.get("run", "") for step in docs_build_steps
     )
@@ -251,7 +272,7 @@ def test_github_workflow_bash_scripts_parse() -> None:
                 if step.get("shell", "bash") != "bash" or "run" not in step:
                     continue
                 result = subprocess.run(
-                    ["bash", "-n"],
+                    [_bash_executable(), "-n"],
                     input=step["run"],
                     text=True,
                     capture_output=True,
@@ -260,6 +281,28 @@ def test_github_workflow_bash_scripts_parse() -> None:
                 assert result.returncode == 0, (
                     f"{workflow_path.name}:{job_name}: {result.stderr}"
                 )
+
+
+def test_windows_uses_git_bash_instead_of_the_wsl_shim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    git = tmp_path / "Git" / "cmd" / "git.exe"
+    git.parent.mkdir(parents=True)
+    git.touch()
+    git_bash = tmp_path / "Git" / "bin" / "bash.exe"
+    git_bash.parent.mkdir(parents=True)
+    git_bash.touch()
+
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(
+        shutil,
+        "which",
+        lambda command: (
+            str(git) if command == "git" else r"C:\Windows\System32\bash.exe"
+        ),
+    )
+
+    assert _bash_executable() == str(git_bash)
 
 
 def test_docker_workflow_runs_the_runtime_cli() -> None:
@@ -495,6 +538,23 @@ def test_changed_mutation_job_installs_project_and_test_dependencies() -> None:
     )
 
     assert install_step["run"] == "uv sync --locked --no-default-groups --group test"
+
+
+def test_changed_mutation_job_installs_duckdb_spatial_extension() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    steps = workflow["jobs"]["changed-mutation"]["steps"]
+    install_step = next(
+        step for step in steps if step.get("name") == "Install DuckDB spatial extension"
+    )
+    mutation_step = next(
+        step for step in steps if step.get("name") == "Mutate changed package modules"
+    )
+
+    assert "install_extension('spatial')" in install_step["run"]
+    assert steps.index(install_step) < steps.index(mutation_step)
 
 
 def test_quality_workflow_skips_the_full_mutation_sweep_on_pull_requests() -> None:

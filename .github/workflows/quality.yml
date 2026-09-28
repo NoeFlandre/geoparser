@@ -79,6 +79,10 @@ jobs:
       - name: Install locked test dependencies
         run: uv sync --locked --no-default-groups --group test
 
+      - name: Install DuckDB spatial extension
+        run: |
+          uv run --no-sync python -c "import duckdb; connection = duckdb.connect(); connection.install_extension('spatial'); connection.close()"
+
       - name: Mutate changed package modules
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
