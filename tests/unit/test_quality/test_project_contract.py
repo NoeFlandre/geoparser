@@ -674,6 +674,7 @@ def test_deptry_ignores_only_documented_runtime_and_tool_dependencies() -> None:
         "huggingface_hub",
         "plotly",
         "radon",
+        "toml",
     }
     pyproject_text = (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert "# DEP002:" in pyproject_text
