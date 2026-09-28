@@ -51,9 +51,9 @@ class TestTrainingMixinFit:
         references = [[(0, 5)]]
         referents = [[("geonames", "123")]]
         training_data = {
-            "sentence1": [f"context {index}" for index in range(21)],
-            "sentence2": [f"candidate {index}" for index in range(21)],
-            "label": [float(index % 2) for index in range(21)],
+            "sentence1": [f"context {index}" for index in range(220)],
+            "sentence2": [f"candidate {index}" for index in range(220)],
+            "label": [float(index % 2) for index in range(220)],
         }
         resolver._prepare_training_data = Mock(return_value=training_data)
         dataset = object()
@@ -97,7 +97,7 @@ class TestTrainingMixinFit:
             warmup_ratio=0.15,
             save_strategy="steps",
             logging_strategy="steps",
-            logging_steps=1,
+            logging_steps=11,
             eval_strategy="no",
             save_total_limit=2,
             load_best_model_at_end=False,
@@ -164,8 +164,10 @@ class TestTrainingMixinFit:
         resolver = Resolver()
         resolver._prepare_training_data = Mock(return_value={"sentence1": []})
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as error:
             resolver.fit([], [], [], tmp_path / "unused")
+
+        assert str(error.value).strip() not in {"", "None"}
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(

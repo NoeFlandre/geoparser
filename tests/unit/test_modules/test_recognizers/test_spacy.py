@@ -752,5 +752,7 @@ class TestSpacyRecognizerFit:
         recognizer = SpacyRecognizer.__new__(SpacyRecognizer)
         recognizer._prepare_training_data = Mock(return_value=[])
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as error:
             recognizer.fit([], [], "unused")
+
+        assert str(error.value).strip() not in {"", "None"}
