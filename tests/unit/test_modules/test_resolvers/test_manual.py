@@ -428,3 +428,54 @@ def test_predict_matches_first_list_index_semantics(annotations, queries):
         expected.append(doc_result)
 
     assert resolver.predict(query_texts, query_references) == expected
+
+
+@pytest.fixture
+def annotated_resolver() -> ManualResolver:
+    """A resolver holding annotations for two documents."""
+    return ManualResolver(
+        label="annotator_a",
+        texts=["Paris and Berlin", "Rome"],
+        references=[[(0, 5), (10, 16)], [(0, 4)]],
+        referents=[[("geonames", "1"), None], [("geonames", "3")]],
+    )
+
+
+@pytest.mark.unit
+class TestManualResolverStoredAnnotations:
+    """Replaying annotations recorded elsewhere."""
+
+    def test_returns_the_referent_recorded_for_each_span(self, annotated_resolver):
+        results = annotated_resolver.predict(["Rome"], [[(0, 4)]])
+
+        assert results == [[("geonames", "3")]]
+
+    def test_preserves_a_recorded_none_for_an_ungeocoded_span(self, annotated_resolver):
+        results = annotated_resolver.predict(["Paris and Berlin"], [[(0, 5), (10, 16)]])
+
+        assert results == [[("geonames", "1"), None]]
+
+    def test_returns_none_for_a_span_that_was_never_annotated(self, annotated_resolver):
+        results = annotated_resolver.predict(["Rome"], [[(1, 3)]])
+
+        assert results == [[None]]
+
+    def test_returns_none_for_every_span_of_an_unknown_document(
+        self, annotated_resolver
+    ):
+        results = annotated_resolver.predict(["Lisbon"], [[(0, 6), (7, 8)]])
+
+        assert results == [[None, None]]
+
+    def test_matches_documents_by_text_not_by_position(self, annotated_resolver):
+        results = annotated_resolver.predict(
+            ["Rome", "Paris and Berlin"], [[(0, 4)], [(0, 5)]]
+        )
+
+        assert results == [[("geonames", "3")], [("geonames", "1")]]
+
+    def test_rejects_texts_and_references_of_different_lengths(
+        self, annotated_resolver
+    ):
+        with pytest.raises(ValueError):
+            annotated_resolver.predict(["Rome", "Paris and Berlin"], [[(0, 4)]])

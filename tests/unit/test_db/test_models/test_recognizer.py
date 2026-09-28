@@ -7,7 +7,8 @@ Tests the Recognizer model.
 import pytest
 from sqlmodel import Session
 
-from geoparser.db.models import RecognizerCreate, RecognizerUpdate
+from geoparser.db.models import Recognizer, RecognizerCreate, RecognizerUpdate
+from geoparser.modules.module import Module
 
 
 @pytest.mark.unit
@@ -204,3 +205,34 @@ class TestRecognizerUpdate:
         assert recognizer_update.id == "test_id"
         assert recognizer_update.name is None
         assert recognizer_update.config is None
+
+
+@pytest.mark.unit
+class TestRecognizerConfigRendering:
+    """The exact string form of recognizer configuration."""
+
+    def test_entries_are_separated_by_a_comma_and_a_space(self):
+        row = Recognizer(id="m-1", name="M", config={"a": 1, "b": 2})
+
+        assert str(row) == "M(a=1, b=2)"
+
+
+@pytest.mark.unit
+class TestModuleStringRendering:
+    """How configured module instances render and validate names."""
+
+    def test_a_module_renders_the_same_way_as_its_row(self):
+        class Example(Module):
+            NAME = "M"
+
+        module = Example(a=1, b=2)
+        row = Recognizer(id=module.id, name=module.name, config=module.config)
+
+        assert str(module) == str(row)
+
+    def test_a_module_without_a_name_is_rejected(self):
+        class Nameless(Module):
+            pass
+
+        with pytest.raises(ValueError):
+            Nameless()

@@ -343,19 +343,38 @@ class Acquirer:
         if source_path.is_dir():
             return self._find_target_file(source_path, target_filename)
 
-        if not zipfile.is_zipfile(source_path):
-            if source_path.name == target_filename:
-                return source_path
-            msg = (
-                f"Source '{source_config.name}': file '{target_filename}' not "
-                f"found at {source_path}"
-            )
-            raise FileNotFoundError(msg)
+        if zipfile.is_zipfile(source_path):
+            return self._resolve_archive_path(source_config, source_path)
 
+        return self._resolve_plain_file_path(source_config, source_path)
+
+    def _resolve_plain_file_path(
+        self, source_config: SourceConfig, source_path: Path
+    ) -> Path:
+        """Validate and return a plain source file with the expected name."""
+        if source_path.is_file() and source_path.name == source_config.file:
+            return source_path
+
+        msg = (
+            f"Source '{source_config.name}': file '{source_config.file}' not "
+            f"found at {source_path}"
+        )
+        raise FileNotFoundError(msg)
+
+    def _resolve_archive_path(
+        self, source_config: SourceConfig, source_path: Path
+    ) -> Path:
+        """Reuse or extract an archive and return its target file."""
+        target_filename = source_config.file
         extraction_dir = source_path.parent / source_path.stem
-        if self._should_skip_extraction(source_path, extraction_dir, target_filename):
-            return self._find_target_file(extraction_dir, target_filename)
-        return self._extract_zip(source_path, extraction_dir, target_filename)
+        if not self._should_skip_extraction(
+            source_path, extraction_dir, target_filename
+        ):
+            return self._extract_zip(source_path, extraction_dir, target_filename)
+
+        if extraction_dir.name == target_filename:
+            return extraction_dir
+        return self._find_target_file(extraction_dir, target_filename)
 
     def _should_skip_extraction(
         self, archive_path: Path, extraction_dir: Path, target_filename: str
@@ -363,10 +382,6 @@ class Acquirer:
         """Check if a previous extraction is still up to date."""
         if not extraction_dir.exists():
             return False
-
-        # Local directories are already in their final form
-        if not archive_path.is_file():
-            return True
 
         if extraction_dir.name == target_filename:
             return self._is_fresh(archive_path, extraction_dir)

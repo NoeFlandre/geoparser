@@ -403,6 +403,14 @@ class TestResolveFilePath:
         with pytest.raises(FileNotFoundError, match="not found at"):
             acquirer._resolve_file_path(source, file_path)
 
+    def test_raises_when_matching_plain_file_is_missing(self, acquirer, tmp_path):
+        """A missing path is not accepted just because its name matches."""
+        file_path = tmp_path / "places.csv"
+        source = make_source(file="places.csv")
+
+        with pytest.raises(FileNotFoundError, match="not found at"):
+            acquirer._resolve_file_path(source, file_path)
+
     def test_extracts_zip_and_finds_target_file(self, acquirer, tmp_path):
         """A ZIP archive is extracted and its target file located."""
         archive_path = tmp_path / "places.zip"
@@ -434,70 +442,13 @@ class TestResolveFilePath:
         archive_path = tmp_path / "places.csv.zip"
         with zipfile.ZipFile(archive_path, "w") as zip_file:
             zip_file.writestr("contents.txt", "irrelevant")
-        source = make_source(file="places.csv")
+        source = make_source(file="places.csv", path=str(archive_path))
 
-        result = acquirer._resolve_file_path(source, archive_path)
+        first = acquirer.acquire(source)
+        result = acquirer.acquire(source)
 
+        assert first == result
         assert result == archive_path.parent / "places.csv"
-
-
-@pytest.mark.unit
-class TestShouldSkipExtraction:
-    """Test Acquirer._should_skip_extraction()."""
-
-    def test_false_when_extraction_dir_missing(self, acquirer, tmp_path):
-        """No prior extraction means extraction cannot be skipped."""
-        archive_path = tmp_path / "archive.zip"
-        archive_path.touch()
-        extraction_dir = tmp_path / "missing_dir"
-
-        assert (
-            acquirer._should_skip_extraction(archive_path, extraction_dir, "x.csv")
-            is False
-        )
-
-    def test_true_when_archive_path_is_not_a_file(self, acquirer, tmp_path):
-        """A local directory 'archive' is treated as already fully extracted."""
-        archive_path = tmp_path / "already_a_directory"
-        archive_path.mkdir()
-        extraction_dir = tmp_path / "extraction_target"
-        extraction_dir.mkdir()
-
-        assert (
-            acquirer._should_skip_extraction(archive_path, extraction_dir, "x.csv")
-            is True
-        )
-
-    def test_false_when_target_file_is_absent(self, acquirer, tmp_path):
-        """An extraction dir that doesn't contain the target file is stale."""
-        archive_path = tmp_path / "archive.zip"
-        archive_path.touch()
-        extraction_dir = tmp_path / "extraction_target"
-        extraction_dir.mkdir()
-
-        assert (
-            acquirer._should_skip_extraction(
-                archive_path, extraction_dir, "missing.csv"
-            )
-            is False
-        )
-
-    def test_true_when_extraction_dir_itself_is_the_up_to_date_target(
-        self, acquirer, tmp_path
-    ):
-        """An extraction dir named after the target file, newer than the
-        archive, is treated as already up to date."""
-        archive_path = tmp_path / "archive.zip"
-        archive_path.touch()
-        extraction_dir = tmp_path / "places.csv"
-        extraction_dir.mkdir()
-        future = time.time() + 10
-        os.utime(extraction_dir, (future, future))
-
-        assert (
-            acquirer._should_skip_extraction(archive_path, extraction_dir, "places.csv")
-            is True
-        )
 
 
 @pytest.mark.unit

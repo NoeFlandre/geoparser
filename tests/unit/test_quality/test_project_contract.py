@@ -56,6 +56,29 @@ _UniqueKeyLoader.add_constructor(
 )
 
 
+def test_module_test_fragments_are_merged_into_their_owning_files() -> None:
+    fragments = (
+        "tests/unit/test_db/test_functions/test_levenshtein_nulls.py",
+        "tests/unit/test_db/test_functions/test_soundex_reference.py",
+        "tests/unit/test_db/test_crud/test_document_batching.py",
+        "tests/unit/test_db/test_crud/test_reference_update.py",
+        "tests/unit/test_db/test_crud/test_composite_filters.py",
+        "tests/unit/test_db/test_models/test_module_repr.py",
+        "tests/unit/test_modules/test_resolvers/test_manual_lookup.py",
+        "tests/unit/test_modules/test_resolvers/test_context_window.py",
+        "tests/unit/test_evaluation_distance.py",
+        "tests/unit/test_project/test_project_dataflow.py",
+        "tests/unit/test_project/test_project_persistence.py",
+        "tests/unit/test_services/test_resolution_dataflow.py",
+        "tests/unit/test_services/test_prediction_recording.py",
+        "tests/unit/test_pilot_report.py",
+    )
+
+    remaining = [path for path in fragments if (PROJECT_ROOT / path).exists()]
+
+    assert not remaining
+
+
 def test_citation_version_matches_project_version() -> None:
     with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
         project = tomllib.load(pyproject_file)

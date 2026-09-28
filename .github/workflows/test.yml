@@ -95,6 +95,11 @@ jobs:
       - name: Install project dependencies
         run: uv sync --locked
 
+      # The acceptance suite forbids network access, including during its
+      # session-scoped gazetteer fixture setup.
+      - name: Install DuckDB spatial extension
+        run: uv run --no-sync python -c "import duckdb; connection = duckdb.connect(); connection.install_extension('spatial'); connection.close()"
+
       - name: Cache Hugging Face models
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:

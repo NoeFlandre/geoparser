@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures.network import external_network_disabled
+
 
 @pytest.fixture(scope="session")
 def andorra_config_path() -> Path:
@@ -40,7 +42,8 @@ def session_geoparser_data_dir(tmp_path_factory, andorra_config_path: Path) -> P
     os.environ["GEOPARSER_DATA_DIR"] = str(directory)
     os.environ.pop("GEOPARSER_GAZETTEERS_DIR", None)
     try:
-        GazetteerBuilder().build(andorra_config_path)
+        with external_network_disabled():
+            GazetteerBuilder().build(andorra_config_path)
     finally:
         if original_data_dir is None:
             os.environ.pop("GEOPARSER_DATA_DIR", None)
