@@ -726,3 +726,17 @@ def test_deptry_ignores_only_documented_runtime_and_tool_dependencies() -> None:
     pyproject_text = (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert "# DEP002:" in pyproject_text
     assert "# DEP004:" in pyproject_text
+
+
+def test_benchmark_checkout_disables_persisted_credentials() -> None:
+    workflow = yaml.safe_load(
+        (PROJECT_ROOT / ".github/workflows/benchmark.yml").read_text(encoding="utf-8")
+    )
+    checkout = next(
+        step
+        for step in workflow["jobs"]["compare"]["steps"]
+        if step.get("uses", "").startswith("actions/checkout@")
+    )
+
+    assert checkout["with"]["persist-credentials"] is False
+    assert checkout["with"]["fetch-depth"] == 0
