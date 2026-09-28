@@ -102,6 +102,8 @@ class TestTrainingMixinFit:
             save_total_limit=2,
             load_best_model_at_end=False,
         )
+        logging_steps = args_factory.call_args.kwargs["logging_steps"]
+        assert isinstance(logging_steps, int) and not isinstance(logging_steps, bool)
         trainer_factory.assert_called_once_with(
             model=resolver.transformer,
             args=args,
