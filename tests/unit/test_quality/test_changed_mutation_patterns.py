@@ -4,7 +4,20 @@ from types import SimpleNamespace
 import scripts.changed_mutation_patterns as changed_patterns
 
 
-def test_mutation_patterns_select_only_mutable_changed_geoparser_modules() -> None:
+def _stub_mutmut(monkeypatch) -> None:
+    """Keep selector tests independent of mutmut's generated source tree."""
+
+    def mutate_file_contents(filename: str, source_text: str) -> SimpleNamespace:
+        mutant_names = () if filename.endswith("/__init__.py") else ("mutant",)
+        return SimpleNamespace(mutant_names=mutant_names)
+
+    monkeypatch.setattr(changed_patterns, "mutate_file_contents", mutate_file_contents)
+
+
+def test_mutation_patterns_select_only_mutable_changed_geoparser_modules(
+    monkeypatch,
+) -> None:
+    _stub_mutmut(monkeypatch)
     assert changed_patterns.module_patterns_for_paths(
         [
             "geoparser/modules/recognizers/manual.py",
@@ -16,7 +29,8 @@ def test_mutation_patterns_select_only_mutable_changed_geoparser_modules() -> No
     ) == ["geoparser.modules.recognizers.manual.*"]
 
 
-def test_mutation_patterns_skip_modules_excluded_by_mutmut_config() -> None:
+def test_mutation_patterns_skip_modules_excluded_by_mutmut_config(monkeypatch) -> None:
+    _stub_mutmut(monkeypatch)
     assert changed_patterns.module_patterns_for_paths(
         ["geoparser/cli/parse.py", "geoparser/db/db.py"]
     ) == ["geoparser.db.db.*"]
