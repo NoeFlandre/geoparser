@@ -57,3 +57,11 @@ def test_documented_policy_matches_stable_workflow_jobs() -> None:
     guide = (ROOT / "docs/guides/ci-safety.md").read_text()
     for context, _, _ in EXPECTED_CHECKS:
         assert f"`{context}`" in guide
+
+
+def test_ci_safety_guide_documents_the_active_main_ruleset() -> None:
+    guide = (ROOT / "docs/guides/ci-safety.md").read_text()
+    assert "`Protect main with required checks` is active" in guide
+    assert "targets only `refs/heads/main`" in guide
+    assert "enforces the rule for administrators" in guide
+    assert "empty bypass list" in guide
