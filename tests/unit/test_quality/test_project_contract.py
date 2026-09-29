@@ -818,3 +818,59 @@ def test_benchmark_dispatch_uses_base_ref_and_its_locked_environment() -> None:
         in base_step["run"]
     )
     assert "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python" in base_step["run"]
+
+
+def test_coverage_preview_downloads_the_artifact_from_its_triggering_pr_run() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/coverage-preview.yml").read_text(
+            encoding="utf-8"
+        ),
+        Loader=_UniqueKeyLoader,
+    )
+    triggers = workflow.get("on", workflow.get(True))
+    upload = workflow["jobs"]["upload"]
+    download = next(
+        step
+        for step in upload["steps"]
+        if step.get("uses", "").startswith("actions/download-artifact@")
+    )
+    validate = next(
+        step
+        for step in upload["steps"]
+        if step.get("name") == "Validate coverage report artifact"
+    )
+
+    assert triggers["workflow_run"]["workflows"] == ["Tests"]
+    assert "github.event.workflow_run.event == 'pull_request'" in upload["if"]
+    assert "github.event.workflow_run.conclusion == 'success'" in upload["if"]
+    assert download["with"]["name"] == "coverage-html"
+    assert download["with"]["run-id"] == "${{ github.event.workflow_run.id }}"
+    assert download["with"]["github-token"] == "${{ github.token }}"
+    assert download["with"]["path"] == "coverage-html"
+    assert validate["run"].strip() == "test -s coverage-html/index.html"
+    assert not any(
+        step.get("uses", "").startswith("actions/checkout@") for step in upload["steps"]
+    )
+
+
+def test_smokeshow_credentials_are_environment_only_and_not_logged() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/coverage-preview.yml").read_text(
+            encoding="utf-8"
+        ),
+        Loader=_UniqueKeyLoader,
+    )
+    steps = workflow["jobs"]["upload"]["steps"]
+    upload = next(
+        step for step in steps if step.get("name") == "Publish coverage preview"
+    )
+
+    assert upload["if"] == "vars.GEOPARSER_SMOKESHOW_AUTH_ROTATION_CONFIRMED == 'true'"
+    assert upload["run"].splitlines() == [
+        "set +x",
+        "smokeshow upload coverage-html",
+    ]
+    assert upload["env"]["SMOKESHOW_AUTH_KEY"] == "${{ secrets.SMOKESHOW_AUTH_KEY }}"
+    assert "SMOKESHOW_AUTH_KEY" not in "\n".join(step.get("run", "") for step in steps)
+    assert "printenv" not in "\n".join(step.get("run", "") for step in steps)
+    assert "set -x" not in "\n".join(step.get("run", "") for step in steps)
