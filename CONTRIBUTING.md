@@ -192,7 +192,7 @@ A few practical tips that make reviews easier:
 
 CI runs on pull requests into `main` and on `main` itself, never on feature-branch pushes. The matrix is three operating systems across Python 3.10–3.14, with uv providing the interpreter on all of them. Pushing again to an open pull request cancels the previous run.
 
-Four workflows run: **Lint** (Ruff), **Tests** (the platform matrix, combined coverage and CRAP), **Quality** (the complete ordered gauntlet, including mutation testing), and **Documentation** (strict MkDocs and GitHub Pages). The `quality-gate` job is intended to be a required branch-protection check; configure the repository ruleset to require `quality-gate`, `tests-passed`, and the documentation build. Mutation testing is intentionally part of the quality gate even though its cold run is expensive, because merge acceptance must include the complete deterministic contract.
+Four workflows run: **Lint** (Ruff), **Tests** (the platform matrix, combined coverage and CRAP), **Quality** (the complete ordered gauntlet, including mutation testing), and **Documentation** (strict MkDocs and GitHub Pages). The stable required contexts for the `main` ruleset are `tests-passed`, `ruff`, `build`, and `quality-gate`; see the [CI safety and merge protection guide](docs/guides/ci-safety.md) for their workflow mapping and rationale. Mutation testing is intentionally part of the quality gate even though its cold run is expensive, because merge acceptance must include the complete deterministic contract.
 
 If you add a dependency, commit the updated `uv.lock` alongside `pyproject.toml` (`uv add <package>` updates both). Prefer permissively licensed packages; geoparser is MIT-licensed.
 
