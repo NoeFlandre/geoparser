@@ -21,12 +21,12 @@ those individual names would couple branch protection to matrix details, so
 the aggregate `tests-passed` job is the required test check. The scheduled
 Quality run performs the full mutation and Docker gates.
 
-The JSON file is a reference policy, not an active GitHub setting. Apply it to
-`refs/heads/main` as an enforced ruleset, require pull requests and an up-to-date
-branch, require the four contexts above, and enforce the rule for
-administrators. Keep its bypass list empty. After applying it, verify the rule
-is active and confirm that a failing required check blocks a test pull request
-while passing checks allow a normal pull request to merge.
+The repository ruleset `Protect main with required checks` is active and
+targets only `refs/heads/main`. It requires pull requests, an up-to-date branch,
+and the four contexts above; it enforces the rule for administrators and has
+an empty bypass list. The JSON file is the version-controlled reference for
+recreating the ruleset. After workflow changes, compare the exact status
+contexts against a recent pull request before updating the ruleset.
 
 ## Coverage artifact flow
 
