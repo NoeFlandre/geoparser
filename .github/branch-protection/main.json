@@ -1,0 +1,28 @@
+{
+  "branch": "main",
+  "require_pull_request": true,
+  "require_up_to_date_branch": true,
+  "enforce_for_administrators": true,
+  "required_status_checks": [
+    {
+      "context": "tests-passed",
+      "workflow": ".github/workflows/test.yml",
+      "job": "tests-passed"
+    },
+    {
+      "context": "ruff",
+      "workflow": ".github/workflows/lint.yml",
+      "job": "ruff"
+    },
+    {
+      "context": "build",
+      "workflow": ".github/workflows/docs.yml",
+      "job": "build"
+    },
+    {
+      "context": "quality-gate",
+      "workflow": ".github/workflows/quality.yml",
+      "job": "quality"
+    }
+  ]
+}
