@@ -533,10 +533,7 @@ def test_nightly_quality_builds_both_docker_images() -> None:
     quality = (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(
         encoding="utf-8"
     )
-    assert (
-        "uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline\n"
-        in quality
-    )
+    assert "uv run --no-sync python scripts/quality_gauntlet.py\n" in quality
 
 
 def test_pull_request_quality_skips_docker_builds() -> None:
@@ -545,7 +542,7 @@ def test_pull_request_quality_skips_docker_builds() -> None:
     )
     assert (
         "uv run --no-sync python scripts/quality_gauntlet.py "
-        "--skip-baseline --skip-docker" in quality
+        "--skip-docker --skip-mutation" in quality
     )
     gauntlet = (PROJECT_ROOT / "scripts/quality_gauntlet.py").read_text(
         encoding="utf-8"
@@ -916,10 +913,7 @@ def test_quality_workflow_skips_the_full_mutation_sweep_on_pull_requests() -> No
         if step.get("name") == "Run the complete deterministic quality gauntlet"
     )
 
-    assert (
-        "quality_gauntlet.py --skip-baseline --skip-docker --skip-mutation"
-        in quality_step["run"]
-    )
+    assert "quality_gauntlet.py --skip-docker --skip-mutation" in quality_step["run"]
 
 
 def test_deptry_is_declared_in_lint_dependencies() -> None:

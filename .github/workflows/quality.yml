@@ -65,9 +65,9 @@ jobs:
           HYPOTHESIS_PROFILE: ${{ github.event_name == 'schedule' && 'nightly' || 'ci' }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
-            uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline
+            uv run --no-sync python scripts/quality_gauntlet.py
           else
-            uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline --skip-docker --skip-mutation
+            uv run --no-sync python scripts/quality_gauntlet.py --skip-docker --skip-mutation
           fi
 
   changed-mutation:
