@@ -90,14 +90,18 @@ def _gliner_location_spans(result: dict[str, Any]) -> set[Span]:
     entities = result.get("entities", {})
     spans = set()
     for label, matches in entities.items():
-        if label.casefold() not in GLINER_ENTITY_LABELS:
-            continue
-        spans.update(
-            (int(match["start"]), int(match["end"]))
-            for match in matches
-            if "start" in match and "end" in match
-        )
+        if label.casefold() in GLINER_ENTITY_LABELS:
+            spans.update(_gliner_match_spans(matches))
     return spans
+
+
+def _gliner_match_spans(matches: list[dict[str, Any]]) -> set[Span]:
+    """Keep only GLiNER entity matches that include both character offsets."""
+    return {
+        (int(match["start"]), int(match["end"]))
+        for match in matches
+        if "start" in match and "end" in match
+    }
 
 
 def _xlm_location_spans(result: list[dict[str, Any]]) -> set[Span]:

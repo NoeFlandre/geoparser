@@ -98,16 +98,29 @@ def _valid_predictions(
 ) -> list[set[tuple[int, int]]]:
     """Run one inference batch and reject missing or invalid character spans."""
     predictions = predictor.predict_batch([example.text for example in batch])
-    if len(predictions) != len(batch):
+    _validate_prediction_count(predictions, len(batch))
+    for example, spans in zip(batch, predictions, strict=True):
+        _validate_example_spans(example, spans)
+    return predictions
+
+
+def _validate_prediction_count(
+    predictions: list[set[tuple[int, int]]], batch_size: int
+) -> None:
+    """Require one prediction collection for each submitted sentence."""
+    if len(predictions) != batch_size:
         message = "Recognizer returned a different number of predictions"
         raise ValueError(message)
-    for example, spans in zip(batch, predictions, strict=True):
-        if any(
-            start < 0 or end <= start or end > len(example.text) for start, end in spans
-        ):
-            message = f"Recognizer returned an invalid span for {example.language}"
-            raise ValueError(message)
-    return predictions
+
+
+def _validate_example_spans(example: Example, spans: set[tuple[int, int]]) -> None:
+    """Reject offsets that do not select a nonempty range in the sentence."""
+    invalid = any(
+        start < 0 or end <= start or end > len(example.text) for start, end in spans
+    )
+    if invalid:
+        message = f"Recognizer returned an invalid span for {example.language}"
+        raise ValueError(message)
 
 
 def _warm_up(
@@ -116,21 +129,26 @@ def _warm_up(
     supported_languages: tuple[str, ...] | None,
 ) -> tuple[float, int]:
     """Warm one fixed batch before timing steady-state test inference."""
-    warmup_language = next(
-        (
-            language
-            for language, examples in examples_by_language.items()
-            if examples
-            and (supported_languages is None or language in supported_languages)
-        ),
-        None,
-    )
+    warmup_language = _first_warmup_language(examples_by_language, supported_languages)
     if warmup_language is None:
         return 0.0, 0
     examples = examples_by_language[warmup_language][:BATCH_SIZE]
     started = time.perf_counter()
     _valid_predictions(predictor, examples)
     return time.perf_counter() - started, len(examples)
+
+
+def _first_warmup_language(
+    examples_by_language: dict[str, tuple[Example, ...]],
+    supported_languages: tuple[str, ...] | None,
+) -> str | None:
+    """Find the first nonempty language a model is allowed to evaluate."""
+    for language, examples in examples_by_language.items():
+        if examples and (
+            supported_languages is None or language in supported_languages
+        ):
+            return language
+    return None
 
 
 def _support_status(spec: ModelSpec, language: str) -> str:
@@ -174,6 +192,91 @@ def _micro_scores(
     return total.scores()
 
 
+def _language_result(
+    spec: ModelSpec,
+    predictor: BatchPredictor,
+    language: str,
+    examples: tuple[Example, ...],
+    source_example_count: int,
+) -> dict[str, Any]:
+    """Score one language or record why it was deliberately not evaluated."""
+    support = _support_status(spec, language)
+    if support == "not_evaluated_english_only":
+        return {
+            "status": support,
+            "documented_support": False,
+            "source_test_examples": source_example_count,
+            "evaluated_examples": 0,
+            "metrics": None,
+        }
+    counts = _score_language(predictor, examples)
+    return {
+        "status": "evaluated",
+        "documented_support": support,
+        "source_test_examples": source_example_count,
+        "evaluated_examples": len(examples),
+        "metrics": counts.scores(),
+    }
+
+
+def _language_results(
+    spec: ModelSpec, predictor: BatchPredictor, dataset: LoadedDataset
+) -> dict[str, dict[str, Any]]:
+    """Build the per-language records for one recognizer."""
+    return {
+        language: _language_result(
+            spec,
+            predictor,
+            language,
+            examples,
+            dataset.source_counts[language],
+        )
+        for language, examples in dataset.examples_by_language.items()
+    }
+
+
+def _metric_rows(
+    per_language: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, float | int]]:
+    """Select evaluated language metrics for aggregate score calculations."""
+    return {
+        language: row["metrics"]
+        for language, row in per_language.items()
+        if row["metrics"] is not None
+    }
+
+
+def _evaluated_example_count(per_language: dict[str, dict[str, Any]]) -> int:
+    """Sum sentences actually passed through a recognizer."""
+    return sum(int(row["evaluated_examples"]) for row in per_language.values())
+
+
+def _steady_inference_summary(
+    spec: ModelSpec,
+    dataset: LoadedDataset,
+    per_language: dict[str, dict[str, Any]],
+    elapsed_seconds: float,
+) -> dict[str, float | int | None]:
+    """Summarize measured throughput and a linear full-matrix estimate."""
+    evaluated_examples = _evaluated_example_count(per_language)
+    examples_per_second = (
+        evaluated_examples / elapsed_seconds if elapsed_seconds else 0.0
+    )
+    full_matrix_examples = (
+        dataset.source_counts.get("en", 0)
+        if spec.key == "spacy_en"
+        else sum(dataset.source_counts.values())
+    )
+    full_matrix_seconds = (
+        full_matrix_examples / examples_per_second if examples_per_second else None
+    )
+    return {
+        "evaluated_examples": evaluated_examples,
+        "steady_examples_per_second": examples_per_second,
+        "full_matrix_estimated_inference_seconds": full_matrix_seconds,
+    }
+
+
 def evaluate_model(
     spec: ModelSpec,
     loaded: LoadedModel,
@@ -184,44 +287,13 @@ def evaluate_model(
     warmup_seconds, warmup_examples = _warm_up(
         predictor, dataset.examples_by_language, spec.documented_languages
     )
-    per_language: dict[str, dict[str, Any]] = {}
     inference_started = time.perf_counter()
-    for language, examples in dataset.examples_by_language.items():
-        support = _support_status(spec, language)
-        source_examples = dataset.source_counts[language]
-        if support == "not_evaluated_english_only":
-            per_language[language] = {
-                "status": support,
-                "documented_support": False,
-                "source_test_examples": source_examples,
-                "evaluated_examples": 0,
-                "metrics": None,
-            }
-            continue
-        counts = _score_language(predictor, examples)
-        metrics = counts.scores()
-        per_language[language] = {
-            "status": "evaluated",
-            "documented_support": support,
-            "source_test_examples": source_examples,
-            "evaluated_examples": len(examples),
-            "metrics": metrics,
-        }
+    per_language = _language_results(spec, predictor, dataset)
     inference_seconds = time.perf_counter() - inference_started
-    evaluated = {
-        language: row["metrics"]
-        for language, row in per_language.items()
-        if row["metrics"] is not None
-    }
-    evaluated_examples = sum(
-        int(row["evaluated_examples"]) for row in per_language.values()
+    evaluated = _metric_rows(per_language)
+    inference_summary = _steady_inference_summary(
+        spec, dataset, per_language, inference_seconds
     )
-    full_matrix_examples = (
-        sum(dataset.source_counts.values())
-        if spec.key != "spacy_en"
-        else dataset.source_counts.get("en", 0)
-    )
-    steady_rate = evaluated_examples / inference_seconds if inference_seconds else 0.0
     return {
         "key": spec.key,
         "model_id": spec.model_id,
@@ -242,11 +314,7 @@ def evaluate_model(
         "warmup_seconds": warmup_seconds,
         "warmup_examples": warmup_examples,
         "steady_inference_seconds": inference_seconds,
-        "evaluated_examples": evaluated_examples,
-        "steady_examples_per_second": steady_rate,
-        "full_matrix_estimated_inference_seconds": (
-            full_matrix_examples / steady_rate if steady_rate else None
-        ),
+        **inference_summary,
         "macro": macro_scores(evaluated),
         "micro": _micro_scores(evaluated),
         "per_language": per_language,

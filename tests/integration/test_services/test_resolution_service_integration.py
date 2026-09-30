@@ -370,15 +370,6 @@ class TestResolutionServiceIntegration:
             ResolutionRepository, test_session, documents
         )
 
-
-def _assert_each_reference_was_resolved(repository, session, documents):
-    """Verify every reference in a document batch received one resolution."""
-    for document in documents:
-        session.refresh(document)
-        for reference in document.references:
-            resolutions = repository.get_by_reference(session, reference.id)
-            assert len(resolutions) == 1
-
     def test_fit_trains_resolver_with_annotated_documents(
         self,
         test_session,
@@ -542,3 +533,12 @@ def _assert_each_reference_was_resolved(repository, session, documents):
 
         # Cleanup
         project.delete()
+
+
+def _assert_each_reference_was_resolved(repository, session, documents):
+    """Verify every reference in a document batch received one resolution."""
+    for document in documents:
+        session.refresh(document)
+        for reference in document.references:
+            resolutions = repository.get_by_reference(session, reference.id)
+            assert len(resolutions) == 1

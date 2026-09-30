@@ -27,10 +27,12 @@ Run the complete deterministic gate with:
 uv run python scripts/quality_gauntlet.py
 ```
 
-The command runs the stages in dependency order: baseline, Ruff, `ty`, locked
-dependency validation, tests, property tests, acceptance tests, architecture
-checks, CRAP, mutation tests, a CLI smoke test, and diff review. Generated
-reports belong in a temporary directory and are not committed. The runner also
+By default the command runs Ruff, `ty`, locked dependency validation, one
+coverage test suite, property tests, acceptance tests, architecture checks,
+CRAP, mutation tests, a CLI smoke test, and diff review. Its smoke stage can
+also build and check Docker images. `--include-baseline` adds an extra coverage
+test pass for diagnosis; normal local and CI runs leave it off. Generated
+reports belong in a temporary directory and are not committed. The runner
 uses a unique Docker smoke-test tag and removes that image when it exits.
 
 CI combines coverage from its operating-system and Python matrix. The hard
@@ -39,6 +41,13 @@ scores every function under `geoparser/`, `scripts/`, and `tests/` and requires
 each score to be strictly below 6. Nested functions are scored separately,
 their executable statements belong to the innermost function, and a function
 with no recorded coverage is treated as uncovered.
+
+The CI coverage matrix enables the opt-in GLiNER2 and Jina integration tests in
+one Ubuntu/Python 3.12 cell. The separate quality gauntlet also runs them so
+its own CRAP calculation includes those test bodies; every other matrix cell
+keeps the model downloads disabled. On pull requests, the quality gauntlet
+skips Docker builds and the full mutation sweep because Docker is reserved for
+the scheduled run and changed code is checked by the separate mutation job.
 
 ### Resource-safe local gate
 

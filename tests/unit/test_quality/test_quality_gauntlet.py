@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import Mock
 
 from scripts.quality_gauntlet import (
     build_stages,
@@ -25,10 +26,14 @@ def test_quality_stages_have_the_required_order(tmp_path: Path) -> None:
     ]
 
 
+def _named_stage(stages, name: str):
+    """Return one quality stage by its stable name."""
+    return next(stage for stage in stages if stage.name == name)
+
+
 def _stage_command(stages, name: str) -> tuple[str, ...]:
     """Return the first command from one named quality stage."""
-    stage = next(stage for stage in stages if stage.name == name)
-    return stage.commands[0]
+    return _named_stage(stages, name).commands[0]
 
 
 def test_ty_stage_checks_all_first_party_code_roots(tmp_path: Path) -> None:
@@ -46,16 +51,44 @@ def test_default_quality_stages_run_the_coverage_suite_once(tmp_path: Path) -> N
     """The default gauntlet retains one full coverage test stage."""
     stages = build_stages(Path("/repo"), tmp_path)
 
-    assert "baseline" not in {stage.name for stage in stages}
-    assert "tests" in {stage.name for stage in stages}
     coverage_runs = [
         command
         for stage in stages
         for command in stage.commands
-        if command[:5] == ("uv", "run", "--no-sync", "--offline", "pytest")
-        and "--cov-fail-under=100" in command
+        if "--cov-fail-under=100" in command
     ]
     assert len(coverage_runs) == 1
+
+
+def test_coverage_suite_uses_the_provisioned_offline_environment(
+    tmp_path: Path,
+) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+    coverage_run = next(
+        command
+        for stage in stages
+        for command in stage.commands
+        if "--cov-fail-under=100" in command
+    )
+    assert coverage_run[:5] == (
+        "uv",
+        "run",
+        "--no-sync",
+        "--offline",
+        "pytest",
+    )
+
+
+def test_default_quality_stages_do_not_repeat_a_baseline_run(tmp_path: Path) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+
+    assert "baseline" not in {stage.name for stage in stages}
+
+
+def test_default_quality_stages_include_the_test_suite(tmp_path: Path) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+
+    assert "tests" in {stage.name for stage in stages}
 
 
 def test_quality_cli_can_include_an_extra_diagnostic_baseline(monkeypatch) -> None:
@@ -265,20 +298,17 @@ def test_coverage_failure_is_returned_without_running_later_gates(
     monkeypatch, tmp_path: Path
 ) -> None:
     stages = build_stages(Path("/repo"), tmp_path)
-    tests = next(stage for stage in stages if stage.name == "tests")
-    property_stage = next(stage for stage in stages if stage.name == "property")
-    calls: list[tuple[str, ...]] = []
-
-    def fail_coverage(command, *, cwd, env, check):
-        calls.append(tuple(command))
-        return type("Completed", (), {"returncode": 23})()
-
+    tests = _named_stage(stages, "tests")
+    property_stage = _named_stage(stages, "property")
+    fail_coverage = Mock(return_value=type("Completed", (), {"returncode": 23})())
     monkeypatch.setattr("scripts.quality_gauntlet.subprocess.run", fail_coverage)
 
     result = run_stages([tests, property_stage], {})
 
     assert result == 23
-    assert calls == [tests.commands[0]]
+    fail_coverage.assert_called_once_with(
+        tests.commands[0], cwd=tests.cwd, env={}, check=False
+    )
 
 
 def test_quality_runner_preserves_stage_order_and_artifact_environment(

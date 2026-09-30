@@ -52,11 +52,16 @@ def test_gliner_adapter_uses_fixed_labels_batch_size_and_threshold():
     model = FakeModel()
     predictions = GLiNERPredictor(model).predict_batch(["Town"])
 
-    assert predictions == [{(0, 4)}]
-    assert model.calls[0][1] == ["city", "country", "location"]
-    assert model.calls[0][2]["batch_size"] == 8
-    assert model.calls[0][2]["threshold"] == 0.5
-    assert model.calls[0][2]["include_spans"] is True
+    assert (predictions, model.calls) == (
+        [{(0, 4)}],
+        [
+            (
+                ["Town"],
+                ["city", "country", "location"],
+                {"batch_size": 8, "threshold": 0.5, "include_spans": True},
+            )
+        ],
+    )
 
 
 def test_xlmr_adapter_calls_pipeline_and_maps_location_spans():

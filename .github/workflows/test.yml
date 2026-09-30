@@ -108,6 +108,10 @@ jobs:
             huggingface-${{ runner.os }}-
 
       - name: Run pytest
+        # Run the opt-in model integration tests in one Linux cell so their
+        # assertions participate in the combined strict CRAP report.
+        env:
+          GEOPARSER_TEST_REMOTE_MODELS: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && '1' || '' }}
         run: uv run --no-sync pytest -v
 
       # The opt-in benchmark suite includes deterministic operation-count

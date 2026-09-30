@@ -69,8 +69,11 @@ checkpoints, which together are several gigabytes. Run them when you touch
 either module: they are the only tests that can catch a zero-shot label the
 model does not respond to, a prompt name the checkpoint does not define, or a
 change in the reranker's return shape — all of which pass silently under a
-mock. They are not in the default run because paying that download in each of
-the fifteen matrix cells would cost far more than it catches.
+mock. A local default `uv run pytest` still skips these files. CI enables them
+in the Ubuntu/Python 3.12 coverage cell and the single-run quality gauntlet so
+both strict CRAP reports include their assertions; other operating-system and
+Python matrix cells keep the downloads disabled. The first run on a fresh
+runner can fetch several gigabytes of model files.
 
 Run the full suite:
 
@@ -190,7 +193,7 @@ A few practical tips that make reviews easier:
 
 CI runs on pull requests into `main` and on `main` itself, never on feature-branch pushes. The matrix is three operating systems across Python 3.10–3.14, with uv providing the interpreter on all of them. Pushing again to an open pull request cancels the previous run.
 
-Four workflows run: **Lint** (Ruff), **Tests** (the platform matrix, combined coverage and CRAP), **Quality** (the complete ordered gauntlet, including mutation testing), and **Documentation** (strict MkDocs and GitHub Pages). The stable required contexts for the `main` ruleset are `tests-passed`, `ruff`, `build`, and `quality-gate`; see the [CI safety and merge protection guide](docs/guides/ci-safety.md) for their workflow mapping and rationale. Mutation testing is intentionally part of the quality gate even though its cold run is expensive, because merge acceptance must include the complete deterministic contract.
+Four workflows run: **Lint** (Ruff), **Tests** (the platform matrix, combined coverage and CRAP), **Quality** (the ordered gauntlet), and **Documentation** (strict MkDocs and GitHub Pages). Pull requests skip Docker builds and the full mutation sweep in the quality gauntlet; the separate changed-mutation job checks modified package code. The scheduled quality run keeps the full mutation and Docker stages. The stable required contexts for the `main` ruleset are `tests-passed`, `ruff`, `build`, and `quality-gate`; see the [CI safety and merge protection guide](docs/guides/ci-safety.md) for their workflow mapping and rationale.
 
 If you add a dependency, commit the updated `uv.lock` alongside `pyproject.toml` (`uv add <package>` updates both). Prefer permissively licensed packages; geoparser is MIT-licensed.
 

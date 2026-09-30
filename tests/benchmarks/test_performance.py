@@ -134,7 +134,12 @@ def test_sentence_transformer_candidate_gathering_with_stub_encoder(
     resolver = object.__new__(SentenceTransformerResolver)
     resolver.gazetteer = synthetic_gazetteer
     resolver.transformer = cast(Any, StubEncoder())
+    resolver.attribute_map = SentenceTransformerResolver.GAZETTEER_ATTRIBUTE_MAP[
+        "geonames"
+    ]
     resolver.candidate_search_cache = {}
+    resolver.candidate_descriptions = {}
+    resolver.candidate_embeddings = {}
 
     def gather():
         candidates = [[[]] for _ in texts]
@@ -143,8 +148,12 @@ def test_sentence_transformer_candidate_gathering_with_stub_encoder(
         resolver._gather_candidates(
             texts, references, candidates, results, "exact", tiers=1
         )
-        return sum(len(document[0]) for document in candidates)
+        resolver._embed_candidates(candidates, results)
+        return (
+            sum(len(document[0]) for document in candidates),
+            len(resolver.candidate_embeddings),
+        )
 
     result_count = _measure(benchmark, gather)
 
-    assert result_count == len(texts)
+    assert result_count == (len(texts), len(texts))

@@ -12,6 +12,18 @@ from sqlmodel import Session
 from geoparser.db.models import ReferentCreate, ReferentUpdate
 
 
+@pytest.mark.unit
+def test_referent_factory_creates_default_parent_records(referent_factory):
+    referent = referent_factory(feature_identifier="fixture-3041563")
+
+    assert (
+        referent.gazetteer_name,
+        referent.feature_identifier,
+        referent.reference_id is not None,
+        referent.resolver_id is not None,
+    ) == ("andorranames", "fixture-3041563", True, True)
+
+
 @pytest.fixture
 def saved_referent(test_session, reference_factory, resolver_factory):
     """Persist a referent together with its reference and resolver IDs."""

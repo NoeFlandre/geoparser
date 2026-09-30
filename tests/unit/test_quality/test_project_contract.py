@@ -520,12 +520,21 @@ def test_test_matrix_runs_every_python_on_ubuntu_and_endpoints_elsewhere() -> No
     }
 
 
-def test_nightly_quality_enables_remote_models() -> None:
-    quality = (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(
-        encoding="utf-8"
+def test_coverage_matrix_runs_opt_in_model_tests_in_one_linux_cell() -> None:
+    pytest_step = _named_step(_job_steps("test.yml", "pytest"), "Run pytest")
+
+    assert pytest_step["env"]["GEOPARSER_TEST_REMOTE_MODELS"] == (
+        "${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && '1' || '' }}"
     )
-    assert "GEOPARSER_TEST_REMOTE_MODELS" in quality
-    assert "github.event_name == 'schedule'" in quality
+
+
+def test_quality_gate_runs_remote_model_tests_for_complete_crap_coverage() -> None:
+    quality_step = _named_step(
+        _job_steps("quality.yml", "quality"),
+        "Run the complete deterministic quality gauntlet",
+    )
+
+    assert quality_step["env"]["GEOPARSER_TEST_REMOTE_MODELS"] == "1"
 
 
 def test_nightly_quality_builds_both_docker_images() -> None:
@@ -565,6 +574,22 @@ def test_property_workflows_select_ci_and_nightly_profiles() -> None:
     assert property_env["HYPOTHESIS_PROFILE"] == (
         "${{ github.event_name == 'schedule' && 'nightly' || 'ci' }}"
     )
+
+
+def _job_steps(workflow_name: str, job_name: str) -> list[dict[str, Any]]:
+    """Load one workflow job's steps for focused contract assertions."""
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows" / workflow_name).read_text(
+            encoding="utf-8"
+        ),
+        Loader=yaml.BaseLoader,
+    )
+    return workflow["jobs"][job_name]["steps"]
+
+
+def _named_step(steps: list[dict[str, Any]], name: str) -> dict[str, Any]:
+    """Select a named workflow step without duplicating lookups in tests."""
+    return next(step for step in steps if step.get("name") == name)
 
 
 def test_fast_lint_workflow_runs_ty_with_the_lightweight_environment() -> None:
@@ -900,6 +925,17 @@ def test_changed_mutation_job_installs_duckdb_spatial_extension() -> None:
 def test_spatial_extension_installs_before_mutation() -> None:
     steps, install_step, mutation_step = _duckdb_spatial_steps()
     assert steps.index(install_step) < steps.index(mutation_step)
+
+
+def test_quality_gate_installs_spatial_before_its_test_suite() -> None:
+    steps = _job_steps("quality.yml", "quality")
+    install_step = _named_step(steps, "Install DuckDB spatial extension")
+    quality_step = _named_step(steps, "Run the complete deterministic quality gauntlet")
+
+    assert (
+        "install_extension('spatial')" in install_step["run"],
+        steps.index(install_step) < steps.index(quality_step),
+    ) == (True, True)
 
 
 def test_quality_workflow_skips_the_full_mutation_sweep_on_pull_requests() -> None:

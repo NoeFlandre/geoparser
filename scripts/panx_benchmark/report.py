@@ -49,8 +49,8 @@ def _language_rows(model: dict[str, Any]) -> list[str]:
     return rows
 
 
-def render_markdown(result: dict[str, Any]) -> str:
-    """Render the complete result with sample caveats and provenance."""
+def _document_lines(result: dict[str, Any]) -> list[str]:
+    """Render benchmark identity, source and resource provenance."""
     dataset = result["dataset"]
     kind = result["evaluation_kind"]
     sample_note = (
@@ -59,7 +59,7 @@ def render_markdown(result: dict[str, Any]) -> str:
         if kind == "bounded_feasibility_sample"
         else "Full pinned test intersection was evaluated."
     )
-    lines = [
+    return [
         "# PAN-X / WikiANN place recognition",
         "",
         sample_note,
@@ -98,40 +98,43 @@ def render_markdown(result: dict[str, Any]) -> str:
         "## Coverage and overlap",
         "",
     ]
-    for model in result["models"]:
-        lines.extend(
-            [
-                f"### `{model['model_id']}`",
-                "",
-                f"- Revision: `{model['revision']}`; model card: "
-                f"[{model['model_id']}]({model['model_card_url']})",
-                f"- Language coverage: {model['coverage_note']}",
-                f"- Training data: {model['training_data_note']}",
-                f"- WikiANN overlap: {model['training_overlap_note']}",
-                f"- Location mapping: {model['location_mapping']}",
-                f"- Warmup: {model['warmup_examples']} sentences in "
-                f"{model['warmup_seconds']:.4f}s; steady inference: "
-                f"{model['steady_inference_seconds']:.4f}s",
-                f"- Linear full-matrix inference estimate from this run: "
-                f"{_number(model['full_matrix_estimated_inference_seconds'])}s",
-                "",
-                "| Language | Evaluation status | Coverage status | Sentences | Gold LOC | P | R | F1 |",
-                "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
-                *_language_rows(model),
-                "",
-            ]
-        )
-    lines.extend(
-        [
-            "## Aggregate scores",
-            "",
-            "Macro scores are unweighted means over evaluated languages; micro scores "
-            "aggregate exact-span counts. Undefined precision/recall/F1 values use zero.",
-            "",
-            "| Recognizer | Macro P | Macro R | Macro F1 | Micro P | Micro R | Micro F1 |",
-            "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
-        ]
-    )
+
+
+def _model_coverage_lines(model: dict[str, Any]) -> list[str]:
+    """Render one model's coverage claims and per-language measurements."""
+    return [
+        f"### `{model['model_id']}`",
+        "",
+        f"- Revision: `{model['revision']}`; model card: "
+        f"[{model['model_id']}]({model['model_card_url']})",
+        f"- Language coverage: {model['coverage_note']}",
+        f"- Training data: {model['training_data_note']}",
+        f"- WikiANN overlap: {model['training_overlap_note']}",
+        f"- Location mapping: {model['location_mapping']}",
+        f"- Warmup: {model['warmup_examples']} sentences in "
+        f"{model['warmup_seconds']:.4f}s; steady inference: "
+        f"{model['steady_inference_seconds']:.4f}s",
+        f"- Linear full-matrix inference estimate from this run: "
+        f"{_number(model['full_matrix_estimated_inference_seconds'])}s",
+        "",
+        "| Language | Evaluation status | Coverage status | Sentences | Gold LOC | P | R | F1 |",
+        "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
+        *_language_rows(model),
+        "",
+    ]
+
+
+def _aggregate_lines(result: dict[str, Any]) -> list[str]:
+    """Render aggregate scores and full-matrix feasibility context."""
+    lines = [
+        "## Aggregate scores",
+        "",
+        "Macro scores are unweighted means over evaluated languages; micro scores "
+        "aggregate exact-span counts. Undefined precision/recall/F1 values use zero.",
+        "",
+        "| Recognizer | Macro P | Macro R | Macro F1 | Micro P | Micro R | Micro F1 |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
     for model in result["models"]:
         macro, micro = model["macro"], model["micro"]
         lines.append(
@@ -153,6 +156,15 @@ def render_markdown(result: dict[str, Any]) -> str:
             "",
         ]
     )
+    return lines
+
+
+def render_markdown(result: dict[str, Any]) -> str:
+    """Render the complete result with sample caveats and provenance."""
+    lines = _document_lines(result)
+    for model in result["models"]:
+        lines.extend(_model_coverage_lines(model))
+    lines.extend(_aggregate_lines(result))
     return "\n".join(lines)
 
 

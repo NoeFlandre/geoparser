@@ -7,18 +7,26 @@ from scripts.panx_benchmark import data
 from scripts.panx_benchmark.constants import DATASET_ID, DATASET_REVISION, MODELS
 
 
-def test_pinned_language_and_wikiann_intersection_is_explicit():
+def test_target_language_manifest_has_85_unique_codes():
     languages = data.target_languages()
+
+    assert (len(languages), len(set(languages))) == (85, 85)
+
+
+def test_wikiann_test_split_intersection_names_missing_targets():
     manifest = data.split_manifest()
 
-    assert len(languages) == 85
-    assert len(set(languages)) == 85
-    assert len(manifest["eligible_languages"]) == 82
-    assert set(manifest["missing_target_languages"]) == {"ha", "xh", "zu"}
-    assert set(manifest["eligible_languages"]) | set(
-        manifest["missing_target_languages"]
-    ) == set(languages)
-    assert manifest["total_test_examples"] == 423_100
+    assert (
+        len(manifest["eligible_languages"]),
+        set(manifest["missing_target_languages"]),
+    ) == (
+        82,
+        {"ha", "xh", "zu"},
+    )
+
+
+def test_wikiann_manifest_records_full_test_row_count():
+    assert data.split_manifest()["total_test_examples"] == 423_100
 
 
 def test_location_bio_tags_align_to_joined_unicode_text():
@@ -67,9 +75,9 @@ def test_example_rejects_unknown_tag_ids():
         )
 
 
-def test_loader_checks_revision_counts_and_limits_rows(monkeypatch, tmp_path):
-    manifest = data.split_manifest()
-    counts = manifest["test_examples_by_language"]
+@pytest.fixture
+def fake_wikiann_loader(monkeypatch):
+    counts = data.split_manifest()["test_examples_by_language"]
     calls = []
 
     class Split:
@@ -94,17 +102,22 @@ def test_loader_checks_revision_counts_and_limits_rows(monkeypatch, tmp_path):
     monkeypatch.setitem(
         sys.modules, "datasets", SimpleNamespace(load_dataset=fake_load_dataset)
     )
+    return calls
+
+
+def test_loader_checks_revision_counts_and_limits_rows(fake_wikiann_loader, tmp_path):
+    calls = fake_wikiann_loader
 
     loaded = data.load_test_examples(tmp_path, limit_per_language=1)
 
-    assert loaded.evaluated_example_count == 82
-    assert loaded.source_example_count == 423_100
-    assert loaded.limit_per_language == 1
-    assert len(calls) == 82
-    assert all(
-        call[0] == DATASET_ID and call[2] == "test" and call[3] == DATASET_REVISION
-        for call in calls
-    )
+    assert (
+        loaded.evaluated_example_count,
+        loaded.source_example_count,
+        loaded.limit_per_language,
+        len(calls),
+    ) == (82, 423_100, 1, 82)
+    assert {call[0] for call in calls} == {DATASET_ID}
+    assert {call[2:4] for call in calls} == {("test", DATASET_REVISION)}
 
 
 def test_loader_fails_closed_if_pinned_split_count_changes(monkeypatch, tmp_path):
@@ -130,10 +143,19 @@ def test_target_language_manifest_carries_upstream_commit():
     assert manifest["source_path"] == "docs/sentence-splitting.md"
 
 
-def test_model_specs_record_xlmr_transfer_languages_and_revision():
+def test_xlmr_model_revision_is_pinned():
     xlmr = next(spec for spec in MODELS if spec.key == "xlmr_ner_hrl")
 
     assert xlmr.revision == "253f557bd8249b8515114cfd7f71974fe5fa4d2f"
-    assert xlmr.documented_languages is not None
-    assert len(xlmr.documented_languages) == 10
+
+
+def test_xlmr_model_documents_ten_finetuned_languages():
+    xlmr = next(spec for spec in MODELS if spec.key == "xlmr_ner_hrl")
+
+    assert len(xlmr.documented_languages or ()) == 10
+
+
+def test_xlmr_overlap_note_names_wikiann():
+    xlmr = next(spec for spec in MODELS if spec.key == "xlmr_ner_hrl")
+
     assert "WikiANN" in xlmr.overlap_note

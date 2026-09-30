@@ -1,7 +1,16 @@
+import pytest
+
 from scripts.panx_benchmark.constants import MODELS
 from scripts.panx_benchmark.data import Example, LoadedDataset
 from scripts.panx_benchmark.models import LoadedModel
-from scripts.panx_benchmark.runner import _micro_scores, evaluate_model
+from scripts.panx_benchmark.runner import (
+    _elapsed_full_matrix_seconds,
+    _micro_scores,
+    _support_status,
+    _valid_predictions,
+    _warm_up,
+    evaluate_model,
+)
 
 
 class ExactPredictor:
@@ -64,11 +73,13 @@ def test_multilingual_evaluation_scores_all_languages_after_warmup():
         _dataset(),
     )
 
-    assert result["evaluated_examples"] == 2
-    assert result["warmup_examples"] == 1
-    assert result["macro"]["f1"] == 1.0
-    assert result["per_language"]["fr"]["status"] == "evaluated"
-    assert result["per_language"]["fr"]["metrics"]["sentences"] == 1
+    assert (
+        result["evaluated_examples"],
+        result["warmup_examples"],
+        result["macro"]["f1"],
+        result["per_language"]["fr"]["status"],
+        result["per_language"]["fr"]["metrics"]["sentences"],
+    ) == (2, 1, 1.0, "evaluated", 1)
 
 
 def test_spacy_is_reported_only_for_english():
@@ -99,3 +110,53 @@ def test_evaluator_rejects_spans_outside_the_source_text():
         assert "invalid span" in str(error)
     else:
         raise AssertionError("An out-of-text model span must fail evaluation")
+
+
+def test_support_status_separates_documented_support_from_transfer():
+    spacy, gliner, xlmr = MODELS
+
+    assert (
+        _support_status(spacy, "en"),
+        _support_status(spacy, "fr"),
+        _support_status(gliner, "fr"),
+        _support_status(xlmr, "ar"),
+        _support_status(xlmr, "ha"),
+    ) == (
+        "documented",
+        "not_evaluated_english_only",
+        "evaluated_multilingual_claim",
+        "fine_tuned_language",
+        "cross_lingual_transfer",
+    )
+
+
+def test_warm_up_skips_languages_outside_the_model_support():
+    seconds, examples = _warm_up(
+        ExactPredictor(), {"fr": (Example("fr", "Lyon", frozenset()),)}, ("en",)
+    )
+
+    assert (seconds, examples) == (0.0, 0)
+
+
+def test_valid_predictions_reject_a_mismatched_batch_size():
+    class EmptyPredictor:
+        def predict_batch(self, texts):
+            return []
+
+    with pytest.raises(ValueError, match="different number"):
+        _valid_predictions(EmptyPredictor(), [Example("en", "Paris", frozenset())])
+
+
+def test_full_matrix_estimate_requires_every_model_estimate():
+    assert (
+        _elapsed_full_matrix_seconds([]),
+        _elapsed_full_matrix_seconds(
+            [
+                {"full_matrix_estimated_inference_seconds": 2.5},
+                {"full_matrix_estimated_inference_seconds": 1.5},
+            ]
+        ),
+        _elapsed_full_matrix_seconds(
+            [{"full_matrix_estimated_inference_seconds": None}]
+        ),
+    ) == (0, 4.0, None)

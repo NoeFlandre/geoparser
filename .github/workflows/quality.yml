@@ -51,6 +51,9 @@ jobs:
       - name: Install locked project dependencies
         run: uv sync --locked
 
+      - name: Install DuckDB spatial extension
+        run: uv run --no-sync python -c "import duckdb; connection = duckdb.connect(); connection.install_extension('spatial'); connection.close()"
+
       - name: Cache Hugging Face models
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
@@ -61,7 +64,9 @@ jobs:
 
       - name: Run the complete deterministic quality gauntlet
         env:
-          GEOPARSER_TEST_REMOTE_MODELS: ${{ github.event_name == 'schedule' && '1' || '' }}
+          # The PR CRAP check measures integration test functions too. Execute
+          # their real-model assertions on this bounded, single CPU runner.
+          GEOPARSER_TEST_REMOTE_MODELS: '1'
           HYPOTHESIS_PROFILE: ${{ github.event_name == 'schedule' && 'nightly' || 'ci' }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then

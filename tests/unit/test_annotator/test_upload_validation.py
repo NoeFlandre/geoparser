@@ -1,10 +1,8 @@
 """Malformed uploads produce clear client errors and preserve legacy files."""
 
-import builtins
 import json
 import uuid
 from importlib import import_module
-from pathlib import Path
 
 import pytest
 from sqlmodel import Session, select
@@ -103,15 +101,6 @@ def legacy_import_with_schema_error(annotator_client, tmp_path, monkeypatch):
         ],
     }
     bad_file.write_text(json.dumps(bad_payload), encoding="utf-8")
-
-    real_open = builtins.open
-
-    def cp1252_default_open(file, *args, **kwargs):
-        if Path(file).resolve() == good_file.resolve() and "encoding" not in kwargs:
-            kwargs["encoding"] = "cp1252"
-        return real_open(file, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "open", cp1252_default_open)
 
     response = client.post("/session/read/legacy-files")
     from geoparser.annotator.db.models.document import AnnotatorDocument
