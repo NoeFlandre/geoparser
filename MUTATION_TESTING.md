@@ -18,34 +18,44 @@ Inspect one function's survivors with `uv run mutmut results` and
 Pragmas only take effect when the mutant tree is regenerated, so delete
 `mutants/` before a run that is meant to pick them up.
 
-## Where the numbers stand
+## Recorded run history
 
-| Run | Mutants | Killed | Survived | No tests | Timeout | Segfault | Rate |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Baseline, whole package | 3871 | 2480 | 931 | 290 | — | 164 | 9.7/s |
-| After excluding the build pipeline | 2021 | 1427 | 307 | 286 | — | 0 | 34.0/s |
-| Clean sweep after model pass | 1999 | 1786 | **0** | 212 | 1 | 0 | 31.2/s |
-| Fit coverage, before latest assertions | 3568 | 3424 | **62** | 69 | 13 | 0 | — |
+The counts below are historical snapshots recorded in the named documentation
+revision; they are not measurements of the current working tree. In particular,
+the older `212` no-test count and the later `69` count came from different
+campaigns and are not contradictory.
 
-The quality gauntlet passes `--max-survivors 0 --max-no-tests 69` to the
-mutation gate. Keep survivors at zero. The no-tests count is a ratchet: it
-must never rise above the measured baseline of 69. The fit tests brought that
-count below 100, meeting the no-tests portion of issue #85.
+| Snapshot recorded in | Run | Mutants | Killed | Survived | No tests | Timeout | Segfault | Rate |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `2d993fd` (2026-09-11) | Clean sweep after context extraction | 2028 | 1816 | **0** | 212 | 0 | 0 | — |
+| `8d07b9b` (2026-09-12) | Clean sweep after model pass | 1999 | 1786 | **0** | 212 | 1 | 0 | 31.2/s |
+| `f92c594` (2026-09-28) | Fit coverage, before latest assertions | 3568 | 3424 | **62** | 69 | 13 | 0 | — |
+
+The latest recorded campaign sums to 3,568 outcomes: 3,424 killed, 62
+survived, 69 had no covering unit test, and 13 timed out. It did **not** pass
+the zero-survivor gate. The quality gauntlet and CI still enforce
+`--max-survivors 0 --max-no-tests 69`; neither limit has been raised. `69` is
+the last measured no-tests count and the unchanged ceiling, not a claim that a
+new run on the current tree has passed.
 
 ## Scope, and why
 
-Two exclusions, both measured rather than assumed:
+Mutation testing uses `tests/unit`; its source scope is narrower than coverage.
+The full `geoparser/` package, including the annotator, remains in coverage
+measurement. The mutmut exclusions are explicit in `pyproject.toml`:
 
-- **`geoparser/annotator/*` and `geoparser/cli/*`** — the annotator is a
-  server-rendered UI that coverage also omits, and the CLI is argument wiring
-  around code that is mutated on its own.
+- **Annotator web/API wiring and `geoparser/cli/*`** — the excluded annotator
+  files are app setup, routes, server wiring, constants, dependencies,
+  exceptions, metadata, and API schemas. The database repositories, database
+  models, and database helpers under `geoparser/annotator/db/` remain in
+  mutation scope and have unit tests.
 - **`geoparser/gazetteer/build/*`** — the build pipeline assembles SQL and
   drives duckdb, which the unit suite mocks away. Judging its mutants honestly
   needs the integration suite, and that rebuilds a real gazetteer per mutant:
   about 23 seconds each, some thirteen hours for the package. Excluding it also
   removed every segfault, since those all came from mutating native-extension
-  code that mutmut runs in-process. It is covered instead by the integration
-  and e2e suites and by the 100% coverage gate.
+  code that mutmut runs in-process. It is covered by integration and e2e tests
+  and the coverage gate; it is outside the mutation result counts above.
 
 Mutants are judged by `tests/unit` only. Adding `tests/integration` was tried:
 it removes every "no tests" mutant and cuts survival from 29% to about 11%, but
@@ -71,9 +81,10 @@ explicit `start`/`end` pragma region around the `raise`.
 A blanket regex over "lines that look like message text" was considered and
 rejected: a regex should not be the thing deciding what counts as behaviour.
 
-## Done
+## Previously verified mutation fixes
 
-Each of these is at zero survivors.
+The entries below were reported at zero survivors in their respective runs;
+that is historical evidence, not a claim about the current campaign.
 
 - [x] `SentenceTransformerResolver._expand_window` — 32 (31 tests, 1 pragma)
 - [x] `_check_database_compatibility` — 25 (7 tests, 18 pragma: message prose,
@@ -107,25 +118,31 @@ Each of these is at zero survivors.
       tested, since the foreign key makes a dangling document impossible)
 - [x] `Project._normalize_document_ids` — 5 (1 pragma: guidance wording)
 
-## Current status
+## Last recorded no-tests inventory
 
-The clean sweep after extracting the context-sizing module generated 2,028
-mutants and reported:
+The 69 no-test mutants in the `f92c594` snapshot were grouped under six
+functions. The counts below sum to 69. Since that run, focused unit tests have
+been added or confirmed for each function. That improves the test evidence but
+does not establish how many mutants the current tree kills: a fresh mutmut run
+is required to refresh the inventory and survivor count. The tested source
+revision for the historical campaign was not recorded, so these values must
+not be presented as current-tree results.
 
-- **1,816 killed**
-- **0 survived**
-- **0 timeouts, suspicious results, or segfaults**
-- **212 with no covering unit test**
+| Function in the historical inventory | No-test mutants | Focused unit-test evidence now in the tree |
+| --- | ---: | --- |
+| `Context.update_recognizer_context` | 18 | `tests/unit/test_db/test_models/test_context.py::TestProjectContext.test_updates_recognizer_context_for_a_tag` |
+| `Context.update_resolver_context` | 18 | `tests/unit/test_db/test_models/test_context.py::TestProjectContext.test_updates_resolver_context_for_a_tag` |
+| `RecognitionService.fit` | 17 | `tests/unit/test_services/test_recognition.py::TestRecognitionServiceFit.test_fits_only_annotated_documents_and_forwards_spans_and_options` |
+| `Project.train_recognizer` | 7 | `tests/unit/test_project/test_project.py::TestProjectTrainRecognizer.test_trains_recognizer_with_tag_and_options` |
+| `Project.train_resolver` | 7 | `tests/unit/test_project/test_project.py::TestProjectTrainResolver.test_trains_resolver_with_tag_and_options` |
+| `GazetteerArtifact.count_names` | 2 | `tests/unit/test_gazetteer/test_artifact.py::TestGazetteerArtifactCounts.test_counts_names` |
+| **Historical total** | **69** | |
 
-Every mutant is accounted for: 1,816 + 212 = 2,028. The gate now checks that
-sum, for the reason in the next section.
-
-The previous sweep recorded one timeout, in the loop that grows a context
-window. Rewriting that loop with an explicit bound -- it can extend at most
-once per sentence, so `for _ in range(len(sentences))` is never the reason it
-stops -- turned the non-terminating mutant into one the tests kill outright.
-The bound is worth having on its own: it makes non-termination impossible in
-production rather than merely unlikely.
+No new mutation exclusions or pragmas were added for these entries. A no-test
+mutant means the selected unit suite did not reach that code in that run; it is
+not evidence that the mutant is equivalent or that integration coverage has
+killed it. Review equivalent mutants only after a run has produced a concrete
+survivor and a test or other reproducible evidence demonstrates equivalence.
 
 ## A gate that could pass without checking anything
 
@@ -150,18 +167,6 @@ Two practical consequences:
 - A filtered run (`mutmut run <pattern>`) needs the mapping a full run builds.
   Do not delete `mutants/` before one.
 
-The fit tests reduced the no-test count from 212 to 69. The remaining baseline
-is recorded by function:
-
-- `Context.update_recognizer_context` — 18
-- `Context.update_resolver_context` — 18
-- `RecognitionService.fit` — 17
-- `Project.train_recognizer` — 7
-- `Project.train_resolver` — 7
-- `GazetteerArtifact.count_names` — 2
-
-The last completed fit-coverage campaign killed 3,424 mutants, left 62
-survivors, and recorded 13 tolerated timeouts. That snapshot predates the
-latest assertions for fit defaults, shuffling, directory creation, and logging
-intervals. Rerun mutation testing before treating 62 as the current survivor
-count. The zero-survivor gate remains required.
+The last recorded fit-coverage campaign killed 3,424 mutants, left 62
+survivors, and recorded 13 timeouts. The zero-survivor gate remains required.
+Rerun mutation testing before treating any of those counts as current.

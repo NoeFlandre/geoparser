@@ -1,10 +1,9 @@
 """
 Smoke tests for the annotator web application.
 
-``geoparser/annotator/`` is omitted from coverage measurement, which in
-practice meant it had no direct tests at all. These cover the wiring a type
-checker cannot: that the app builds and serves, and that the repository
-entry points behave when their optional arguments are simply left out.
+The annotator package is included in coverage measurement. These smoke tests
+cover wiring a type checker cannot: that the app builds and serves, and that
+the repository entry points behave when their optional arguments are omitted.
 """
 
 import pytest

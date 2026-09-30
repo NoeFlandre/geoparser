@@ -486,6 +486,29 @@ class TestProjectTrainResolver:
 
 
 @pytest.mark.unit
+class TestProjectTrainRecognizer:
+    """Training a recognizer from a selected project context."""
+
+    @patch("geoparser.project.project.RecognitionService")
+    def test_trains_recognizer_with_tag_and_options(self, mock_recognition_service):
+        """The selected documents and caller options reach the service."""
+        recognizer = Mock()
+        documents = [Mock(), Mock()]
+        service = Mock()
+        mock_recognition_service.return_value = service
+        project = Project.__new__(Project)
+
+        with patch.object(project, "get_documents", return_value=documents) as get_docs:
+            project.train_recognizer(
+                recognizer, tag="training", output_path="model", epochs=4
+            )
+
+        get_docs.assert_called_once_with(tag="training")
+        mock_recognition_service.assert_called_once_with(recognizer)
+        service.fit.assert_called_once_with(documents, output_path="model", epochs=4)
+
+
+@pytest.mark.unit
 class TestProjectDelete:
     """Test Project delete method."""
 

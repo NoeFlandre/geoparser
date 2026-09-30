@@ -260,6 +260,18 @@ class TestContextModel:
 class TestProjectContext:
     """Test context-manager persistence through the public API."""
 
+    def test_updates_recognizer_context_for_a_tag(
+        self, project_factory, recognizer_factory
+    ):
+        """A recognizer selection is saved and can be read back by its tag."""
+        project = project_factory()
+        recognizer = recognizer_factory(id="recognizer-v2")
+        context = ProjectContext(project.id)
+
+        context.update_recognizer_context("reviewed", recognizer.id)
+
+        assert context.get_recognizer_context("reviewed") == recognizer.id
+
     def test_updates_resolver_context_for_a_tag(
         self, project_factory, resolver_factory
     ):

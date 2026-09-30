@@ -210,6 +210,42 @@ class TestRecognitionServicePredict:
 
 
 @pytest.mark.unit
+class TestRecognitionServiceFit:
+    """Preparation of annotated documents for recognizer training."""
+
+    def test_fits_only_annotated_documents_and_forwards_spans_and_options(
+        self, mock_spacy_recognizer
+    ):
+        """Annotations become offsets while unannotated text is omitted."""
+        documents = [
+            SimpleNamespace(
+                text="New York, Paris",
+                toponyms=[
+                    SimpleNamespace(start=0, end=8),
+                    SimpleNamespace(start=10, end=15),
+                ],
+            ),
+            SimpleNamespace(text="No places here", toponyms=[]),
+            SimpleNamespace(
+                text="London",
+                toponyms=[SimpleNamespace(start=0, end=6)],
+            ),
+        ]
+        fit = Mock()
+        mock_spacy_recognizer.fit = fit
+        service = RecognitionService(mock_spacy_recognizer)
+
+        service.fit(cast(Any, documents), output_path="model", epochs=4)
+
+        fit.assert_called_once_with(
+            ["New York, Paris", "London"],
+            [[(0, 8), (10, 15)], [(0, 6)]],
+            output_path="model",
+            epochs=4,
+        )
+
+
+@pytest.mark.unit
 class TestRecognitionFailures:
     """What happens when persisting predictions fails, and on cache misses."""
 

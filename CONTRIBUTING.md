@@ -78,7 +78,7 @@ Run the full suite:
 uv run pytest
 ```
 
-Coverage is collected for `geoparser` (HTML report in `htmlcov/`; open `htmlcov/index.html`). `geoparser/annotator/` is omitted from coverage. CI enforces a hard floor on the combined coverage of the whole matrix:
+Coverage is collected for the package, including `geoparser/annotator/` (HTML report in `htmlcov/`; open `htmlcov/index.html`). CI enforces a hard floor on the combined coverage of the whole matrix:
 
 ```bash
 uv run pytest --cov-fail-under=100
@@ -137,15 +137,13 @@ What each step guards:
 - **scripts/crap.py** — the [CRAP score](https://testing.googleblog.com/2011/02/this-code-is-crap.html) gate, `complexity² × (1 − coverage)³ + complexity`, per function. For fully covered code this reduces to a cyclomatic-complexity ceiling, so it fails both on untested code and on code that has grown too branchy. It reads the coverage data that pytest just wrote, so run it after the suite.
 - **[mutmut](https://mutmut.readthedocs.io/)** — mutation testing. It edits the source in small ways and re-runs the tests; a mutant that survives is a line the suite does not really check. Configuration lives under `[tool.mutmut]` in `pyproject.toml`; `scripts/mutation_gate.py` reads the exported stats and fails when more mutants survive than the agreed baseline.
 
-Mutation testing currently generates 1,999 mutants against the **unit** suite, at about 31.2 mutants/second once the one-off pass that maps tests to code has finished.
-
-The verified baseline on this tree is **1,786 killed, 0 survived, 1 timeout, and 212 with no covering unit test — a 100% mutation score over judged mutants**. The 212 no-test mutants are an intentional scope boundary: the integration and e2e suites plus the 100% coverage gate cover paths the unit suite does not reach. They remain visible in exported stats, but they are not survivors and are not governed by a separate `MAX_NO_TESTS` ratchet. The quality gauntlet passes `--max-survivors 0` to the mutation gate.
+Mutation testing targets selected package modules with the **unit** suite; the scope and exclusions are listed in [MUTATION_TESTING.md](./MUTATION_TESTING.md). The latest recorded fit-coverage campaign generated 3,568 mutants: 3,424 killed, 62 survived, 69 had no covering unit test, and 13 timed out. This is a historical snapshot, not a verified count for the current tree. The no-test allowance remains capped at 69 and the survivor limit remains zero; a mutant with no covering test is not counted as killed. The quality gauntlet and CI use both limits.
 
 Judging mutants with the integration suite as well was measured and rejected. It is genuinely more thorough — every `no tests` mutant disappears and survival falls from 29% to about 11% — but each mutant it reaches then rebuilds a real gazetteer, roughly 23 seconds apiece and some thirteen hours for the package. The build pipeline is covered by the integration and e2e suites and by the 100% coverage gate instead. If you want the thorough run, add `"tests/integration"` to `pytest_add_cli_args_test_selection` and set aside an evening.
 
-The clean sweep recorded one timeout, with no suspicious results or segfaults.
-The timeout is retained in the evidence rather than silently presented as a
-fully killed mutant; the zero-survivor gate still passes.
+The older clean sweep recorded one timeout and 212 mutants with no covering
+unit test. Those figures predate the later fit-coverage campaign and are not
+the current allowance or a claim that the current tree passes mutation gates.
 
 Inspect survivors with:
 
