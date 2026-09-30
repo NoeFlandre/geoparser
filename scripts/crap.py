@@ -12,7 +12,9 @@ untested code. Run it after pytest has written a coverage data file.
 
     uv run python scripts/crap.py --max-crap 30
 
-Exits non-zero when any measured function scores above the threshold.
+The supplied maximum is an exclusive upper bound: a score equal to the
+threshold also fails. Comparisons use the calculated Python float directly,
+with no tolerance that could let a boundary score through.
 """
 
 from __future__ import annotations
@@ -176,10 +178,10 @@ def main(argv: list[str] | None = None) -> int:
     for score in scores[: args.top]:
         print(f"  {score}")
 
-    breaches = [score for score in scores if score.crap > args.max_crap]
+    breaches = [score for score in scores if score.crap >= args.max_crap]
     if breaches:
         print(
-            f"\n{len(breaches)} function(s) exceed the CRAP threshold "
+            f"\n{len(breaches)} function(s) meet or exceed the CRAP threshold "
             f"of {args.max_crap:g}:",
             file=sys.stderr,
         )

@@ -117,7 +117,7 @@ def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI fla
                     "python",
                     "scripts/crap.py",
                     "--max-crap",
-                    "5.99",
+                    "6",
                     "--data-file",
                     str(coverage_data),
                 ),

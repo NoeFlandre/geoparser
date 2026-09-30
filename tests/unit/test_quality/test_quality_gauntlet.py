@@ -27,6 +27,8 @@ def test_quality_stages_have_the_required_order(tmp_path: Path) -> None:
     ]
     ty_command = next(stage for stage in stages if stage.name == "ty").commands[0]
     assert ty_command[-3:] == ("geoparser", "scripts", "tests")
+    crap_command = next(stage for stage in stages if stage.name == "crap").commands[0]
+    assert crap_command[crap_command.index("--max-crap") + 1] == "6"
 
 
 def test_quality_stages_can_skip_the_redundant_baseline(tmp_path: Path) -> None:
