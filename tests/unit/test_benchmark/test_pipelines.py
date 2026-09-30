@@ -173,3 +173,71 @@ def test_ablations_share_hybrids_recognizer(monkeypatch, pipeline):
     _patch_module_classes(monkeypatch, GLiNER2Recognizer=gliner_factory)
 
     assert pipelines.build_recognizer(pipeline, device="cpu") is recognizer
+
+
+@pytest.mark.parametrize(
+    ("requested", "available", "expected"),
+    [
+        ("auto", True, "cuda"),
+        ("auto", False, "cpu"),
+        ("cpu", False, "cpu"),
+        ("cuda", True, "cuda"),
+    ],
+)
+def test_resolve_device_uses_availability_for_auto_and_explicit_devices(
+    monkeypatch, requested, available, expected
+):
+    torch = ModuleType("torch")
+    torch.__dict__["cuda"] = SimpleNamespace(is_available=lambda: available)
+    monkeypatch.setitem(sys.modules, "torch", torch)
+
+    assert pipelines.resolve_device(requested) == expected
+
+
+def test_resolve_device_rejects_unavailable_explicit_cuda(monkeypatch):
+    torch = ModuleType("torch")
+    torch.__dict__["cuda"] = SimpleNamespace(is_available=lambda: False)
+    monkeypatch.setitem(sys.modules, "torch", torch)
+
+    with pytest.raises(RuntimeError, match="CUDA was requested"):
+        pipelines.resolve_device("cuda")
+
+
+@pytest.mark.parametrize(
+    ("device", "available", "gpu_name", "expected"),
+    [
+        ("cpu", True, "unused", "cpu"),
+        ("cuda:0", False, "unused", "cuda:0"),
+        ("cuda:0", True, "Test GPU", "cuda:0 (Test GPU)"),
+    ],
+)
+def test_describe_device_reports_a_gpu_name_only_for_available_cuda(
+    monkeypatch, device, available, gpu_name, expected
+):
+    torch = ModuleType("torch")
+    torch.__dict__["cuda"] = SimpleNamespace(
+        is_available=lambda: available,
+        get_device_name=lambda index: gpu_name,
+    )
+    monkeypatch.setitem(sys.modules, "torch", torch)
+
+    assert pipelines.describe_device(device) == expected
+
+
+@pytest.mark.parametrize(
+    ("recognizer", "resolver", "expected"),
+    [
+        (None, None, {}),
+        (SimpleNamespace(model_name="gliner"), None, {"recognizer": "gliner"}),
+        (None, SimpleNamespace(model_name="jina"), {"resolver": "jina"}),
+        (
+            None,
+            SimpleNamespace(model_name="jina", reranker_name="cross-encoder"),
+            {"resolver": "jina", "reranker": "cross-encoder"},
+        ),
+    ],
+)
+def test_model_names_describe_the_loaded_recognizer_resolver_and_reranker(
+    recognizer, resolver, expected
+):
+    assert pipelines.model_names(recognizer, resolver) == expected

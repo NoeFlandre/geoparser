@@ -32,11 +32,9 @@ def _create_session_with_document(engine, annotator_app, gazetteer: str) -> UUID
         return session.id
 
 
-@pytest.mark.unit
-def test_candidate_lookup_uses_its_session_after_another_session_is_opened(
-    annotator_client, monkeypatch
-):
-    """Opening B after A does not redirect A's candidate query to B's gazetteer."""
+@pytest.fixture
+def candidate_lookup_after_open_sessions(annotator_client, monkeypatch):
+    """Open two sessions, then fetch candidates through the first session URL."""
     client, engine, annotator_app = annotator_client
     session_a = _create_session_with_document(engine, annotator_app, "geonames")
     session_b = _create_session_with_document(engine, annotator_app, "swissnames3d")
@@ -51,11 +49,18 @@ def test_candidate_lookup_uses_its_session_after_another_session_is_opened(
         "get_candidates",
         classmethod(record_gazetteer),
     )
-
     assert client.get(f"/session/{session_a}/document/0/annotate").status_code == 200
     assert client.get(f"/session/{session_b}/document/0/annotate").status_code == 200
     response = client.post(f"/session/{session_a}/document/0/get_candidates", json={})
+    return response, gazetteers
 
+
+@pytest.mark.unit
+def test_candidate_lookup_uses_its_session_after_another_session_is_opened(
+    candidate_lookup_after_open_sessions,
+):
+    """Opening B after A does not redirect A's candidate query to B's gazetteer."""
+    response, gazetteers = candidate_lookup_after_open_sessions
     assert response.status_code == 200
     assert gazetteers == ["geonames"]
     assert response.json() == {"gazetteer": "geonames"}

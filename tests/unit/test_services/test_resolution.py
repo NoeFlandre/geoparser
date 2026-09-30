@@ -166,10 +166,12 @@ class TestResolutionServicePredict:
 
         from geoparser.db.crud import ReferentRepository, ResolutionRepository
 
-        assert ReferentRepository.get_by_reference(test_session, first.id) == []
-        assert ReferentRepository.get_by_reference(test_session, second.id) == []
-        assert ResolutionRepository.get_by_reference(test_session, first.id) == []
-        assert ResolutionRepository.get_by_reference(test_session, second.id) == []
+        assert (
+            ReferentRepository.get_by_reference(test_session, first.id),
+            ReferentRepository.get_by_reference(test_session, second.id),
+            ResolutionRepository.get_by_reference(test_session, first.id),
+            ResolutionRepository.get_by_reference(test_session, second.id),
+        ) == ([], [], [], [])
 
     def test_rolls_back_referent_insert_when_resolution_insert_fails(
         self,
@@ -225,11 +227,13 @@ class TestResolutionServicePredict:
 
         from geoparser.db.crud import ReferentRepository, ResolutionRepository
 
-        assert insert_count == 2
-        assert ReferentRepository.get_by_reference(test_session, first.id) == []
-        assert ReferentRepository.get_by_reference(test_session, second.id) == []
-        assert ResolutionRepository.get_by_reference(test_session, first.id) == []
-        assert ResolutionRepository.get_by_reference(test_session, second.id) == []
+        assert (
+            insert_count,
+            ReferentRepository.get_by_reference(test_session, first.id),
+            ReferentRepository.get_by_reference(test_session, second.id),
+            ResolutionRepository.get_by_reference(test_session, first.id),
+            ResolutionRepository.get_by_reference(test_session, second.id),
+        ) == (2, [], [], [], [])
 
     def test_skips_references_when_resolver_returns_none(
         self,
@@ -687,32 +691,20 @@ class TestReferentValidation:
 class TestResolutionBatchPersistence:
     """The services stage validated mappings in core bulk writes."""
 
-    def test_resolution_core_inserts_ordered_rows_without_orm_adds(self):
-        """Referents and resolution markers retain values and client IDs."""
-        ids = [uuid.uuid4() for _ in range(4)]
-        references = [
-            SimpleNamespace(id=uuid.uuid4()),
-            SimpleNamespace(id=uuid.uuid4()),
-        ]
-        service = ResolutionService(Mock())
-        feature = SimpleNamespace(identifier="123")
-        session = Mock()
-
-        with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
-            gazetteer.return_value.find.return_value = feature
-            with patch("geoparser.services.resolution.uuid.uuid4", side_effect=ids):
-                service._record_referent_prediction_groups(
-                    session,
-                    cast(Any, [references]),
-                    [[("geonames", "123"), ("geonames", "123")]],
-                    "res",
-                )
-
+    def test_resolution_core_executes_ordered_insertions(
+        self, recorded_resolution_batch
+    ):
+        session, referent_statement, _, resolution_statement, _, _, _ = (
+            recorded_resolution_batch
+        )
         assert len(session.execute.call_args_list) == 2
-        referent_statement, referent_rows = session.execute.call_args_list[0].args
-        resolution_statement, resolution_rows = session.execute.call_args_list[1].args
-        assert referent_statement.table.name == "referent"
-        assert resolution_statement.table.name == "resolution"
+        assert (referent_statement.table.name, resolution_statement.table.name) == (
+            "referent",
+            "resolution",
+        )
+
+    def test_resolution_core_stores_referent_rows(self, recorded_resolution_batch):
+        _, _, ids, _, references, referent_rows, _ = recorded_resolution_batch
         assert referent_rows == [
             {
                 "id": ids[0],
@@ -729,12 +721,51 @@ class TestResolutionBatchPersistence:
                 "resolver_id": "res",
             },
         ]
+
+    def test_resolution_core_stores_processing_markers(self, recorded_resolution_batch):
+        _, _, ids, _, references, _, resolution_rows = recorded_resolution_batch
         assert resolution_rows == [
             {"id": ids[1], "reference_id": references[0].id, "resolver_id": "res"},
             {"id": ids[3], "reference_id": references[1].id, "resolver_id": "res"},
         ]
+
+    def test_resolution_core_avoids_orm_additions(self, recorded_resolution_batch):
+        session = recorded_resolution_batch[0]
         session.add_all.assert_not_called()
         session.commit.assert_not_called()
+
+
+@pytest.fixture
+def recorded_resolution_batch():
+    """Record one resolution batch and expose its staged database rows."""
+    ids = [uuid.uuid4() for _ in range(4)]
+    references = [
+        SimpleNamespace(id=uuid.uuid4()),
+        SimpleNamespace(id=uuid.uuid4()),
+    ]
+    service = ResolutionService(Mock())
+    feature = SimpleNamespace(identifier="123")
+    session = Mock()
+    with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
+        gazetteer.return_value.find.return_value = feature
+        with patch("geoparser.services.resolution.uuid.uuid4", side_effect=ids):
+            service._record_referent_prediction_groups(
+                session,
+                cast(Any, [references]),
+                [[("geonames", "123"), ("geonames", "123")]],
+                "res",
+            )
+    referent_statement, referent_rows = session.execute.call_args_list[0].args
+    resolution_statement, resolution_rows = session.execute.call_args_list[1].args
+    return (
+        session,
+        referent_statement,
+        ids,
+        resolution_statement,
+        references,
+        referent_rows,
+        resolution_rows,
+    )
 
 
 @pytest.mark.unit

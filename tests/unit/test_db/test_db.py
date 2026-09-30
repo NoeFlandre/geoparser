@@ -10,11 +10,12 @@ import re
 import subprocess
 import sys
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 from sqlalchemy import Engine
-from sqlmodel import Session, create_engine, text
+from sqlmodel import Session, SQLModel, create_engine, text
 
 
 @pytest.mark.unit
@@ -440,134 +441,195 @@ _FOREIGN_KEY_TABLES = (
 )
 
 
+@dataclass(frozen=True)
+class _ForeignKeySeed:
+    """Related identifiers needed to build the foreign-key index fixture."""
+
+    project_ids: list[uuid.UUID]
+    document_ids: list[uuid.UUID]
+    reference_ids: list[uuid.UUID]
+    referent_ids: list[uuid.UUID]
+    resolution_ids: list[uuid.UUID]
+    recognition_ids: list[uuid.UUID]
+    recognizer_ids: list[str]
+    resolver_ids: list[str]
+
+
+def _uuid_ids(row_count: int) -> list[uuid.UUID]:
+    return [uuid.uuid4() for _ in range(row_count)]
+
+
+def _named_ids(prefix: str, row_count: int) -> list[str]:
+    return [f"{prefix}-{index}" for index in range(row_count)]
+
+
+def _new_foreign_key_seed(row_count: int) -> _ForeignKeySeed:
+    return _ForeignKeySeed(
+        project_ids=_uuid_ids(row_count),
+        document_ids=_uuid_ids(row_count),
+        reference_ids=_uuid_ids(row_count),
+        referent_ids=_uuid_ids(row_count),
+        resolution_ids=_uuid_ids(row_count),
+        recognition_ids=_uuid_ids(row_count),
+        recognizer_ids=_named_ids("recognizer", row_count),
+        resolver_ids=_named_ids("resolver", row_count),
+    )
+
+
+def _insert_rows(connection, table: str, rows: list[dict]) -> None:
+    connection.execute(SQLModel.metadata.tables[table].insert(), rows)
+
+
+def _seed_lookup_tables(connection, ids: _ForeignKeySeed) -> None:
+    _insert_rows(
+        connection,
+        "project",
+        [
+            {"id": value, "name": f"project-{index}"}
+            for index, value in enumerate(ids.project_ids)
+        ],
+    )
+    _insert_rows(
+        connection,
+        "recognizer",
+        [{"id": value, "name": value, "config": {}} for value in ids.recognizer_ids],
+    )
+    _insert_rows(
+        connection,
+        "resolver",
+        [{"id": value, "name": value, "config": {}} for value in ids.resolver_ids],
+    )
+
+
+def _seed_document_table(connection, ids: _ForeignKeySeed) -> None:
+    _insert_rows(
+        connection,
+        "document",
+        [
+            {
+                "id": document_id,
+                "text": f"Document {index}",
+                "project_id": ids.project_ids[index],
+            }
+            for index, document_id in enumerate(ids.document_ids)
+        ],
+    )
+
+
+def _seed_reference_table(connection, ids: _ForeignKeySeed) -> None:
+    _insert_rows(
+        connection,
+        "reference",
+        [
+            {
+                "id": reference_id,
+                "document_id": ids.document_ids[index],
+                "recognizer_id": ids.recognizer_ids[index],
+                "start": 0,
+                "end": 1,
+                "text": "x",
+            }
+            for index, reference_id in enumerate(ids.reference_ids)
+        ],
+    )
+
+
+def _seed_derived_tables(connection, ids: _ForeignKeySeed) -> None:
+    _insert_rows(
+        connection,
+        "referent",
+        [
+            {
+                "id": ids.referent_ids[index],
+                "reference_id": ids.reference_ids[index],
+                "resolver_id": ids.resolver_ids[index],
+                "gazetteer_name": "test",
+                "feature_identifier": str(index),
+            }
+            for index in range(len(ids.referent_ids))
+        ],
+    )
+    _insert_rows(
+        connection,
+        "resolution",
+        [
+            {
+                "id": ids.resolution_ids[index],
+                "reference_id": ids.reference_ids[index],
+                "resolver_id": ids.resolver_ids[index],
+            }
+            for index in range(len(ids.resolution_ids))
+        ],
+    )
+    _insert_rows(
+        connection,
+        "recognition",
+        [
+            {
+                "id": ids.recognition_ids[index],
+                "document_id": ids.document_ids[index],
+                "recognizer_id": ids.recognizer_ids[index],
+            }
+            for index in range(len(ids.recognition_ids))
+        ],
+    )
+
+
+def _sample_foreign_key_values(ids: _ForeignKeySeed) -> dict:
+    return {
+        ("document", "project_id"): ids.project_ids[0].hex,
+        ("reference", "document_id"): ids.document_ids[0].hex,
+        ("reference", "recognizer_id"): ids.recognizer_ids[0],
+        ("referent", "reference_id"): ids.reference_ids[0].hex,
+        ("referent", "resolver_id"): ids.resolver_ids[0],
+        ("resolution", "reference_id"): ids.reference_ids[0].hex,
+        ("resolution", "resolver_id"): ids.resolver_ids[0],
+        ("recognition", "document_id"): ids.document_ids[0].hex,
+        ("recognition", "recognizer_id"): ids.recognizer_ids[0],
+    }
+
+
 def _seed_foreign_key_index_data(engine, row_count: int = 256) -> dict:
     """Populate enough relational rows to verify SQLite's index choices."""
-    from sqlmodel import SQLModel
-
     import geoparser.db.models  # noqa: F401 - register tables in SQLModel metadata
 
-    project_ids = [uuid.uuid4() for _ in range(row_count)]
-    document_ids = [uuid.uuid4() for _ in range(row_count)]
-    reference_ids = [uuid.uuid4() for _ in range(row_count)]
-    referent_ids = [uuid.uuid4() for _ in range(row_count)]
-    resolution_ids = [uuid.uuid4() for _ in range(row_count)]
-    recognition_ids = [uuid.uuid4() for _ in range(row_count)]
-    recognizer_ids = [f"recognizer-{index}" for index in range(row_count)]
-    resolver_ids = [f"resolver-{index}" for index in range(row_count)]
-
+    ids = _new_foreign_key_seed(row_count)
     with engine.begin() as connection:
-        connection.execute(
-            SQLModel.metadata.tables["project"].insert(),
-            [
-                {"id": project_id, "name": f"project-{index}"}
-                for index, project_id in enumerate(project_ids)
-            ],
-        )
-        connection.execute(
-            SQLModel.metadata.tables["recognizer"].insert(),
-            [
-                {"id": recognizer_id, "name": recognizer_id, "config": {}}
-                for recognizer_id in recognizer_ids
-            ],
-        )
-        connection.execute(
-            SQLModel.metadata.tables["resolver"].insert(),
-            [
-                {"id": resolver_id, "name": resolver_id, "config": {}}
-                for resolver_id in resolver_ids
-            ],
-        )
-        connection.execute(
-            SQLModel.metadata.tables["document"].insert(),
-            [
-                {
-                    "id": document_id,
-                    "text": f"Document {index}",
-                    "project_id": project_ids[index],
-                }
-                for index, document_id in enumerate(document_ids)
-            ],
-        )
-        connection.execute(
-            SQLModel.metadata.tables["reference"].insert(),
-            [
-                {
-                    "id": reference_id,
-                    "document_id": document_ids[index],
-                    "recognizer_id": recognizer_ids[index],
-                    "start": 0,
-                    "end": 1,
-                    "text": "x",
-                }
-                for index, reference_id in enumerate(reference_ids)
-            ],
-        )
-        connection.execute(
-            SQLModel.metadata.tables["referent"].insert(),
-            [
-                {
-                    "id": referent_ids[index],
-                    "reference_id": reference_ids[index],
-                    "resolver_id": resolver_ids[index],
-                    "gazetteer_name": "test",
-                    "feature_identifier": str(index),
-                }
-                for index in range(row_count)
-            ],
-        )
-        connection.execute(
-            SQLModel.metadata.tables["resolution"].insert(),
-            [
-                {
-                    "id": resolution_ids[index],
-                    "reference_id": reference_ids[index],
-                    "resolver_id": resolver_ids[index],
-                }
-                for index in range(row_count)
-            ],
-        )
-        connection.execute(
-            SQLModel.metadata.tables["recognition"].insert(),
-            [
-                {
-                    "id": recognition_ids[index],
-                    "document_id": document_ids[index],
-                    "recognizer_id": recognizer_ids[index],
-                }
-                for index in range(row_count)
-            ],
-        )
-
-    return {
-        ("document", "project_id"): project_ids[0].hex,
-        ("reference", "document_id"): document_ids[0].hex,
-        ("reference", "recognizer_id"): recognizer_ids[0],
-        ("referent", "reference_id"): reference_ids[0].hex,
-        ("referent", "resolver_id"): resolver_ids[0],
-        ("resolution", "reference_id"): reference_ids[0].hex,
-        ("resolution", "resolver_id"): resolver_ids[0],
-        ("recognition", "document_id"): document_ids[0].hex,
-        ("recognition", "recognizer_id"): recognizer_ids[0],
-    }
+        _seed_lookup_tables(connection, ids)
+        _seed_document_table(connection, ids)
+        _seed_reference_table(connection, ids)
+        _seed_derived_tables(connection, ids)
+    return _sample_foreign_key_values(ids)
 
 
 def _assert_foreign_key_indexes_and_query_plans(engine, values: dict) -> None:
     """Assert every foreign-key index exists and is selected by SQLite."""
     with engine.connect() as connection:
         for table, column in _FOREIGN_KEY_INDEXES:
-            index_name = f"ix_{table}_{column}"
-            indexes = {
-                row[1]
-                for row in connection.exec_driver_sql(f"PRAGMA index_list('{table}')")
-            }
-            assert index_name in indexes
+            _assert_foreign_key_index(connection, table, column)
+            _assert_index_is_selected(connection, table, column, values)
 
-            plan = connection.exec_driver_sql(
-                f"EXPLAIN QUERY PLAN SELECT id FROM {table} WHERE {column} = ?",
-                (values[(table, column)],),
-            ).all()
-            details = " ".join(row[3] for row in plan)
-            assert index_name in details
+
+def _assert_foreign_key_index(connection, table: str, column: str) -> None:
+    """Check that SQLite created the index implied by the foreign key."""
+    index_name = f"ix_{table}_{column}"
+    indexes = {
+        row[1] for row in connection.exec_driver_sql(f"PRAGMA index_list('{table}')")
+    }
+    assert index_name in indexes
+
+
+def _assert_index_is_selected(
+    connection, table: str, column: str, values: dict
+) -> None:
+    """Check that a representative equality lookup selects its index."""
+    index_name = f"ix_{table}_{column}"
+    plan = connection.exec_driver_sql(
+        f"EXPLAIN QUERY PLAN SELECT id FROM {table} WHERE {column} = ?",
+        (values[(table, column)],),
+    ).all()
+    details = " ".join(row[3] for row in plan)
+    assert index_name in details
 
 
 def _count_foreign_key_tables(connection) -> dict[str, int]:

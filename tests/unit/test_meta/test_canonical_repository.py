@@ -34,8 +34,8 @@ CANONICAL_URL = f"https://github.com/{CANONICAL_SLUG}"
 REPO_LINK = re.compile(r"github\.com/(?P<owner>[A-Za-z0-9][A-Za-z0-9._-]*)/geoparser\b")
 
 
-def _tracked_text_files() -> list[Path]:
-    """Every tracked file that reads back as text, newest checkout state."""
+def _git_file_candidates() -> list[Path] | None:
+    """Read tracked paths, returning None when a mutmut copy has no index."""
     try:
         listing = subprocess.run(
             ["git", "ls-files", "-z"],
@@ -46,26 +46,36 @@ def _tracked_text_files() -> list[Path]:
         )
         candidates = [ROOT / name for name in listing.stdout.split("\0") if name]
         if not candidates:
-            # mutmut's untracked ``mutants`` copy sits inside the checkout, so
-            # git answers successfully there but lists nothing.
-            raise FileNotFoundError(ROOT)
+            return None
     except (OSError, subprocess.CalledProcessError):
-        ignored_parts = {".git", ".hypothesis", ".pytest_cache", ".ruff_cache"}
-        candidates = sorted(
-            path
-            for path in ROOT.rglob("*")
-            if path.is_file()
-            and not ignored_parts.intersection(path.relative_to(ROOT).parts)
-        )
+        return None
+    return candidates
 
-    files = []
-    for path in candidates:
-        try:
-            path.read_text("utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue  # a binary asset, or a path this checkout does not hold
-        files.append(path)
-    return files
+
+def _fallback_file_candidates() -> list[Path]:
+    """Walk the checkout when Git cannot enumerate a mutmut temporary tree."""
+    ignored_parts = {".git", ".hypothesis", ".pytest_cache", ".ruff_cache"}
+    return sorted(
+        path
+        for path in ROOT.rglob("*")
+        if path.is_file()
+        and not ignored_parts.intersection(path.relative_to(ROOT).parts)
+    )
+
+
+def _is_text_file(path: Path) -> bool:
+    """Whether a candidate path can be read as UTF-8 text."""
+    try:
+        path.read_text("utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
+    return True
+
+
+def _tracked_text_files() -> list[Path]:
+    """Every tracked file that reads back as text, newest checkout state."""
+    candidates = _git_file_candidates() or _fallback_file_candidates()
+    return [path for path in candidates if _is_text_file(path)]
 
 
 def _repo_links() -> list[tuple[Path, int, str]]:

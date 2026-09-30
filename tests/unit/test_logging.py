@@ -20,10 +20,12 @@ class TestDefaultOutput:
         logger = get_logger("geoparser.b")
 
         package = logging.getLogger(PACKAGE_LOGGER)
-        assert logger.name == "geoparser.b"
-        assert package.level == logging.INFO
         handlers = [h for h in package.handlers if isinstance(h, _DefaultStdoutHandler)]
-        assert len(handlers) == 1
+        assert (logger.name, package.level, len(handlers)) == (
+            "geoparser.b",
+            logging.INFO,
+            1,
+        )
 
     def test_configures_a_fresh_package_logger_and_not_the_root(self, monkeypatch):
         package = logging.getLogger(PACKAGE_LOGGER)
@@ -34,11 +36,13 @@ class TestDefaultOutput:
 
         get_logger("geoparser.fresh")
 
-        assert package.level == logging.INFO
-        assert len(package.handlers) == 1
-        assert isinstance(package.handlers[0], _DefaultStdoutHandler)
-        assert root.level == root_level
-        assert root.handlers == root_handlers
+        assert package.handlers
+        assert (
+            package.level,
+            len(package.handlers),
+            isinstance(package.handlers[0], _DefaultStdoutHandler),
+        ) == (logging.INFO, 1, True)
+        assert (root.level, root.handlers) == (root_level, root_handlers)
 
     def test_keeps_a_level_the_application_chose(self, monkeypatch):
         package = logging.getLogger(PACKAGE_LOGGER)

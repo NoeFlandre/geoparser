@@ -52,9 +52,10 @@ def db_session():
     engine.dispose()
 
 
-def test_session_repository_exports_and_updates_child_rows(db_session):
-    """Session CRUD preserves related documents, toponyms, and settings."""
-    session = SessionRepository.create(
+@pytest.fixture
+def session_with_child_rows(db_session):
+    """Create one annotated document so session exports include child rows."""
+    return SessionRepository.create(
         db_session,
         AnnotatorSessionCreate(
             gazetteer="geonames",
@@ -73,21 +74,40 @@ def test_session_repository_exports_and_updates_child_rows(db_session):
         ),
     )
 
-    assert SessionRepository.read_all(db_session, gazetteer="geonames") == [session]
-    assert SessionRepository.read(db_session, session.id).documents[0].doc_index == 0
-    exported = SessionRepository.read_to_json(db_session, session.id)
+
+def test_session_repository_reads_its_documents(db_session, session_with_child_rows):
+    assert SessionRepository.read_all(db_session, gazetteer="geonames") == [
+        session_with_child_rows
+    ]
+    loaded = SessionRepository.read(db_session, session_with_child_rows.id)
+    assert loaded.documents[0].doc_index == 0
+
+
+def test_session_repository_exports_toponyms(db_session, session_with_child_rows):
+    exported = SessionRepository.read_to_json(db_session, session_with_child_rows.id)
     assert exported["documents"][0]["toponyms"][0]["loc_id"] == "2988507"
 
+
+def test_session_settings_repository_updates_and_reads_settings(
+    db_session, session_with_child_rows
+):
     updated = SessionSettingsRepository.update(
         db_session,
         AnnotatorSessionSettingsUpdate(
-            id=session.settings.id, auto_close_annotation_modal=False
+            id=session_with_child_rows.settings.id,
+            auto_close_annotation_modal=False,
         ),
     )
     assert updated.auto_close_annotation_modal is False
     assert SessionSettingsRepository.read(db_session, updated.id) == updated
     assert SessionSettingsRepository.read_all(db_session, id=updated.id) == [updated]
-    assert SessionSettingsRepository.delete(db_session, updated.id).id == updated.id
+
+
+def test_session_settings_repository_deletes_settings(
+    db_session, session_with_child_rows
+):
+    settings = session_with_child_rows.settings
+    assert SessionSettingsRepository.delete(db_session, settings.id).id == settings.id
 
 
 def test_document_repository_upload_validation_and_reindexing(db_session):

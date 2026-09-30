@@ -178,11 +178,11 @@ class TestBaseRepositoryGetAll:
         all_projects = ProjectRepository.get_all(test_session)
 
         # Assert
-        assert len(all_projects) == 3
-        project_names = [p.name for p in all_projects]
-        assert "Project 1" in project_names
-        assert "Project 2" in project_names
-        assert "Project 3" in project_names
+        assert {project.name for project in all_projects} == {
+            "Project 1",
+            "Project 2",
+            "Project 3",
+        }
 
     def test_returns_empty_list_when_no_records(self, test_session: Session):
         """Test that get_all returns empty list when no records exist."""

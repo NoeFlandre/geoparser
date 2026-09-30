@@ -12,6 +12,16 @@ from geoparser.modules import SentenceTransformerResolver, SpacyRecognizer
 from geoparser.project import Project
 
 
+def _all_toponyms(documents):
+    """Collect the predicted toponyms returned for a document batch."""
+    return [toponym for document in documents for toponym in document.toponyms]
+
+
+def _resolved_toponyms(documents):
+    """Collect predicted toponyms that resolved to a gazetteer feature."""
+    return [toponym for toponym in _all_toponyms(documents) if toponym.location]
+
+
 @pytest.mark.e2e
 class TestCompleteParsingPipeline:
     """End-to-end tests for complete parsing workflows with real models."""
@@ -38,14 +48,8 @@ class TestCompleteParsingPipeline:
 
         # Assert
         assert len(documents) == 2
-
-        # First document should have recognized locations
-        assert len(documents[0].toponyms) > 0
-        # At least some should be resolved
-        resolved_count = sum(
-            1 for doc in documents for toponym in doc.toponyms if toponym.location
-        )
-        assert resolved_count > 0
+        assert _all_toponyms([documents[0]])
+        assert _resolved_toponyms(documents)
 
     def test_project_workflow_with_real_models(
         self,
@@ -70,14 +74,8 @@ class TestCompleteParsingPipeline:
 
         # Assert
         assert len(documents) == 2
-        # Verify at least some locations were recognized and resolved
-        total_toponyms = sum(len(doc.toponyms) for doc in documents)
-        assert total_toponyms > 0
-
-        resolved_toponyms = sum(
-            1 for doc in documents for toponym in doc.toponyms if toponym.location
-        )
-        assert resolved_toponyms > 0
+        assert _all_toponyms(documents)
+        assert _resolved_toponyms(documents)
 
         # Cleanup
         project.delete()
@@ -113,11 +111,7 @@ class TestCompleteParsingPipeline:
         # Assert - Both should produce results (may differ)
         assert len(docs_rec1) == 2
         assert len(docs_rec2) == 2
-
-        # At least one recognizer should find locations (Paris, London, France are well-known GPE entities)
-        total_rec1 = sum(len(doc.toponyms) for doc in docs_rec1)
-        total_rec2 = sum(len(doc.toponyms) for doc in docs_rec2)
-        assert (total_rec1 + total_rec2) > 0
+        assert _all_toponyms(docs_rec1) or _all_toponyms(docs_rec2)
 
         # Cleanup
         project.delete()
@@ -178,10 +172,8 @@ class TestCompleteParsingPipeline:
 
         # Both resolvers should have attempted resolution
         # (may or may not succeed depending on gazetteer content)
-        total_toponyms_res1 = sum(len(doc.toponyms) for doc in docs_res1)
-        total_toponyms_res2 = sum(len(doc.toponyms) for doc in docs_res2)
-        assert total_toponyms_res1 > 0
-        assert total_toponyms_res2 > 0
+        assert _all_toponyms(docs_res1)
+        assert _all_toponyms(docs_res2)
 
         # Cleanup
         project.delete()

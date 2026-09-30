@@ -191,11 +191,7 @@ class TestRecognitionRepositoryGetUnprocessedDocuments:
         )
 
         # Assert
-        assert len(unprocessed) == 2
-        unprocessed_ids = [d.id for d in unprocessed]
-        assert doc1.id not in unprocessed_ids
-        assert doc2.id in unprocessed_ids
-        assert doc3.id in unprocessed_ids
+        assert {document.id for document in unprocessed} == {doc2.id, doc3.id}
 
     def test_returns_all_documents_when_none_processed(
         self,

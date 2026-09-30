@@ -25,11 +25,11 @@ concurrency:
 
 env:
   HYPOTHESIS_PROFILE: ci
-  # The hard coverage gate, applied to the combined report across the whole
-  # matrix. Single cells are not gated: platform-specific branches are
-  # unreachable off their own operating system, so only the combination is a
-  # fair measure -- and the combination is a union, so it can only be higher
-  # than any one cell. Raise this when coverage rises; never lower it to go green.
+  # The hard package-coverage gate is applied to the combined report across
+  # the whole matrix. Single cells are not gated: platform-specific branches
+  # are unreachable off their own operating system. Raise this when coverage
+  # rises; never lower it to go green. Scripts and tests are additionally
+  # measured by the CRAP gate below.
   COVERAGE_THRESHOLD: "100"
   # Exclusive CRAP ceiling (complexity^2 * (1-coverage)^3 + complexity):
   # every measured function must score strictly below six.
@@ -110,6 +110,16 @@ jobs:
       - name: Run pytest
         run: uv run --no-sync pytest -v
 
+      # The opt-in benchmark suite includes deterministic operation-count
+      # contracts and test helpers that the all-source CRAP report measures.
+      # Run it once with timings disabled so those scenarios stay quick.
+      - name: Run deterministic benchmark contracts
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: >-
+          uv run --no-sync pytest tests/benchmarks -m benchmark --benchmark-disable
+          --cov=geoparser --cov=scripts --cov=tests --cov-append
+          --cov-report=term-missing
+
       - run: mkdir coverage
       - run: mv .coverage coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}
       - name: Store coverage files
@@ -144,12 +154,12 @@ jobs:
       # Only the tools needed to combine and gate; no torch.
       - run: uv sync --locked --only-group lint
       - run: uv run --no-sync coverage combine coverage
-      - run: uv run --no-sync coverage report
+      - run: uv run --no-sync coverage report --include='geoparser/*'
 
       # The hard gate. Runs before the reporting steps so a coverage drop fails
       # the build rather than being quietly published.
       - name: Enforce the coverage threshold
-        run: uv run --no-sync coverage report --fail-under=${{ env.COVERAGE_THRESHOLD }}
+        run: uv run --no-sync coverage report --include='geoparser/*' --fail-under=${{ env.COVERAGE_THRESHOLD }}
 
       # Complexity is only half of CRAP; the other half is the combined
       # coverage that has just been assembled, so the gate lives here.

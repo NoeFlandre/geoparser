@@ -4,11 +4,26 @@ Unit tests for geoparser/modules/recognizers/manual.py
 Tests the ManualRecognizer module for handling manually annotated references.
 """
 
+from operator import itemgetter
+
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from geoparser.modules.recognizers.manual import ManualRecognizer
+
+
+def _first_reference_group(texts, references, query):
+    """Resolve a query with the recognizer's legacy list.index behavior."""
+    try:
+        return references[texts.index(query)]
+    except ValueError:
+        return None
+
+
+def _expected_reference_groups(texts, references, queries):
+    """Build the independent first-match oracle for a sequence of queries."""
+    return [_first_reference_group(texts, references, query) for query in queries]
 
 
 class NoIndexList(list):
@@ -265,15 +280,8 @@ class TestManualRecognizerPredict:
     queries=st.lists(st.text(max_size=8), max_size=12),
 )
 def test_predict_matches_first_list_index_semantics(annotations, queries):
-    texts = [text for text, _ in annotations]
-    references = [spans for _, spans in annotations]
+    texts = list(map(itemgetter(0), annotations))
+    references = list(map(itemgetter(1), annotations))
     recognizer = ManualRecognizer("test", texts, references)
-
-    expected = []
-    for query in queries:
-        try:
-            expected.append(references[texts.index(query)])
-        except ValueError:
-            expected.append(None)
-
+    expected = _expected_reference_groups(texts, references, queries)
     assert recognizer.predict(queries) == expected

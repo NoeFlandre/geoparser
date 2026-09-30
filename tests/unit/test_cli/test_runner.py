@@ -54,15 +54,20 @@ class TestTopLevel:
 class TestInstallErrors:
     """Test that user mistakes produce messages, not tracebacks."""
 
+    @pytest.mark.parametrize(
+        "expected_message",
+        ("Available built-in gazetteer configs", "geonames"),
+    )
     @patch("geoparser.cli.install._get_builtin_gazetteers")
-    def test_unknown_name_exits_2_without_traceback(self, mock_builtin):
+    def test_unknown_name_exits_2_without_traceback(
+        self, mock_builtin, expected_message
+    ):
         mock_builtin.return_value = {"geonames": Path("/builtin/geonames.yaml")}
 
         result = runner.invoke(app, ["install", "nope"])
 
         assert result.exit_code == 2
-        assert "Available built-in gazetteer configs" in result.stderr
-        assert "geonames" in result.stderr
+        assert expected_message in result.stderr
         assert "Traceback" not in result.output
         assert not isinstance(result.exception, FileNotFoundError)
 

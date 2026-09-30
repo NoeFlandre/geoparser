@@ -20,6 +20,13 @@ ANDORRA_ATTRIBUTE_MAP = {
 }
 
 
+def _flatten_predictions(results):
+    """Collect predictions across document groups for shape checks."""
+    return [
+        prediction for document_results in results for prediction in document_results
+    ]
+
+
 @pytest.mark.integration
 class TestSentenceTransformerResolverIntegration:
     """Integration tests for SentenceTransformerResolver with real model and gazetteer."""
@@ -65,13 +72,11 @@ class TestSentenceTransformerResolverIntegration:
         results = real_sentencetransformer_resolver.predict(texts, references)
 
         # Assert
-        assert len(results) == 1
-        assert len(results[0]) == 1
-        assert results[0][0] is not None
-        # Should resolve to a location in andorranames gazetteer
-        gazetteer_name, identifier = results[0][0]
-        assert gazetteer_name == "andorranames"
-        assert identifier is not None
+        assert tuple(map(len, results)) == (1,)
+        prediction = results[0][0]
+        assert prediction is not None
+        gazetteer_name, identifier = prediction
+        assert (gazetteer_name, identifier is not None) == ("andorranames", True)
 
     def test_resolves_multiple_references_in_document(
         self, real_sentencetransformer_resolver, andorra_gazetteer
@@ -106,13 +111,13 @@ class TestSentenceTransformerResolverIntegration:
         results = real_sentencetransformer_resolver.predict(texts, references)
 
         # Assert - Check structure is correct
-        assert len(results) == 2
-        assert len(results[0]) == 1
-        assert len(results[1]) == 1
+        assert tuple(map(len, results)) == (1, 1)
         # Results may be None if similarity threshold not met (correct behavior)
         # Just verify the structure is correct and results are tuples or None
-        assert results[0][0] is None or isinstance(results[0][0], tuple)
-        assert results[1][0] is None or isinstance(results[1][0], tuple)
+        assert all(
+            result is None or isinstance(result, tuple)
+            for result in _flatten_predictions(results)
+        )
 
     def test_handles_document_with_no_references(
         self, real_sentencetransformer_resolver, andorra_gazetteer

@@ -72,11 +72,7 @@ class TestManualRecognizerIntegration:
         results = recognizer.predict(texts)
 
         # Assert
-        assert len(results) == 1
-        assert results[0] is not None
-        assert len(results[0]) == 2
-        assert (0, 5) in results[0]
-        assert (10, 16) in results[0]
+        assert results == [[(0, 5), (10, 16)]]
 
     def test_predicts_references_for_multiple_documents(self):
         """Test that ManualRecognizer handles multiple documents."""

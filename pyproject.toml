@@ -250,6 +250,8 @@ addopts = [
     "-m",
     "not benchmark",
     "--cov=geoparser",
+    "--cov=scripts",
+    "--cov=tests",
     "--cov-report=term-missing",
     "--cov-config=pyproject.toml",
 ]
@@ -331,13 +333,23 @@ exclude_also = [
 # about doing so is silenced because that fallback is expected here.
 core = "sysmon"
 disable_warnings = ["no-sysmon"]
-source = ["geoparser"]
+# CRAP scores every first-party function, including tooling and test helpers.
+# The hard line-coverage percentage remains scoped to the installable package.
+source = ["geoparser", "scripts", "tests"]
 relative_files = true
 
 [tool.coverage.paths]
 source = [
     'geoparser/',
     "geoparser\\",
+]
+scripts = [
+    'scripts/',
+    "scripts\\",
+]
+tests = [
+    'tests/',
+    "tests\\",
 ]
 
 [tool.ty.analysis]

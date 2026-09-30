@@ -103,3 +103,17 @@ class TestGazetteerArtifactClose:
         feature = artifact.find("1")
 
         assert feature is not None
+
+
+@pytest.mark.unit
+class TestGazetteerArtifactCounts:
+    """Test artifact-level row counts."""
+
+    def test_counts_names(self, make_artifact):
+        """The count reflects all searchable names, including alternate names."""
+        make_artifact(name="counted")
+        artifact = GazetteerArtifact(artifact_path("counted"))
+        try:
+            assert artifact.count_names() == 4
+        finally:
+            artifact.close()

@@ -88,11 +88,13 @@ class TestModuleStringRepresentation:
         str_repr = str(module)
 
         # Assert
-        assert "TestModule" in str_repr
-        assert "param1" in str_repr
-        assert "'value1'" in str_repr
-        assert "param2" in str_repr
-        assert "42" in str_repr
+        assert (
+            tuple(
+                fragment in str_repr
+                for fragment in ("TestModule", "param1", "'value1'", "param2", "42")
+            )
+            == (True,) * 5
+        )
 
     def test_str_with_no_config(self):
         """Test that __str__ works correctly with no config parameters."""

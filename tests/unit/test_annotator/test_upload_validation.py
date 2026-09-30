@@ -62,11 +62,9 @@ def test_wrong_shape_session_json_returns_422(annotator_client):
     assert "session" in response.json()["message"].lower()
 
 
-@pytest.mark.unit
-def test_legacy_import_reports_schema_failure_and_keeps_bad_file(
-    annotator_client, tmp_path, monkeypatch
-):
-    """A bad session is reported while good UTF-8 sessions still load."""
+@pytest.fixture
+def legacy_import_with_schema_error(annotator_client, tmp_path, monkeypatch):
+    """Import one valid UTF-8 session beside one invalid legacy session."""
     client, engine, _annotator_app = annotator_client
     legacy_dir = tmp_path / "legacy"
     legacy_dir.mkdir()
@@ -116,25 +114,38 @@ def test_legacy_import_reports_schema_failure_and_keeps_bad_file(
     monkeypatch.setattr(builtins, "open", cp1252_default_open)
 
     response = client.post("/session/read/legacy-files")
-
-    assert response.status_code == 200
-    assert response.json()["files_found"] == 2
-    assert response.json()["files_loaded"] == 1
-    assert response.json()["files_failed"] == ["bad.json"]
-    assert not good_file.exists()
-    assert bad_file.exists()
     from geoparser.annotator.db.models.document import AnnotatorDocument
 
     with Session(engine) as db:
         documents = db.exec(select(AnnotatorDocument)).all()
-    assert [document.text for document in documents] == ["Zürich"]
+    return response, good_file, bad_file, [document.text for document in documents]
 
 
 @pytest.mark.unit
-def test_legacy_import_reports_invalid_utf8_and_keeps_file(
-    annotator_client, tmp_path, monkeypatch
-):
-    """An undecodable legacy file is listed and left available to recover."""
+def test_legacy_import_reports_schema_failure_counts(legacy_import_with_schema_error):
+    response, _, _, _ = legacy_import_with_schema_error
+    assert response.status_code == 200
+    assert response.json()["files_found"] == 2
+    assert response.json()["files_loaded"] == 1
+    assert response.json()["files_failed"] == ["bad.json"]
+
+
+@pytest.mark.unit
+def test_legacy_import_removes_only_the_valid_file(legacy_import_with_schema_error):
+    _, good_file, bad_file, _ = legacy_import_with_schema_error
+    assert not good_file.exists()
+    assert bad_file.exists()
+
+
+@pytest.mark.unit
+def test_legacy_import_saves_valid_unicode_documents(legacy_import_with_schema_error):
+    _, _, _, document_texts = legacy_import_with_schema_error
+    assert document_texts == ["Zürich"]
+
+
+@pytest.fixture
+def legacy_import_with_invalid_utf8(annotator_client, tmp_path, monkeypatch):
+    """Attempt to import one undecodable legacy file."""
     client, _, _annotator_app = annotator_client
     legacy_dir = tmp_path / "legacy"
     legacy_dir.mkdir()
@@ -146,9 +157,19 @@ def test_legacy_import_reports_invalid_utf8_and_keeps_file(
     bad_file.write_bytes(b"{\xff}")
 
     response = client.post("/session/read/legacy-files")
+    return response, bad_file
 
+
+@pytest.mark.unit
+def test_legacy_import_reports_invalid_utf8_counts(legacy_import_with_invalid_utf8):
+    response, _ = legacy_import_with_invalid_utf8
     assert response.status_code == 200
     assert response.json()["files_found"] == 1
     assert response.json()["files_loaded"] == 0
     assert response.json()["files_failed"] == ["invalid-utf8.json"]
+
+
+@pytest.mark.unit
+def test_legacy_import_keeps_invalid_utf8_file(legacy_import_with_invalid_utf8):
+    _, bad_file = legacy_import_with_invalid_utf8
     assert bad_file.exists()

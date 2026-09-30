@@ -74,21 +74,36 @@ def load_coordinates(
         QID to (latitude, longitude), for the items that have coordinates
     """
     wanted = set(qids)
-    cache: dict[str, t.Any] = (
-        json.loads(cache_path.read_text(encoding="utf-8"))
-        if cache_path.exists()
-        else {}
-    )
+    cache = _read_cache(cache_path)
     missing = sorted(wanted - cache.keys())
     if missing:
-        for offset in range(0, len(missing), BATCH_SIZE):
-            batch = missing[offset : offset + BATCH_SIZE]
-            fetched = fetch(batch)
-            for qid in batch:
-                value = fetched.get(qid)
-                cache[qid] = list(value) if value else None
+        cache.update(_fetch_missing(missing, fetch))
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(
             json.dumps(dict(sorted(cache.items())), indent=0) + "\n", encoding="utf-8"
         )
     return {qid: (cache[qid][0], cache[qid][1]) for qid in wanted if cache.get(qid)}
+
+
+def _read_cache(cache_path: Path) -> dict[str, t.Any]:
+    """Load cached coordinate responses, using an empty cache when absent."""
+    if not cache_path.exists():
+        return {}
+    return json.loads(cache_path.read_text(encoding="utf-8"))
+
+
+def _fetch_missing(missing: list[str], fetch: Fetch) -> dict[str, list[float] | None]:
+    """Fetch uncached QIDs in API-sized batches, retaining no-coordinate results."""
+    cached: dict[str, list[float] | None] = {}
+    for offset in range(0, len(missing), BATCH_SIZE):
+        batch = missing[offset : offset + BATCH_SIZE]
+        fetched = fetch(batch)
+        cached.update((qid, _cache_value(fetched.get(qid))) for qid in batch)
+    return cached
+
+
+def _cache_value(value: Located) -> list[float] | None:
+    """Store a located pair as JSON-compatible data, or retain its null result."""
+    if value is None:
+        return None
+    return [value[0], value[1]]

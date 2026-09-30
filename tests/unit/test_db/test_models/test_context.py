@@ -10,44 +10,49 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
+from geoparser.context.context import Context as ProjectContext
 from geoparser.db.models import Context, ContextCreate, ContextUpdate
+
+
+@pytest.fixture
+def saved_context(test_session, project_factory, recognizer_factory, resolver_factory):
+    """Persist one context and return its associated database identifiers."""
+    project = project_factory()
+    recognizer = recognizer_factory()
+    resolver = resolver_factory()
+    context = Context(
+        tag="test-tag",
+        project_id=project.id,
+        recognizer_id=recognizer.id,
+        resolver_id=resolver.id,
+    )
+    test_session.add(context)
+    test_session.commit()
+    test_session.refresh(context)
+    return context, {
+        "project_id": project.id,
+        "recognizer_id": recognizer.id,
+        "resolver_id": resolver.id,
+    }
 
 
 @pytest.mark.unit
 class TestContextModel:
     """Test the Context model."""
 
-    def test_creates_context_with_valid_data(
-        self,
-        test_session: Session,
-        project_factory,
-        recognizer_factory,
-        resolver_factory,
-    ):
-        """Test that a Context can be created with valid data."""
-        # Arrange
-        project = project_factory()
-        recognizer = recognizer_factory()
-        resolver = resolver_factory()
-        context = Context(
-            tag="test-tag",
-            project_id=project.id,
-            recognizer_id=recognizer.id,
-            resolver_id=resolver.id,
-        )
-
-        # Act
-        test_session.add(context)
-        test_session.commit()
-        test_session.refresh(context)
-
-        # Assert
+    def test_created_context_has_uuid(self, saved_context):
+        context, _ = saved_context
         assert context.id is not None
         assert isinstance(context.id, uuid.UUID)
+
+    @pytest.mark.parametrize("field", ("project_id", "recognizer_id", "resolver_id"))
+    def test_created_context_keeps_related_ids(self, saved_context, field):
+        context, related_ids = saved_context
+        assert getattr(context, field) == related_ids[field]
+
+    def test_created_context_keeps_its_tag(self, saved_context):
+        context, _ = saved_context
         assert context.tag == "test-tag"
-        assert context.project_id == project.id
-        assert context.recognizer_id == recognizer.id
-        assert context.resolver_id == resolver.id
 
     def test_generates_uuid_automatically(self, test_session: Session, project_factory):
         """Test that Context automatically generates a UUID for id."""
@@ -249,6 +254,23 @@ class TestContextModel:
         result = test_session.exec(statement).first()
         assert result is not None
         assert result.resolver_id is None
+
+
+@pytest.mark.unit
+class TestProjectContext:
+    """Test context-manager persistence through the public API."""
+
+    def test_updates_resolver_context_for_a_tag(
+        self, project_factory, resolver_factory
+    ):
+        """A resolver selection is saved and can be read back by its tag."""
+        project = project_factory()
+        resolver = resolver_factory(id="resolver-v2")
+        context = ProjectContext(project.id)
+
+        context.update_resolver_context("reviewed", resolver.id)
+
+        assert context.get_resolver_context("reviewed") == resolver.id
 
 
 @pytest.mark.unit

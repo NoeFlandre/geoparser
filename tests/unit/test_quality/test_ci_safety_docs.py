@@ -3,6 +3,8 @@ from pathlib import Path
 
 import yaml
 
+from tests.unit.test_quality.mkdocs_navigation import markdown_paths
+
 ROOT = Path(__file__).resolve().parents[3]
 EXPECTED_CHECKS = (
     ("tests-passed", ".github/workflows/test.yml", "tests-passed"),
@@ -12,22 +14,9 @@ EXPECTED_CHECKS = (
 )
 
 
-def _markdown_paths(items: list[object]) -> list[str]:
-    paths: list[str] = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        for value in item.values():
-            if isinstance(value, str) and value.endswith(".md"):
-                paths.append(value)
-            elif isinstance(value, list):
-                paths.extend(_markdown_paths(value))
-    return paths
-
-
 def test_ci_safety_guide_is_in_the_mkdocs_navigation() -> None:
     configuration = yaml.safe_load((ROOT / "mkdocs.yml").read_text())
-    assert "guides/ci-safety.md" in _markdown_paths(configuration["nav"])
+    assert "guides/ci-safety.md" in markdown_paths(configuration["nav"])
 
 
 def test_contributing_documents_all_stable_required_checks() -> None:
@@ -36,11 +25,19 @@ def test_contributing_documents_all_stable_required_checks() -> None:
         assert f"`{context}`" in contributing
 
 
-def test_documented_policy_matches_stable_workflow_jobs() -> None:
-    policy = json.loads((ROOT / ".github/branch-protection/main.json").read_text())
+def _branch_policy() -> dict:
+    return json.loads((ROOT / ".github/branch-protection/main.json").read_text())
+
+
+def test_branch_policy_protects_current_main() -> None:
+    policy = _branch_policy()
     assert policy["branch"] == "main"
     assert policy["require_pull_request"] is True
     assert policy["require_up_to_date_branch"] is True
+
+
+def test_branch_policy_requires_the_expected_status_checks() -> None:
+    policy = _branch_policy()
     assert (
         tuple(
             (item["context"], item["workflow"], item["job"])
@@ -49,11 +46,15 @@ def test_documented_policy_matches_stable_workflow_jobs() -> None:
         == EXPECTED_CHECKS
     )
 
+
+def test_required_workflow_jobs_match_branch_policy() -> None:
     for context, workflow_path, job_id in EXPECTED_CHECKS:
         workflow = yaml.safe_load((ROOT / workflow_path).read_text())
         job = workflow["jobs"][job_id]
         assert context in str(job.get("name", job_id))
 
+
+def test_ci_safety_guide_lists_the_required_checks() -> None:
     guide = (ROOT / "docs/guides/ci-safety.md").read_text()
     for context, _, _ in EXPECTED_CHECKS:
         assert f"`{context}`" in guide

@@ -29,16 +29,24 @@ def _links(page: Path) -> list[Path]:
 
 @pytest.mark.unit
 class TestRuntimeImage:
-    def test_runs_as_uid_1000_and_persists_data_and_huggingface_cache(self):
+    def test_runtime_image_runs_as_unprivileged_user(self):
         dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
-
         assert re.search(r"(?m)^USER\s+1000(?::1000)?\s*$", dockerfile)
+
+    def test_runtime_image_persists_geoparser_data(self):
+        dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
         assert re.search(r"(?m)^VOLUME\s+(?:\[\s*)?\"?/data", dockerfile)
-        assert re.search(r"(?m)^EXPOSE\s+8000\s*$", dockerfile)
         assert "GEOPARSER_DATA_DIR=/data/geoparser" in dockerfile
+
+    def test_runtime_image_persists_model_cache_locations(self):
+        dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
         assert "HF_HOME=/data/hf" in dockerfile
         assert "HF_HUB_CACHE=/data/hf/hub" in dockerfile
         assert "HF_DATASETS_CACHE=/data/hf/datasets" in dockerfile
+
+    def test_runtime_image_exposes_the_annotator_command(self):
+        dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+        assert re.search(r"(?m)^EXPOSE\s+8000\s*$", dockerfile)
         assert re.search(r"(?m)^ENTRYPOINT\s+", dockerfile)
         assert re.search(r"(?m)^CMD\s+", dockerfile)
 
@@ -68,7 +76,7 @@ class TestRuntimeImage:
         assert url is not None
         assert f"xx_sent_ud_sm @ {url.group(1)}" in dockerfile
 
-    def test_compose_install_and_annotator_share_persistent_data(self):
+    def test_compose_install_and_annotator_share_the_named_volume(self):
         compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
         services = compose["services"]
         install = services["install"]
@@ -77,6 +85,10 @@ class TestRuntimeImage:
         assert install["volumes"] == annotator["volumes"]
         assert install["volumes"] == ["geoparser-data:/data"]
         assert "geoparser-data" in compose["volumes"]
+
+    def test_compose_annotator_binds_loopback_and_uses_expected_arguments(self):
+        compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
+        annotator = compose["services"]["annotator"]
         assert annotator["ports"] == ["127.0.0.1:8000:8000"]
         assert annotator["command"] == [
             "annotator",
@@ -86,24 +98,43 @@ class TestRuntimeImage:
             "8000",
             "--no-browser",
         ]
+
+    def test_compose_install_and_annotator_accept_the_huggingface_token(self):
+        compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
+        services = compose["services"]
+        install = services["install"]
+        annotator = services["annotator"]
         for service in (install, annotator):
             assert service["environment"]["HF_TOKEN"] == "${HF_TOKEN:-}"
 
 
 @pytest.mark.unit
 class TestDemoImage:
-    def test_builds_locked_checkout_without_baking_geonames(self):
+    def test_demo_image_builds_a_locked_checkout_without_geonames(self):
         dockerfile = (ROOT / "demo/Dockerfile").read_text(encoding="utf-8")
-
         assert "COPY pyproject.toml uv.lock" in dockerfile
         assert "uv sync --locked" in dockerfile
         assert "COPY geoparser ./geoparser" in dockerfile
         assert "install geonames" not in dockerfile
-        assert re.search(r"(?m)^USER\s+1000(?::1000)?\s*$", dockerfile)
-        assert 'VOLUME ["/data"]' in dockerfile
-        assert "GEOPARSER_DATA_DIR=/data/geoparser" in dockerfile
-        assert "HF_HOME=/data/hf" in dockerfile
-        assert "JUPYTER_TOKEN" in dockerfile
+
+    @pytest.mark.parametrize(
+        "required_pattern",
+        (
+            r"(?m)^USER\s+1000(?::1000)?\s*$",
+            r'VOLUME \["/data"\]',
+            r"GEOPARSER_DATA_DIR=/data/geoparser",
+            r"HF_HOME=/data/hf",
+            r"JUPYTER_TOKEN",
+        ),
+    )
+    def test_demo_image_runs_unprivileged_with_a_persistent_data_volume(
+        self, required_pattern
+    ):
+        dockerfile = (ROOT / "demo/Dockerfile").read_text(encoding="utf-8")
+        assert re.search(required_pattern, dockerfile)
+
+    def test_demo_image_keeps_the_transformer_and_omits_build_tools(self):
+        dockerfile = (ROOT / "demo/Dockerfile").read_text(encoding="utf-8")
         assert "en_core_web_trf" in dockerfile
         assert "en_core_web_sm" not in dockerfile
         assert "build-essential" not in dockerfile

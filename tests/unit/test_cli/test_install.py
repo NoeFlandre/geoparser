@@ -131,10 +131,19 @@ class TestInstallCli:
             builtin_path, keep_downloads=False
         )
 
+    @pytest.mark.parametrize(
+        "expected_message",
+        (
+            "Gazetteer config not found: nonexistent",
+            "Available built-in gazetteer configs",
+            "geonames",
+            "swissnames3d",
+        ),
+    )
     @patch("geoparser.cli.install._get_builtin_gazetteers")
     @patch("geoparser.cli.install.Path")
     def test_exits_2_when_config_not_found(
-        self, mock_path_class, mock_get_builtin, capsys
+        self, mock_path_class, mock_get_builtin, capsys, expected_message
     ):
         """An unknown name is a usage error: exit 2 and list what exists."""
         import typer
@@ -155,10 +164,7 @@ class TestInstallCli:
 
         assert exc_info.value.exit_code == 2
         error_message = capsys.readouterr().err
-        assert "Gazetteer config not found: nonexistent" in error_message
-        assert "geonames" in error_message
-        assert "swissnames3d" in error_message
-        assert "Available built-in gazetteer configs" in error_message
+        assert expected_message in error_message
 
     @patch("geoparser.gazetteer.build.GazetteerBuilder")
     @patch("geoparser.cli.install._get_builtin_gazetteers")

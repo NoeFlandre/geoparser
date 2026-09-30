@@ -107,9 +107,7 @@ class TestJinaResolverIntegration:
         # Arrange
         candidates = resolver.gazetteer.search("Encamp", method="exact", limit=5)
         assert candidates, "the Andorra gazetteer should contain Encamp"
-        descriptions = [
-            resolver._generate_description(candidate) for candidate in candidates
-        ]
+        descriptions = list(map(resolver._generate_description, candidates))
 
         # Act
         ranking = resolver.reranker.rerank("Encamp, a parish", descriptions, top_n=1)

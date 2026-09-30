@@ -20,16 +20,19 @@ with no tolerance that could let a boundary score through.
 from __future__ import annotations
 
 import argparse
+import ast
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 
 from coverage import Coverage
 from coverage.exceptions import NoSource
 from radon.complexity import cc_visit
 
-# The default CRAP run measures the full package, including the annotator.
-DEFAULT_OMIT: tuple[str, ...] = ()
+# These are all first-party Python source trees. The collector deliberately has
+# no omit option: uncovered helpers and tests remain visible to the gate.
+SOURCE_DIRECTORIES = ("geoparser", "scripts", "tests")
 
 
 @dataclass(frozen=True)
@@ -92,55 +95,149 @@ def score_file(coverage: Coverage, path: Path, root: Path) -> list[Score]:
     statements, missing = analysed
 
     relative = path.relative_to(root).as_posix()
-    scores = []
-    for block in cc_visit(path.read_text(encoding="utf-8")):
-        # cc_visit yields classes as well as functions; a class's own score is
-        # the sum of its methods, which would double-count them.
-        if block.letter == "C":
-            continue
-        span = range(block.lineno, block.endline + 1)
-        owned = statements.intersection(span)
-        # A function with no measurable statements (an overload stub, say)
-        # cannot be under-tested, so it counts as fully covered.
-        covered = 1.0
-        if owned:
-            covered = 1.0 - len(owned & missing) / len(owned)
-        scores.append(
-            Score(
-                path=relative,
-                name=block.fullname,
-                lineno=block.lineno,
-                complexity=block.complexity,
-                coverage=covered,
+    source = path.read_text(encoding="utf-8")
+    functions = _functions(source)
+    owners = _statement_owners(statements, functions)
+    return [
+        Score(
+            path=relative,
+            name=function.name,
+            lineno=function.lineno,
+            complexity=function.complexity,
+            coverage=_function_coverage(index, owners, missing),
+        )
+        for index, function in enumerate(functions)
+    ]
+
+
+def _statement_owners(
+    statements: set[int], functions: list[_Function]
+) -> dict[int, int]:
+    """Assign each statement to the innermost function that contains it."""
+    # Give every executable statement to its innermost function. In particular,
+    # lines in a nested function must not inflate its parent's coverage.
+    owners: dict[int, int] = {}
+    for line in statements:
+        candidates = [
+            index
+            for index, function in enumerate(functions)
+            if function.body_start <= line <= function.endline
+        ]
+        if candidates:
+            owners[line] = min(
+                candidates,
+                key=lambda index: (
+                    functions[index].endline - functions[index].body_start,
+                    -functions[index].depth,
+                ),
+            )
+    return owners
+
+
+def _function_coverage(index: int, owners: dict[int, int], missing: set[int]) -> float:
+    """Calculate a function's owned statement coverage."""
+    owned = {line for line, owner in owners.items() if owner == index}
+    if not owned:
+        return 1.0
+    return 1.0 - len(owned & missing) / len(owned)
+
+
+@dataclass(frozen=True)
+class _Function:
+    """A function's own executable range and cyclomatic complexity."""
+
+    name: str
+    lineno: int
+    body_start: int
+    endline: int
+    complexity: int
+    depth: int
+
+
+def _functions(source: str) -> list[_Function]:
+    """Find top-level and nested functions without counting class totals."""
+    collector = _FunctionCollector(source)
+    collector.visit(ast.parse(source))
+    return collector.functions
+
+
+class _FunctionCollector(ast.NodeVisitor):
+    """Collect function blocks with their enclosing class and function names."""
+
+    def __init__(self, source: str) -> None:
+        self.source = source
+        self.functions: list[_Function] = []
+        self.parents: list[str] = []
+        self.depth = 0
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        self.parents.append(node.name)
+        self._visit_body(node.body)
+        self.parents.pop()
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self._visit_function(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self._visit_function(node)
+
+    def _visit_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        self._record_function(node)
+        self.parents.append(node.name)
+        self.depth += 1
+        self._visit_body(node.body)
+        self.depth -= 1
+        self.parents.pop()
+
+    def _visit_body(self, body: list[ast.stmt]) -> None:
+        for child in body:
+            self.visit(child)
+
+    def _record_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        code = dedent(ast.get_source_segment(self.source, node) or "")
+        self.functions.append(
+            _Function(
+                name=".".join((*self.parents, node.name)),
+                lineno=node.lineno,
+                body_start=min(child.lineno for child in node.body),
+                endline=node.end_lineno or node.lineno,
+                complexity=_function_complexity(code, node.name),
+                depth=self.depth,
             )
         )
-    return scores
 
 
-def collect(
-    root: Path, package: Path, data_file: Path, omit: tuple[str, ...]
-) -> list[Score]:
+def _function_complexity(code: str, name: str) -> int:
+    """Return Radon's complexity for one function block."""
+    for block in cc_visit(code):
+        if block.letter == "F":
+            return block.complexity
+    message = f"Radon found no function block for {name}"
+    raise ValueError(message)
+
+
+def collect(root: Path, data_file: Path) -> list[Score]:
     """
     Score every function in the package.
 
     Args:
         root: Repository root
-        package: Directory of the package to measure
         data_file: Path to the coverage data file written by pytest
-        omit: Path prefixes, relative to root, to leave unmeasured
 
     Returns:
-        Every function's Score, sorted worst first.
+        Every function in the package, scripts and tests, sorted worst first.
     """
     coverage = Coverage(data_file=str(data_file))
     coverage.load()
 
     scores: list[Score] = []
-    for path in sorted(package.resolve().rglob("*.py")):
-        relative = path.relative_to(root).as_posix()
-        if any(relative.startswith(prefix) for prefix in omit):
-            continue
-        scores.extend(score_file(coverage, path, root))
+    for directory in SOURCE_DIRECTORIES:
+        source_root = root / directory
+        if not source_root.is_dir():
+            message = f"CRAP source directory is missing: {source_root}"
+            raise FileNotFoundError(message)
+        for path in sorted(source_root.rglob("*.py")):
+            scores.extend(score_file(coverage, path, root))
     return sorted(scores, key=lambda score: score.crap, reverse=True)
 
 
@@ -157,9 +254,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-crap", type=float, required=True)
     parser.add_argument("--data-file", type=Path, default=Path(".coverage"))
-    parser.add_argument("--package", type=Path, default=Path("geoparser"))
     parser.add_argument("--top", type=int, default=15)
-    parser.add_argument("--omit", nargs="*", default=list(DEFAULT_OMIT))
     args = parser.parse_args(argv)
 
     root = Path.cwd().resolve()
@@ -169,30 +264,48 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    scores = collect(root, args.package, args.data_file, tuple(args.omit))
-    if not scores:
-        print("No functions measured.", file=sys.stderr)
-        return 2
+    scores = collect(root, args.data_file)
+    return _report_scores(scores, args.max_crap, args.top)
 
-    print(f"Worst {min(args.top, len(scores))} CRAP scores of {len(scores)} functions:")
-    for score in scores[: args.top]:
+
+def _print_ranked_scores(scores: list[Score], top: int) -> None:
+    """Print the worst scores first, capped to the requested count."""
+    print(f"Worst {min(top, len(scores))} CRAP scores of {len(scores)} functions:")
+    for score in scores[:top]:
         print(f"  {score}")
 
-    breaches = [score for score in scores if score.crap >= args.max_crap]
+
+def _crap_breaches(scores: list[Score], threshold: float) -> list[Score]:
+    """Select scores that meet or exceed the exclusive limit."""
+    return [score for score in scores if score.crap >= threshold]
+
+
+def _print_crap_breaches(
+    scores: list[Score], breaches: list[Score], threshold: float
+) -> int:
+    """Print all threshold breaches or confirm that every score passed."""
     if breaches:
         print(
             f"\n{len(breaches)} function(s) meet or exceed the CRAP threshold "
-            f"of {args.max_crap:g}:",
+            f"of {threshold:g}:",
             file=sys.stderr,
         )
         for score in breaches:
             print(f"  {score}", file=sys.stderr)
         return 1
-
     print(
-        f"\nAll {len(scores)} functions are within the CRAP threshold of {args.max_crap:g}."
+        f"\nAll {len(scores)} functions are within the CRAP threshold of {threshold:g}."
     )
     return 0
+
+
+def _report_scores(scores: list[Score], threshold: float, top: int) -> int:
+    """Print the ranked report and return whether its threshold was breached."""
+    if not scores:
+        print("No functions measured.", file=sys.stderr)
+        return 2
+    _print_ranked_scores(scores, top)
+    return _print_crap_breaches(scores, _crap_breaches(scores, threshold), threshold)
 
 
 if __name__ == "__main__":

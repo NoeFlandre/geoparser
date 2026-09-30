@@ -10,7 +10,6 @@ from scripts.quality_gauntlet import (
 
 def test_quality_stages_have_the_required_order(tmp_path: Path) -> None:
     stages = build_stages(Path("/repo"), tmp_path)
-
     assert [stage.name for stage in stages] == [
         "baseline",
         "ruff",
@@ -25,10 +24,23 @@ def test_quality_stages_have_the_required_order(tmp_path: Path) -> None:
         "smoke",
         "diff-review",
     ]
-    ty_command = next(stage for stage in stages if stage.name == "ty").commands[0]
-    assert ty_command[-3:] == ("geoparser", "scripts", "tests")
-    crap_command = next(stage for stage in stages if stage.name == "crap").commands[0]
-    assert crap_command[crap_command.index("--max-crap") + 1] == "6"
+
+
+def _stage_command(stages, name: str) -> tuple[str, ...]:
+    """Return the first command from one named quality stage."""
+    stage = next(stage for stage in stages if stage.name == name)
+    return stage.commands[0]
+
+
+def test_ty_stage_checks_all_first_party_code_roots(tmp_path: Path) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+    assert _stage_command(stages, "ty")[-3:] == ("geoparser", "scripts", "tests")
+
+
+def test_crap_stage_uses_the_strict_six_ceiling(tmp_path: Path) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+    command = _stage_command(stages, "crap")
+    assert command[command.index("--max-crap") + 1] == "6"
 
 
 def test_quality_stages_can_skip_the_redundant_baseline(tmp_path: Path) -> None:
@@ -63,10 +75,8 @@ def test_dependency_stage_uses_the_documented_pyproject_config(
     on the command line would let the two lists drift apart.
     """
     stages = build_stages(Path("/repo"), tmp_path)
-    dependencies = next(stage for stage in stages if stage.name == "dependencies")
-    deptry = next(command for command in dependencies.commands if "deptry" in command)
-
-    assert deptry[deptry.index("deptry") :] == ("deptry", ".")
+    dependency_stage = next(stage for stage in stages if stage.name == "dependencies")
+    assert dependency_stage.commands[-1][-2:] == ("deptry", ".")
 
 
 def test_uv_quality_commands_do_not_resolve_network_dependencies(
@@ -113,20 +123,18 @@ def test_quality_stages_can_skip_expensive_local_checks(tmp_path: Path) -> None:
 
 def test_mutation_gate_uses_the_measured_no_tests_baseline(tmp_path: Path) -> None:
     stages = build_stages(Path("/repo"), tmp_path)
-    mutation = next(stage for stage in stages if stage.name == "mutation")
-    gate_command = next(
-        command
-        for command in mutation.commands
-        if any("mutation_gate.py" in part for part in command)
-    )
-
+    mutation_stage = next(stage for stage in stages if stage.name == "mutation")
+    gate_command = mutation_stage.commands[-1]
     assert gate_command[gate_command.index("--max-no-tests") + 1] == "69"
 
 
-def test_quality_runner_uses_the_requested_ephemeral_docker_tag(tmp_path: Path) -> None:
+def _smoke_stage(tmp_path: Path):
     stages = build_stages(Path("/repo"), tmp_path, docker_tag="geoparser:test")
-    smoke = next(stage for stage in stages if stage.name == "smoke")
+    return next(stage for stage in stages if stage.name == "smoke")
 
+
+def test_quality_runner_builds_the_requested_runtime_image(tmp_path: Path) -> None:
+    smoke = _smoke_stage(tmp_path)
     assert (
         "docker",
         "build",
@@ -136,7 +144,15 @@ def test_quality_runner_uses_the_requested_ephemeral_docker_tag(tmp_path: Path) 
         "geoparser:test",
         ".",
     ) in smoke.commands
+
+
+def test_quality_runner_runs_the_requested_runtime_image(tmp_path: Path) -> None:
+    smoke = _smoke_stage(tmp_path)
     assert ("docker", "run", "--rm", "geoparser:test") in smoke.commands
+
+
+def test_quality_runner_builds_the_requested_demo_image(tmp_path: Path) -> None:
+    smoke = _smoke_stage(tmp_path)
     assert (
         "docker",
         "build",
@@ -146,6 +162,10 @@ def test_quality_runner_uses_the_requested_ephemeral_docker_tag(tmp_path: Path) 
         "geoparser:test-demo",
         ".",
     ) in smoke.commands
+
+
+def test_quality_runner_checks_the_requested_demo_image(tmp_path: Path) -> None:
+    smoke = _smoke_stage(tmp_path)
     assert (
         "docker",
         "run",
@@ -222,11 +242,16 @@ def test_quality_runner_stops_on_first_failed_command(
 
     result = run_stages(stages, {"GEOPARSER_QA_ARTIFACT_DIR": str(tmp_path)})
 
-    assert result == 17
-    assert len(calls) == 1
-    assert calls[0][0] == stages[0].commands[0]
-    assert calls[0][1] == stages[0].cwd
-    assert calls[0][2]["GEOPARSER_QA_ARTIFACT_DIR"] == str(tmp_path)
+    assert (result, calls) == (
+        17,
+        [
+            (
+                stages[0].commands[0],
+                stages[0].cwd,
+                {"GEOPARSER_QA_ARTIFACT_DIR": str(tmp_path)},
+            )
+        ],
+    )
 
 
 def test_quality_runner_preserves_stage_order_and_artifact_environment(

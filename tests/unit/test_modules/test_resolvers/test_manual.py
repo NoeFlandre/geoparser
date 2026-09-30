@@ -4,11 +4,64 @@ Unit tests for geoparser/modules/resolvers/manual.py
 Tests the ManualResolver module for handling manually annotated referents.
 """
 
+from operator import itemgetter
+
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from geoparser.modules.resolvers.manual import ManualResolver
+
+
+def _text_index(texts: list[str], text: str) -> int | None:
+    try:
+        return texts.index(text)
+    except ValueError:
+        return None
+
+
+def _span_referent(
+    references: list[list[tuple[int, int]]],
+    referents: list[list[tuple[str, str] | None]],
+    text_index: int,
+    span: tuple[int, int],
+) -> tuple[str, str] | None:
+    try:
+        span_index = references[text_index].index(span)
+    except ValueError:
+        return None
+    return referents[text_index][span_index]
+
+
+def _expected_query_result(
+    texts: list[str],
+    references: list[list[tuple[int, int]]],
+    referents: list[list[tuple[str, str] | None]],
+    text: str,
+    spans: list[tuple[int, int]],
+) -> list[tuple[str, str] | None]:
+    text_index = _text_index(texts, text)
+    if text_index is None:
+        return [None] * len(spans)
+    return [_span_referent(references, referents, text_index, span) for span in spans]
+
+
+def _resolver_from_property_annotations(annotations):
+    """Normalize generated annotation rows into the resolver's stored indexes."""
+    texts = []
+    references = []
+    referents = []
+    for text, entries in annotations:
+        text_references = []
+        text_referents = []
+        for span, referent in entries:
+            text_references.append(span)
+            text_referents.append(referent)
+        texts.append(text)
+        references.append(text_references)
+        referents.append(text_referents)
+    resolver = ManualResolver("test", texts, references, referents)
+    return texts, references, referents, resolver
 
 
 class NoIndexList(list):
@@ -402,30 +455,16 @@ class TestManualResolverPredict:
     ),
 )
 def test_predict_matches_first_list_index_semantics(annotations, queries):
-    texts = [text for text, _ in annotations]
-    references = [[span for span, _ in entries] for _, entries in annotations]
-    referents = [[referent for _, referent in entries] for _, entries in annotations]
-    query_texts = [text for text, _ in queries]
-    query_references = [spans for _, spans in queries]
-    resolver = ManualResolver("test", texts, references, referents)
+    texts, references, referents, resolver = _resolver_from_property_annotations(
+        annotations
+    )
+    query_texts = list(map(itemgetter(0), queries))
+    query_references = list(map(itemgetter(1), queries))
 
-    expected = []
-    for text, spans in queries:
-        try:
-            text_idx = texts.index(text)
-        except ValueError:
-            expected.append([None] * len(spans))
-            continue
-
-        doc_result = []
-        for span in spans:
-            try:
-                span_idx = references[text_idx].index(span)
-            except ValueError:
-                doc_result.append(None)
-            else:
-                doc_result.append(referents[text_idx][span_idx])
-        expected.append(doc_result)
+    expected = [
+        _expected_query_result(texts, references, referents, text, spans)
+        for text, spans in queries
+    ]
 
     assert resolver.predict(query_texts, query_references) == expected
 

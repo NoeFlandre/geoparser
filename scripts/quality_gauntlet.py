@@ -23,6 +23,19 @@ class Stage:
     cwd: Path
 
 
+@dataclass(frozen=True)
+class _TrailingStageOptions:
+    """Settings shared by optional and final quality stages."""
+
+    artifact_dir: Path
+    skip_baseline: bool
+    skip_mutation: bool
+    skip_docker: bool
+    offline: bool
+    docker_tag: str
+    demo_docker_tag: str
+
+
 def _uv(*arguments: str) -> Command:
     return ("uv", "run", "--no-sync", "--offline", *arguments)
 
@@ -125,81 +138,55 @@ def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI fla
             root,
         ),
     ]
-    if not skip_baseline:
+    _append_trailing_stages(
+        stages,
+        root,
+        _TrailingStageOptions(
+            artifact_dir=artifact_dir,
+            skip_baseline=skip_baseline,
+            skip_mutation=skip_mutation,
+            skip_docker=skip_docker,
+            offline=offline,
+            docker_tag=docker_tag,
+            demo_docker_tag=demo_docker_tag,
+        ),
+    )
+    return stages
+
+
+def _append_trailing_stages(
+    stages: list[Stage],
+    root: Path,
+    options: _TrailingStageOptions,
+) -> None:
+    """Add optional baselines and the build/documentation smoke stage."""
+    if not options.skip_baseline:
         stages.insert(
             0, Stage("baseline", (_uv("pytest", "--cov-fail-under=100"),), root)
         )
+    if not options.skip_mutation:
+        stages.append(_mutation_stage(root))
 
-    if not skip_mutation:
-        stages.append(
-            Stage(
-                "mutation",
-                (
-                    _uv("mutmut", "run"),
-                    _uv("mutmut", "export-cicd-stats"),
-                    _uv(
-                        "python",
-                        "scripts/mutation_gate.py",
-                        "--max-survivors",
-                        "0",
-                        "--max-no-tests",
-                        "69",
-                        "--stats",
-                        "mutants/mutmut-cicd-stats.json",
-                    ),
-                ),
-                root,
-            )
-        )
-
-    build_options = ("--offline", "--no-build-isolation") if offline else ()
+    build_options = ("--offline", "--no-build-isolation") if options.offline else ()
     smoke_commands: list[Command] = [
         (
             "uv",
             "build",
             *build_options,
             "--out-dir",
-            str(artifact_dir / "dist"),
+            str(options.artifact_dir / "dist"),
         ),
         _uv(
             "mkdocs",
             "build",
             "--strict",
             "--site-dir",
-            str(artifact_dir / "site"),
+            str(options.artifact_dir / "site"),
         ),
     ]
-    if not skip_docker:
+    if not options.skip_docker:
         smoke_commands.extend(
-            (
-                (
-                    "docker",
-                    "build",
-                    "--file",
-                    "Dockerfile",
-                    "--tag",
-                    docker_tag,
-                    ".",
-                ),
-                ("docker", "run", "--rm", docker_tag),
-                (
-                    "docker",
-                    "build",
-                    "--file",
-                    "demo/Dockerfile",
-                    "--tag",
-                    demo_docker_tag,
-                    ".",
-                ),
-                (
-                    "docker",
-                    "run",
-                    "--rm",
-                    demo_docker_tag,
-                    "jupyter",
-                    "--version",
-                ),
-            )
+            _docker_smoke_commands(options.docker_tag, options.demo_docker_tag)
         )
     stages.extend(
         [
@@ -207,7 +194,40 @@ def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI fla
             Stage("diff-review", (("git", "diff", "--check"),), root),
         ]
     )
-    return stages
+
+
+def _mutation_stage(root: Path) -> Stage:
+    """Run mutmut and enforce the measured survivor allowance."""
+    return Stage(
+        "mutation",
+        (
+            _uv("mutmut", "run"),
+            _uv("mutmut", "export-cicd-stats"),
+            _uv(
+                "python",
+                "scripts/mutation_gate.py",
+                "--max-survivors",
+                "0",
+                "--max-no-tests",
+                "69",
+                "--stats",
+                "mutants/mutmut-cicd-stats.json",
+            ),
+        ),
+        root,
+    )
+
+
+def _docker_smoke_commands(
+    docker_tag: str, demo_docker_tag: str
+) -> tuple[Command, ...]:
+    """Build and launch the runtime and demo images."""
+    return (
+        ("docker", "build", "--file", "Dockerfile", "--tag", docker_tag, "."),
+        ("docker", "run", "--rm", docker_tag),
+        ("docker", "build", "--file", "demo/Dockerfile", "--tag", demo_docker_tag, "."),
+        ("docker", "run", "--rm", demo_docker_tag, "jupyter", "--version"),
+    )
 
 
 def cleanup_docker_image(root: Path, env: dict[str, str], docker_tag: str) -> None:

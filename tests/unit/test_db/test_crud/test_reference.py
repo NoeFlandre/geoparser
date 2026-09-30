@@ -164,33 +164,24 @@ class TestReferenceRepositoryGetByDocumentAndSpan:
         # Assert
         assert found_ref is None
 
-    def test_distinguishes_between_different_spans_in_same_document(
-        self,
-        test_session: Session,
-        document_factory,
-        reference_factory,
+    @pytest.mark.parametrize(("span", "reference_index"), [((0, 8), 0), ((13, 18), 1)])
+    def test_span_lookup_returns_the_matching_reference(
+        self, test_session, document_factory, reference_factory, span, reference_index
     ):
-        """Test that method can distinguish between different spans in the same document."""
+        """Each distinct span in one document selects its own reference."""
         # Arrange
         document = document_factory(text="New York and Paris are cities")
         ref1 = reference_factory(start=0, end=8, document_id=document.id)
         ref2 = reference_factory(start=13, end=18, document_id=document.id)
 
-        # Act - Query for first span
-        found_ref1 = ReferenceRepository.get_by_document_and_span(
-            test_session, document.id, 0, 8
-        )
-        # Query for second span
-        found_ref2 = ReferenceRepository.get_by_document_and_span(
-            test_session, document.id, 13, 18
+        # Act
+        found = ReferenceRepository.get_by_document_and_span(
+            test_session, document.id, *span
         )
 
         # Assert
-        assert found_ref1 is not None
-        assert found_ref2 is not None
-        assert found_ref1.id == ref1.id
-        assert found_ref2.id == ref2.id
-        assert found_ref1.id != found_ref2.id
+        assert found is not None
+        assert found.id == (ref1, ref2)[reference_index].id
 
 
 @pytest.fixture

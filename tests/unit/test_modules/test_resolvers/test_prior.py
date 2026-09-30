@@ -39,6 +39,25 @@ def resolver():
         )
 
 
+@pytest.fixture
+def custom_settings_resolver():
+    """A prior resolver created with the non-default settings under test."""
+    with (
+        patch(f"{PARENT}.Gazetteer"),
+        patch(f"{PARENT}.SentenceTransformer"),
+        patch(f"{PARENT}.AutoTokenizer.from_pretrained"),
+        patch(f"{PARENT}.load_spacy_model"),
+    ):
+        return PriorResolver(
+            model_name="other/model",
+            gazetteer_name="geonames-cities",
+            min_similarity=0.3,
+            max_tiers=5,
+            attribute_map={"name": "n", "type": "t"},
+            custom_parent_setting="preserved",
+        )
+
+
 @pytest.mark.unit
 class TestConfiguration:
     """What is recorded, so results are traceable to settings."""
@@ -189,31 +208,31 @@ class TestParentSettings:
 
         assert resolver.model_name == "custom-model"
 
-    def test_custom_settings_are_passed_through(self):
-        """Non-default values are recorded and used, not replaced."""
-        with (
-            patch(f"{PARENT}.Gazetteer"),
-            patch(f"{PARENT}.SentenceTransformer"),
-            patch(f"{PARENT}.AutoTokenizer.from_pretrained"),
-            patch(f"{PARENT}.load_spacy_model"),
-        ):
-            resolver = PriorResolver(
-                model_name="other/model",
-                gazetteer_name="geonames-cities",
-                min_similarity=0.3,
-                max_tiers=5,
-                attribute_map={"name": "n", "type": "t"},
-                custom_parent_setting="preserved",
-            )
+    @pytest.mark.parametrize(
+        ("setting", "expected"),
+        [
+            ("model_name", "other/model"),
+            ("gazetteer_name", "geonames-cities"),
+            ("min_similarity", 0.3),
+            ("custom_parent_setting", "preserved"),
+            ("max_tiers", 5),
+            ("attribute_map", {"name": "n", "type": "t"}),
+        ],
+    )
+    def test_custom_config_settings_are_passed_through(
+        self, custom_settings_resolver, setting, expected
+    ):
+        """Each custom setting stays in the resolver's configuration."""
+        assert custom_settings_resolver.config[setting] == expected
 
-        assert resolver.config["model_name"] == "other/model"
-        assert resolver.config["gazetteer_name"] == "geonames-cities"
-        assert resolver.config["min_similarity"] == 0.3
-        assert resolver.config["custom_parent_setting"] == "preserved"
-        assert resolver.config["max_tiers"] == 5
-        assert resolver.config["attribute_map"] == {"name": "n", "type": "t"}
-        assert resolver.model_name == "other/model"
-        assert resolver.max_tiers == 5
+    @pytest.mark.parametrize(
+        ("attribute", "expected"),
+        [("model_name", "other/model"), ("max_tiers", 5)],
+    )
+    def test_custom_parent_settings_remain_available_as_attributes(
+        self, custom_settings_resolver, attribute, expected
+    ):
+        assert getattr(custom_settings_resolver, attribute) == expected
 
 
 @pytest.mark.unit

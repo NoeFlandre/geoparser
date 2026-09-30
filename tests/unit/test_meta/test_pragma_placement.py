@@ -51,6 +51,113 @@ def _ignored(path: Path, source: str) -> set[int]:
     return set(get_ignored_lines(str(path), source, wrapper).no_mutate_lines)
 
 
+def _unhonoured_pragma_comments(path: Path) -> list[str]:
+    """Describe pragma comments that mutmut does not actually honor."""
+    source = path.read_text("utf-8")
+    ignored = _ignored(path, source)
+    return [
+        f"{path.name}:{number} {line.strip()}"
+        for number, line in enumerate(source.splitlines(), 1)
+        if MARKER in line and number not in ignored
+    ]
+
+
+def _unhonoured_pragmas() -> list[str]:
+    """Collect misleading mutation pragmas across the package."""
+    findings = []
+    for path in _pragma_files():
+        findings.extend(_unhonoured_pragma_comments(path))
+    return findings
+
+
+def _class_definition(module: ast.Module, name: str) -> ast.ClassDef:
+    return next(
+        node
+        for node in module.body
+        if isinstance(node, ast.ClassDef) and node.name == name
+    )
+
+
+def _method_definition(class_node: ast.ClassDef, name: str) -> ast.FunctionDef:
+    return next(
+        node
+        for node in class_node.body
+        if isinstance(node, ast.FunctionDef) and node.name == name
+    )
+
+
+def _raises_named_message(node: ast.AST, exception_name: str) -> bool:
+    if not isinstance(node, ast.Raise):
+        return False
+    if not isinstance(node.exc, ast.Call):
+        return False
+    return _calls_named_exception(node.exc, exception_name) and _passes_message_name(
+        node.exc
+    )
+
+
+def _calls_named_exception(call: ast.Call, name: str) -> bool:
+    return isinstance(call.func, ast.Name) and call.func.id == name
+
+
+def _passes_message_name(call: ast.Call) -> bool:
+    return (
+        len(call.args) == 1
+        and isinstance(call.args[0], ast.Name)
+        and call.args[0].id == "msg"
+    )
+
+
+def _exception_message_lines(method: ast.FunctionDef, name: str) -> set[int]:
+    lines = set()
+    for node in ast.walk(method):
+        if _raises_named_message(node, name):
+            assert isinstance(node, ast.Raise)
+            lines.add(node.lineno)
+    return lines
+
+
+def _region_state(line: str, inside: bool) -> tuple[bool, bool]:
+    """Return the updated region state and whether a line is in the region."""
+    if f"{MARKER} start" in line:
+        return True, False
+    if f"{MARKER} end" in line:
+        return False, False
+    return inside, inside
+
+
+def _declared_pragma_lines(source: str) -> set[int]:
+    """Find pragma comments and every line between explicit region markers."""
+    declared = set()
+    inside = False
+    for number, line in enumerate(source.splitlines(), 1):
+        inside, in_region = _region_state(line, inside)
+        if in_region or MARKER in line:
+            declared.add(number)
+    return declared
+
+
+def _stray_pragma_lines(path: Path, source: str) -> list[str]:
+    """List mutmut exemptions with no trailing marker or enclosing region."""
+    stray = sorted(_ignored(path, source) - _declared_pragma_lines(source))
+    return [
+        f"{path.name}:{number} {source.splitlines()[number - 1].strip()}"
+        for number in stray
+    ]
+
+
+def _uncovered_region_lines(path: Path, source: str) -> list[str]:
+    """List lines inside explicit pragma regions that mutmut still changes."""
+    ignored = _ignored(path, source)
+    inside = False
+    uncovered = []
+    for number, line in enumerate(source.splitlines(), 1):
+        inside, in_region = _region_state(line, inside)
+        if in_region and number not in ignored:
+            uncovered.append(f"{path.name}:{number} {line.strip()}")
+    return uncovered
+
+
 @pytest.mark.unit
 class TestPragmaPlacement:
     """Every pragma comment, and every line it claims to cover."""
@@ -62,18 +169,7 @@ class TestPragmaPlacement:
 
     def test_every_pragma_comment_is_honoured(self):
         """No pragma sits somewhere mutmut ignores."""
-        # Act
-        unhonoured = []
-        for path in _pragma_files():
-            source = path.read_text("utf-8")
-            ignored = _ignored(path, source)
-            unhonoured += [
-                f"{path.name}:{number} {line.strip()}"
-                for number, line in enumerate(source.splitlines(), 1)
-                if MARKER in line and number not in ignored
-            ]
-
-        # Assert
+        unhonoured = _unhonoured_pragmas()
         assert not unhonoured, "pragmas mutmut will not act on:\n" + "\n".join(
             unhonoured
         )
@@ -106,28 +202,12 @@ class TestPragmaPlacement:
         """Removing an optional exception message does not change behavior."""
         path = PACKAGE / "annotator/db/crud/session.py"
         source = path.read_text("utf-8")
-        repository = next(
-            node
-            for node in ast.parse(source).body
-            if isinstance(node, ast.ClassDef) and node.name == "SessionRepository"
+        repository = _class_definition(ast.parse(source), "SessionRepository")
+        method = _method_definition(repository, "_document_create_from_import")
+        message_lines = _exception_message_lines(
+            method,
+            "TypeError",
         )
-        method = next(
-            node
-            for node in repository.body
-            if isinstance(node, ast.FunctionDef)
-            and node.name == "_document_create_from_import"
-        )
-        message_lines = {
-            node.lineno
-            for node in ast.walk(method)
-            if isinstance(node, ast.Raise)
-            and isinstance(node.exc, ast.Call)
-            and isinstance(node.exc.func, ast.Name)
-            and node.exc.func.id == "TypeError"
-            and len(node.exc.args) == 1
-            and isinstance(node.exc.args[0], ast.Name)
-            and node.exc.args[0].id == "msg"
-        }
 
         assert len(message_lines) == 2
         assert message_lines <= _ignored(path, source)
@@ -144,19 +224,7 @@ class TestPragmaPlacement:
         stray = []
         for path in _pragma_files():
             source = path.read_text("utf-8")
-            lines = source.splitlines()
-            declared, inside = set(), False
-            for number, line in enumerate(lines, 1):
-                if f"{MARKER} start" in line:
-                    inside = True
-                if inside or MARKER in line:
-                    declared.add(number)
-                if f"{MARKER} end" in line:
-                    inside = False
-            stray += [
-                f"{path.name}:{number} {lines[number - 1].strip()}"
-                for number in sorted(_ignored(path, source) - declared)
-            ]
+            stray.extend(_stray_pragma_lines(path, source))
 
         # Assert
         assert not stray, "lines exempt from mutation with no pragma around them:\n" + (
@@ -169,15 +237,7 @@ class TestPragmaPlacement:
         uncovered = []
         for path in _pragma_files():
             source = path.read_text("utf-8")
-            ignored = _ignored(path, source)
-            inside = False
-            for number, line in enumerate(source.splitlines(), 1):
-                if f"{MARKER} start" in line:
-                    inside = True
-                elif f"{MARKER} end" in line:
-                    inside = False
-                elif inside and number not in ignored:
-                    uncovered.append(f"{path.name}:{number} {line.strip()}")
+            uncovered.extend(_uncovered_region_lines(path, source))
 
         # Assert
         assert not uncovered, "lines inside a pragma region that still mutate:\n" + (

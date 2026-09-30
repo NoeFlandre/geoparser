@@ -1,6 +1,7 @@
 """Bounded property checks for distance-based evaluation metrics."""
 
 import math
+from operator import itemgetter
 
 import pytest
 from hypothesis import given
@@ -20,6 +21,7 @@ pytestmark = pytest.mark.property
 
 EARTH_RADIUS_KM = 6371.0088
 MAX_SPHERICAL_DISTANCE_KM = math.pi * EARTH_RADIUS_KM
+DISTANCE_ROUNDING_TOLERANCE_KM = 1e-5
 latitude = st.floats(min_value=-90, max_value=90, allow_nan=False, allow_infinity=False)
 longitude = st.floats(
     min_value=-180, max_value=180, allow_nan=False, allow_infinity=False
@@ -57,26 +59,50 @@ def annotations(points: list[tuple[float, float]]) -> list[Annotation]:
     return [annotation_at(index, point) for index, point in enumerate(points)]
 
 
-@given(first=coordinate, middle=coordinate, last=coordinate)
-def test_haversine_geodesic_invariants(
+@given(first=coordinate)
+def test_haversine_returns_zero_for_identical_coordinates(
     first: tuple[float, float],
-    middle: tuple[float, float],
-    last: tuple[float, float],
 ) -> None:
     assert haversine_km(*first, *first) == 0.0
+
+
+@given(first=coordinate, middle=coordinate)
+def test_haversine_is_symmetric(
+    first: tuple[float, float], middle: tuple[float, float]
+) -> None:
     assert haversine_km(*first, *middle) == pytest.approx(
         haversine_km(*middle, *first), abs=1e-9
     )
 
+
+@given(first=coordinate, last=coordinate)
+def test_haversine_distance_is_bounded_by_half_the_earth_circumference(
+    first: tuple[float, float], last: tuple[float, float]
+) -> None:
     direct = haversine_km(*first, *last)
     assert 0.0 <= direct <= MAX_SPHERICAL_DISTANCE_KM + 1e-9
+
+
+@given(first=coordinate, last=coordinate)
+def test_haversine_longitude_wrap_preserves_distance(
+    first: tuple[float, float], last: tuple[float, float]
+) -> None:
+    direct = haversine_km(*first, *last)
     assert haversine_km(*first, last[0], last[1] + 360.0) == pytest.approx(
         direct, abs=1e-8
     )
 
-    via_middle = haversine_km(*first, *middle) + haversine_km(*middle, *last)
 
-    assert direct <= via_middle + 1e-8
+@given(first=coordinate, middle=coordinate, last=coordinate)
+def test_haversine_direct_route_is_shorter_than_a_two_leg_route(
+    first: tuple[float, float],
+    middle: tuple[float, float],
+    last: tuple[float, float],
+) -> None:
+    direct = haversine_km(*first, *last)
+    via_middle = haversine_km(*first, *middle) + haversine_km(*middle, *last)
+    # Near-antipodal paths can differ by a few millimetres from rounding.
+    assert direct <= via_middle + DISTANCE_ROUNDING_TOLERANCE_KM
 
 
 @given(
@@ -98,25 +124,46 @@ def test_accuracy_is_bounded_and_monotone_with_threshold(
 
 
 @given(sample=error_rows_with_permutation())
-def test_mean_and_median_are_bounded_and_permutation_invariant(
+def test_mean_and_median_stay_within_observed_error_range(
     sample: tuple[
         list[tuple[tuple[float, float], tuple[float, float]]], tuple[int, ...]
     ],
 ) -> None:
-    rows, permutation = sample
-    expected_points = [gold for gold, _ in rows]
-    predicted_points = [guess for _, guess in rows]
-    expected = annotations(expected_points)
-    predicted = annotations(predicted_points)
+    rows, _ = sample
+    expected = annotations(list(map(itemgetter(0), rows)))
+    predicted = annotations(list(map(itemgetter(1), rows)))
     errors = resolution_errors_km(expected, predicted)
-    shuffled_expected = annotations([expected_points[i] for i in permutation])
-    shuffled_predicted = annotations([predicted_points[i] for i in permutation])
 
     mean = mean_error_km(expected, predicted)
     median = median_error_km(expected, predicted)
 
     assert min(errors) <= mean <= max(errors)
     assert min(errors) <= median <= max(errors)
+
+
+def _permuted_points(
+    points: list[tuple[float, float]], permutation: tuple[int, ...]
+) -> list[tuple[float, float]]:
+    """Apply one generated ordering to a coordinate sequence."""
+    return [points[index] for index in permutation]
+
+
+@given(sample=error_rows_with_permutation())
+def test_mean_and_median_are_permutation_invariant(
+    sample: tuple[
+        list[tuple[tuple[float, float], tuple[float, float]]], tuple[int, ...]
+    ],
+) -> None:
+    rows, permutation = sample
+    expected_points = list(map(itemgetter(0), rows))
+    predicted_points = list(map(itemgetter(1), rows))
+    expected = annotations(expected_points)
+    predicted = annotations(predicted_points)
+    shuffled_expected = annotations(_permuted_points(expected_points, permutation))
+    shuffled_predicted = annotations(_permuted_points(predicted_points, permutation))
+    mean = mean_error_km(expected, predicted)
+    median = median_error_km(expected, predicted)
+
     assert mean_error_km(shuffled_expected, shuffled_predicted) == pytest.approx(mean)
     assert median_error_km(shuffled_expected, shuffled_predicted) == pytest.approx(
         median
@@ -161,22 +208,42 @@ def test_area_under_error_curve_is_bounded_and_perfect_scores_zero(
     assert perfect_score == 0.0
 
 
+def _annotations_with_unresolved_rows(
+    rows: list[tuple[tuple[float, float] | None, tuple[float, float] | None]],
+) -> tuple[list[Annotation], list[Annotation]]:
+    """Retain every gold span and only the resolved predictions."""
+    expected: list[Annotation] = []
+    predicted: list[Annotation] = []
+    for index, (gold, guess) in enumerate(rows):
+        expected.append(annotation_at(index, gold))
+        if guess is not None:
+            predicted.append(annotation_at(index, guess))
+    return expected, predicted
+
+
 @given(
     rows=st.lists(
         st.tuples(st.one_of(st.none(), coordinate), st.one_of(st.none(), coordinate)),
         max_size=8,
     )
 )
-def test_resolution_errors_match_located_gold_spans_and_are_nonnegative(
+def test_resolution_errors_count_each_located_gold_span(
     rows: list[tuple[tuple[float, float] | None, tuple[float, float] | None]],
 ) -> None:
-    expected = [annotation_at(index, gold) for index, (gold, _) in enumerate(rows)]
-    predicted = [
-        annotation_at(index, guess)
-        for index, (_, guess) in enumerate(rows)
-        if guess is not None
-    ]
+    expected, predicted = _annotations_with_unresolved_rows(rows)
     errors = resolution_errors_km(expected, predicted)
-
     assert len(errors) == sum(gold is not None for gold, _ in rows)
+
+
+@given(
+    rows=st.lists(
+        st.tuples(st.one_of(st.none(), coordinate), st.one_of(st.none(), coordinate)),
+        max_size=8,
+    )
+)
+def test_resolution_errors_are_nonnegative(
+    rows: list[tuple[tuple[float, float] | None, tuple[float, float] | None]],
+) -> None:
+    expected, predicted = _annotations_with_unresolved_rows(rows)
+    errors = resolution_errors_km(expected, predicted)
     assert all(error >= 0.0 for error in errors)

@@ -33,6 +33,13 @@ checks, CRAP, mutation tests, a CLI smoke test, and diff review. Generated
 reports belong in a temporary directory and are not committed. The runner also
 uses a unique Docker smoke-test tag and removes that image when it exits.
 
+CI combines coverage from its operating-system and Python matrix. The hard
+100% line-coverage threshold applies to `geoparser/`; the CRAP gate separately
+scores every function under `geoparser/`, `scripts/`, and `tests/` and requires
+each score to be strictly below 6. Nested functions are scored separately,
+their executable statements belong to the innermost function, and a function
+with no recorded coverage is treated as uncovered.
+
 ### Resource-safe local gate
 
 Mutation testing can use several gigabytes while it runs. On a machine with a

@@ -14,26 +14,46 @@ import pytest
 
 from scripts.benchmark.newsli import MAX_DOCUMENTS, parse_newsli
 
+_DEFAULT_DOCUMENTS = {
+    "ro-2": ("Merg la Craiova.", [(8, 15, "Craiova", 44.33, 23.81)]),
+    "ro-1": ("Din Egipt vin.", [(4, 9, "Egipt", 27.0, 29.0)]),
+}
+
+
+def _gold_records(documents):
+    """Serialize the spans into the language release's JSON structure."""
+    gold = {}
+    for identifier, (_, spans) in documents.items():
+        records = []
+        for start, end, name, latitude, longitude in spans:
+            records.append(
+                {
+                    "start": start,
+                    "end": end,
+                    "LOC": name,
+                    "lat": latitude,
+                    "lon": longitude,
+                }
+            )
+        gold[identifier] = records
+    return gold
+
+
+def _write_article_texts(archive, language, documents):
+    """Add articles that have text to the release archive."""
+    for identifier, (text, _) in documents.items():
+        if text is not None:
+            archive.writestr(f"{language}_geotoponyms/{identifier}.txt", text)
+
 
 def write_release(tmp_path, language="ro", documents=None):
     """Write a miniature release zip and return its path."""
-    documents = documents or {
-        "ro-2": ("Merg la Craiova.", [(8, 15, "Craiova", 44.33, 23.81)]),
-        "ro-1": ("Din Egipt vin.", [(4, 9, "Egipt", 27.0, 29.0)]),
-    }
+    documents = documents or _DEFAULT_DOCUMENTS
     path = tmp_path / "data.zip"
-    gold = {
-        identifier: [
-            {"start": s, "end": e, "LOC": name, "lat": lat, "lon": lon}
-            for s, e, name, lat, lon in spans
-        ]
-        for identifier, (_, spans) in documents.items()
-    }
+    gold = _gold_records(documents)
     with zipfile.ZipFile(path, "w") as archive:
         archive.writestr(f"{language}_geotoponyms.json", json.dumps(gold))
-        for identifier, (text, _) in documents.items():
-            if text is not None:
-                archive.writestr(f"{language}_geotoponyms/{identifier}.txt", text)
+        _write_article_texts(archive, language, documents)
     return path
 
 

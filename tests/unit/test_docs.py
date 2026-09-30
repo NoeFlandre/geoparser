@@ -64,18 +64,31 @@ def _outside_code_fences(text: str) -> str:
     prose: list[str] = []
     fence = ""
     for line in text.splitlines():
-        marker = _fence_marker(line)
-        if not fence:
-            if marker:
-                fence = marker
-                prose.append("")
-            else:
-                prose.append(line)
-            continue
-        if marker and marker[0] == fence[0] and len(marker) >= len(fence):
-            fence = ""
-        prose.append("")
+        visible, fence = _line_outside_fence(line, fence)
+        prose.append(visible)
     return "\n".join(prose)
+
+
+def _line_outside_fence(line: str, fence: str) -> tuple[str, str]:
+    """Return visible prose and the updated fence marker for one line."""
+    marker = _fence_marker(line)
+    if not fence:
+        if marker:
+            return "", marker
+        return line, ""
+    if _closes_fence(marker, fence):
+        return "", ""
+    return "", fence
+
+
+def _closes_fence(marker: str, fence: str) -> bool:
+    """Whether a marker of the same kind closes the current fence run."""
+    return bool(marker) and marker[0] == fence[0] and len(marker) >= len(fence)
+
+
+def _markdown_transformer_pages() -> list[Path]:
+    """Find public Markdown pages that mention the transformer model."""
+    return [path for path in _transformer_sources() if path.suffix == ".md"]
 
 
 def _transformer_sources() -> list[Path]:
@@ -95,16 +108,21 @@ class TestTransformerDocumentation:
         """Ensure this guard cannot pass by scanning nothing."""
         assert _transformer_sources()
 
-    def test_markdown_pages_explain_plugin_and_fallback(self):
-        """Markdown examples include the prerequisite and safe alternative."""
-        pages = [path for path in _transformer_sources() if path.suffix == ".md"]
+    def test_markdown_transformer_pages_exist(self):
+        """Keep a nonempty set of public Markdown transformer examples."""
+        assert _markdown_transformer_pages()
 
-        assert pages
-        for path in pages:
-            text = path.read_text(encoding="utf-8")
-            assert PLUGIN in text, path
-            assert "Python 3.14" in text, path
-            assert ALTERNATIVE in text, path
+    def test_markdown_examples_name_the_plugin(self):
+        for path in _markdown_transformer_pages():
+            assert PLUGIN in path.read_text(encoding="utf-8"), path
+
+    def test_markdown_examples_state_the_python_version(self):
+        for path in _markdown_transformer_pages():
+            assert "Python 3.14" in path.read_text(encoding="utf-8"), path
+
+    def test_markdown_examples_name_the_fallback_model(self):
+        for path in _markdown_transformer_pages():
+            assert ALTERNATIVE in path.read_text(encoding="utf-8"), path
 
     def test_code_fences_are_blanked_out(self):
         """Pin the stripper so the placement guard cannot pass vacuously."""
@@ -120,27 +138,37 @@ class TestTransformerDocumentation:
 
         assert _outside_code_fences(page) == "before\n\n\n\nafter"
 
-    def test_prerequisite_reads_as_prose(self):
-        """The prerequisite sits beside the example, not inside its fence.
+    def test_markdown_prerequisite_examples_exist(self):
+        """Keep a nonempty set of public prose pages with model guidance."""
+        assert _markdown_transformer_pages()
 
-        A reader who meets this note inside a Python code fence would copy it
-        into their script, so presence alone is not enough: it has to land
-        outside every fenced code block on the page.
-        """
-        pages = [path for path in _transformer_sources() if path.suffix == ".md"]
-
-        assert pages
-        for path in pages:
+    def test_prose_prerequisite_names_the_plugin(self):
+        for path in _markdown_transformer_pages():
             prose = _outside_code_fences(path.read_text(encoding="utf-8"))
             assert PLUGIN in prose, path
+
+    def test_prose_prerequisite_names_the_supported_python_version(self):
+        for path in _markdown_transformer_pages():
+            prose = _outside_code_fences(path.read_text(encoding="utf-8"))
             assert "Python 3.14" in prose, path
+
+    def test_prose_prerequisite_explains_requested_language_fallback(self):
+        for path in _markdown_transformer_pages():
+            prose = _outside_code_fences(path.read_text(encoding="utf-8"))
             assert "requested language" in prose, path
+
+    def test_prose_prerequisite_names_the_fallback_model(self):
+        for path in _markdown_transformer_pages():
+            prose = _outside_code_fences(path.read_text(encoding="utf-8"))
             assert ALTERNATIVE in prose, path
 
-    def test_non_markdown_examples_pin_plugin_version(self):
-        """Notebook and build examples use the spaCy-compatible plugin line."""
-        sources = [path for path in _transformer_sources() if path.suffix != ".md"]
+    def test_non_markdown_transformer_examples_exist(self):
+        assert any(path.suffix != ".md" for path in _transformer_sources())
 
-        assert sources
-        for path in sources:
-            assert PIN in path.read_text(encoding="utf-8"), path
+    @pytest.mark.parametrize(
+        "source",
+        [path for path in _transformer_sources() if path.suffix != ".md"],
+    )
+    def test_non_markdown_examples_pin_plugin_version(self, source):
+        """Notebook and build examples use the spaCy-compatible plugin line."""
+        assert PIN in source.read_text(encoding="utf-8"), source

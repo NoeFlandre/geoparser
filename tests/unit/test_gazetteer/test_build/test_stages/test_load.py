@@ -6,6 +6,7 @@ error paths around a spatial source's declared geometry column.
 """
 
 import json
+from contextlib import nullcontext
 from pathlib import Path
 from typing import cast
 
@@ -13,6 +14,7 @@ import duckdb
 import pytest
 
 from geoparser.gazetteer.build.schema import SourceConfig
+from geoparser.gazetteer.build.stages import load as load_stage
 from geoparser.gazetteer.build.stages.load import (
     Loader,
     quote_identifier,
@@ -63,6 +65,13 @@ def make_spatial_source(**overrides) -> SourceConfig:
 @pytest.fixture
 def connection():
     con = duckdb.connect()
+    yield con
+    con.close()
+
+
+@pytest.fixture
+def spatial_connection():
+    con = duckdb.connect()
     con.load_extension("spatial")
     yield con
     con.close()
@@ -73,6 +82,11 @@ def loader(connection) -> Loader:
     return Loader(connection)
 
 
+@pytest.fixture
+def spatial_loader(spatial_connection) -> Loader:
+    return Loader(spatial_connection)
+
+
 class _FakeGeometryColumnsResult:
     """A minimal stand-in for a DuckDB result set."""
 
@@ -81,6 +95,60 @@ class _FakeGeometryColumnsResult:
 
     def fetchall(self):
         return self._rows
+
+
+class _FakeCountResult:
+    """A minimal count-query result used without DuckDB extensions."""
+
+    def fetchone(self):
+        return (1,)
+
+
+class _RecordingSpatialConnection:
+    """Record Loader SQL while returning a controlled spatial catalog."""
+
+    def __init__(self, geometry_columns: list[str]):
+        self.geometry_columns = geometry_columns
+        self.statements: list[tuple[str, list[str] | None]] = []
+
+    def execute(self, sql: str, parameters: list[str] | None = None):
+        self.statements.append((sql, parameters))
+        if "data_type LIKE 'GEOMETRY%'" in sql:
+            rows = [(name,) for name in self.geometry_columns]
+            return _FakeGeometryColumnsResult(rows)
+        if "information_schema.columns" in sql:
+            return _FakeGeometryColumnsResult([])
+        if sql.startswith("SELECT count(*)"):
+            return _FakeCountResult()
+        return _FakeGeometryColumnsResult([])
+
+    def query_progress(self) -> float:
+        return 1.0
+
+
+def _record_spatial_load(monkeypatch, tmp_path, geometry_column: str):
+    """Run a spatial load against a connection that records each SQL statement."""
+    connection = _RecordingSpatialConnection([geometry_column])
+    loader = Loader(cast(duckdb.DuckDBPyConnection, connection), "EPSG:4326")
+    monkeypatch.setattr(load_stage, "item", lambda *args, **kwargs: nullcontext(None))
+    monkeypatch.setattr(
+        load_stage, "track", lambda bar, progress, operation: operation()
+    )
+    monkeypatch.setattr(load_stage, "advance", lambda: None)
+    row_count = loader.load(
+        make_spatial_source(crs="EPSG:2056"), tmp_path / "shape.geojson"
+    )
+    return row_count, connection.statements
+
+
+def _statement_containing(
+    statements: list[tuple[str, list[str] | None]], fragment: str
+) -> str:
+    """Find one recorded statement by a stable SQL fragment."""
+    for sql, _parameters in statements:
+        if fragment in sql:
+            return sql
+    raise AssertionError(f"No recorded SQL contains {fragment!r}")
 
 
 class _FakeMultiGeometryConnection:
@@ -117,6 +185,10 @@ class _RefusesParallelPaddingConnection:
     def __init__(self, real: duckdb.DuckDBPyConnection):
         self._real = real
         self.statements = []
+
+    def read_csv_statements(self) -> list[str]:
+        """Return the scanner attempts made by a tabular load."""
+        return [sql for sql in self.statements if "read_csv" in sql]
 
     def execute(self, sql, *args, **kwargs):
         self.statements.append(sql)
@@ -212,9 +284,8 @@ class TestLoadTabular:
         row_count = loader.load(make_tabular_source(), data_file)
 
         assert row_count == 2
-        reads = [sql for sql in proxy.statements if "read_csv" in sql]
-        assert len(reads) == 2
-        assert "parallel=false" in reads[1]
+        assert len(proxy.read_csv_statements()) == 2
+        assert "parallel=false" in proxy.read_csv_statements()[-1]
 
     def test_unrelated_csv_errors_are_not_retried(self, loader, tmp_path):
         """Errors other than the padding conflict propagate to the caller."""
@@ -231,7 +302,7 @@ class TestLoadSpatial:
     def _write_geojson(self, path: Path, features: list) -> None:
         path.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
 
-    def test_loads_geometry_and_casts_attributes(self, loader, tmp_path):
+    def test_loads_geometry_and_casts_attributes(self, spatial_loader, tmp_path):
         """The geometry column is normalized and other attributes cast."""
         data_file = tmp_path / "shape.geojson"
         self._write_geojson(
@@ -246,12 +317,14 @@ class TestLoadSpatial:
         )
         source = make_spatial_source()
 
-        row_count = loader.load(source, data_file)
+        row_count = spatial_loader.load(source, data_file)
 
         assert row_count == 1
-        assert set(loader.columns("shape")) == {"id", "geometry"}
+        assert set(spatial_loader.columns("shape")) == {"id", "geometry"}
 
-    def test_reprojects_geometry_into_the_gazetteer_crs(self, connection, tmp_path):
+    def test_reprojects_geometry_into_the_gazetteer_crs(
+        self, spatial_connection, tmp_path
+    ):
         """A source in another CRS is staged in the gazetteer's."""
         data_file = tmp_path / "shape.geojson"
         self._write_geojson(
@@ -268,17 +341,19 @@ class TestLoadSpatial:
                 }
             ],
         )
-        loader = Loader(connection, "EPSG:4326")
+        loader = Loader(spatial_connection, "EPSG:4326")
 
         loader.load(make_spatial_source(crs="EPSG:2056"), data_file)
 
-        longitude, latitude = connection.execute(
+        longitude, latitude = spatial_connection.execute(
             "SELECT ST_X(geometry), ST_Y(geometry) FROM shape"
         ).fetchone()
         assert longitude == pytest.approx(7.44, abs=0.05)
         assert latitude == pytest.approx(46.95, abs=0.05)
 
-    def test_leaves_geometry_alone_when_the_crs_matches(self, connection, tmp_path):
+    def test_leaves_geometry_alone_when_the_crs_matches(
+        self, spatial_connection, tmp_path
+    ):
         """A source already in the gazetteer's CRS is staged unchanged."""
         data_file = tmp_path / "shape.geojson"
         self._write_geojson(
@@ -291,15 +366,15 @@ class TestLoadSpatial:
                 }
             ],
         )
-        loader = Loader(connection, "EPSG:4326")
+        loader = Loader(spatial_connection, "EPSG:4326")
 
         loader.load(make_spatial_source(crs="EPSG:4326"), data_file)
 
-        assert connection.execute(
+        assert spatial_connection.execute(
             "SELECT ST_X(geometry), ST_Y(geometry) FROM shape"
         ).fetchone() == pytest.approx((7.44, 46.95))
 
-    def test_renames_non_standard_geometry_column(self, loader, tmp_path):
+    def test_renames_non_standard_geometry_column(self, spatial_loader, tmp_path):
         """A geometry column not named 'geometry' is renamed to match."""
         data_file = tmp_path / "shape.geojson"
         self._write_geojson(
@@ -314,17 +389,16 @@ class TestLoadSpatial:
         )
         source = make_spatial_source()
 
-        loader.load(source, data_file)
+        spatial_loader.load(source, data_file)
 
         # GDAL's GeoJSON driver exposes the geometry column as "geometry"
         # already, so this mainly exercises that the final table has exactly
         # the declared "geometry" column regardless.
-        assert "geometry" in loader.columns("shape")
+        assert "geometry" in spatial_loader.columns("shape")
 
-    def test_raises_when_no_geometry_column_found(self, loader, tmp_path):
+    def test_raises_when_no_geometry_column_found(self, connection, tmp_path):
         """A source file with no detectable geometry column is rejected."""
         data_file = tmp_path / "plain.csv"
-        write_delimited(data_file, "id,name\n1,Alpha\n2,Beta\n")
         source = make_spatial_source(
             file="plain.csv",
             attributes=[
@@ -334,9 +408,9 @@ class TestLoadSpatial:
         )
 
         with pytest.raises(ValueError, match="no geometry column found"):
-            loader.load(source, data_file)
+            Loader(connection)._sole_geometry_column(source, data_file)
 
-    def test_raises_when_multiple_geometry_columns_found(self, tmp_path):
+    def test_raises_when_multiple_geometry_columns_found(self, connection, tmp_path):
         """A source with more than one geometry column is rejected."""
         data_file = tmp_path / "shape.geojson"
         self._write_geojson(
@@ -350,13 +424,69 @@ class TestLoadSpatial:
             ],
         )
         source = make_spatial_source()
-        real_connection = duckdb.connect()
-        real_connection.load_extension("spatial")
-        proxy = _FakeMultiGeometryConnection(real_connection)
+        proxy = _FakeMultiGeometryConnection(connection)
         loader = Loader(cast(duckdb.DuckDBPyConnection, proxy))
 
         with pytest.raises(ValueError, match="multiple geometry columns found"):
-            loader._load_spatial(source, data_file)
+            loader._sole_geometry_column(source, data_file)
+
+    def test_spatial_load_projects_declared_columns(self, monkeypatch, tmp_path):
+        """Spatial input is reprojected and cast to its declared schema."""
+        row_count, statements = _record_spatial_load(monkeypatch, tmp_path, "geometry")
+        projection = _statement_containing(
+            statements, 'CREATE OR REPLACE TABLE "shape"'
+        )
+
+        assert row_count == 1
+        assert "ST_Read(" in statements[0][0]
+        assert 'CAST("id" AS BIGINT) AS "id"' in projection
+        assert "ST_Transform(\"geometry\", 'EPSG:2056', 'EPSG:4326'" in projection
+
+    def test_spatial_load_cleans_temporary_source_table(self, monkeypatch, tmp_path):
+        """The raw staging table is removed before the canonical row count."""
+        _row_count, statements = _record_spatial_load(monkeypatch, tmp_path, "geometry")
+
+        assert statements[-2:] == [
+            ('DROP TABLE "__raw_shape"', None),
+            ('SELECT count(*) FROM "shape"', None),
+        ]
+
+    def test_spatial_load_renames_nonstandard_geometry_column(
+        self, monkeypatch, tmp_path
+    ):
+        """A driver-specific geometry field is renamed to the canonical name."""
+        _row_count, statements = _record_spatial_load(
+            monkeypatch, tmp_path, "shape_geom"
+        )
+
+        assert _statement_containing(statements, "RENAME COLUMN") == (
+            'ALTER TABLE "__raw_shape" RENAME COLUMN "shape_geom" TO "geometry"'
+        )
+
+    @pytest.mark.parametrize(
+        ("geometry_columns", "expected_error"),
+        [
+            ([], "no geometry column found"),
+            (["one", "two"], "multiple geometry columns found"),
+        ],
+    )
+    def test_spatial_loader_rejects_invalid_geometry_catalogs_without_extension(
+        self, tmp_path, geometry_columns, expected_error
+    ):
+        connection = _RecordingSpatialConnection(geometry_columns)
+        loader = Loader(cast(duckdb.DuckDBPyConnection, connection))
+
+        with pytest.raises(ValueError, match=expected_error):
+            loader._sole_geometry_column(
+                make_spatial_source(), tmp_path / "source.geojson"
+            )
+
+    def test_reprojection_uses_the_loader_crs_when_source_crs_is_implicit(
+        self,
+    ):
+        loader = Loader(cast(duckdb.DuckDBPyConnection, object()), "EPSG:4326")
+
+        assert loader._reprojection(make_spatial_source()) == '"geometry"'
 
 
 @pytest.mark.unit

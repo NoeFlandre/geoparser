@@ -201,11 +201,7 @@ class TestResolutionRepositoryGetUnprocessedReferences:
         )
 
         # Assert
-        assert len(unprocessed) == 2
-        unprocessed_ids = [r.id for r in unprocessed]
-        assert ref1.id not in unprocessed_ids
-        assert ref2.id in unprocessed_ids
-        assert ref3.id in unprocessed_ids
+        assert {reference.id for reference in unprocessed} == {ref2.id, ref3.id}
 
     def test_returns_all_references_when_none_processed(
         self,

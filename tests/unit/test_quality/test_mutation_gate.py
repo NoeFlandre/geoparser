@@ -36,12 +36,14 @@ def test_mutation_gate_prints_actionable_mutant_diagnostics(
         ["--max-survivors", "0", "--stats", _stats_path(tmp_path, survived=2)]
     )
 
-    assert result == 1
-    assert calls == [(sys.executable, "-m", "mutmut", "results")]
     error = capsys.readouterr().err
-    assert "mutant_1: survived" in error
-    assert "mutant_2: timeout" in error
-    assert "mutant_3: killed" not in error
+    assert (
+        result,
+        calls,
+        "mutant_1: survived" in error,
+        "mutant_2: timeout" in error,
+        "mutant_3: killed" not in error,
+    ) == (1, [(sys.executable, "-m", "mutmut", "results")], True, True, True)
 
 
 def test_mutation_gate_reports_unavailable_mutant_diagnostics(

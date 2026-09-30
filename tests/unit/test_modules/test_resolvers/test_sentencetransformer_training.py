@@ -212,12 +212,13 @@ class TestTrainingMixinFit:
             )
 
             # Assert
-            assert "sentence1" in training_data
-            assert "sentence2" in training_data
-            assert "label" in training_data
-            assert len(training_data["sentence1"]) > 0
-            assert len(training_data["sentence2"]) > 0
-            assert len(training_data["label"]) > 0
+            assert (
+                set(training_data),
+                all(
+                    len(training_data[field]) > 0
+                    for field in ("sentence1", "sentence2", "label")
+                ),
+            ) == ({"sentence1", "sentence2", "label"}, True)
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
@@ -463,10 +464,11 @@ class TestTrainingMixinFit:
 
             # Assert
             # Should be a dict with three keys
-            assert isinstance(training_data, dict)
-            assert set(training_data.keys()) == {"sentence1", "sentence2", "label"}
-            # All lists should have the same length
-            assert len(training_data["sentence1"]) == len(training_data["sentence2"])
-            assert len(training_data["sentence1"]) == len(training_data["label"])
-            # Labels should be 0 or 1
-            assert all(label in [0, 1] for label in training_data["label"])
+            assert (
+                isinstance(training_data, dict),
+                set(training_data),
+                len(training_data["sentence1"])
+                == len(training_data["sentence2"])
+                == len(training_data["label"]),
+                all(label in (0, 1) for label in training_data["label"]),
+            ) == (True, {"sentence1", "sentence2", "label"}, True, True)
