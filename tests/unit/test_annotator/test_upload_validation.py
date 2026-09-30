@@ -2,64 +2,18 @@
 
 import builtins
 import json
-import sys
 import uuid
 from importlib import import_module
 from pathlib import Path
-from types import ModuleType
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine, select
-
-
-@pytest.fixture
-def client_and_engine(monkeypatch):
-    """An annotator client backed by an isolated in-memory database."""
-    # These routes never invoke spaCy. Keep the optional ML stack out of this
-    # input-validation test so test collection does not need to initialize
-    # torch on a mounted HDD.
-    spacy_package = ModuleType("spacy")
-    spacy_package.__path__ = []
-    spacy_util = ModuleType("spacy.util")
-    spacy_util.__dict__["get_installed_models"] = list
-    spacy_package.__dict__["util"] = spacy_util
-    monkeypatch.setitem(sys.modules, "spacy", spacy_package)
-    monkeypatch.setitem(sys.modules, "spacy.util", spacy_util)
-
-    recognizer_module = ModuleType("geoparser.modules.recognizers.spacy")
-    recognizer_module.__dict__["SpacyRecognizer"] = type("SpacyRecognizer", (), {})
-    monkeypatch.setitem(
-        sys.modules, "geoparser.modules.recognizers.spacy", recognizer_module
-    )
-
-    annotator_app = import_module("geoparser.annotator.app")
-    get_db = import_module("geoparser.annotator.db.db").get_db
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-
-    def override_get_db():
-        with Session(engine) as db:
-            yield db
-
-    annotator_app.app.dependency_overrides[get_db] = override_get_db
-    try:
-        with TestClient(annotator_app.app, raise_server_exceptions=False) as client:
-            yield client, engine, annotator_app
-    finally:
-        annotator_app.app.dependency_overrides.pop(get_db, None)
-        engine.dispose()
+from sqlmodel import Session, select
 
 
 @pytest.mark.unit
-def test_non_utf8_text_upload_returns_422(client_and_engine):
+def test_non_utf8_text_upload_returns_422(annotator_client):
     """A text file with Latin-1 bytes gets a client error instead of a 500."""
-    client, _, _ = client_and_engine
+    client, _, _ = annotator_client
 
     response = client.post(
         "/session",
@@ -73,9 +27,9 @@ def test_non_utf8_text_upload_returns_422(client_and_engine):
 
 
 @pytest.mark.unit
-def test_non_utf8_session_upload_returns_422(client_and_engine):
+def test_non_utf8_session_upload_returns_422(annotator_client):
     """Session uploads also reject invalid UTF-8 with a readable 422."""
-    client, _, _ = client_and_engine
+    client, _, _ = annotator_client
 
     response = client.post(
         "/session/continue/file",
@@ -88,9 +42,9 @@ def test_non_utf8_session_upload_returns_422(client_and_engine):
 
 
 @pytest.mark.unit
-def test_wrong_shape_session_json_returns_422(client_and_engine):
+def test_wrong_shape_session_json_returns_422(annotator_client):
     """Valid JSON without the required document list is a client error."""
-    client, _, _ = client_and_engine
+    client, _, _ = annotator_client
 
     response = client.post(
         "/session/continue/file",
@@ -110,10 +64,10 @@ def test_wrong_shape_session_json_returns_422(client_and_engine):
 
 @pytest.mark.unit
 def test_legacy_import_reports_schema_failure_and_keeps_bad_file(
-    client_and_engine, tmp_path, monkeypatch
+    annotator_client, tmp_path, monkeypatch
 ):
     """A bad session is reported while good UTF-8 sessions still load."""
-    client, engine, _annotator_app = client_and_engine
+    client, engine, _annotator_app = annotator_client
     legacy_dir = tmp_path / "legacy"
     legacy_dir.mkdir()
     session_routes = import_module("geoparser.annotator.routes.sessions")
@@ -178,10 +132,10 @@ def test_legacy_import_reports_schema_failure_and_keeps_bad_file(
 
 @pytest.mark.unit
 def test_legacy_import_reports_invalid_utf8_and_keeps_file(
-    client_and_engine, tmp_path, monkeypatch
+    annotator_client, tmp_path, monkeypatch
 ):
     """An undecodable legacy file is listed and left available to recover."""
-    client, _, _annotator_app = client_and_engine
+    client, _, _annotator_app = annotator_client
     legacy_dir = tmp_path / "legacy"
     legacy_dir.mkdir()
     session_routes = import_module("geoparser.annotator.routes.sessions")

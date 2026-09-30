@@ -1,62 +1,17 @@
 """Candidate lookup must use the gazetteer belonging to its URL session."""
 
-import sys
-from importlib import import_module
-from types import ModuleType
 from uuid import UUID
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session
 
 from geoparser.annotator.db.crud import (
     DocumentRepository,
     SessionRepository,
     ToponymRepository,
 )
-from geoparser.annotator.db.db import get_db
 from geoparser.annotator.db.models.document import AnnotatorDocumentCreate
 from geoparser.annotator.db.models.session import AnnotatorSessionCreate
-
-
-@pytest.fixture
-def annotator_client(monkeypatch):
-    """Build the app with an isolated in-memory database and no ML startup."""
-    spacy_package = ModuleType("spacy")
-    spacy_package.__path__ = []
-    spacy_util = ModuleType("spacy.util")
-    spacy_util.__dict__["get_installed_models"] = list
-    spacy_package.__dict__["util"] = spacy_util
-    monkeypatch.setitem(sys.modules, "spacy", spacy_package)
-    monkeypatch.setitem(sys.modules, "spacy.util", spacy_util)
-
-    recognizer_module = ModuleType("geoparser.modules.recognizers.spacy")
-    recognizer_module.__dict__["SpacyRecognizer"] = type("SpacyRecognizer", (), {})
-    monkeypatch.setitem(
-        sys.modules, "geoparser.modules.recognizers.spacy", recognizer_module
-    )
-
-    annotator_app = import_module("geoparser.annotator.app")
-
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-
-    def override_get_db():
-        with Session(engine) as db:
-            yield db
-
-    annotator_app.app.dependency_overrides[get_db] = override_get_db
-    try:
-        with TestClient(annotator_app.app, raise_server_exceptions=False) as client:
-            yield client, engine, annotator_app
-    finally:
-        annotator_app.app.dependency_overrides.pop(get_db, None)
-        engine.dispose()
 
 
 def _create_session_with_document(engine, annotator_app, gazetteer: str) -> UUID:

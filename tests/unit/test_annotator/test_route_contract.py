@@ -1,64 +1,16 @@
 """TestClient coverage for the annotator's public routes and import/export path."""
 
 import json
-import sys
 from importlib import import_module
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 from uuid import UUID
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session
 
 from geoparser.annotator.db.crud import DocumentRepository, SessionRepository
-from geoparser.annotator.db.db import get_db
 from geoparser.annotator.db.models.session import AnnotatorSessionCreate
-
-
-@pytest.fixture
-def annotator_client(monkeypatch):
-    """Build the current app with an isolated database and no ML startup."""
-    spacy_package = ModuleType("spacy")
-    spacy_package.__path__ = []
-    spacy_util = ModuleType("spacy.util")
-    spacy_util.__dict__["get_installed_models"] = list
-    spacy_package.__dict__["util"] = spacy_util
-    monkeypatch.setitem(sys.modules, "spacy", spacy_package)
-    monkeypatch.setitem(sys.modules, "spacy.util", spacy_util)
-
-    recognizer_module = ModuleType("geoparser.modules.recognizers.spacy")
-    recognizer_module.__dict__["SpacyRecognizer"] = type("SpacyRecognizer", (), {})
-    monkeypatch.setitem(
-        sys.modules, "geoparser.modules.recognizers.spacy", recognizer_module
-    )
-
-    annotator_app = import_module("geoparser.annotator.app")
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-
-    def override_get_db():
-        with Session(engine) as db:
-            yield db
-
-    annotator_app.app.dependency_overrides[get_db] = override_get_db
-    try:
-        with TestClient(
-            annotator_app.app,
-            follow_redirects=False,
-            raise_server_exceptions=False,
-        ) as client:
-            yield client, engine, annotator_app
-    finally:
-        annotator_app.app.dependency_overrides.pop(get_db, None)
-        engine.dispose()
-
 
 EXPECTED_ROUTE_MAP = {
     ("/openapi.json", ("GET", "HEAD")),
@@ -122,6 +74,7 @@ def test_app_route_map_is_pinned(annotator_client):
     assert actual == EXPECTED_ROUTE_MAP
 
 
+@pytest.mark.parametrize("follow_redirects", [False], indirect=True)
 def test_annotator_api_round_trip_and_route_statuses(annotator_client, monkeypatch):
     """Exercise session, document, annotation and settings routes end to end."""
     client, _engine, _annotator_app = annotator_client
