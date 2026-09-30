@@ -1,0 +1,4332 @@
+{
+  "benchmark": "PAN-X/WikiANN location recognition (#98)",
+  "dataset": {
+    "canonical_target_count": 85,
+    "data_load_seconds": 300.0423721519983,
+    "eligible_languages": [
+      "af",
+      "am",
+      "ar",
+      "az",
+      "be",
+      "bg",
+      "bn",
+      "ca",
+      "ceb",
+      "cs",
+      "cy",
+      "da",
+      "de",
+      "el",
+      "en",
+      "eo",
+      "es",
+      "et",
+      "eu",
+      "fa",
+      "fi",
+      "fr",
+      "fy",
+      "ga",
+      "gd",
+      "gl",
+      "gu",
+      "he",
+      "hi",
+      "hu",
+      "hy",
+      "id",
+      "ig",
+      "is",
+      "it",
+      "ja",
+      "jv",
+      "ka",
+      "kk",
+      "km",
+      "kn",
+      "ko",
+      "ku",
+      "ky",
+      "la",
+      "lt",
+      "lv",
+      "mg",
+      "mk",
+      "ml",
+      "mn",
+      "mr",
+      "ms",
+      "mt",
+      "my",
+      "ne",
+      "nl",
+      "no",
+      "pa",
+      "pl",
+      "ps",
+      "pt",
+      "ro",
+      "ru",
+      "si",
+      "sk",
+      "sl",
+      "sq",
+      "sr",
+      "sv",
+      "ta",
+      "te",
+      "tg",
+      "th",
+      "tr",
+      "uk",
+      "ur",
+      "uz",
+      "vi",
+      "yi",
+      "yo",
+      "zh"
+    ],
+    "evaluated_examples": 656,
+    "id": "unimelb-nlp/wikiann",
+    "limit_per_language": 8,
+    "missing_target_languages": [
+      "ha",
+      "xh",
+      "zu"
+    ],
+    "revision": "f0a3be6dc5564c0cc4150bb660144800a1f539d4",
+    "source_test_examples": 423100,
+    "source_test_examples_by_language": {
+      "af": 1000,
+      "am": 100,
+      "ar": 10000,
+      "az": 1000,
+      "be": 1000,
+      "bg": 10000,
+      "bn": 1000,
+      "ca": 10000,
+      "ceb": 100,
+      "cs": 10000,
+      "cy": 1000,
+      "da": 10000,
+      "de": 10000,
+      "el": 10000,
+      "en": 10000,
+      "eo": 10000,
+      "es": 10000,
+      "et": 10000,
+      "eu": 10000,
+      "fa": 10000,
+      "fi": 10000,
+      "fr": 10000,
+      "fy": 1000,
+      "ga": 1000,
+      "gd": 100,
+      "gl": 10000,
+      "gu": 100,
+      "he": 10000,
+      "hi": 1000,
+      "hu": 10000,
+      "hy": 1000,
+      "id": 10000,
+      "ig": 100,
+      "is": 1000,
+      "it": 10000,
+      "ja": 10000,
+      "jv": 100,
+      "ka": 10000,
+      "kk": 1000,
+      "km": 100,
+      "kn": 100,
+      "ko": 10000,
+      "ku": 100,
+      "ky": 100,
+      "la": 1000,
+      "lt": 10000,
+      "lv": 10000,
+      "mg": 100,
+      "mk": 1000,
+      "ml": 1000,
+      "mn": 100,
+      "mr": 1000,
+      "ms": 1000,
+      "mt": 100,
+      "my": 100,
+      "ne": 100,
+      "nl": 10000,
+      "no": 10000,
+      "pa": 100,
+      "pl": 10000,
+      "ps": 100,
+      "pt": 10000,
+      "ro": 10000,
+      "ru": 10000,
+      "si": 100,
+      "sk": 10000,
+      "sl": 10000,
+      "sq": 1000,
+      "sr": 10000,
+      "sv": 10000,
+      "ta": 1000,
+      "te": 1000,
+      "tg": 100,
+      "th": 10000,
+      "tr": 10000,
+      "uk": 10000,
+      "ur": 1000,
+      "uz": 1000,
+      "vi": 10000,
+      "yi": 100,
+      "yo": 100,
+      "zh": 10000
+    },
+    "split": "test"
+  },
+  "estimated_full_matrix_inference_seconds": 87093.4328140777,
+  "evaluation": {
+    "batch_size": 8,
+    "gold_text_reconstruction": "WikiANN tokens joined by one ASCII space",
+    "seed": 0,
+    "span_policy": "exact half-open Python character offsets",
+    "training_or_finetuning": false,
+    "zero_division": 0
+  },
+  "evaluation_kind": "bounded_feasibility_sample",
+  "full_matrix_estimate_note": "Linear estimate from measured steady-state inference throughput; excludes model download/load and data acquisition. Small feasibility samples are not a quality result and may not predict every language.",
+  "full_quality_comparison": false,
+  "hardware": {
+    "cgroup_cpu_quota": 4.0,
+    "cuda_available": false,
+    "device_used": "cpu",
+    "gpu": null,
+    "logical_cpus": 5,
+    "machine": "x86_64",
+    "memory_total_bytes": 18882699264,
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "processor": null,
+    "torch": "2.14.0+cpu",
+    "torch_threads": 4
+  },
+  "language_list": {
+    "language_codes": [
+      "af",
+      "am",
+      "ar",
+      "az",
+      "be",
+      "bg",
+      "bn",
+      "ca",
+      "ceb",
+      "cs",
+      "cy",
+      "da",
+      "de",
+      "el",
+      "en",
+      "eo",
+      "es",
+      "et",
+      "eu",
+      "fa",
+      "fi",
+      "fr",
+      "fy",
+      "ga",
+      "gd",
+      "gl",
+      "gu",
+      "ha",
+      "he",
+      "hi",
+      "hu",
+      "hy",
+      "id",
+      "ig",
+      "is",
+      "it",
+      "ja",
+      "jv",
+      "ka",
+      "kk",
+      "km",
+      "kn",
+      "ko",
+      "ku",
+      "ky",
+      "la",
+      "lt",
+      "lv",
+      "mg",
+      "mk",
+      "ml",
+      "mn",
+      "mr",
+      "ms",
+      "mt",
+      "my",
+      "ne",
+      "nl",
+      "no",
+      "pa",
+      "pl",
+      "ps",
+      "pt",
+      "ro",
+      "ru",
+      "si",
+      "sk",
+      "sl",
+      "sq",
+      "sr",
+      "sv",
+      "ta",
+      "te",
+      "tg",
+      "th",
+      "tr",
+      "uk",
+      "ur",
+      "uz",
+      "vi",
+      "xh",
+      "yi",
+      "yo",
+      "zh",
+      "zu"
+    ],
+    "retrieved_on": "2026-09-30",
+    "source_model": "segment-any-text/sat-3l-sm",
+    "source_model_revision": "137da05",
+    "source_path": "docs/sentence-splitting.md",
+    "source_repository": "NoeFlandre/osm-polygon-wikidata-only",
+    "source_revision": "c6b503908b4687517f546cecce40c621d4ee56ac",
+    "source_url": "https://github.com/NoeFlandre/osm-polygon-wikidata-only/blob/c6b503908b4687517f546cecce40c621d4ee56ac/docs/sentence-splitting.md"
+  },
+  "models": [
+    {
+      "batch_size": 8,
+      "checkpoint_download_seconds": 0.0,
+      "checkpoint_path": "installed distribution en-core-web-sm==3.8.0",
+      "coverage_note": "English-only upstream reference model.",
+      "device": "cpu",
+      "documented_languages": [
+        "en"
+      ],
+      "evaluated_examples": 8,
+      "full_matrix_estimated_inference_seconds": 19.393981249322678,
+      "gliner_threshold": null,
+      "hub_snapshot_cached_before_run": null,
+      "key": "spacy_en",
+      "location_mapping": "FAC, GPE, LOC -> WikiANN LOC",
+      "macro": {
+        "f1": 0.5,
+        "precision": 0.5,
+        "recall": 0.5
+      },
+      "micro": {
+        "elapsed_seconds": 0.015424982000695309,
+        "f1": 0.5,
+        "false_negative": 2,
+        "false_positive": 2,
+        "gold_spans": 4,
+        "malformed_gold_tags": 0,
+        "precision": 0.5,
+        "predicted_spans": 4,
+        "recall": 0.5,
+        "sentences": 8,
+        "sentences_per_second": 518.6391789396828,
+        "true_positive": 2
+      },
+      "model_card_url": "https://spacy.io/models/en#en_core_web_sm-accuracy",
+      "model_id": "en_core_web_sm",
+      "model_load_seconds": 2.3881344059991534,
+      "per_language": {
+        "af": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "am": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "ar": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "az": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "be": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "bg": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "bn": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "ca": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "ceb": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "cs": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "cy": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "da": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "de": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "el": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "en": {
+          "documented_support": "documented",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.015424982000695309,
+            "f1": 0.5,
+            "false_negative": 2,
+            "false_positive": 2,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 4,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 518.6391789396828,
+            "true_positive": 2
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "eo": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "es": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "et": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "eu": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "fa": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "fi": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "fr": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "fy": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "ga": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "gd": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "gl": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "gu": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "he": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "hi": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "hu": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "hy": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "id": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "ig": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "is": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "it": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "ja": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "jv": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "ka": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "kk": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "km": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "kn": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "ko": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "ku": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "ky": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "la": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "lt": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "lv": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "mg": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "mk": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "ml": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "mn": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "mr": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "ms": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "mt": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "my": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "ne": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "nl": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "no": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "pa": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "pl": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "ps": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "pt": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "ro": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "ru": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "si": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "sk": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "sl": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "sq": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "sr": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "sv": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "ta": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "te": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "tg": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "th": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "tr": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "uk": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "ur": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "uz": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 1000,
+          "status": "not_evaluated_english_only"
+        },
+        "vi": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        },
+        "yi": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "yo": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 100,
+          "status": "not_evaluated_english_only"
+        },
+        "zh": {
+          "documented_support": false,
+          "evaluated_examples": 0,
+          "metrics": null,
+          "source_test_examples": 10000,
+          "status": "not_evaluated_english_only"
+        }
+      },
+      "revision": "3.8.0",
+      "steady_examples_per_second": 515.6238871969232,
+      "steady_inference_seconds": 0.015515184999458143,
+      "training_data_note": "spaCy English small model 3.8.0; its model metadata identifies OntoNotes 5 as its training source.",
+      "training_overlap_note": "The model metadata does not report WikiANN training. Possible text overlap with Wikipedia was not audited.",
+      "warmup_examples": 8,
+      "warmup_seconds": 0.029288939000252867
+    },
+    {
+      "batch_size": 8,
+      "checkpoint_download_seconds": 13.281733259000248,
+      "checkpoint_path": "/workspace/.panx-hf/hub/models--fastino--gliner2.5-multi-v1/snapshots/2ca71aafb3446d9014e1c55c7ff51c9bc7209c47",
+      "coverage_note": "Model card describes the checkpoint as multilingual but does not publish an exhaustive language list.",
+      "device": "cpu",
+      "documented_languages": [],
+      "evaluated_examples": 656,
+      "full_matrix_estimated_inference_seconds": 67125.51125168228,
+      "gliner_threshold": 0.5,
+      "hub_snapshot_cached_before_run": false,
+      "key": "gliner2_multi",
+      "location_mapping": "city, country, location -> WikiANN LOC; exact spans deduplicated",
+      "macro": {
+        "f1": 0.3757813202944898,
+        "precision": 0.3219725556856494,
+        "recall": 0.5099127498517743
+      },
+      "micro": {
+        "elapsed_seconds": 104.07392793499639,
+        "f1": 0.4325581395348837,
+        "false_negative": 142,
+        "false_positive": 346,
+        "gold_spans": 328,
+        "malformed_gold_tags": 0,
+        "precision": 0.34962406015037595,
+        "predicted_spans": 532,
+        "recall": 0.5670731707317073,
+        "sentences": 656,
+        "sentences_per_second": 6.303211697839746,
+        "true_positive": 186
+      },
+      "model_card_url": "https://huggingface.co/fastino/gliner2.5-multi-v1",
+      "model_id": "fastino/gliner2.5-multi-v1",
+      "model_load_seconds": 7.206350182001188,
+      "per_language": {
+        "af": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.6351286450008047,
+            "f1": 0.7096774193548387,
+            "false_negative": 1,
+            "false_positive": 8,
+            "gold_spans": 12,
+            "malformed_gold_tags": 0,
+            "precision": 0.5789473684210527,
+            "predicted_spans": 19,
+            "recall": 0.9166666666666666,
+            "sentences": 8,
+            "sentences_per_second": 12.595873391901359,
+            "true_positive": 11
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "am": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.45562307399995916,
+            "f1": 0.18181818181818182,
+            "false_negative": 2,
+            "false_positive": 7,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.125,
+            "predicted_spans": 8,
+            "recall": 0.3333333333333333,
+            "sentences": 8,
+            "sentences_per_second": 17.558373261843883,
+            "true_positive": 1
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "ar": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.6228177550001419,
+            "f1": 0.25,
+            "false_negative": 5,
+            "false_positive": 7,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.2222222222222222,
+            "predicted_spans": 9,
+            "recall": 0.2857142857142857,
+            "sentences": 8,
+            "sentences_per_second": 12.844848971908608,
+            "true_positive": 2
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "az": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5246161249997385,
+            "f1": 0.5,
+            "false_negative": 1,
+            "false_positive": 1,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 2,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 15.249245341065311,
+            "true_positive": 1
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "be": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.0316542540003866,
+            "f1": 0.7000000000000001,
+            "false_negative": 1,
+            "false_positive": 5,
+            "gold_spans": 8,
+            "malformed_gold_tags": 0,
+            "precision": 0.5833333333333334,
+            "predicted_spans": 12,
+            "recall": 0.875,
+            "sentences": 8,
+            "sentences_per_second": 7.754535949402485,
+            "true_positive": 7
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "bg": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.4947928010005853,
+            "f1": 0.7058823529411764,
+            "false_negative": 1,
+            "false_positive": 4,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.6,
+            "predicted_spans": 10,
+            "recall": 0.8571428571428571,
+            "sentences": 8,
+            "sentences_per_second": 16.168383985826296,
+            "true_positive": 6
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "bn": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.6214012849995925,
+            "f1": 0.0,
+            "false_negative": 1,
+            "false_positive": 0,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 0,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 12.874128511023672,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "ca": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.4377644809992489,
+            "f1": 0.4,
+            "false_negative": 1,
+            "false_positive": 2,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 3,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 18.274666738011863,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ceb": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.7343909109986271,
+            "f1": 0.2,
+            "false_negative": 4,
+            "false_positive": 12,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.14285714285714285,
+            "predicted_spans": 14,
+            "recall": 0.3333333333333333,
+            "sentences": 8,
+            "sentences_per_second": 10.893381004840561,
+            "true_positive": 2
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "cs": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.43177580300107365,
+            "f1": 0.15384615384615385,
+            "false_negative": 1,
+            "false_positive": 10,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.09090909090909091,
+            "predicted_spans": 11,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 18.52813414831425,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "cy": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.7014312589999463,
+            "f1": 0.6153846153846154,
+            "false_negative": 1,
+            "false_positive": 4,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 8,
+            "recall": 0.8,
+            "sentences": 8,
+            "sentences_per_second": 11.40525161568343,
+            "true_positive": 4
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "da": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.41174378400137357,
+            "f1": 0.0,
+            "false_negative": 1,
+            "false_positive": 3,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 3,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 19.429558649932922,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "de": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5675003420001303,
+            "f1": 0.36363636363636365,
+            "false_negative": 1,
+            "false_positive": 6,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.25,
+            "predicted_spans": 8,
+            "recall": 0.6666666666666666,
+            "sentences": 8,
+            "sentences_per_second": 14.096907804151002,
+            "true_positive": 2
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "el": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.7206946820006124,
+            "f1": 0.625,
+            "false_negative": 1,
+            "false_positive": 5,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 10,
+            "recall": 0.8333333333333334,
+            "sentences": 8,
+            "sentences_per_second": 11.100401043327253,
+            "true_positive": 5
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "en": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5251506879994849,
+            "f1": 0.46153846153846156,
+            "false_negative": 1,
+            "false_positive": 6,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 9,
+            "recall": 0.75,
+            "sentences": 8,
+            "sentences_per_second": 15.233722782455626,
+            "true_positive": 3
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "eo": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.6623915439995471,
+            "f1": 0.6666666666666666,
+            "false_negative": 0,
+            "false_positive": 3,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 6,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 12.077448863093382,
+            "true_positive": 3
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "es": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.45646632299940393,
+            "f1": 0.5,
+            "false_negative": 1,
+            "false_positive": 3,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.4,
+            "predicted_spans": 5,
+            "recall": 0.6666666666666666,
+            "sentences": 8,
+            "sentences_per_second": 17.525936957260363,
+            "true_positive": 2
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "et": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.6854181990001962,
+            "f1": 1.0,
+            "false_negative": 0,
+            "false_positive": 0,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 1.0,
+            "predicted_spans": 3,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 11.6717064292565,
+            "true_positive": 3
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "eu": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5689974859997164,
+            "f1": 0.4,
+            "false_negative": 2,
+            "false_positive": 4,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 6,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 14.059816074484354,
+            "true_positive": 2
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "fa": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.533931855999981,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 8,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 8,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 14.98318541982684,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "fi": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.8687727239994274,
+            "f1": 0.8571428571428571,
+            "false_negative": 0,
+            "false_positive": 1,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.75,
+            "predicted_spans": 4,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 9.208392228489522,
+            "true_positive": 3
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "fr": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.4279127600002539,
+            "f1": 0.28571428571428575,
+            "false_negative": 1,
+            "false_positive": 4,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.2,
+            "predicted_spans": 5,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 18.69539950151347,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "fy": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.7512552080006571,
+            "f1": 0.8333333333333333,
+            "false_negative": 1,
+            "false_positive": 3,
+            "gold_spans": 11,
+            "malformed_gold_tags": 0,
+            "precision": 0.7692307692307693,
+            "predicted_spans": 13,
+            "recall": 0.9090909090909091,
+            "sentences": 8,
+            "sentences_per_second": 10.648844646668994,
+            "true_positive": 10
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "ga": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5977053480000905,
+            "f1": 0.4,
+            "false_negative": 0,
+            "false_positive": 3,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.25,
+            "predicted_spans": 4,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 13.384521364528245,
+            "true_positive": 1
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "gd": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5491159550001612,
+            "f1": 0.6666666666666666,
+            "false_negative": 1,
+            "false_positive": 1,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.6666666666666666,
+            "predicted_spans": 3,
+            "recall": 0.6666666666666666,
+            "sentences": 8,
+            "sentences_per_second": 14.56887188790144,
+            "true_positive": 2
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "gl": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.7458940100004838,
+            "f1": 0.5,
+            "false_negative": 0,
+            "false_positive": 6,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 9,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 10.725384428271264,
+            "true_positive": 3
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "gu": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.1605880959996284,
+            "f1": 0.6666666666666666,
+            "false_negative": 1,
+            "false_positive": 0,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 1.0,
+            "predicted_spans": 1,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 6.8930570868120995,
+            "true_positive": 1
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "he": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.608824482998898,
+            "f1": 0.8333333333333333,
+            "false_negative": 3,
+            "false_positive": 1,
+            "gold_spans": 13,
+            "malformed_gold_tags": 0,
+            "precision": 0.9090909090909091,
+            "predicted_spans": 11,
+            "recall": 0.7692307692307693,
+            "sentences": 8,
+            "sentences_per_second": 13.140076037340437,
+            "true_positive": 10
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "hi": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.7091701489989646,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 5,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 5,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 11.280790669619233,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "hu": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.44752457499998854,
+            "f1": 0.4,
+            "false_negative": 2,
+            "false_positive": 4,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 6,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 17.876113283835206,
+            "true_positive": 2
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "hy": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.6489916520004044,
+            "f1": 0.4,
+            "false_negative": 3,
+            "false_positive": 6,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 9,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 12.326814952613619,
+            "true_positive": 3
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "id": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.389603598998292,
+            "f1": 0.25,
+            "false_negative": 2,
+            "false_positive": 4,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.2,
+            "predicted_spans": 5,
+            "recall": 0.3333333333333333,
+            "sentences": 8,
+            "sentences_per_second": 20.53369121991882,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ig": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.1682143540001562,
+            "f1": 0.4444444444444444,
+            "false_negative": 1,
+            "false_positive": 4,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 6,
+            "recall": 0.6666666666666666,
+            "sentences": 8,
+            "sentences_per_second": 6.848058297355016,
+            "true_positive": 2
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "is": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.43715482100014924,
+            "f1": 0.5,
+            "false_negative": 1,
+            "false_positive": 3,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.4,
+            "predicted_spans": 5,
+            "recall": 0.6666666666666666,
+            "sentences": 8,
+            "sentences_per_second": 18.300152750682507,
+            "true_positive": 2
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "it": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.671201729999666,
+            "f1": 0.2,
+            "false_negative": 1,
+            "false_positive": 7,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.125,
+            "predicted_spans": 8,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 11.918920411608566,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ja": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 4.890337290999014,
+            "f1": 0.631578947368421,
+            "false_negative": 1,
+            "false_positive": 6,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 12,
+            "recall": 0.8571428571428571,
+            "sentences": 8,
+            "sentences_per_second": 1.6358789842010537,
+            "true_positive": 6
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "jv": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.7661749300004885,
+            "f1": 0.625,
+            "false_negative": 1,
+            "false_positive": 5,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 10,
+            "recall": 0.8333333333333334,
+            "sentences": 8,
+            "sentences_per_second": 10.44147972838905,
+            "true_positive": 5
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "ka": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.7063356750004459,
+            "f1": 0.6666666666666666,
+            "false_negative": 2,
+            "false_positive": 3,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.625,
+            "predicted_spans": 8,
+            "recall": 0.7142857142857143,
+            "sentences": 8,
+            "sentences_per_second": 11.326059667020145,
+            "true_positive": 5
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "kk": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5028337969997665,
+            "f1": 0.4444444444444445,
+            "false_negative": 2,
+            "false_positive": 3,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.4,
+            "predicted_spans": 5,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 15.909829545534139,
+            "true_positive": 2
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "km": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 6.248629739000535,
+            "f1": 0.0,
+            "false_negative": 1,
+            "false_positive": 2,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 1.2802806909918776,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "kn": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.4708640850003576,
+            "f1": 0.6153846153846153,
+            "false_negative": 2,
+            "false_positive": 3,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.5714285714285714,
+            "predicted_spans": 7,
+            "recall": 0.6666666666666666,
+            "sentences": 8,
+            "sentences_per_second": 5.438979768139525,
+            "true_positive": 4
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "ko": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.038800402000561,
+            "f1": 0.25,
+            "false_negative": 3,
+            "false_positive": 3,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.25,
+            "predicted_spans": 4,
+            "recall": 0.25,
+            "sentences": 8,
+            "sentences_per_second": 7.701190704771868,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ku": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5292443489997822,
+            "f1": 0.6666666666666666,
+            "false_negative": 0,
+            "false_positive": 1,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 2,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 15.115891204354252,
+            "true_positive": 1
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "ky": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5486240270001872,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 4,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 14.58193518016897,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "la": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.44970541399925423,
+            "f1": 0.6666666666666666,
+            "false_negative": 0,
+            "false_positive": 1,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 2,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 17.789423366856035,
+            "true_positive": 1
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "lt": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5667119680001633,
+            "f1": 0.5714285714285714,
+            "false_negative": 1,
+            "false_positive": 5,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.4444444444444444,
+            "predicted_spans": 9,
+            "recall": 0.8,
+            "sentences": 8,
+            "sentences_per_second": 14.116518534504806,
+            "true_positive": 4
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "lv": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.8091783329982718,
+            "f1": 0.631578947368421,
+            "false_negative": 4,
+            "false_positive": 3,
+            "gold_spans": 10,
+            "malformed_gold_tags": 0,
+            "precision": 0.6666666666666666,
+            "predicted_spans": 9,
+            "recall": 0.6,
+            "sentences": 8,
+            "sentences_per_second": 9.886572185339379,
+            "true_positive": 6
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "mg": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.1830244660013705,
+            "f1": 0.5882352941176471,
+            "false_negative": 0,
+            "false_positive": 7,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.4166666666666667,
+            "predicted_spans": 12,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 6.762328447052364,
+            "true_positive": 5
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "mk": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5089667079992068,
+            "f1": 0.30769230769230765,
+            "false_negative": 1,
+            "false_positive": 8,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.2,
+            "predicted_spans": 10,
+            "recall": 0.6666666666666666,
+            "sentences": 8,
+            "sentences_per_second": 15.71812040801,
+            "true_positive": 2
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "ml": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.5050169200003438,
+            "f1": 0.3333333333333333,
+            "false_negative": 3,
+            "false_positive": 1,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 2,
+            "recall": 0.25,
+            "sentences": 8,
+            "sentences_per_second": 5.31555485768105,
+            "true_positive": 1
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "mn": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.6882441840007232,
+            "f1": 0.7692307692307693,
+            "false_negative": 0,
+            "false_positive": 3,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.625,
+            "predicted_spans": 8,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 11.623781480428164,
+            "true_positive": 5
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "mr": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.9038397750009608,
+            "f1": 0.2857142857142857,
+            "false_negative": 0,
+            "false_positive": 5,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.16666666666666666,
+            "predicted_spans": 6,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 8.851126296130856,
+            "true_positive": 1
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "ms": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.525224952998542,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 2,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 15.231568786531373,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "mt": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.8800555100006022,
+            "f1": 0.6153846153846154,
+            "false_negative": 1,
+            "false_positive": 4,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 8,
+            "recall": 0.8,
+            "sentences": 8,
+            "sentences_per_second": 9.090335676660358,
+            "true_positive": 4
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "my": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 6.193441547000475,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 2,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 1.2916889485902152,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "ne": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.2264013559997693,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 1,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 1,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 6.523149995605113,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "nl": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5917354310004157,
+            "f1": 0.5882352941176471,
+            "false_negative": 0,
+            "false_positive": 7,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.4166666666666667,
+            "predicted_spans": 12,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 13.519555498772187,
+            "true_positive": 5
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "no": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.710468546998527,
+            "f1": 0.6666666666666666,
+            "false_negative": 1,
+            "false_positive": 3,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.5714285714285714,
+            "predicted_spans": 7,
+            "recall": 0.8,
+            "sentences": 8,
+            "sentences_per_second": 11.260174759033472,
+            "true_positive": 4
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "pa": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.016517047999514,
+            "f1": 0.25,
+            "false_negative": 3,
+            "false_positive": 3,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.25,
+            "predicted_spans": 4,
+            "recall": 0.25,
+            "sentences": 8,
+            "sentences_per_second": 7.8700106562342915,
+            "true_positive": 1
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "pl": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.7859023660003004,
+            "f1": 0.7142857142857143,
+            "false_negative": 1,
+            "false_positive": 3,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.625,
+            "predicted_spans": 8,
+            "recall": 0.8333333333333334,
+            "sentences": 8,
+            "sentences_per_second": 10.17938149329473,
+            "true_positive": 5
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ps": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.4722947249993013,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 8,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 8,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 5.433694670069403,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "pt": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5373985699989134,
+            "f1": 0.8,
+            "false_negative": 0,
+            "false_positive": 1,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.6666666666666666,
+            "predicted_spans": 3,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 14.886530122356252,
+            "true_positive": 2
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ro": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5618291210012103,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 7,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 7,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 14.239204948550125,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ru": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.43135130199880223,
+            "f1": 0.28571428571428575,
+            "false_negative": 2,
+            "false_positive": 8,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.2,
+            "predicted_spans": 10,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 18.54636803674749,
+            "true_positive": 2
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "si": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.1624039739999716,
+            "f1": 0.0,
+            "false_negative": 5,
+            "false_positive": 0,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 0,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 6.882288927894009,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "sk": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.8028790040007152,
+            "f1": 0.36363636363636365,
+            "false_negative": 2,
+            "false_positive": 5,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.2857142857142857,
+            "predicted_spans": 7,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 4.437347144343818,
+            "true_positive": 2
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "sl": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.6911509460005618,
+            "f1": 0.8,
+            "false_negative": 0,
+            "false_positive": 2,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.6666666666666666,
+            "predicted_spans": 6,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 11.574895536630716,
+            "true_positive": 4
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "sq": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.6831296420004946,
+            "f1": 0.0,
+            "false_negative": 0,
+            "false_positive": 4,
+            "gold_spans": 0,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 11.710807887903373,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "sr": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5071014799996192,
+            "f1": 0.0,
+            "false_negative": 6,
+            "false_positive": 8,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 8,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 15.775935025876887,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "sv": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.47822194100081106,
+            "f1": 0.2222222222222222,
+            "false_negative": 2,
+            "false_positive": 5,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.16666666666666666,
+            "predicted_spans": 6,
+            "recall": 0.3333333333333333,
+            "sentences": 8,
+            "sentences_per_second": 16.728634372688543,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ta": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.111146932000338,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 0,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 0,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 7.199767888120818,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "te": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.384182616000544,
+            "f1": 0.0,
+            "false_negative": 7,
+            "false_positive": 2,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 5.779584216362428,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "tg": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.9214549079988501,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 4,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 8.68192239311398,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "th": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 22.88815074000013,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 6,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 6,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 0.34952583504349793,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "tr": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.70946067299883,
+            "f1": 0.18181818181818182,
+            "false_negative": 3,
+            "false_positive": 6,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.14285714285714285,
+            "predicted_spans": 7,
+            "recall": 0.25,
+            "sentences": 8,
+            "sentences_per_second": 11.276171188157168,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "uk": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 1.322800981999535,
+            "f1": 0.33333333333333337,
+            "false_negative": 0,
+            "false_positive": 4,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.2,
+            "predicted_spans": 5,
+            "recall": 1.0,
+            "sentences": 8,
+            "sentences_per_second": 6.04777295213923,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ur": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.49265118099901883,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 8,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 8,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 16.23867009468497,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "uz": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.4547626769999624,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 10,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 10,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 17.59159316409922,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "vi": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5842773540007329,
+            "f1": 0.3636363636363636,
+            "false_negative": 3,
+            "false_positive": 4,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 6,
+            "recall": 0.4,
+            "sentences": 8,
+            "sentences_per_second": 13.692127454917523,
+            "true_positive": 2
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "yi": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.4935847230008221,
+            "f1": 0.28571428571428575,
+            "false_negative": 1,
+            "false_positive": 4,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.2,
+            "predicted_spans": 5,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 16.20795706836874,
+            "true_positive": 1
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "yo": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.48773573899961775,
+            "f1": 0.3333333333333333,
+            "false_negative": 3,
+            "false_positive": 1,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 2,
+            "recall": 0.25,
+            "sentences": 8,
+            "sentences_per_second": 16.402324784336276,
+            "true_positive": 1
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "zh": {
+          "documented_support": "evaluated_multilingual_claim",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 7.644059123000261,
+            "f1": 0.2857142857142857,
+            "false_negative": 4,
+            "false_positive": 11,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.21428571428571427,
+            "predicted_spans": 14,
+            "recall": 0.42857142857142855,
+            "sentences": 8,
+            "sentences_per_second": 1.0465643804256755,
+            "true_positive": 3
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        }
+      },
+      "revision": "2ca71aafb3446d9014e1c55c7ff51c9bc7209c47",
+      "steady_examples_per_second": 6.303117728423951,
+      "steady_inference_seconds": 104.07547951099878,
+      "training_data_note": "The pinned model card does not identify the training corpora.",
+      "training_overlap_note": "Whether training included WikiANN/PAN-X or overlapping examples is unknown from the pinned model card.",
+      "warmup_examples": 8,
+      "warmup_seconds": 0.9559668820002116
+    },
+    {
+      "batch_size": 8,
+      "checkpoint_download_seconds": 30.305260154998905,
+      "checkpoint_path": "/workspace/.panx-hf/hub/models--Davlan--xlm-roberta-base-ner-hrl/snapshots/253f557bd8249b8515114cfd7f71974fe5fa4d2f",
+      "coverage_note": "Fine-tuned for Arabic, German, English, Spanish, French, Italian, Latvian, Dutch, Portuguese, and Chinese. Other evaluated languages are cross-lingual transfer.",
+      "device": "cpu",
+      "documented_languages": [
+        "ar",
+        "de",
+        "en",
+        "es",
+        "fr",
+        "it",
+        "lv",
+        "nl",
+        "pt",
+        "zh"
+      ],
+      "evaluated_examples": 656,
+      "full_matrix_estimated_inference_seconds": 19948.527581146092,
+      "gliner_threshold": null,
+      "hub_snapshot_cached_before_run": false,
+      "key": "xlmr_ner_hrl",
+      "location_mapping": "B-LOC/I-LOC -> WikiANN LOC; token labels grouped to character spans",
+      "macro": {
+        "f1": 0.06943881655082368,
+        "precision": 0.06288697752112386,
+        "recall": 0.08467569016349505
+      },
+      "micro": {
+        "elapsed_seconds": 30.926561344995207,
+        "f1": 0.08962868117797695,
+        "false_negative": 293,
+        "false_positive": 418,
+        "gold_spans": 328,
+        "malformed_gold_tags": 0,
+        "precision": 0.0772626931567329,
+        "predicted_spans": 453,
+        "recall": 0.10670731707317073,
+        "sentences": 656,
+        "sentences_per_second": 21.211540225313776,
+        "true_positive": 35
+      },
+      "model_card_url": "https://huggingface.co/Davlan/xlm-roberta-base-ner-hrl",
+      "model_id": "Davlan/xlm-roberta-base-ner-hrl",
+      "model_load_seconds": 2.7095922049993533,
+      "per_language": {
+        "af": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.28649371000028623,
+            "f1": 0.0,
+            "false_negative": 12,
+            "false_positive": 14,
+            "gold_spans": 12,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 14,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 27.923824226339935,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "am": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.16375083999992057,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 7,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 7,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 48.854711218604315,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "ar": {
+          "documented_support": "fine_tuned_language",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.23732806000043638,
+            "f1": 0.11764705882352941,
+            "false_negative": 6,
+            "false_positive": 9,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.1,
+            "predicted_spans": 10,
+            "recall": 0.14285714285714285,
+            "sentences": 8,
+            "sentences_per_second": 33.70861414358374,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "az": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.23116465900056937,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 1,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 1,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 34.60736617174815,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "be": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.42225912899994,
+            "f1": 0.0,
+            "false_negative": 8,
+            "false_positive": 11,
+            "gold_spans": 8,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 11,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 18.945712361380675,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "bg": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.16758029899938265,
+            "f1": 0.14285714285714285,
+            "false_negative": 6,
+            "false_positive": 6,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.14285714285714285,
+            "predicted_spans": 7,
+            "recall": 0.14285714285714285,
+            "sentences": 8,
+            "sentences_per_second": 47.73830842746898,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "bn": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.11917893099962384,
+            "f1": 0.0,
+            "false_negative": 1,
+            "false_positive": 2,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 67.12595869839821,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "ca": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.19493735099968035,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 1,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 1,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 41.03882585340517,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ceb": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.3789602510005352,
+            "f1": 0.1111111111111111,
+            "false_negative": 5,
+            "false_positive": 11,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.08333333333333333,
+            "predicted_spans": 12,
+            "recall": 0.16666666666666666,
+            "sentences": 8,
+            "sentences_per_second": 21.110393448596014,
+            "true_positive": 1
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "cs": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.17278776400053175,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 6,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 6,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 46.29957477761782,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "cy": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.29732361800051876,
+            "f1": 0.0,
+            "false_negative": 5,
+            "false_positive": 12,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 12,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 26.906708770058227,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "da": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.19864421199963544,
+            "f1": 0.0,
+            "false_negative": 1,
+            "false_positive": 1,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 1,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 40.2730083070061,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "de": {
+          "documented_support": "fine_tuned_language",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.232794928999283,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 2,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 34.36500972933409,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "el": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.45441533399934997,
+            "f1": 0.0,
+            "false_negative": 6,
+            "false_positive": 7,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 7,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 17.605039710238835,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "en": {
+          "documented_support": "fine_tuned_language",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.24305301100139332,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 4,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 32.91463029830204,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "eo": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2680399660002877,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 3,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 3,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 29.84629538414213,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "es": {
+          "documented_support": "fine_tuned_language",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.1388903989991377,
+            "f1": 0.3333333333333333,
+            "false_negative": 2,
+            "false_positive": 2,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 3,
+            "recall": 0.3333333333333333,
+            "sentences": 8,
+            "sentences_per_second": 57.59937373388688,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "et": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.28683107199867663,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 0,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 0,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 27.890981072081722,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "eu": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.178745588998936,
+            "f1": 0.28571428571428575,
+            "false_negative": 3,
+            "false_positive": 2,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 3,
+            "recall": 0.25,
+            "sentences": 8,
+            "sentences_per_second": 44.75634920449769,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "fa": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2021365219989093,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 3,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 3,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 39.57721207869188,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "fi": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.26529700600076467,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 3,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 3,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 30.154882335826066,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "fr": {
+          "documented_support": "fine_tuned_language",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.1465127659994323,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 1,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 1,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 54.6027504526875,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "fy": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.3054463989992655,
+            "f1": 0.0,
+            "false_negative": 11,
+            "false_positive": 14,
+            "gold_spans": 11,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 14,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 26.191174707609623,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "ga": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.21074476300054812,
+            "f1": 0.0,
+            "false_negative": 1,
+            "false_positive": 4,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 37.96061114922791,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "gd": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.22639688599883812,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 2,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 35.33617507460353,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "gl": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.1473827829995571,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 3,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 3,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 54.280424328966845,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "gu": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.21892054499949154,
+            "f1": 0.5,
+            "false_negative": 1,
+            "false_positive": 1,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 2,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 36.54293844380198,
+            "true_positive": 1
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "he": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.25495045199932065,
+            "f1": 0.28571428571428575,
+            "false_negative": 9,
+            "false_positive": 11,
+            "gold_spans": 13,
+            "malformed_gold_tags": 0,
+            "precision": 0.26666666666666666,
+            "predicted_spans": 15,
+            "recall": 0.3076923076923077,
+            "sentences": 8,
+            "sentences_per_second": 31.378646075204124,
+            "true_positive": 4
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "hi": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.16634444000010262,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 8,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 8,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 48.092981045805104,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "hu": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.14867736799897102,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 4,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 53.80778599776778,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "hy": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.29878328000086185,
+            "f1": 0.13333333333333333,
+            "false_negative": 5,
+            "false_positive": 8,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.1111111111111111,
+            "predicted_spans": 9,
+            "recall": 0.16666666666666666,
+            "sentences": 8,
+            "sentences_per_second": 26.775259981003366,
+            "true_positive": 1
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "id": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.14568603199950303,
+            "f1": 0.25,
+            "false_negative": 2,
+            "false_positive": 4,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.2,
+            "predicted_spans": 5,
+            "recall": 0.3333333333333333,
+            "sentences": 8,
+            "sentences_per_second": 54.91260823156533,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ig": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.427906269000232,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 2,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 18.695683095953108,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "is": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.23718397799893864,
+            "f1": 0.3333333333333333,
+            "false_negative": 2,
+            "false_positive": 2,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 3,
+            "recall": 0.3333333333333333,
+            "sentences": 8,
+            "sentences_per_second": 33.729091094153915,
+            "true_positive": 1
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "it": {
+          "documented_support": "fine_tuned_language",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2995810379998147,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 2,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 26.70395981472281,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ja": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 2.4816481889993156,
+            "f1": 0.41379310344827586,
+            "false_negative": 1,
+            "false_positive": 16,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.2727272727272727,
+            "predicted_spans": 22,
+            "recall": 0.8571428571428571,
+            "sentences": 8,
+            "sentences_per_second": 3.223664029197414,
+            "true_positive": 6
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "jv": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.723688170000969,
+            "f1": 0.0,
+            "false_negative": 6,
+            "false_positive": 8,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 8,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 11.05448497242851,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "ka": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.34728458800054796,
+            "f1": 0.2,
+            "false_negative": 5,
+            "false_positive": 11,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.15384615384615385,
+            "predicted_spans": 13,
+            "recall": 0.2857142857142857,
+            "sentences": 8,
+            "sentences_per_second": 23.035862449465732,
+            "true_positive": 2
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "kk": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.15438185400125803,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 8,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 8,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 51.81956164313721,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "km": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5258241860010457,
+            "f1": 0.0,
+            "false_negative": 1,
+            "false_positive": 2,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 15.214210781822215,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "kn": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2051454949996696,
+            "f1": 0.16666666666666666,
+            "false_negative": 5,
+            "false_positive": 5,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.16666666666666666,
+            "predicted_spans": 6,
+            "recall": 0.16666666666666666,
+            "sentences": 8,
+            "sentences_per_second": 38.996713040239484,
+            "true_positive": 1
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "ko": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.44431001799966907,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 3,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 3,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 18.005445918183096,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ku": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.23645982299967727,
+            "f1": 0.0,
+            "false_negative": 1,
+            "false_positive": 2,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 33.832385977938074,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "ky": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2032355790015572,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 1,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 1,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 39.363186501605135,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "la": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.1277586779997364,
+            "f1": 0.0,
+            "false_negative": 1,
+            "false_positive": 2,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 62.618055581449475,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "lt": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2089677069998288,
+            "f1": 0.20000000000000004,
+            "false_negative": 4,
+            "false_positive": 4,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.2,
+            "predicted_spans": 5,
+            "recall": 0.2,
+            "sentences": 8,
+            "sentences_per_second": 38.2834272091934,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "lv": {
+          "documented_support": "fine_tuned_language",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.5266870410014235,
+            "f1": 0.0,
+            "false_negative": 10,
+            "false_positive": 13,
+            "gold_spans": 10,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 13,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 15.189285813429342,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "mg": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.408674387001156,
+            "f1": 0.0,
+            "false_negative": 5,
+            "false_positive": 11,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 11,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 19.575486633023004,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "mk": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.19950860400058446,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 7,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 7,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 40.09852126465967,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "ml": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2721818509999139,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 4,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 29.392114024540643,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "mn": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2772725310005626,
+            "f1": 0.0,
+            "false_negative": 5,
+            "false_positive": 7,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 7,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 28.85247944010641,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "mr": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.1402156410003954,
+            "f1": 0.0,
+            "false_negative": 1,
+            "false_positive": 5,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 5,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 57.05497577105139,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "ms": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.1285660839985212,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 2,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 62.22480883910268,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "mt": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.327495691999502,
+            "f1": 0.0,
+            "false_negative": 5,
+            "false_positive": 4,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 24.427802244226665,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "my": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.49661651299902587,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 9,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 9,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 16.109009246770036,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "ne": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.1668765490012447,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 2,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 2,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 47.93962991133241,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "nl": {
+          "documented_support": "fine_tuned_language",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.21445319499980542,
+            "f1": 0.16666666666666666,
+            "false_negative": 4,
+            "false_positive": 6,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.14285714285714285,
+            "predicted_spans": 7,
+            "recall": 0.2,
+            "sentences": 8,
+            "sentences_per_second": 37.30417725885249,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "no": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2667139530003624,
+            "f1": 0.0,
+            "false_negative": 5,
+            "false_positive": 5,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 5,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 29.994681230603373,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "pa": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.18518437300008372,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 3,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 3,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 43.20018946737144,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "pl": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.3272462879995146,
+            "f1": 0.0,
+            "false_negative": 6,
+            "false_positive": 7,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 7,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 24.44641938921509,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ps": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.4934893129993725,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 3,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 3,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 16.211090674642783,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "pt": {
+          "documented_support": "fine_tuned_language",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.17469666400029382,
+            "f1": 0.5,
+            "false_negative": 1,
+            "false_positive": 1,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.5,
+            "predicted_spans": 2,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 45.793662092978174,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ro": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.1281579429996782,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 5,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 5,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 62.422974438814826,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ru": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.15335972699904232,
+            "f1": 0.2,
+            "false_negative": 3,
+            "false_positive": 5,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.16666666666666666,
+            "predicted_spans": 6,
+            "recall": 0.25,
+            "sentences": 8,
+            "sentences_per_second": 52.16493375767392,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "si": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.1485700220000581,
+            "f1": 0.0,
+            "false_negative": 5,
+            "false_positive": 4,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 53.846663629065574,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "sk": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2516249460004474,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 4,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 31.793350091710607,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "sl": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2650901140004862,
+            "f1": 0.2,
+            "false_negative": 3,
+            "false_positive": 5,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.16666666666666666,
+            "predicted_spans": 6,
+            "recall": 0.25,
+            "sentences": 8,
+            "sentences_per_second": 30.178416989119885,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "sq": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2070305239994923,
+            "f1": 0.0,
+            "false_negative": 0,
+            "false_positive": 1,
+            "gold_spans": 0,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 1,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 38.64164493936951,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "sr": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.11986747199989622,
+            "f1": 0.0,
+            "false_negative": 6,
+            "false_positive": 1,
+            "gold_spans": 6,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 1,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 66.74037473658346,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "sv": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.14838231500107213,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 3,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 3,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 53.91478088168524,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ta": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.17718802600029449,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 10,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 10,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 45.149777784570524,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "te": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.23868456600030186,
+            "f1": 0.23529411764705882,
+            "false_negative": 5,
+            "false_positive": 8,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.2,
+            "predicted_spans": 10,
+            "recall": 0.2857142857142857,
+            "sentences": 8,
+            "sentences_per_second": 33.5170393882522,
+            "true_positive": 2
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "tg": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.3757574490009574,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 3,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 3,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 21.290329762643285,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "th": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 4.311994870999115,
+            "f1": 0.0,
+            "false_negative": 2,
+            "false_positive": 1,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 1,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 1.8552897763875011,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "tr": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.3695328289995814,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 4,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 21.64895612023976,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "uk": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.6148520719998487,
+            "f1": 0.0,
+            "false_negative": 1,
+            "false_positive": 4,
+            "gold_spans": 1,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 13.011259722976048,
+            "true_positive": 0
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "ur": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.19097389799935627,
+            "f1": 0.0,
+            "false_negative": 3,
+            "false_positive": 8,
+            "gold_spans": 3,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 8,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 41.890541502310256,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "uz": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.1907876999994187,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 4,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 4,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 41.93142430054126,
+            "true_positive": 0
+          },
+          "source_test_examples": 1000,
+          "status": "evaluated"
+        },
+        "vi": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.2193210999994335,
+            "f1": 0.22222222222222224,
+            "false_negative": 4,
+            "false_positive": 3,
+            "gold_spans": 5,
+            "malformed_gold_tags": 0,
+            "precision": 0.25,
+            "predicted_spans": 4,
+            "recall": 0.2,
+            "sentences": 8,
+            "sentences_per_second": 36.476198596581284,
+            "true_positive": 1
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        },
+        "yi": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.18242344899954333,
+            "f1": 0.4,
+            "false_negative": 1,
+            "false_positive": 2,
+            "gold_spans": 2,
+            "malformed_gold_tags": 0,
+            "precision": 0.3333333333333333,
+            "predicted_spans": 3,
+            "recall": 0.5,
+            "sentences": 8,
+            "sentences_per_second": 43.85401133392685,
+            "true_positive": 1
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "yo": {
+          "documented_support": "cross_lingual_transfer",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 0.28941343699989375,
+            "f1": 0.0,
+            "false_negative": 4,
+            "false_positive": 3,
+            "gold_spans": 4,
+            "malformed_gold_tags": 0,
+            "precision": 0.0,
+            "predicted_spans": 3,
+            "recall": 0.0,
+            "sentences": 8,
+            "sentences_per_second": 27.64211669965737,
+            "true_positive": 0
+          },
+          "source_test_examples": 100,
+          "status": "evaluated"
+        },
+        "zh": {
+          "documented_support": "fine_tuned_language",
+          "evaluated_examples": 8,
+          "metrics": {
+            "elapsed_seconds": 3.703836267999577,
+            "f1": 0.29629629629629634,
+            "false_negative": 3,
+            "false_positive": 16,
+            "gold_spans": 7,
+            "malformed_gold_tags": 0,
+            "precision": 0.2,
+            "predicted_spans": 20,
+            "recall": 0.5714285714285714,
+            "sentences": 8,
+            "sentences_per_second": 2.1599226912697085,
+            "true_positive": 4
+          },
+          "source_test_examples": 10000,
+          "status": "evaluated"
+        }
+      },
+      "revision": "253f557bd8249b8515114cfd7f71974fe5fa4d2f",
+      "steady_examples_per_second": 21.209585433256915,
+      "steady_inference_seconds": 30.929411707000327,
+      "training_data_note": "Its pinned model card lists ANERcorp, CoNLL 2002/2003, Europeana Newspapers, Italian I-CAB, Latvian NER, Paramopama/Second HAREM, and MSRA for those ten languages.",
+      "training_overlap_note": "The model card does not list WikiANN/PAN-X among its fine-tuning corpora. Pretraining/text-level overlap was not audited.",
+      "warmup_examples": 8,
+      "warmup_seconds": 0.25070466400029545
+    }
+  ],
+  "repository_commit": "dd3a7e78836f9560fe24f7546b3ecc0c202a0fa7",
+  "resources": {
+    "cache_directory": "/workspace/.panx-hf",
+    "cache_free_bytes_before_run": 29631574016,
+    "cache_total_bytes": 33770192896
+  },
+  "seed": 0,
+  "started_at_utc": "2026-09-30T20:40:17Z"
+}

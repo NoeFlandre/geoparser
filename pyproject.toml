@@ -73,6 +73,8 @@ dev = [
     # scripts/benchmark/publish.py uploads to the Hub; declared here rather
     # than relied on transitively through datasets.
     "huggingface-hub>=0.36.2,<1",
+    # The PAN-X benchmark seeds NumPy in scripts/panx_benchmark/runner.py.
+    "numpy>=2.2.6,<3",
 ]
 # Kept separate so CI can install the linters without pulling torch and the
 # CUDA stack; this is what keeps the lint job at a few seconds.
@@ -97,6 +99,7 @@ test = [
     "tomli>=2.0.1,<3; python_version < \"3.11\"",
     "requests-mock>=1.12.1,<2",
     "mutmut>=3.7.0,<4",
+    "radon>=6.0.1,<7",
     "en-core-web-sm",
     "xx-sent-ud-sm",
 ]
@@ -156,9 +159,17 @@ DEP002 = [
 # DEP004: dev-only imports outside the package: scripts/crap.py (coverage,
 # radon), scripts/benchmark/publish.py (huggingface_hub),
 # scripts/changed_mutation_patterns.py (mutmut, toml) and the demo notebook
-# (plotly).
+# (plotly), plus scripts/panx_benchmark/runner.py (numpy).
 # None of them ship in the wheel.
-DEP004 = ["coverage", "huggingface_hub", "mutmut", "plotly", "radon", "toml"]
+DEP004 = [
+    "coverage",
+    "huggingface_hub",
+    "mutmut",
+    "numpy",
+    "plotly",
+    "radon",
+    "toml",
+]
 
 [tool.ruff]
 line-length = 88

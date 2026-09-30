@@ -1,0 +1,12 @@
+{
+  "source_repository": "NoeFlandre/osm-polygon-wikidata-only",
+  "source_revision": "c6b503908b4687517f546cecce40c621d4ee56ac",
+  "source_path": "docs/sentence-splitting.md",
+  "source_url": "https://github.com/NoeFlandre/osm-polygon-wikidata-only/blob/c6b503908b4687517f546cecce40c621d4ee56ac/docs/sentence-splitting.md",
+  "source_model": "segment-any-text/sat-3l-sm",
+  "source_model_revision": "137da05",
+  "retrieved_on": "2026-09-30",
+  "language_codes": [
+    "af", "am", "ar", "az", "be", "bg", "bn", "ca", "ceb", "cs", "cy", "da", "de", "el", "en", "eo", "es", "et", "eu", "fa", "fi", "fr", "fy", "ga", "gd", "gl", "gu", "ha", "he", "hi", "hu", "hy", "id", "ig", "is", "it", "ja", "jv", "ka", "kk", "km", "kn", "ko", "ku", "ky", "la", "lt", "lv", "mg", "mk", "ml", "mn", "mr", "ms", "mt", "my", "ne", "nl", "no", "pa", "pl", "ps", "pt", "ro", "ru", "si", "sk", "sl", "sq", "sr", "sv", "ta", "te", "tg", "th", "tr", "uk", "ur", "uz", "vi", "xh", "yi", "yo", "zh", "zu"
+  ]
+}

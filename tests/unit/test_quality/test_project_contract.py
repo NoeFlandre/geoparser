@@ -961,6 +961,7 @@ def test_deptry_ignores_only_documented_tool_dependencies() -> None:
         "coverage",
         "huggingface_hub",
         "mutmut",
+        "numpy",
         "plotly",
         "radon",
         "toml",
