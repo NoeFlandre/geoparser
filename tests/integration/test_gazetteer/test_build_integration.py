@@ -62,16 +62,6 @@ class TestAndorraBuild:
 
         assert any(feature.identifier == "3041563" for feature in results)
 
-    def test_expression_names_are_registered(self, andorra_gazetteer):
-        """Names derived via expressions (parenthesis stripping) are searchable."""
-        gazetteer = Gazetteer("andorranames")
-
-        features_with_parens = _expression_features(gazetteer)
-        assert features_with_parens
-        for feature in features_with_parens:
-            stripped = feature.data["name"].split("(")[0].strip()
-            assert stripped in feature.names
-
     def test_spatial_lookup_assigns_shape(self, andorra_gazetteer):
         """The spatial lookup tags features inside the Andorra boundary."""
         gazetteer = Gazetteer("andorranames")
@@ -94,15 +84,6 @@ class TestAndorraBuild:
         assert uninstall("andorranames") is False
 
 
-def _expression_features(gazetteer):
-    """Select search results whose original source names contain expressions."""
-    return [
-        feature
-        for feature in gazetteer.search("General", method="partial", tiers=3)
-        if feature is not None and "(" in feature.data["name"]
-    ]
-
-
 @pytest.mark.integration
 class TestDuplicateIdentifierMerge:
     """Test merging of rows sharing an identifier."""
@@ -112,7 +93,9 @@ class TestDuplicateIdentifierMerge:
         """A config whose source repeats identifiers across rows."""
         data_file = tmp_path / "peaks.csv"
         data_file.write_text(
-            "p1\tNorth Summit\t800\np1\tSouth Summit\t1200\np2\tLone Hill\t300\n"
+            "p1\tNorth Summit (North Ridge)\t800\n"
+            "p1\tSouth Summit (South Ridge)\t1200\n"
+            "p2\tLone Hill\t300\n"
         )
         config_file = tmp_path / "peaks.yaml"
         config_file.write_text(
@@ -137,6 +120,7 @@ class TestDuplicateIdentifierMerge:
                     identifier: "pid"
                     names:
                       - "name"
+                      - "CASE WHEN instr(name, '(') > 0 THEN trim(substr(name, 1, instr(name, '(') - 1)) ELSE name END"
                     data:
                       - "name"
                       - "height"
@@ -159,10 +143,25 @@ class TestDuplicateIdentifierMerge:
         self, merged_duplicate_identifier
     ):
         _, merged = merged_duplicate_identifier
-        assert set(merged.names) == {"North Summit", "South Summit"}
+        assert set(merged.names) == {
+            "North Summit",
+            "North Summit (North Ridge)",
+            "South Summit",
+            "South Summit (South Ridge)",
+        }
+
+    def test_expression_names_are_registered(self, merged_duplicate_identifier):
+        """Expression-derived names are stored and searchable."""
+        gazetteer, _ = merged_duplicate_identifier
+
+        [feature] = gazetteer.search("North Summit", method="exact")
+
+        assert feature.data["name"] == "North Summit (North Ridge)"
+        assert "North Summit" in feature.names
 
     @pytest.mark.parametrize(
-        ("field", "expected"), [("name", "North Summit"), ("height", 800)]
+        ("field", "expected"),
+        [("name", "North Summit (North Ridge)"), ("height", 800)],
     )
     def test_duplicate_identifiers_keep_first_row_data(
         self, merged_duplicate_identifier, field, expected

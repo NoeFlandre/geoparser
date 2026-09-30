@@ -150,19 +150,24 @@ def test_collect_scores_functions_across_every_source_tree(
             return None
 
         def analysis2(self, filename: str):
-            missing = [2] if "/tests/" in filename else []
+            missing = [2] if "tests" in Path(filename).parts else []
             return filename, [2], [], missing, ""
 
     monkeypatch.setattr(crap, "Coverage", CoverageData)
 
     scores = collect(root, tmp_path / ".coverage")
 
-    assert [score.path for score in scores] == [
-        "tests/example.py",
+    scores_by_path = {score.path: score for score in scores}
+    assert set(scores_by_path) == {
         "geoparser/example.py",
         "scripts/example.py",
-    ]
-    assert [score.coverage for score in scores] == [0.0, 1.0, 1.0]
+        "tests/example.py",
+    }
+    assert {path: score.coverage for path, score in scores_by_path.items()} == {
+        "geoparser/example.py": 1.0,
+        "scripts/example.py": 1.0,
+        "tests/example.py": 0.0,
+    }
 
 
 def test_collect_fails_when_a_crap_source_tree_is_missing(
