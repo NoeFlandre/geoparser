@@ -29,6 +29,25 @@ def test_wikiann_manifest_records_full_test_row_count():
     assert data.split_manifest()["total_test_examples"] == 423_100
 
 
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("dataset_id", "another-dataset", "different dataset"),
+        ("dataset_revision", "another-revision", "different revision"),
+        ("split", "train", "pinned test split"),
+    ],
+)
+def test_split_manifest_rejects_a_different_dataset_snapshot(
+    monkeypatch, field, value, message
+):
+    manifest = data.read_json(data.TEST_SPLITS_PATH)
+    manifest[field] = value
+    monkeypatch.setattr(data, "read_json", lambda _path: manifest)
+
+    with pytest.raises(ValueError, match=message):
+        data.split_manifest()
+
+
 def test_location_bio_tags_align_to_joined_unicode_text():
     example = data.example_from_row(
         "pt",
