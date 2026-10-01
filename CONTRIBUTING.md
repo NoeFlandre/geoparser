@@ -256,3 +256,16 @@ A final release can also be published from the GitHub web UI when the notes are 
 ## Licensing
 
 This project is MIT-licensed; see [LICENSE](./LICENSE). Dependencies are declared rather than bundled, so each is distributed under its own license by its own maintainers.
+
+## Pull-request validation lifecycle
+
+Code pushes, opened or reopened pull requests, and promotion from draft run the
+full required checks. Title and description edits do not start validation or
+replace successful results with skipped check suites. Required job names remain
+stable; no branch-protection requirement is removed or relaxed.
+
+After changing a pull request's base branch, reopen it or push a new commit to
+validate the new comparison before merging. Do not treat results from the
+previous base as fresh validation. Workflows also retain manual dispatch for
+explicit diagnostics. Avoid retargeting a validated candidate solely for
+bookkeeping; use one main-targeted integration PR.

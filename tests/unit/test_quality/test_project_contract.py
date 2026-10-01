@@ -310,10 +310,13 @@ def test_docs_workflow_builds_strictly_and_deploys_pages() -> None:
     assert any("deploy-pages" in step.get("uses", "") for step in deploy_steps)
 
 
-def test_pull_request_base_edits_trigger_guarded_ci() -> None:
-    """Changing a PR base starts CI, while title and description edits do not."""
+def test_pull_request_validation_excludes_metadata_events() -> None:
+    """Description edits must not replace real checks with skipped suites."""
     for workflow in _pull_request_workflows():
-        _assert_base_edit_policy(workflow)
+        events = set(workflow["on"]["pull_request"]["types"])
+        assert {"opened", "synchronize", "reopened", "ready_for_review"} <= events
+        assert "edited" not in events
+        assert "workflow_dispatch" in workflow["on"]
 
 
 def _pull_request_workflows() -> list[dict[str, Any]]:
@@ -321,91 +324,49 @@ def _pull_request_workflows() -> list[dict[str, Any]]:
     workflows_dir = PROJECT_ROOT / ".github/workflows"
     found = []
     for path in sorted(workflows_dir.glob("*.yml")):
-        workflow = yaml.load(
-            path.read_text(encoding="utf-8"),
-            Loader=yaml.BaseLoader,
-        )
+        workflow = yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
         if "pull_request" in workflow.get("on", {}):
             found.append(workflow)
     return found
 
 
-def _assert_base_edit_policy(workflow: dict[str, Any]) -> None:
-    """Check that edits to a PR base trigger guarded workflow jobs."""
-    pull_request = workflow["on"]["pull_request"]
-    assert {"opened", "synchronize", "reopened", "edited"} <= set(pull_request["types"])
-    jobs = workflow["jobs"].values()
-    assert _has_base_edit_guard(jobs)
-    _assert_metadata_edit_jobs(jobs)
-    _assert_metadata_cancellation_policies(_cancellation_policies(workflow))
-
-
-def _has_base_edit_guard(jobs: Any) -> bool:
-    """Whether a workflow job checks the changed PR base on edit events."""
-    return any(
-        "github.event.changes.base" in str(job.get("if", ""))
-        and "edited" in str(job.get("if", ""))
-        for job in jobs
-    )
-
-
-def _assert_metadata_edit_jobs(jobs: Any) -> None:
-    """Require base-edit jobs to remain visible as metadata-only checks."""
-    for job in jobs:
-        if "github.event.changes.base" in str(job.get("if", "")):
-            assert "metadata-edit-ignored" in str(job.get("name", ""))
-
-
-def _cancellation_policies(workflow: dict[str, Any]) -> list[dict[str, Any]]:
-    """Collect cancellation guards that special-case pull-request edits."""
-    jobs = workflow["jobs"].values()
-    policies = []
-    if "cancel-in-progress" in workflow.get("concurrency", {}):
-        policies.append(workflow["concurrency"])
-    policies.extend(_job_cancellation_policy(job) for job in jobs)
-    return [policy for policy in policies if policy is not None]
-
-
-def _job_cancellation_policy(job: dict[str, Any]) -> dict[str, Any] | None:
-    """Return a job policy only when it guards cancellation on base edits."""
-    concurrency = job.get("concurrency", {})
-    if "cancel-in-progress" not in concurrency:
-        return None
-    if "github.event.changes.base" not in str(job.get("if", "")):
-        return None
-    return concurrency
-
-
-def _assert_metadata_cancellation_policies(
-    policies: list[dict[str, Any]],
+@pytest.mark.parametrize(
+    ("filename", "job", "expected"),
+    [
+        ("test.yml", "tests-passed", "tests-passed"),
+        ("lint.yml", "ruff", "ruff"),
+        ("docs.yml", "build", "build"),
+        ("quality.yml", "quality", "quality-gate"),
+    ],
+)
+def test_required_check_names_are_stable(
+    filename: str, job: str, expected: str
 ) -> None:
-    """Ensure metadata edits cannot cancel runs or join ordinary groups."""
-    for policy in policies:
-        _assert_metadata_cancellation_policy(policy)
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows" / filename).read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    assert workflow["jobs"][job]["name"] == expected
 
 
-def _assert_metadata_cancellation_policy(policy: dict[str, Any]) -> None:
-    """Check one cancellation guard's event filter and concurrency group."""
-    cancel_condition = str(policy["cancel-in-progress"])
-    group = str(policy["group"])
-    assert "github.event.action != 'edited'" in cancel_condition
-    assert "github.event.changes.base != null" in cancel_condition
-    assert "metadata-" in group
-    assert "github.run_id" in group
-
-
-def test_metadata_edits_do_not_cancel_or_satisfy_the_test_gate() -> None:
+def test_test_gate_rejects_unsuccessful_dependencies() -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
     )
-    cancel_condition = str(workflow["concurrency"]["cancel-in-progress"])
-    test_gate = workflow["jobs"]["tests-passed"]
+    gate = workflow["jobs"]["tests-passed"]
+    assert gate["if"] == "always()"
+    assert set(gate["needs"]) == {"pytest", "coverage"}
+    failure_step = gate["steps"][0]
+    assert failure_step["run"] == "exit 1"
+    for result in ("failure", "cancelled", "skipped"):
+        assert f"contains(needs.*.result, '{result}')" in failure_step["if"]
 
-    assert "github.event.action != 'edited'" in cancel_condition
-    assert "github.event.changes.base != null" in cancel_condition
-    assert "metadata-edit-ignored" in test_gate["name"]
-    assert "tests-passed" in test_gate["name"]
+
+def test_retargeting_requires_fresh_validation_is_documented() -> None:
+    guide = (PROJECT_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    assert "After changing a pull request's base branch" in guide
+    assert "reopen it or push a new commit" in guide
 
 
 def test_github_workflows_have_no_duplicate_yaml_keys() -> None:

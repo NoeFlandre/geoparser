@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - main
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
       - main
@@ -14,13 +14,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-{0}', github.run_id) || 'validation' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null) }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   docker-smoke:
-    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
-    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (docker-smoke)' || 'docker-smoke' }}
+    name: docker-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:

@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - main
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened, ready_for_review]
   # The trunk itself is also tested. This is what keeps the README badges alive,
   # seeds the default-branch Actions cache that every pull request restores from
   # (caches written by a pull request are scoped to that pull request alone), and
@@ -18,10 +18,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-{0}', github.run_id) || 'validation' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   # Superseding a pull request commit is free; superseding a trunk commit would
   # leave a commit on main permanently untested.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   HYPOTHESIS_PROFILE: ci
@@ -37,8 +37,7 @@ env:
 
 jobs:
   pytest:
-    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
-    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-edit-ignored (pytest {0}, {1})', matrix.os, matrix.python-version) || format('pytest ({0}, {1})', matrix.os, matrix.python-version) }}
+    name: ${{ format('pytest ({0}, {1})', matrix.os, matrix.python-version) }}
     strategy:
       fail-fast: false
       matrix:
@@ -134,8 +133,7 @@ jobs:
           include-hidden-files: true
 
   coverage:
-    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
-    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (coverage)' || 'coverage' }}
+    name: coverage
     needs: [pytest]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -206,8 +204,8 @@ jobs:
   # matrix values, so requiring those directly deadlocks the ruleset as soon as
   # the matrix changes; this name never does.
   tests-passed:
-    if: always() && (github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null)
-    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (tests-passed)' || 'tests-passed' }}
+    if: always()
+    name: tests-passed
     needs: [pytest, coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 5
