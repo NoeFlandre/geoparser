@@ -364,6 +364,7 @@ def test_package_coverage_failure_stops_before_later_gates(
     fail_package_report = Mock(
         side_effect=[
             type("Completed", (), {"returncode": 0})(),
+            type("Completed", (), {"returncode": 0})(),
             type("Completed", (), {"returncode": 23})(),
         ]
     )
