@@ -18,6 +18,30 @@ Inspect one function's survivors with `uv run mutmut results` and
 Pragmas only take effect when the mutant tree is regenerated, so delete
 `mutants/` before a run that is meant to pick them up.
 
+## CI evidence and timeout follow-up
+
+The pull-request mutation job uploads an artifact named
+`mutation-evidence-<run-id>-<commit>`, even when the mutation gate fails. It
+contains the run, stats-export, and gate logs; raw `mutmut results --all true`
+output; the exported stats when available; and `report.json`. The report records
+the tested commit and run metadata, changed-module patterns, every parsed
+mutant ID and outcome, a one-mutant replay command, and `mutmut show` output for
+each unresolved result. Mutants left unchecked after a baseline failure are
+identified without pretending that they were killed; their count is also
+compared with the exported total.
+
+To replay an individual result, copy its command from `report.json`, for
+example:
+
+```bash
+uv run --no-sync mutmut run --max-children 1 geoparser.services.recognition.fit__mutmut_3
+```
+
+The `81fabc7` and `7cdd960` campaigns retained only aggregate logs. Their
+timeouts remain inconclusive; the identities of the 36 and 32 timeouts in
+those runs are unavailable. The later run below retained a per-mutant report
+and supplies the exact allowlist for bounded replays.
+
 ## Recorded run history
 
 The counts below are historical snapshots recorded in the named documentation
@@ -30,13 +54,87 @@ campaigns and are not contradictory.
 | `2d993fd` (2026-09-11) | Clean sweep after context extraction | 2028 | 1816 | **0** | 212 | 0 | 0 | — |
 | `8d07b9b` (2026-09-12) | Clean sweep after model pass | 1999 | 1786 | **0** | 212 | 1 | 0 | 31.2/s |
 | `f92c594` (2026-09-28) | Fit coverage, before latest assertions | 3568 | 3424 | **62** | 69 | 13 | 0 | — |
+| `81fabc7` (2026-10-01) | Full sweep after quality refactor | 3736 | 3696 | **4** | 0 | 36 | 0 | 99.9% of decided outcomes |
+| `7cdd960` (2026-10-01) | Full sweep after fit assertions and PAN-X span scoring | 3736 | 3704 | **0** | 0 | 32 | 0 | 100% of decided outcomes |
+| PR head `fb896a2`; run `36818760703` | Full sweep with per-mutant artifact | 3736 | 3705 | **0** | 0 | 31 | 0 | 100% of decided outcomes |
+| PR head `6fc75e4`; run `36832597467` | Full sweep after fit assertions | 3736 | 3709 | **0** | 0 | 27 | 0 | 100% of decided outcomes |
 
-The latest recorded campaign sums to 3,568 outcomes: 3,424 killed, 62
-survived, 69 had no covering unit test, and 13 timed out. It did **not** pass
-the zero-survivor gate. The quality gauntlet and CI still enforce
+The historical `f92c594` campaign sums to 3,568 outcomes: 3,424 killed,
+62 survived, 69 had no covering unit test, and 13 timed out. It did **not**
+pass the zero-survivor gate. The quality gauntlet and CI still enforce
 `--max-survivors 0 --max-no-tests 69`; neither limit has been raised. `69` is
-the last measured no-tests count and the unchanged ceiling, not a claim that a
-new run on the current tree has passed.
+the historical no-tests ceiling, not a claim that the latest run had that many
+no-test mutants.
+
+The latest full mutation run was [quality workflow run 36832597467](https://github.com/NoeFlandre/geoparser/actions/runs/36832597467), for PR #111 head `6fc75e48f28443a4f1c64b7a38ba6d3b85de9d88` (merge checkout `558e82dab3ed30a90d50a3d603fc665b7e4379c3`). Its artifact is [mutation-evidence-36832597467](https://github.com/NoeFlandre/geoparser/actions/runs/36832597467/artifacts/11149861021), SHA-256 `0d94d001eef400c15e578cca07191b4b1601d2696a29867568aeb1e6cb6aa581`.
+
+It recorded 3,709 killed, zero survived, zero with no covering tests, and 27 timeouts (3,736 total). The 100% rate is only across 3,709 decided outcomes; timeouts remain inconclusive and are not counted as kills. The four earlier `RecognitionService.fit` survivors (`mutmut_3`, `mutmut_6`, `mutmut_7`, `mutmut_8`) were killed.
+
+The latest 27 timeouts are all in resolver similarity/training code:
+
+| Function | Timeouts |
+| --- | ---: |
+| `SimilarityMixin._calculate_similarity_batches` | 2 |
+| `SimilarityMixin._non_empty` | 3 |
+| `SimilarityMixin._flat_similarities` | 4 |
+| `SentenceTransformerResolver._search_tier` | 1 |
+| `SentenceTransformerResolver._evaluate_candidates` | 3 |
+| `SentenceTransformerResolver._pending_pairs` | 7 |
+| `SentenceTransformerResolver._document_similarities` | 3 |
+| `SentenceTransformerResolver._evaluate_document` | 4 |
+
+The exact-mutant-replay job was skipped for the pull-request event, so these 27
+outcomes remain unresolved. The existing manual replay workflow accepts at most
+eight allowlisted IDs per dispatch and checks the expected full commit SHA.
+The replay must report a terminal killed outcome before any timeout can be
+counted as killed.
+
+
+The completed sweep on `81fabc76532002dede430534b60a7110c12db279` generated
+3,736 mutants: 3,696 were killed, four survived, 36 timed out, and none were
+left without tests. The resolved-outcome kill rate was 99.9% (3,696 of 3,700
+decided outcomes); the 36 timeouts are inconclusive and are **not** counted as
+killed. The gate failed on four `RecognitionService.fit` survivors whose
+mutations changed the recognizer-kind label passed to `require_fit`. A focused
+test now checks the missing-fit error names a recognizer and its name. The
+later exact-head run below confirms those four mutants no longer survive. All
+36 timeouts were in
+`SimilarityMixin._calculate_similarity_batches`, `_non_empty`,
+`_flat_similarities`, or `SentenceTransformerResolver._search_tier`,
+`_gather_candidates`, `_embed_candidates`, `_evaluate_candidates`,
+`_pending_pairs`, `_document_similarities`, and `_evaluate_document`. They need
+their own runtime/evidence triage; the resolved-outcome percentage does not
+settle them.
+
+The full sweep on exact head
+`7cdd960dc559089aacb1614019a0f6dc0c3a409e` generated 3,736 mutants: 3,704
+killed, zero survived, zero had no covering tests, and 32 timed out. The 32
+timeouts remain inconclusive and are **not** counted as killed. This confirms
+the four earlier `RecognitionService.fit` label mutants no longer survive.
+That run retained aggregate logs only, so its timeout identities are not
+established. Its zero-no-tests count did not change the established
+`--max-no-tests 69` allowance.
+
+The newer full sweep in workflow run `36818760703` used PR head
+`fb896a2b181fd03416653610b2f54f63c3e759e3` (the Actions merge checkout was
+`2ce099a0bc175e3727fdd990089523574461aca6`). It generated 3,736 mutants:
+3,705 killed, zero survived, zero with no tests, and 31 timed out. The resolved
+kill rate was 100% of the 3,705 decided outcomes; all 31 timeouts are still
+inconclusive, not kills. The artifact report SHA-256 is
+`9f163a8ce146003e9094323e2d9a2eb77e25b21c3c63b56560e7e86f0ecb2c1e`.
+Comparison with the preceding `c820ade` inventory identified four additional
+timeouts: three `_embed_candidates` role-value mutations and one
+`_extract_context` end-boundary mutation. All 17 `RecognitionService.fit`
+mutants, including the four former survivors, were killed in this sweep.
+
+`scripts/mutation_replay_allowlist.json` records the 31 exact timeout IDs from
+that artifact. The Quality workflow's manual `targeted-mutant-replay` mode
+accepts only those literal IDs, checks the selected ref against a full commit
+SHA, and runs at most eight IDs serially per dispatch. It uses mutmut's
+configured timeout policy without a timeout-factor override and uploads the
+per-mutant logs and report. This is a diagnostic workflow, separate from the
+normal PR gates; a timeout in a replay remains inconclusive and is never
+counted as killed.
 
 ## Scope, and why
 
@@ -121,12 +219,11 @@ that is historical evidence, not a claim about the current campaign.
 ## Last recorded no-tests inventory
 
 The 69 no-test mutants in the `f92c594` snapshot were grouped under six
-functions. The counts below sum to 69. Since that run, focused unit tests have
-been added or confirmed for each function. That improves the test evidence but
-does not establish how many mutants the current tree kills: a fresh mutmut run
-is required to refresh the inventory and survivor count. The tested source
-revision for the historical campaign was not recorded, so these values must
-not be presented as current-tree results.
+functions. The counts below sum to 69 and remain a historical inventory. The
+latest full CI run classified zero mutants as having no covering tests, but it
+does not provide a current per-function allocation for this old inventory. The
+tested source revision for the historical campaign was not recorded, so these
+values must not be presented as current-tree results.
 
 | Function in the historical inventory | No-test mutants | Focused unit-test evidence now in the tree |
 | --- | ---: | --- |
@@ -167,6 +264,8 @@ Two practical consequences:
 - A filtered run (`mutmut run <pattern>`) needs the mapping a full run builds.
   Do not delete `mutants/` before one.
 
-The last recorded fit-coverage campaign killed 3,424 mutants, left 62
-survivors, and recorded 13 timeouts. The zero-survivor gate remains required.
-Rerun mutation testing before treating any of those counts as current.
+The `fb896a2` sweep recorded 31 unresolved timeouts. Run `36832597467`
+is the newest completed full mutation evidence; it has 27 timeouts pending
+replay. Neither run counts a timeout as killed. The historical
+`69` no-tests allowance remains unchanged even though the latest run reported
+zero no-test mutants.
