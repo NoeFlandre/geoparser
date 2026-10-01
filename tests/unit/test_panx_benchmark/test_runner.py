@@ -115,21 +115,19 @@ def test_spacy_is_reported_only_for_english():
     assert result["macro"]["f1"] == 1.0
 
 
-def test_evaluator_rejects_spans_outside_the_source_text():
+def test_evaluator_counts_spans_outside_the_source_as_false_positives():
     class InvalidPredictor:
         def predict_batch(self, texts):
             return [{(0, len(text) + 1)} for text in texts]
 
-    try:
-        evaluate_model(
-            MODELS[1],
-            _loaded(InvalidPredictor()),
-            _dataset(),
-        )
-    except ValueError as error:
-        assert "invalid span" in str(error)
-    else:
-        raise AssertionError("An out-of-text model span must fail evaluation")
+    result = evaluate_model(MODELS[1], _loaded(InvalidPredictor()), _dataset())
+    metrics = result["per_language"]["en"]["metrics"]
+
+    assert (
+        metrics["false_positive"],
+        metrics["false_negative"],
+        metrics["invalid_prediction_spans"],
+    ) == (1, 1, 1)
 
 
 def test_support_status_separates_documented_support_from_transfer():

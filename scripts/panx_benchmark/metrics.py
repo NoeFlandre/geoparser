@@ -18,14 +18,26 @@ class Counts:
     false_negative: int = 0
     sentences: int = 0
     malformed_gold_tags: int = 0
+    invalid_prediction_spans: int = 0
     elapsed_seconds: float = 0.0
 
-    def add(self, gold: Iterable[Span], predicted: Iterable[Span]) -> None:
+    def add(
+        self,
+        gold: Iterable[Span],
+        predicted: Iterable[Span],
+        *,
+        text_length: int | None = None,
+    ) -> None:
         """Accumulate one sentence using exact, half-open character spans."""
         gold_spans, predicted_spans = set(gold), set(predicted)
         self.true_positive += len(gold_spans & predicted_spans)
         self.false_positive += len(predicted_spans - gold_spans)
         self.false_negative += len(gold_spans - predicted_spans)
+        if text_length is not None:
+            self.invalid_prediction_spans += sum(
+                start < 0 or end <= start or end > text_length
+                for start, end in predicted_spans
+            )
         self.sentences += 1
 
     def scores(self) -> dict[str, float | int]:
@@ -41,6 +53,7 @@ class Counts:
             "false_positive": self.false_positive,
             "false_negative": self.false_negative,
             "malformed_gold_tags": self.malformed_gold_tags,
+            "invalid_prediction_spans": self.invalid_prediction_spans,
             "precision": precision,
             "recall": recall,
             "f1": f1,

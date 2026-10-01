@@ -80,6 +80,7 @@ def test_language_rows_distinguish_untested_and_measured_languages():
                     "evaluated_examples": 1,
                     "metrics": {
                         "gold_spans": 1,
+                        "invalid_prediction_spans": 1,
                         "precision": 1.0,
                         "recall": 1.0,
                         "f1": 1.0,
@@ -91,11 +92,12 @@ def test_language_rows_distinguish_untested_and_measured_languages():
 
     assert len(rows) == 2
     assert (
-        "| `en` | not_evaluated_english_only | False | — | — | — | — | — |" in rows[0]
+        "| `en` | not_evaluated_english_only | False | — | — | — | — | — | — |"
+        in rows[0]
     )
     assert (
-        "| `fr` | evaluated | evaluated_multilingual_claim | 1 | 1 | 1.0000 |"
-        in rows[1]
+        "| `fr` | evaluated | evaluated_multilingual_claim | 1 | 1 | 1 | "
+        "1.0000 | 1.0000 | 1.0000 |" in rows[1]
     )
 
 

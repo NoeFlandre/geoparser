@@ -33,18 +33,20 @@ def _language_rows(model: dict[str, Any]) -> list[str]:
     for language, result in model["per_language"].items():
         metrics = result["metrics"]
         if metrics is None:
-            values = ("—", "—", "—", "—", "—")
+            values = ("—", "—", "—", "—", "—", "—")
         else:
             values = (
                 str(result["evaluated_examples"]),
                 str(metrics["gold_spans"]),
+                str(metrics["invalid_prediction_spans"]),
                 _number(metrics["precision"]),
                 _number(metrics["recall"]),
                 _number(metrics["f1"]),
             )
         rows.append(
             f"| `{language}` | {result['status']} | {result['documented_support']} | "
-            f"{values[0]} | {values[1]} | {values[2]} | {values[3]} | {values[4]} |"
+            + " | ".join(values)
+            + " |"
         )
     return rows
 
@@ -118,8 +120,8 @@ def _model_coverage_lines(model: dict[str, Any]) -> list[str]:
         f"- Linear full-matrix inference estimate from this run: "
         f"{_number(model['full_matrix_estimated_inference_seconds'])}s",
         "",
-        "| Language | Evaluation status | Coverage status | Sentences | Gold LOC | P | R | F1 |",
-        "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
+        "| Language | Evaluation status | Coverage status | Sentences | Gold LOC | Invalid predicted spans | P | R | F1 |",
+        "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
         *_language_rows(model),
         "",
     ]
@@ -132,6 +134,9 @@ def _aggregate_lines(result: dict[str, Any]) -> list[str]:
         "",
         "Macro scores are unweighted means over evaluated languages; micro scores "
         "aggregate exact-span counts. Undefined precision/recall/F1 values use zero.",
+        "",
+        "Predictions outside the source sentence are retained as false positives "
+        "and counted in the invalid-prediction column; no offsets are clipped.",
         "",
         "| Recognizer | Macro P | Macro R | Macro F1 | Micro P | Micro R | Micro F1 |",
         "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",

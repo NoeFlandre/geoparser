@@ -109,11 +109,9 @@ def _valid_predictions(
     predictor: BatchPredictor,
     batch: Sequence[Example],
 ) -> list[set[tuple[int, int]]]:
-    """Run one inference batch and reject missing or invalid character spans."""
+    """Run one inference batch and reject missing sentence predictions."""
     predictions = predictor.predict_batch([example.text for example in batch])
     _validate_prediction_count(predictions, len(batch))
-    for example, spans in zip(batch, predictions, strict=True):
-        _validate_example_spans(example, spans)
     return predictions
 
 
@@ -123,16 +121,6 @@ def _validate_prediction_count(
     """Require one prediction collection for each submitted sentence."""
     if len(predictions) != batch_size:
         message = "Recognizer returned a different number of predictions"
-        raise ValueError(message)
-
-
-def _validate_example_spans(example: Example, spans: set[tuple[int, int]]) -> None:
-    """Reject offsets that do not select a nonempty range in the sentence."""
-    invalid = any(
-        start < 0 or end <= start or end > len(example.text) for start, end in spans
-    )
-    if invalid:
-        message = f"Recognizer returned an invalid span for {example.language}"
         raise ValueError(message)
 
 
@@ -185,7 +173,7 @@ def _score_language(
     for batch in _batches(examples):
         predictions = _valid_predictions(predictor, batch)
         for example, spans in zip(batch, predictions, strict=True):
-            counts.add(example.gold_spans, spans)
+            counts.add(example.gold_spans, spans, text_length=len(example.text))
             counts.malformed_gold_tags += example.malformed_location_tags
     counts.elapsed_seconds = time.perf_counter() - started
     return counts
@@ -201,6 +189,7 @@ def _micro_scores(
         total.false_positive += int(row["false_positive"])
         total.false_negative += int(row["false_negative"])
         total.sentences += int(row["sentences"])
+        total.invalid_prediction_spans += int(row.get("invalid_prediction_spans", 0))
         total.elapsed_seconds += float(row["elapsed_seconds"])
     return total.scores()
 
