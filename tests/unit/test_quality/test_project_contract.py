@@ -1,4 +1,3 @@
-import re
 import shutil
 import subprocess
 import sys
@@ -745,9 +744,11 @@ def test_deptry_ignores_only_documented_runtime_and_tool_dependencies() -> None:
 
     assert set(ignored["DEP002"]) == {
         "accelerate",
+        "numpy",
         "peft",
         "protobuf",
         "python-multipart",
+        "safetensors",
         "sentencepiece",
         "spacy-curated-transformers",
     }
