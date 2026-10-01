@@ -102,6 +102,12 @@ def test_importing_geoparser_does_not_load_model_frameworks():
     )
 
 
+def test_benchmark_sessions_use_the_isolated_database(benchmark_database):
+    from geoparser.db.db import get_engine
+
+    assert get_engine() is benchmark_database
+
+
 @pytest.mark.parametrize(
     ("table", "column"),
     [

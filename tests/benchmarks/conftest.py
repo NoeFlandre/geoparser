@@ -77,9 +77,11 @@ def synthetic_gazetteer(
     return Gazetteer("benchmark")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def benchmark_database(request: pytest.FixtureRequest):
-    """Patch the application session factory to a fresh in-memory SQLite DB."""
+    """Route every application session through one isolated SQLite database."""
+    from unittest.mock import patch
+
     from sqlalchemy.pool import StaticPool
     from sqlmodel import SQLModel, create_engine
 
@@ -92,14 +94,10 @@ def benchmark_database(request: pytest.FixtureRequest):
         connect_args={"check_same_thread": False},
     )
     SQLModel.metadata.create_all(engine)
-    original_engine = db.engine
-    db.engine = engine
-
-    def restore_engine():
-        engine.dispose()
-        db.engine = original_engine
-
-    request.addfinalizer(restore_engine)
+    engine_patch = patch.object(db, "get_engine", return_value=engine)
+    engine_patch.start()
+    request.addfinalizer(engine.dispose)
+    request.addfinalizer(engine_patch.stop)
     return engine
 
 
