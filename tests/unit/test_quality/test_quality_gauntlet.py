@@ -11,7 +11,6 @@ from scripts.quality_gauntlet import (
 def test_quality_stages_have_the_required_order(tmp_path: Path) -> None:
     stages = build_stages(Path("/repo"), tmp_path)
     assert [stage.name for stage in stages] == [
-        "baseline",
         "ruff",
         "ty",
         "dependencies",
@@ -43,16 +42,24 @@ def test_crap_stage_uses_the_strict_six_ceiling(tmp_path: Path) -> None:
     assert command[command.index("--max-crap") + 1] == "6"
 
 
-def test_quality_stages_can_skip_the_redundant_baseline(tmp_path: Path) -> None:
-    """CI can keep the coverage test stage without repeating its baseline."""
-    stages = build_stages(Path("/repo"), tmp_path, skip_baseline=True)
+def test_default_quality_stages_run_the_coverage_suite_once(tmp_path: Path) -> None:
+    """The default gauntlet retains one full coverage test stage."""
+    stages = build_stages(Path("/repo"), tmp_path)
 
     assert "baseline" not in {stage.name for stage in stages}
     assert "tests" in {stage.name for stage in stages}
+    coverage_runs = [
+        command
+        for stage in stages
+        for command in stage.commands
+        if command[:5] == ("uv", "run", "--no-sync", "--offline", "pytest")
+        and "--cov-fail-under=100" in command
+    ]
+    assert len(coverage_runs) == 1
 
 
-def test_quality_cli_accepts_skip_baseline(monkeypatch) -> None:
-    """The workflow can request the lean CI stage list explicitly."""
+def test_quality_cli_can_include_an_extra_diagnostic_baseline(monkeypatch) -> None:
+    """The redundant coverage pass is available only by explicit request."""
     names = []
 
     def fake_run_stages(stages, environment):
@@ -61,8 +68,8 @@ def test_quality_cli_accepts_skip_baseline(monkeypatch) -> None:
 
     monkeypatch.setattr("scripts.quality_gauntlet.run_stages", fake_run_stages)
 
-    assert main(["--skip-baseline", "--skip-mutation", "--skip-docker"]) == 0
-    assert "baseline" not in names
+    assert main(["--include-baseline", "--skip-mutation", "--skip-docker"]) == 0
+    assert names[0] == "baseline"
     assert "tests" in names
 
 
@@ -252,6 +259,26 @@ def test_quality_runner_stops_on_first_failed_command(
             )
         ],
     )
+
+
+def test_coverage_failure_is_returned_without_running_later_gates(
+    monkeypatch, tmp_path: Path
+) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+    tests = next(stage for stage in stages if stage.name == "tests")
+    property_stage = next(stage for stage in stages if stage.name == "property")
+    calls: list[tuple[str, ...]] = []
+
+    def fail_coverage(command, *, cwd, env, check):
+        calls.append(tuple(command))
+        return type("Completed", (), {"returncode": 23})()
+
+    monkeypatch.setattr("scripts.quality_gauntlet.subprocess.run", fail_coverage)
+
+    result = run_stages([tests, property_stage], {})
+
+    assert result == 23
+    assert calls == [tests.commands[0]]
 
 
 def test_quality_runner_preserves_stage_order_and_artifact_environment(

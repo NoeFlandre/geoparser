@@ -28,7 +28,7 @@ class _TrailingStageOptions:
     """Settings shared by optional and final quality stages."""
 
     artifact_dir: Path
-    skip_baseline: bool
+    include_baseline: bool
     skip_mutation: bool
     skip_docker: bool
     offline: bool
@@ -44,7 +44,7 @@ def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI fla
     root: Path,
     artifact_dir: Path,
     *,
-    skip_baseline: bool = False,
+    include_baseline: bool = False,
     skip_mutation: bool = False,
     skip_docker: bool = False,
     offline: bool = False,
@@ -143,7 +143,7 @@ def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI fla
         root,
         _TrailingStageOptions(
             artifact_dir=artifact_dir,
-            skip_baseline=skip_baseline,
+            include_baseline=include_baseline,
             skip_mutation=skip_mutation,
             skip_docker=skip_docker,
             offline=offline,
@@ -159,8 +159,8 @@ def _append_trailing_stages(
     root: Path,
     options: _TrailingStageOptions,
 ) -> None:
-    """Add optional baselines and the build/documentation smoke stage."""
-    if not options.skip_baseline:
+    """Add optional diagnostics and the build/documentation smoke stage."""
+    if options.include_baseline:
         stages.insert(
             0, Stage("baseline", (_uv("pytest", "--cov-fail-under=100"),), root)
         )
@@ -279,9 +279,9 @@ def main(argv: list[str] | None = None) -> int:
     """Run all quality stages unless an explicitly diagnostic flag is used."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--skip-baseline",
+        "--include-baseline",
         action="store_true",
-        help="Skip the redundant first test run; the later tests stage still enforces coverage.",
+        help="Run an additional coverage test pass before the quality stages (diagnostic only).",
     )
     parser.add_argument(
         "--skip-mutation",
@@ -319,7 +319,7 @@ def main(argv: list[str] | None = None) -> int:
         stages = build_stages(
             root,
             artifact_dir,
-            skip_baseline=args.skip_baseline,
+            include_baseline=args.include_baseline,
             skip_mutation=args.skip_mutation,
             skip_docker=args.skip_docker,
             offline=args.offline,
