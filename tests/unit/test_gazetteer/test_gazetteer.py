@@ -133,10 +133,12 @@ class TestGazetteerSearch:
         assert len(results) == 1
         feature = results[0]
         assert isinstance(feature, Feature)
-        assert feature.identifier == "2"
-        assert feature.source == "city"
-        assert feature.data["population"] == 3600000
-        assert feature.gazetteer_name == "testgaz"
+        assert (
+            feature.identifier,
+            feature.source,
+            feature.data["population"],
+            feature.gazetteer_name,
+        ) == ("2", "city", 3600000, "testgaz")
 
     def test_search_returns_empty_list_when_nothing_matches(self, make_artifact):
         """A query matching nothing returns an empty list."""

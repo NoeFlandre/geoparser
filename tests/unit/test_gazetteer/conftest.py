@@ -9,6 +9,7 @@ running the build pipeline.
 import json
 import sqlite3
 import typing as t
+from collections.abc import Iterable
 from pathlib import Path
 
 import pytest
@@ -37,6 +38,51 @@ DEFAULT_FEATURES = [
 ]
 
 
+def _execute_schema(connection: sqlite3.Connection, statements: Iterable[str]) -> None:
+    """Create a schema section in the temporary artifact database."""
+    for statement in statements:
+        connection.execute(statement)
+
+
+def _insert_features(connection: sqlite3.Connection, features: list[dict]) -> None:
+    """Insert feature rows and each feature's searchable names."""
+    for index, feature in enumerate(features, start=1):
+        connection.execute(
+            "INSERT INTO feature (id, identifier, source, data, geometry) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                index,
+                feature["identifier"],
+                feature.get("source", "place"),
+                json.dumps(feature.get("data", {})),
+                feature.get("geometry"),
+            ),
+        )
+        for name_text in feature.get("names", []):
+            connection.execute(
+                "INSERT INTO name (feature_id, text) VALUES (?, ?)",
+                (index, name_text),
+            )
+
+
+def _insert_artifact_metadata(
+    connection: sqlite3.Connection,
+    name: str,
+    crs: str,
+    schema_version: str | None,
+) -> None:
+    """Write the metadata required to load the artifact at runtime."""
+    metadata = {
+        "schema_version": schema_version or artifact_module.SCHEMA_VERSION,
+        "name": name,
+        "crs": crs,
+    }
+    connection.executemany(
+        "INSERT INTO metadata (key, value) VALUES (?, ?)", list(metadata.items())
+    )
+    connection.commit()
+
+
 @pytest.fixture
 def make_artifact(tmp_path: Path, monkeypatch) -> t.Callable:
     """
@@ -59,42 +105,14 @@ def make_artifact(tmp_path: Path, monkeypatch) -> t.Callable:
         Each feature dict may define: identifier, source, data (dict),
         geometry (WKB bytes or None) and names (list of strings).
         """
-        if features is None:
-            features = DEFAULT_FEATURES
+        features = DEFAULT_FEATURES if features is None else features
         path = tmp_path / f"{name}{artifact_module.ARTIFACT_SUFFIX}"
         connection = sqlite3.connect(path)
         artifact_module.register_functions(connection)
-        for statement in artifact_module.BASE_SCHEMA:
-            connection.execute(statement)
-        for index, feature in enumerate(features, start=1):
-            connection.execute(
-                "INSERT INTO feature (id, identifier, source, data, geometry) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (
-                    index,
-                    feature["identifier"],
-                    feature.get("source", "place"),
-                    json.dumps(feature.get("data", {})),
-                    feature.get("geometry"),
-                ),
-            )
-            for name_text in feature.get("names", []):
-                connection.execute(
-                    "INSERT INTO name (feature_id, text) VALUES (?, ?)",
-                    (index, name_text),
-                )
-        for statement in artifact_module.SEARCH_SCHEMA:
-            connection.execute(statement)
-        metadata = {
-            "schema_version": schema_version or artifact_module.SCHEMA_VERSION,
-            "name": name,
-            "crs": crs,
-        }
-        connection.executemany(
-            "INSERT INTO metadata (key, value) VALUES (?, ?)",
-            list(metadata.items()),
-        )
-        connection.commit()
+        _execute_schema(connection, artifact_module.BASE_SCHEMA)
+        _insert_features(connection, features)
+        _execute_schema(connection, artifact_module.SEARCH_SCHEMA)
+        _insert_artifact_metadata(connection, name, crs, schema_version)
         connection.close()
         return path
 

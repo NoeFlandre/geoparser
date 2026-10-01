@@ -13,10 +13,17 @@ The checkpoints are large downloads, so these are opt-in: set
 """
 
 import os
+from collections.abc import Iterator
 
 import pytest
+from huggingface_hub import snapshot_download
 
 from geoparser.modules.resolvers.jina import JinaResolver
+
+EMBEDDING_MODEL_ID = "jinaai/jina-embeddings-v5-text-small"
+EMBEDDING_MODEL_REVISION = "dd76d535f5447ca3897a9c893fb1e612ead98192"
+RERANKER_MODEL_ID = "jinaai/jina-reranker-v3.5"
+RERANKER_MODEL_REVISION = "e8a93f33f0b22108f8c2364f8484ce3422552fbc"
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("GEOPARSER_TEST_REMOTE_MODELS"),
@@ -32,15 +39,39 @@ ANDORRA_ATTRIBUTE_MAP = {
 }
 
 
-@pytest.fixture
-def resolver(andorra_gazetteer) -> JinaResolver:
+@pytest.fixture(scope="module")
+def resolver(session_geoparser_data_dir) -> Iterator[JinaResolver]:
     """A real Jina resolver pointed at the Andorra test gazetteer."""
-    return JinaResolver(
-        gazetteer_name="andorranames",
-        min_similarity=0.0,
-        max_tiers=2,
-        attribute_map=ANDORRA_ATTRIBUTE_MAP,
-    )
+    old_data_dir = os.environ.get("GEOPARSER_DATA_DIR")
+    old_gazetteers_dir = os.environ.get("GEOPARSER_GAZETTEERS_DIR")
+    try:
+        os.environ["GEOPARSER_DATA_DIR"] = str(session_geoparser_data_dir)
+        os.environ.pop("GEOPARSER_GAZETTEERS_DIR", None)
+        embedding_path = snapshot_download(
+            repo_id=EMBEDDING_MODEL_ID,
+            revision=EMBEDDING_MODEL_REVISION,
+        )
+        reranker_path = snapshot_download(
+            repo_id=RERANKER_MODEL_ID,
+            revision=RERANKER_MODEL_REVISION,
+        )
+        yield JinaResolver(
+            model_name=embedding_path,
+            reranker_name=reranker_path,
+            gazetteer_name="andorranames",
+            min_similarity=0.0,
+            max_tiers=2,
+            attribute_map=ANDORRA_ATTRIBUTE_MAP,
+        )
+    finally:
+        if old_data_dir is None:
+            os.environ.pop("GEOPARSER_DATA_DIR", None)
+        else:
+            os.environ["GEOPARSER_DATA_DIR"] = old_data_dir
+        if old_gazetteers_dir is None:
+            os.environ.pop("GEOPARSER_GAZETTEERS_DIR", None)
+        else:
+            os.environ["GEOPARSER_GAZETTEERS_DIR"] = old_gazetteers_dir
 
 
 @pytest.mark.integration
@@ -74,7 +105,7 @@ class TestJinaResolverIntegration:
         assert len(results[0]) == 2
 
     def test_the_embedding_threshold_can_reject_every_candidate(
-        self, andorra_gazetteer
+        self, resolver, monkeypatch
     ):
         """
         A threshold no candidate reaches leaves the reference unresolved.
@@ -83,15 +114,10 @@ class TestJinaResolverIntegration:
         candidates the embedding stage had no confidence in at all.
         """
         # Arrange
-        strict = JinaResolver(
-            gazetteer_name="andorranames",
-            min_similarity=1.1,
-            max_tiers=1,
-            attribute_map=ANDORRA_ATTRIBUTE_MAP,
-        )
+        monkeypatch.setattr(resolver, "min_similarity", 1.1)
 
         # Act
-        ((referent,),) = strict.predict(["Encamp is a parish."], [[(0, 6)]])
+        ((referent,),) = resolver.predict(["Encamp is a parish."], [[(0, 6)]])
 
         # Assert
         assert referent is None
@@ -107,9 +133,7 @@ class TestJinaResolverIntegration:
         # Arrange
         candidates = resolver.gazetteer.search("Encamp", method="exact", limit=5)
         assert candidates, "the Andorra gazetteer should contain Encamp"
-        descriptions = [
-            resolver._generate_description(candidate) for candidate in candidates
-        ]
+        descriptions = list(map(resolver._generate_description, candidates))
 
         # Act
         ranking = resolver.reranker.rerank("Encamp, a parish", descriptions, top_n=1)

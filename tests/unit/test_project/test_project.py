@@ -460,6 +460,55 @@ class TestProjectRunResolver:
 
 
 @pytest.mark.unit
+class TestProjectTrainResolver:
+    """Test training a resolver from a selected project context."""
+
+    @patch("geoparser.project.project.ProjectRepository")
+    @patch("geoparser.project.project.ResolutionService")
+    def test_trains_resolver_with_tag_and_options(
+        self, mock_resolution_service, mock_project_repo
+    ):
+        """The selected documents and caller options reach the service."""
+        project_record = Mock(id=UUID("12345678-1234-5678-1234-567812345678"))
+        mock_project_repo.get_by_name.return_value = project_record
+        resolver = Mock()
+        documents = [Mock(), Mock()]
+        service = Mock()
+        mock_resolution_service.return_value = service
+        project = Project("TrainingProject")
+
+        with patch.object(project, "get_documents", return_value=documents) as get_docs:
+            project.train_resolver(resolver, tag="training", epochs=3)
+
+        get_docs.assert_called_once_with(tag="training")
+        mock_resolution_service.assert_called_once_with(resolver)
+        service.fit.assert_called_once_with(documents, epochs=3)
+
+
+@pytest.mark.unit
+class TestProjectTrainRecognizer:
+    """Training a recognizer from a selected project context."""
+
+    @patch("geoparser.project.project.RecognitionService")
+    def test_trains_recognizer_with_tag_and_options(self, mock_recognition_service):
+        """The selected documents and caller options reach the service."""
+        recognizer = Mock()
+        documents = [Mock(), Mock()]
+        service = Mock()
+        mock_recognition_service.return_value = service
+        project = Project.__new__(Project)
+
+        with patch.object(project, "get_documents", return_value=documents) as get_docs:
+            project.train_recognizer(
+                recognizer, tag="training", output_path="model", epochs=4
+            )
+
+        get_docs.assert_called_once_with(tag="training")
+        mock_recognition_service.assert_called_once_with(recognizer)
+        service.fit.assert_called_once_with(documents, output_path="model", epochs=4)
+
+
+@pytest.mark.unit
 class TestProjectDelete:
     """Test Project delete method."""
 

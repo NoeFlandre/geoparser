@@ -20,12 +20,25 @@ import json
 import os
 import sys
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import corpora, corpus, pipelines, provenance, report, runner
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+
+
+@dataclass(frozen=True)
+class _CorpusRun:
+    """Inputs shared while one corpus is resumed, scored, and reported."""
+
+    loaded: corpora.LoadedCorpus
+    arguments: argparse.Namespace
+    output_dir: Path
+    device: str
+    commit: str
+    facts: dict
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -114,40 +127,8 @@ def run_corpus(
         f"{loaded.name} ({loaded.language}): {len(documents)} documents, "
         f"{gold_count} gold toponyms, corpus {loaded.digest}, commit {commit}"
     )
-
-    phases = arguments.phase or [runner.RECOGNITION, runner.RESOLUTION]
-    results = []
-    for pipeline in arguments.pipeline or list(pipelines.DEFAULT_PIPELINES):
-        identity = ckpt.RunIdentity(
-            pipeline=pipeline,
-            corpus_digest=loaded.digest,
-            gazetteer=pipelines.GAZETTEER_NAME,
-            min_similarity=arguments.min_similarity,
-            limit=arguments.limit,
-            commit=commit,
-        )
-        checkpoint_path = output_dir / f"checkpoint-{pipeline}.json"
-        state, reasons = ckpt.load(checkpoint_path, identity)
-        for reason in reasons:
-            print(f"  {pipeline}: starting fresh -- {reason}")
-
-        models: dict[str, str] = {}
-        for phase in phases:
-            models.update(
-                runner.run_phase(
-                    phase,
-                    pipeline,
-                    documents,
-                    state,
-                    checkpoint_path,
-                    device=device,
-                    min_similarity=arguments.min_similarity,
-                    chunk_size=arguments.chunk_size,
-                )
-            )
-        results.append(
-            runner.score(pipeline, documents, state, models=models, device=device)
-        )
+    run = _CorpusRun(loaded, arguments, output_dir, device, commit, facts)
+    results = _score_requested_pipelines(run)
 
     text = report.render_markdown(
         results,
@@ -157,36 +138,114 @@ def run_corpus(
         gazetteer=pipelines.GAZETTEER_NAME,
         min_similarity=arguments.min_similarity,
     )
-    (output_dir / "benchmark-report.md").write_text(text, encoding="utf-8")
-    (output_dir / "benchmark-report.json").write_text(
-        json.dumps(
-            {
-                "corpus": loaded.name,
-                "language": loaded.language,
-                "corpus_digest": loaded.digest,
-                "documents": len(documents),
-                "gold_toponyms": gold_count,
-                "gazetteer": pipelines.GAZETTEER_NAME,
-                "min_similarity": arguments.min_similarity,
-                "commit": commit,
-                "environment": facts,
-                "pipelines": [
-                    {
-                        "name": result.name,
-                        "device": result.device,
-                        "models": result.models,
-                        "recognition": result.recognition,
-                        "resolution": result.resolution,
-                        "elapsed_seconds": result.elapsed_seconds,
-                    }
-                    for result in results
-                ],
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
+    _write_corpus_reports(
+        output_dir,
+        text,
+        _corpus_report_payload(run, gold_count, results),
     )
     print(text)
+    return _summary_rows(run, gold_count, results)
+
+
+def _score_requested_pipelines(
+    run: _CorpusRun,
+) -> list[report.PipelineResult]:
+    """Run each selected pipeline over the requested corpus phases."""
+    pipelines_to_run = run.arguments.pipeline or list(pipelines.DEFAULT_PIPELINES)
+    phases = run.arguments.phase or [runner.RECOGNITION, runner.RESOLUTION]
+    return [
+        _score_pipeline(run, pipeline_name, phases)
+        for pipeline_name in pipelines_to_run
+    ]
+
+
+def _score_pipeline(
+    run: _CorpusRun,
+    pipeline_name: str,
+    phases: Sequence[str],
+) -> report.PipelineResult:
+    """Resume, run, and score one pipeline for a corpus."""
+    loaded = run.loaded
+    arguments = run.arguments
+    identity = ckpt.RunIdentity(
+        pipeline=pipeline_name,
+        corpus_digest=loaded.digest,
+        gazetteer=pipelines.GAZETTEER_NAME,
+        min_similarity=arguments.min_similarity,
+        limit=arguments.limit,
+        commit=run.commit,
+    )
+    checkpoint_path = run.output_dir / f"checkpoint-{pipeline_name}.json"
+    state, reasons = ckpt.load(checkpoint_path, identity)
+    for reason in reasons:
+        print(f"  {pipeline_name}: starting fresh -- {reason}")
+
+    models: dict[str, str] = {}
+    for phase in phases:
+        models.update(
+            runner.run_phase(
+                phase,
+                pipeline_name,
+                loaded.documents,
+                state,
+                checkpoint_path,
+                device=run.device,
+                min_similarity=arguments.min_similarity,
+                chunk_size=arguments.chunk_size,
+            )
+        )
+    return runner.score(
+        pipeline_name, loaded.documents, state, models=models, device=run.device
+    )
+
+
+def _corpus_report_payload(
+    run: _CorpusRun,
+    gold_count: int,
+    results: Sequence[report.PipelineResult],
+) -> dict:
+    """Return the metadata and pipeline measurements stored as JSON."""
+    loaded = run.loaded
+    return {
+        "corpus": loaded.name,
+        "language": loaded.language,
+        "corpus_digest": loaded.digest,
+        "documents": len(loaded.documents),
+        "gold_toponyms": gold_count,
+        "gazetteer": pipelines.GAZETTEER_NAME,
+        "min_similarity": run.arguments.min_similarity,
+        "commit": run.commit,
+        "environment": run.facts,
+        "pipelines": [
+            {
+                "name": result.name,
+                "device": result.device,
+                "models": result.models,
+                "recognition": result.recognition,
+                "resolution": result.resolution,
+                "elapsed_seconds": result.elapsed_seconds,
+            }
+            for result in results
+        ],
+    }
+
+
+def _write_corpus_reports(output_dir: Path, markdown: str, payload: dict) -> None:
+    """Persist the human and machine-readable reports side by side."""
+    (output_dir / "benchmark-report.md").write_text(markdown, encoding="utf-8")
+    (output_dir / "benchmark-report.json").write_text(
+        json.dumps(payload, indent=2), encoding="utf-8"
+    )
+
+
+def _summary_rows(
+    run: _CorpusRun,
+    gold_count: int,
+    results: Sequence[report.PipelineResult],
+) -> list[dict]:
+    """Flatten corpus metadata and pipeline scores for the root summary."""
+    loaded = run.loaded
+    documents = loaded.documents
     return [
         {
             "corpus": loaded.name,

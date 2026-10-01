@@ -640,19 +640,36 @@ class TestMutationPins:
         with pytest.raises(ValueError, match="conflicting gold annotations"):
             resolution_errors_km(gold, [])
 
-    def test_default_distance_metrics_preserve_the_legacy_golden_values(self):
-        """Pin default scores while custom miss penalties gain a bounded AUC."""
-        gold = [
-            located(0, 6, *ZURICH),
-            located(7, 13, *ZURICH),
-            located(14, 20, *ZURICH),
-        ]
-        predicted = [located(0, 6, *ZURICH), located(7, 13, *GENEVA)]
+    @pytest.mark.parametrize(
+        ("metric", "expected"),
+        [
+            ("errors", pytest.approx([MAX_ERROR_KM, 224.3513426985906, 0.0])),
+            ("accuracy", pytest.approx(1 / 3)),
+            ("mean", pytest.approx(6754.450447566197)),
+            ("median", pytest.approx(224.3513426985906)),
+            ("area", 0.5156451334367401),
+        ],
+    )
+    def test_default_distance_metrics_preserve_the_legacy_golden_values(
+        self, default_distance_metric_results, metric, expected
+    ):
+        """Pin each default score while custom miss penalties gain a bounded AUC."""
+        assert default_distance_metric_results[metric] == expected
 
-        assert resolution_errors_km(gold, predicted) == pytest.approx(
-            [MAX_ERROR_KM, 224.3513426985906, 0.0]
-        )
-        assert accuracy_at_km(gold, predicted) == pytest.approx(1 / 3)
-        assert mean_error_km(gold, predicted) == pytest.approx(6754.450447566197)
-        assert median_error_km(gold, predicted) == pytest.approx(224.3513426985906)
-        assert area_under_error_curve(gold, predicted) == 0.5156451334367401
+
+@pytest.fixture
+def default_distance_metric_results():
+    """Calculate all legacy distance scores from the same annotation rows."""
+    gold = [
+        located(0, 6, *ZURICH),
+        located(7, 13, *ZURICH),
+        located(14, 20, *ZURICH),
+    ]
+    predicted = [located(0, 6, *ZURICH), located(7, 13, *GENEVA)]
+    return {
+        "errors": resolution_errors_km(gold, predicted),
+        "accuracy": accuracy_at_km(gold, predicted),
+        "mean": mean_error_km(gold, predicted),
+        "median": median_error_km(gold, predicted),
+        "area": area_under_error_curve(gold, predicted),
+    }

@@ -11,19 +11,22 @@ public build() entry point alone.
 import os
 import shutil
 import textwrap
+from contextlib import nullcontext
 from unittest.mock import MagicMock
 
 import duckdb
 import pytest
 
 from geoparser.gazetteer import artifact
+from geoparser.gazetteer.build import builder as builder_module
 from geoparser.gazetteer.build.builder import (
     GazetteerBuilder,
     _format_bytes,
     _sqlite_temp_env_names,
     _sqlite_tmpdir,
+    uninstall,
 )
-from geoparser.gazetteer.build.schema import GazetteerConfig
+from geoparser.gazetteer.build.schema import FeatureConfig, GazetteerConfig
 
 
 @pytest.mark.unit
@@ -58,12 +61,16 @@ class TestSqliteTmpdir:
         monkeypatch.delenv("SQLITE_TMPDIR", raising=False)
 
         with _sqlite_tmpdir(tmp_path):
-            assert os.environ["TMP"] == str(tmp_path)
-            assert os.environ["TEMP"] == str(tmp_path)
-            assert "SQLITE_TMPDIR" not in os.environ
+            assert (
+                os.environ.get("TMP"),
+                os.environ.get("TEMP"),
+                "SQLITE_TMPDIR" in os.environ,
+            ) == (str(tmp_path), str(tmp_path), False)
 
-        assert os.environ["TMP"] == "C:\\original\\tmp"
-        assert os.environ["TEMP"] == "C:\\original\\temp"
+        assert (os.environ.get("TMP"), os.environ.get("TEMP")) == (
+            "C:\\original\\tmp",
+            "C:\\original\\temp",
+        )
 
     def test_windows_removes_tmp_vars_when_none_were_set_before(
         self, monkeypatch, tmp_path
@@ -154,7 +161,6 @@ class TestMemoryLimit:
         # near the explicit budget rather than on DuckDB's unbounded default.
         actual_bytes = _setting_to_bytes(memory_limit)
         expected_bytes = expected_limit * 1024 * 1024
-        assert actual_bytes > 0
         assert abs(actual_bytes - expected_bytes) / expected_bytes < 0.15
         assert int(threads) == 4
 
@@ -406,6 +412,81 @@ class TestMemoryLimit:
 
 
 @pytest.mark.unit
+class TestDuplicateGeometryMerge:
+    """Bound duplicate-geometry work without loading DuckDB's spatial module."""
+
+    @pytest.mark.parametrize(
+        ("query", "duplicate_count", "updates"),
+        [
+            (None, 0, 0),
+            ("SELECT duplicate geometries", 0, 0),
+            ("SELECT duplicate geometries", 2, 1),
+        ],
+    )
+    def test_merges_only_when_the_compiler_finds_duplicate_geometries(
+        self, monkeypatch, query, duplicate_count, updates
+    ):
+        connection = MagicMock()
+        connection.execute.return_value.fetchone.return_value = (duplicate_count,)
+        compiler = MagicMock()
+        compiler.duplicate_geometry_query.return_value = query
+        feature = FeatureConfig(
+            source="places", identifier="id", names=["name"], geometry="geometry"
+        )
+        monkeypatch.setattr(
+            builder_module, "item", lambda *args, **kwargs: nullcontext(None)
+        )
+        monkeypatch.setattr(
+            builder_module, "track", lambda bar, progress, operation: operation()
+        )
+        advance = MagicMock()
+        monkeypatch.setattr(builder_module, "advance", advance)
+
+        GazetteerBuilder()._merge_duplicate_geometries(connection, compiler, feature)
+
+        statements = [call.args[0] for call in connection.execute.call_args_list]
+        assert (
+            sum(statement.startswith("UPDATE _features") for statement in statements)
+            == updates
+        )
+        assert ("DROP TABLE IF EXISTS _dup_geometry" in statements) is (
+            query is not None
+        )
+        assert advance.call_count == (2 if updates else 1 if query is not None else 0)
+
+    def test_drops_temporary_table_when_count_query_fails(self, monkeypatch):
+        connection = MagicMock()
+
+        def execute(sql):
+            if sql.startswith("SELECT count(*)"):
+                raise RuntimeError("count failed")
+            return MagicMock()
+
+        connection.execute.side_effect = execute
+        compiler = MagicMock()
+        compiler.duplicate_geometry_query.return_value = "SELECT duplicate geometries"
+        feature = FeatureConfig(
+            source="places", identifier="id", names=["name"], geometry="geometry"
+        )
+        monkeypatch.setattr(
+            builder_module, "item", lambda *args, **kwargs: nullcontext(None)
+        )
+        monkeypatch.setattr(
+            builder_module, "track", lambda bar, progress, operation: operation()
+        )
+        monkeypatch.setattr(builder_module, "advance", lambda: None)
+
+        with pytest.raises(RuntimeError, match="count failed"):
+            GazetteerBuilder()._merge_duplicate_geometries(
+                connection, compiler, feature
+            )
+
+        assert connection.execute.call_args_list[-1].args[0] == (
+            "DROP TABLE IF EXISTS _dup_geometry"
+        )
+
+
+@pytest.mark.unit
 class TestFormatBytes:
     """Test human-readable byte formatting for disk errors."""
 
@@ -534,6 +615,15 @@ class TestDiskPreflight:
 class TestLoadSpatialExtension:
     """Test GazetteerBuilder._load_spatial_extension()."""
 
+    def test_installs_then_loads_spatial(self):
+        """A successful install is followed by loading the extension."""
+        connection = MagicMock()
+
+        GazetteerBuilder()._load_spatial_extension(connection)
+
+        connection.install_extension.assert_called_once_with("spatial")
+        connection.load_extension.assert_called_once_with("spatial")
+
     def test_wraps_duckdb_errors_in_a_clear_runtime_error(self):
         """A failure to install/load the extension raises a clear RuntimeError."""
         connection = MagicMock()
@@ -547,8 +637,182 @@ class TestLoadSpatialExtension:
 
 
 @pytest.mark.unit
+class TestSpatialPreflight:
+    """Test spatial requirements and progress estimates without an extension."""
+
+    def test_needs_spatial_for_non_tabular_or_geometry_features(self):
+        """Spatial files and geometry projections require the extension."""
+        tabular_source = {
+            "name": "places",
+            "path": "places.csv",
+            "file": "places.csv",
+            "delimiter": ",",
+            "attributes": [
+                {"name": "id", "type": "integer"},
+                {"name": "name", "type": "text"},
+            ],
+        }
+        tabular_feature = {
+            "source": "places",
+            "identifier": "id",
+            "names": ["name"],
+        }
+        tabular_config = GazetteerConfig.model_validate(
+            {
+                "name": "tabular",
+                "sources": [tabular_source],
+                "features": [tabular_feature],
+            }
+        )
+        geometry_config = GazetteerConfig.model_validate(
+            {
+                "name": "geometry",
+                "sources": [tabular_source],
+                "features": [{**tabular_feature, "geometry": "ST_Point(0, 0)"}],
+            }
+        )
+        spatial_config = GazetteerConfig.model_validate(
+            {
+                "name": "spatial",
+                "sources": [
+                    {
+                        "name": "places",
+                        "path": "places.geojson",
+                        "file": "places.geojson",
+                        "attributes": [
+                            *tabular_source["attributes"],
+                            {"name": "geometry", "type": "geometry"},
+                        ],
+                    }
+                ],
+                "features": [tabular_feature],
+            }
+        )
+        builder = GazetteerBuilder()
+
+        assert builder._needs_spatial(tabular_config) is False
+        assert builder._needs_spatial(geometry_config) is True
+        assert builder._needs_spatial(spatial_config) is True
+
+    def test_compile_estimate_counts_geometry_duplicate_checks(self):
+        """The stage estimate reserves a check for each geometric feature."""
+        config = GazetteerConfig.model_validate(
+            {
+                "name": "estimate",
+                "sources": [
+                    {
+                        "name": "places",
+                        "path": "places.csv",
+                        "file": "places.csv",
+                        "delimiter": ",",
+                        "attributes": [
+                            {"name": "id", "type": "integer"},
+                            {"name": "name", "type": "text"},
+                        ],
+                    },
+                    {
+                        "name": "villages",
+                        "path": "villages.csv",
+                        "file": "villages.csv",
+                        "delimiter": ",",
+                        "attributes": [
+                            {"name": "id", "type": "integer"},
+                            {"name": "name", "type": "text"},
+                            {"name": "lon", "type": "real"},
+                            {"name": "lat", "type": "real"},
+                        ],
+                    },
+                ],
+                "features": [
+                    {"source": "places", "identifier": "id", "names": ["name"]},
+                    {
+                        "source": "villages",
+                        "identifier": "id",
+                        "names": ["name", "upper(name)"],
+                        "geometry": "ST_Point(lon, lat)",
+                    },
+                ],
+            }
+        )
+        compiler = builder_module.ProjectionCompiler(
+            config, GazetteerBuilder._source_catalog(config)
+        )
+
+        estimate = GazetteerBuilder._compile_item_estimate(config, compiler)
+
+        assert estimate == 9
+
+    def test_uninstall_reports_when_artifact_is_missing(self, monkeypatch, tmp_path):
+        """Uninstalling an absent artifact reports that nothing was removed."""
+        monkeypatch.setattr(
+            builder_module.artifact,
+            "artifact_path",
+            lambda _name: tmp_path / "absent.db",
+        )
+
+        assert uninstall("absent") is False
+
+
+@pytest.mark.unit
 class TestBuildErrorPaths:
     """Test build() error paths that are hard to reach end-to-end."""
+
+    def test_spatial_load_progress_completes(self, monkeypatch, tmp_path):
+        """A successful spatial setup completes its visible progress item."""
+        config_file = tmp_path / "places.yaml"
+        config_file.write_text(
+            textwrap.dedent(
+                """
+                name: places
+                sources:
+                  - name: places
+                    path: places.csv
+                    file: places.csv
+                    delimiter: "\\t"
+                    attributes:
+                      - name: id
+                        type: text
+                      - name: lon
+                        type: real
+                      - name: lat
+                        type: real
+                features:
+                  - source: places
+                    identifier: id
+                    names: [id]
+                    geometry: ST_Point(lon, lat)
+                """
+            )
+        )
+        gazetteers_dir = tmp_path / "gazetteers"
+        monkeypatch.setattr(
+            artifact, "artifact_path", lambda name: gazetteers_dir / f"{name}.db"
+        )
+        connection = MagicMock()
+        progress = MagicMock()
+        acquirer = MagicMock()
+        monkeypatch.setattr(builder_module.duckdb, "connect", lambda _path: connection)
+        monkeypatch.setattr(builder_module, "Acquirer", lambda _path: acquirer)
+        monkeypatch.setattr(builder_module, "build_display", nullcontext)
+        monkeypatch.setattr(
+            builder_module, "item", lambda *args, **kwargs: nullcontext(progress)
+        )
+        builder = GazetteerBuilder()
+        monkeypatch.setattr(builder, "_configure_staging", lambda *_args: None)
+        monkeypatch.setattr(builder, "_needs_spatial", lambda _config: True)
+        load_spatial = MagicMock()
+        monkeypatch.setattr(builder, "_load_spatial_extension", load_spatial)
+        monkeypatch.setattr(builder, "_prepare_sources", lambda *_args: None)
+        monkeypatch.setattr(builder, "_compile_features", lambda *_args: None)
+        monkeypatch.setattr(builder, "_build_artifact", lambda *_args: (2, 3))
+
+        result = builder.build(config_file)
+
+        assert result == gazetteers_dir / "places.db"
+        load_spatial.assert_called_once_with(connection)
+        progress.set_progress.assert_called_once_with(100)
+        connection.close.assert_called_once()
+        acquirer.cleanup.assert_called_once()
 
     def test_compile_features_raises_when_no_features_produced(self):
         """A source with zero rows produces zero features, which fails clearly.

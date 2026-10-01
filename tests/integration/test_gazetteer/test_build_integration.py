@@ -62,20 +62,6 @@ class TestAndorraBuild:
 
         assert any(feature.identifier == "3041563" for feature in results)
 
-    def test_expression_names_are_registered(self, andorra_gazetteer):
-        """Names derived via expressions (parenthesis stripping) are searchable."""
-        gazetteer = Gazetteer("andorranames")
-
-        features_with_parens = [
-            feature
-            for feature in gazetteer.search("General", method="partial", tiers=3)
-            if feature is not None and "(" in feature.data["name"]
-        ]
-
-        for feature in features_with_parens:
-            stripped = feature.data["name"].split("(")[0].strip()
-            assert stripped in feature.names
-
     def test_spatial_lookup_assigns_shape(self, andorra_gazetteer):
         """The spatial lookup tags features inside the Andorra boundary."""
         gazetteer = Gazetteer("andorranames")
@@ -107,7 +93,9 @@ class TestDuplicateIdentifierMerge:
         """A config whose source repeats identifiers across rows."""
         data_file = tmp_path / "peaks.csv"
         data_file.write_text(
-            "p1\tNorth Summit\t800\np1\tSouth Summit\t1200\np2\tLone Hill\t300\n"
+            "p1\tNorth Summit (North Ridge)\t800\n"
+            "p1\tSouth Summit (South Ridge)\t1200\n"
+            "p2\tLone Hill\t300\n"
         )
         config_file = tmp_path / "peaks.yaml"
         config_file.write_text(
@@ -132,6 +120,7 @@ class TestDuplicateIdentifierMerge:
                     identifier: "pid"
                     names:
                       - "name"
+                      - "CASE WHEN instr(name, '(') > 0 THEN trim(substr(name, 1, instr(name, '(') - 1)) ELSE name END"
                     data:
                       - "name"
                       - "height"
@@ -140,27 +129,53 @@ class TestDuplicateIdentifierMerge:
         )
         return config_file
 
-    def test_duplicate_identifiers_merge_into_one_feature(
-        self, duplicates_config, tmp_path, monkeypatch
-    ):
-        """Duplicate rows become one feature with collected names."""
+    @pytest.fixture
+    def merged_duplicate_identifier(self, duplicates_config, tmp_path, monkeypatch):
+        """Build the duplicate rows once and expose their merged feature."""
         monkeypatch.setenv("GEOPARSER_GAZETTEERS_DIR", str(tmp_path / "gazetteers"))
         GazetteerBuilder().build(duplicates_config)
-
         gazetteer = Gazetteer("peaks")
         merged = gazetteer.find("p1")
-
         assert merged is not None
-        assert set(merged.names) == {"North Summit", "South Summit"}
-        # Data values are taken from the first row of the group
-        assert merged.data["name"] == "North Summit"
-        assert merged.data["height"] == 800
+        return gazetteer, merged
 
-        # Searching either name finds the same merged feature
-        by_north = gazetteer.search("North Summit", method="exact")
-        by_south = gazetteer.search("South Summit", method="exact")
-        assert [f.identifier for f in by_north] == ["p1"]
-        assert [f.identifier for f in by_south] == ["p1"]
+    def test_duplicate_identifiers_collect_their_names(
+        self, merged_duplicate_identifier
+    ):
+        _, merged = merged_duplicate_identifier
+        assert set(merged.names) == {
+            "North Summit",
+            "North Summit (North Ridge)",
+            "South Summit",
+            "South Summit (South Ridge)",
+        }
+
+    def test_expression_names_are_registered(self, merged_duplicate_identifier):
+        """Expression-derived names are stored and searchable."""
+        gazetteer, _ = merged_duplicate_identifier
+
+        [feature] = gazetteer.search("North Summit", method="exact")
+
+        assert feature.data["name"] == "North Summit (North Ridge)"
+        assert "North Summit" in feature.names
+
+    @pytest.mark.parametrize(
+        ("field", "expected"),
+        [("name", "North Summit (North Ridge)"), ("height", 800)],
+    )
+    def test_duplicate_identifiers_keep_first_row_data(
+        self, merged_duplicate_identifier, field, expected
+    ):
+        _, merged = merged_duplicate_identifier
+        assert merged.data[field] == expected
+
+    @pytest.mark.parametrize("name", ("North Summit", "South Summit"))
+    def test_duplicate_names_both_search_the_merged_feature(
+        self, merged_duplicate_identifier, name
+    ):
+        gazetteer, _ = merged_duplicate_identifier
+        matches = gazetteer.search(name, method="exact")
+        assert [feature.identifier for feature in matches] == ["p1"]
 
     def test_artifact_has_one_row_per_identifier(
         self, duplicates_config, tmp_path, monkeypatch
@@ -218,31 +233,33 @@ class TestDuplicateGeometryMerge:
         )
         return config_file
 
-    def test_duplicate_geometries_are_unioned(
-        self, duplicate_geometry_config, tmp_path, monkeypatch
-    ):
-        """Duplicate rows' points are merged into one multi-point geometry."""
+    @pytest.fixture
+    def built_point_features(self, duplicate_geometry_config, tmp_path, monkeypatch):
+        """Build two identifiers whose geometry cardinalities differ."""
         monkeypatch.setenv("GEOPARSER_GAZETTEERS_DIR", str(tmp_path / "gazetteers"))
         GazetteerBuilder().build(duplicate_geometry_config)
-
         gazetteer = Gazetteer("points")
         merged = gazetteer.find("p1")
-
         assert merged is not None
+        single = gazetteer.find("p2")
+        assert single is not None
+        return merged, single
+
+    def test_duplicate_geometries_are_unioned(self, built_point_features):
+        """Duplicate rows' points are merged into one multi-point geometry."""
+        merged, _ = built_point_features
         assert merged.geometry is not None
-        merged_geometry = merged.geometry
-        assert merged_geometry.geom_type == "MultiPoint"
-        assert {(point.x, point.y) for point in merged_geometry.geoms} == {
+        assert merged.geometry.geom_type == "MultiPoint"
+        assert {(point.x, point.y) for point in merged.geometry.geoms} == {
             (1.0, 1.0),
             (2.0, 2.0),
         }
 
-        single = gazetteer.find("p2")
-        assert single is not None
+    def test_single_geometry_remains_a_point(self, built_point_features):
+        _, single = built_point_features
         assert single.geometry is not None
-        single_geometry = single.geometry
-        assert single_geometry.geom_type == "Point"
-        assert (single_geometry.x, single_geometry.y) == (3.0, 3.0)
+        assert single.geometry.geom_type == "Point"
+        assert (single.geometry.x, single.geometry.y) == (3.0, 3.0)
 
 
 @pytest.mark.integration

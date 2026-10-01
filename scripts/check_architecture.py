@@ -96,23 +96,111 @@ def _resolve_from_import(
     packages: set[str],
 ) -> Iterable[str]:
     """Yield import targets that correspond to real internal modules."""
-    if dots == "":
-        base = module or ""
-    else:
-        level = len(dots)
-        current_parts = current.split(".")
-        current_is_package = current in packages
-        parent_parts = current_parts if current_is_package else current_parts[:-1]
-        base_parts = parent_parts[: len(parent_parts) - level + 1]
-        base = ".".join(base_parts)
-        if module:
-            base = f"{base}.{module}" if base else module
+    base = _import_base(current, module, dots, packages)
+    yield from _known_import_targets(base, names, packages)
 
+
+def _import_base(
+    current: str, module: str | None, dots: str, packages: set[str]
+) -> str:
+    """Resolve the absolute or relative base module for an import record."""
+    if dots == "":
+        return module or ""
+    return _relative_import_base(current, module, dots, packages)
+
+
+def _known_import_targets(
+    base: str, names: tuple[str, ...], packages: set[str]
+) -> Iterable[str]:
+    """Yield imported package modules named by a resolved base."""
     for name in names:
-        exact = f"{base}.{name}" if base else name
-        target = exact if exact in packages else base
-        if target in packages:
+        target = _known_import_target(base, name, packages)
+        if target is not None:
             yield target
+
+
+def _known_import_target(base: str, name: str, packages: set[str]) -> str | None:
+    """Resolve one ``from base import name`` to an existing module."""
+    exact = f"{base}.{name}" if base else name
+    target = exact if exact in packages else base
+    return target if target in packages else None
+
+
+def _relative_import_base(
+    current: str, module: str | None, dots: str, packages: set[str]
+) -> str:
+    """Resolve the base name for a relative import from one module."""
+    level = len(dots)
+    current_parts = current.split(".")
+    parent_parts = current_parts if current in packages else current_parts[:-1]
+    base = ".".join(parent_parts[: len(parent_parts) - level + 1])
+    if module:
+        return f"{base}.{module}" if base else module
+    return base
+
+
+def _is_internal_import(
+    imported: str | None, package_name: str, packages: set[str]
+) -> bool:
+    """Check whether a plain import names a package module in the graph."""
+    return bool(
+        imported and imported in packages and _is_package_target(imported, package_name)
+    )
+
+
+def _is_package_target(target: str, package_name: str) -> bool:
+    """Whether a fully resolved module name belongs to the package."""
+    return target == package_name or target.startswith(f"{package_name}.")
+
+
+def _targets_for_import(
+    current: str,
+    imported: str | None,
+    dots: str | None,
+    names: tuple[str, ...],
+    package_name: str,
+    packages: set[str],
+) -> set[str]:
+    """Resolve one visitor record to internal package edges."""
+    if dots is None:
+        if imported is None:
+            return set()
+        return (
+            {imported}
+            if _is_internal_import(imported, package_name, packages)
+            else set()
+        )
+    return _relative_targets(current, imported, dots, names, package_name, packages)
+
+
+def _relative_targets(
+    current: str,
+    imported: str | None,
+    dots: str,
+    names: tuple[str, ...],
+    package_name: str,
+    packages: set[str],
+) -> set[str]:
+    """Keep resolved relative imports that remain within this package."""
+    return {
+        target
+        for target in _resolve_from_import(current, imported, dots, names, packages)
+        if target == package_name or target.startswith(f"{package_name}.")
+    }
+
+
+def _module_imports(
+    module: str, path: Path, package_name: str, packages: set[str]
+) -> set[str]:
+    """Collect the internal runtime imports for one package module."""
+    visitor = _ImportVisitor()
+    visitor.visit(ast.parse(path.read_text(encoding="utf-8"), filename=str(path)))
+    targets: set[str] = set()
+    for imported, _lineno, dots, names in visitor.runtime:
+        targets.update(
+            _targets_for_import(module, imported, dots, names, package_name, packages)
+        )
+    return targets
 
 
 def build_import_graph(package_root: Path, package_name: str) -> dict[str, set[str]]:
@@ -120,32 +208,11 @@ def build_import_graph(package_root: Path, package_name: str) -> dict[str, set[s
     package_root = package_root.resolve()
     files = sorted(package_root.rglob("*.py"))
     modules = {_module_name(path, package_root, package_name): path for path in files}
-    graph = {module: set() for module in modules}
     packages = set(modules)
-
-    for module, path in modules.items():
-        visitor = _ImportVisitor()
-        visitor.visit(ast.parse(path.read_text(encoding="utf-8"), filename=str(path)))
-        for imported, _, dots, names in visitor.runtime:
-            if dots is None:
-                if (
-                    imported
-                    and (
-                        imported == package_name
-                        or imported.startswith(f"{package_name}.")
-                    )
-                    and imported in packages
-                ):
-                    graph[module].add(imported)
-                continue
-            graph[module].update(
-                target
-                for target in _resolve_from_import(
-                    module, imported, dots, names, packages
-                )
-                if target == package_name or target.startswith(f"{package_name}.")
-            )
-    return graph
+    return {
+        module: _module_imports(module, path, package_name, packages)
+        for module, path in modules.items()
+    }
 
 
 def find_cycles(graph: Mapping[str, set[str]]) -> list[tuple[str, ...]]:
@@ -175,23 +242,45 @@ def find_cycles(graph: Mapping[str, set[str]]) -> list[tuple[str, ...]]:
     return sorted(cycles)
 
 
+def _within_boundary(source: str, boundary: str) -> bool:
+    """Whether a source module belongs to a forbidden-boundary package."""
+    return source == boundary or source.startswith(f"{boundary}.")
+
+
+def _crosses_boundary(target: str, blocked: set[str]) -> bool:
+    """Whether one target module is within a blocked dependency family."""
+    return any(
+        target == prefix or target.startswith(f"{prefix}.") for prefix in blocked
+    )
+
+
+def _violations_for_source(
+    source: str, targets: set[str], forbidden: Mapping[str, set[str]]
+) -> set[tuple[str, str]]:
+    """Collect blocked dependency edges originating from one module."""
+    violations = set()
+    for boundary, blocked in forbidden.items():
+        if _within_boundary(source, boundary):
+            violations.update(
+                (source, target)
+                for target in targets
+                if _crosses_boundary(target, blocked)
+            )
+    return violations
+
+
 def find_boundary_violations(
     graph: Mapping[str, set[str]],
     forbidden: Mapping[str, set[str]],
 ) -> list[tuple[str, str]]:
     """Return runtime edges that cross a forbidden package boundary."""
-    violations: set[tuple[str, str]] = set()
-    for source in sorted(graph):
-        for boundary, blocked in forbidden.items():
-            if source != boundary and not source.startswith(f"{boundary}."):
-                continue
-            for target in graph[source]:
-                if any(
-                    target == prefix or target.startswith(f"{prefix}.")
-                    for prefix in blocked
-                ):
-                    violations.add((source, target))
-    return sorted(violations)
+    return sorted(
+        {
+            violation
+            for source, targets in graph.items()
+            for violation in _violations_for_source(source, targets, forbidden)
+        }
+    )
 
 
 def find_impure_modules(
@@ -238,15 +327,47 @@ def _impure_target(
         The offending module name, or None when the import is standard library
     """
     if dots:
-        return f"{package_name}{'.' if target else ''}{target or ''}"
+        return _relative_impure_target(package_name, target)
     if target is None:
         return None
-    root = target.split(".")[0]
-    if root == package_name or target.startswith(f"{package_name}."):
+    if _is_package_target(target, package_name):
         return target
-    if root in sys.stdlib_module_names:
-        return None
-    return target
+    return None if _is_stdlib_import(target) else target
+
+
+def _relative_impure_target(package_name: str, target: str | None) -> str:
+    """Resolve a relative import to the package path it references."""
+    suffix = f".{target}" if target else ""
+    return f"{package_name}{suffix}"
+
+
+def _is_stdlib_import(target: str) -> bool:
+    """Whether a plain import is rooted in the Python standard library."""
+    return target.split(".", maxsplit=1)[0] in sys.stdlib_module_names
+
+
+def _print_cycles(cycles: list[tuple[str, ...]]) -> None:
+    """Print cycle diagnostics in stable path order."""
+    if cycles:
+        print("Import cycles:")
+        for cycle in cycles:
+            print(f"  {' -> '.join(cycle)}")
+
+
+def _print_edges(title: str, edges: list[tuple[str, str]]) -> None:
+    """Print a titled list of module dependency edges."""
+    if edges:
+        print(f"{title}:")
+        for source, target in edges:
+            print(f"  {source} -> {target}")
+
+
+def _print_modules(title: str, modules: list[tuple[str, str]]) -> None:
+    """Print a titled list of module and forbidden dependency pairs."""
+    if modules:
+        print(f"{title}:")
+        for module, target in modules:
+            print(f"  {module} -> {target}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -262,18 +383,9 @@ def main(argv: list[str] | None = None) -> int:
     violations = find_boundary_violations(graph, FORBIDDEN_IMPORTS)
     impure = find_impure_modules(package_root, package_name, PURE_MODULES)
 
-    if cycles:
-        print("Import cycles:")
-        for cycle in cycles:
-            print(f"  {' -> '.join(cycle)}")
-    if violations:
-        print("Forbidden dependency edges:")
-        for source, target in violations:
-            print(f"  {source} -> {target}")
-    if impure:
-        print("Pure modules with a forbidden dependency:")
-        for module, target in impure:
-            print(f"  {module} -> {target}")
+    _print_cycles(cycles)
+    _print_edges("Forbidden dependency edges", violations)
+    _print_modules("Pure modules with a forbidden dependency", impure)
     if cycles or violations or impure:
         return 1
 

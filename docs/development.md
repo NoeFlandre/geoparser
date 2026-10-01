@@ -24,14 +24,38 @@ confidence.
 Run the complete deterministic gate with:
 
 ```bash
-uv run python scripts/quality_gauntlet.py
+GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py
 ```
 
-The command runs the stages in dependency order: baseline, Ruff, `ty`, locked
-dependency validation, tests, property tests, acceptance tests, architecture
-checks, CRAP, mutation tests, a CLI smoke test, and diff review. Generated
-reports belong in a temporary directory and are not committed. The runner also
-uses a unique Docker smoke-test tag and removes that image when it exits.
+By default the command runs Ruff, `ty`, locked dependency validation, the main
+coverage test suite, deterministic benchmark contracts with timing disabled,
+property tests, acceptance tests, architecture checks, CRAP, mutation tests, a
+CLI smoke test, and diff review. The benchmark contract run appends its coverage
+so every measured test function participates in the whole-tree CRAP check. Its
+smoke stage can also build and check Docker images. `--include-baseline` adds
+an extra coverage test pass for diagnosis; normal local and CI runs leave it
+off. Generated reports belong in a temporary directory and are not committed.
+The runner uses a unique Docker smoke-test tag and removes that image when it
+exits.
+
+CI combines coverage from its operating-system and Python matrix. The hard
+100% line-coverage threshold applies to `geoparser/`; the CRAP gate separately
+scores every function under `geoparser/`, `scripts/`, and `tests/` and requires
+each score to be strictly below 6. Nested functions are scored separately,
+their executable statements belong to the innermost function, and a function
+with no recorded coverage is treated as uncovered.
+
+The quality gauntlet collects coverage for all three roots during its main test
+pass and appends coverage from the deterministic benchmark contracts. It then
+explicitly enforces the 100% floor on `geoparser/` before the whole-tree CRAP
+check. Timed performance measurements remain opt-in.
+
+The CI coverage matrix enables the opt-in GLiNER2 and Jina integration tests in
+one Ubuntu/Python 3.12 cell. The separate quality gauntlet also runs them so
+its own CRAP calculation includes those test bodies; every other matrix cell
+keeps the model downloads disabled. On pull requests, the quality gauntlet
+skips Docker builds and the full mutation sweep because Docker is reserved for
+the scheduled run and changed code is checked by the separate mutation job.
 
 ### Resource-safe local gate
 
@@ -56,7 +80,7 @@ reusable; remove that exact cache directory when it is no longer useful.
 
 The Security workflow runs on every pull request, on pushes to `main` and weekly:
 
-- **Dependency audit**: `pip-audit` checks every version pinned in `uv.lock` against published advisories, without installing anything. A vulnerable locked version fails the job. The few advisories that cannot be fixed yet (transformers fixes that exist only in 5.x, which gliner2 does not support) are ignored by ID in `security.yml`, with the reason; remove them when the cap is lifted.
+- **Dependency audit**: `pip-audit` checks every version pinned in `uv.lock` against published advisories, without installing anything. A vulnerable locked version fails the job; dependency constraints and the lockfile must resolve advisories rather than suppress them.
 - **CodeQL** for Python and for the workflows themselves; results appear under *Security > Code scanning*.
 - **zizmor** and **actionlint** over `.github/workflows`. An accepted zizmor finding carries an inline `# zizmor: ignore[...]` comment explaining why.
 

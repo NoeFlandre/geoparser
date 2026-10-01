@@ -111,33 +111,69 @@ def parse_corpus(path: Path, *, limit: int | None = None) -> list[Document]:
     root = ET.parse(path).getroot()  # noqa: S314 - parses the benchmark corpus this script downloads itself
     documents: list[Document] = []
     for index, article in enumerate(root.findall("article")):
-        text = article.findtext("text") or ""
-        if not text:
-            continue
-        gold = tuple(_gold_spans(article, text))
-        if gold:
-            documents.append(Document(str(index), text, gold))
+        document = _article_document(index, article)
+        if document is not None:
+            documents.append(document)
         if limit is not None and len(documents) >= limit:
             break
     return documents
 
 
+def _article_document(index: int, article: ET.Element) -> Document | None:
+    """Return one article when it has text and at least one aligned gold span."""
+    text = article.findtext("text") or ""
+    if not text:
+        return None
+    gold = tuple(_gold_spans(article, text))
+    return Document(str(index), text, gold) if gold else None
+
+
 def _gold_spans(article: ET.Element, text: str):
     """Yield the gold spans of one article that line up with its text."""
     for location in article.findall("./locations/location"):
-        name = (location.findtext("name") or "").strip()
-        latitude = location.findtext("lat")
-        longitude = location.findtext("lon")
-        if latitude is None or longitude is None:
-            continue
-        try:
-            start = int(location.findtext("start") or "") + OFFSET_SHIFT
-            end = int(location.findtext("end") or "") + OFFSET_SHIFT
-        except ValueError:
-            continue
-        if start < 0 or text[start:end] != name:
-            continue
-        yield GoldSpan(start, end, name, float(latitude), float(longitude))
+        span = _gold_span(location, text)
+        if span is not None:
+            yield span
+
+
+def _span_offsets(location: ET.Element) -> tuple[int, int] | None:
+    """Read and compensate the corpus start/end offsets."""
+    try:
+        start = int(location.findtext("start") or "") + OFFSET_SHIFT
+        end = int(location.findtext("end") or "") + OFFSET_SHIFT
+    except ValueError:
+        return None
+    return start, end
+
+
+def _gold_span(location: ET.Element, text: str) -> GoldSpan | None:
+    """Build one location span after its coordinates and surface are verified."""
+    name = (location.findtext("name") or "").strip()
+    coordinates = _coordinate_text(location)
+    if coordinates is None:
+        return None
+    offsets = _span_offsets(location)
+    if offsets is None:
+        return None
+    start, end = offsets
+    if not _surface_matches(text, start, end, name):
+        return None
+    latitude, longitude = coordinates
+    return GoldSpan(start, end, name, float(latitude), float(longitude))
+
+
+def _coordinate_text(location: ET.Element) -> tuple[str, str] | None:
+    """Read both original coordinate strings when the location has each one."""
+    latitude = location.findtext("lat")
+    longitude = location.findtext("lon")
+    if latitude is None or longitude is None:
+        return None
+    return latitude, longitude
+
+
+def _surface_matches(text: str, start: int, end: int, name: str) -> bool:
+    """Check that the shifted gold span matches its literal surface text."""
+    return start >= 0 and text[start:end] == name
 
 
 def gold_toponym_count(documents: list[Document]) -> int:

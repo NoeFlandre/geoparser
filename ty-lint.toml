@@ -17,6 +17,7 @@ allowed-unresolved-imports = [
   "libcst.**",
   "markupsafe.**",
   "mutmut.**",
+  "numpy.**",
   "pydantic.**",
   "pyproj.**",
   "pytest.**",

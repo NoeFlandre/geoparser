@@ -1,64 +1,16 @@
 """TestClient coverage for the annotator's public routes and import/export path."""
 
 import json
-import sys
 from importlib import import_module
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 from uuid import UUID
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session
 
 from geoparser.annotator.db.crud import DocumentRepository, SessionRepository
-from geoparser.annotator.db.db import get_db
 from geoparser.annotator.db.models.session import AnnotatorSessionCreate
-
-
-@pytest.fixture
-def annotator_client(monkeypatch):
-    """Build the current app with an isolated database and no ML startup."""
-    spacy_package = ModuleType("spacy")
-    spacy_package.__path__ = []
-    spacy_util = ModuleType("spacy.util")
-    spacy_util.__dict__["get_installed_models"] = list
-    spacy_package.__dict__["util"] = spacy_util
-    monkeypatch.setitem(sys.modules, "spacy", spacy_package)
-    monkeypatch.setitem(sys.modules, "spacy.util", spacy_util)
-
-    recognizer_module = ModuleType("geoparser.modules.recognizers.spacy")
-    recognizer_module.__dict__["SpacyRecognizer"] = type("SpacyRecognizer", (), {})
-    monkeypatch.setitem(
-        sys.modules, "geoparser.modules.recognizers.spacy", recognizer_module
-    )
-
-    annotator_app = import_module("geoparser.annotator.app")
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-
-    def override_get_db():
-        with Session(engine) as db:
-            yield db
-
-    annotator_app.app.dependency_overrides[get_db] = override_get_db
-    try:
-        with TestClient(
-            annotator_app.app,
-            follow_redirects=False,
-            raise_server_exceptions=False,
-        ) as client:
-            yield client, engine, annotator_app
-    finally:
-        annotator_app.app.dependency_overrides.pop(get_db, None)
-        engine.dispose()
-
 
 EXPECTED_ROUTE_MAP = {
     ("/openapi.json", ("GET", "HEAD")),
@@ -92,6 +44,22 @@ EXPECTED_ROUTE_MAP = {
 }
 
 
+def _registered_routes(app, route_modules: tuple[Any, ...]) -> list[Any]:
+    """Include FastAPI's top-level route objects and each included router."""
+    routes = [route for route in app.routes if hasattr(route, "path")]
+    for module in route_modules:
+        routes.extend(module.router.routes)
+    return routes
+
+
+def _route_map(routes: list[Any]) -> set[tuple[str, tuple[str, ...]]]:
+    """Normalize route objects to stable path and method pairs."""
+    return {
+        (route.path, tuple(sorted(getattr(route, "methods", None) or ())))
+        for route in routes
+    }
+
+
 def test_app_route_map_is_pinned(annotator_client):
     """The refactor preserves every registered method and URL path."""
     _, _, annotator_app = annotator_client
@@ -103,62 +71,69 @@ def test_app_route_map_is_pinned(annotator_client):
         settings,
     )
 
-    # Newer FastAPI keeps included routers as wrapper objects in app.routes
-    # instead of flattening them, so read each router's own routes too. Every
-    # router is included without a prefix.
-    routes: list[Any] = [
-        *(route for route in annotator_app.app.routes if hasattr(route, "path")),
-        *(
-            route
-            for module in (pages, sessions, documents, annotations, settings)
-            for route in module.router.routes
-        ),
-    ]
-    actual = {
-        (route.path, tuple(sorted(getattr(route, "methods", None) or ())))
-        for route in routes
-    }
+    # FastAPI can keep included routers as wrappers instead of flattening them.
+    route_modules = (pages, sessions, documents, annotations, settings)
+    actual = _route_map(_registered_routes(annotator_app.app, route_modules))
 
     assert actual == EXPECTED_ROUTE_MAP
 
 
+@pytest.mark.parametrize("follow_redirects", [False], indirect=True)
 def test_annotator_api_round_trip_and_route_statuses(annotator_client, monkeypatch):
     """Exercise session, document, annotation and settings routes end to end."""
-    client, _engine, _annotator_app = annotator_client
-
-    assert client.get("/").status_code == 200
-    assert client.get("/start_new_session").status_code == 200
-    assert client.get("/continue_session").status_code == 200
+    client, engine, _annotator_app = annotator_client
     missing_session = UUID("00000000-0000-0000-0000-000000000000")
-    assert client.get(f"/session/{missing_session}/documents").status_code == 404
-    assert (
-        client.get(f"/session/{missing_session}/annotations/download").status_code
-        == 404
-    )
-    assert client.get(f"/session/{missing_session}/settings").status_code == 404
-    assert (
+    _assert_session_routes_and_redirects(client, missing_session)
+    _assert_empty_session_routes(client, engine)
+    session_id = _create_paris_session(client)
+    _assert_missing_document_routes(client, session_id)
+    document_url = _add_berlin_and_parse(client, session_id, monkeypatch)
+    _assert_annotation_updates(client, document_url)
+    imported_id = _assert_annotation_export_import(client, session_id)
+    _assert_session_deletions(client, missing_session, session_id, imported_id)
+
+
+def _assert_session_routes_and_redirects(client, missing_session: UUID) -> None:
+    """Keep the app landing pages, missing-session responses, and redirects stable."""
+    statuses = [
+        client.get("/").status_code,
+        client.get("/start_new_session").status_code,
+        client.get("/continue_session").status_code,
+        client.get(f"/session/{missing_session}/documents").status_code,
+        client.get(f"/session/{missing_session}/annotations/download").status_code,
+        client.get(f"/session/{missing_session}/settings").status_code,
         client.put(
             f"/session/{missing_session}/settings",
             json={
                 "auto_close_annotation_modal": False,
                 "one_sense_per_discourse": True,
             },
-        ).status_code
-        == 404
-    )
-    assert client.delete(f"/session/{missing_session}").status_code == 404
-    assert (
+        ).status_code,
+        client.delete(f"/session/{missing_session}").status_code,
         client.post(
             "/session/continue/cached", data={"session_id": str(missing_session)}
-        ).status_code
-        == 302
-    )
-    assert client.post("/session/continue/file").status_code == 302
-    assert (
-        client.get(f"/session/{missing_session}/document/0/annotate").status_code == 302
-    )
+        ).status_code,
+        client.post("/session/continue/file").status_code,
+        client.get(f"/session/{missing_session}/document/0/annotate").status_code,
+    ]
+    assert statuses == [
+        200,
+        200,
+        200,
+        404,
+        404,
+        404,
+        404,
+        404,
+        302,
+        302,
+        302,
+    ]
 
-    with Session(_engine) as db:
+
+def _assert_empty_session_routes(client, engine) -> None:
+    """Check the empty-session annotation page and its document redirect."""
+    with Session(engine) as db:
         empty_session = SessionRepository.create(
             db, AnnotatorSessionCreate(gazetteer="geonames")
         )
@@ -172,6 +147,9 @@ def test_annotator_api_round_trip_and_route_statuses(annotator_client, monkeypat
         f"/session/{empty_session.id}/document/0/annotate"
     )
 
+
+def _create_paris_session(client) -> UUID:
+    """Create a session with one document and validate cached continuation."""
     created = client.post(
         "/session",
         data={"gazetteer": "geonames", "spacy_model": "en_core_web_sm"},
@@ -192,7 +170,12 @@ def test_annotator_api_round_trip_and_route_statuses(annotator_client, monkeypat
         ).status_code
         == 422
     )
+    return session_id
+    return session_id
 
+
+def _assert_missing_document_routes(client, session_id: UUID) -> None:
+    """Exercise invalid-document handling across the document route methods."""
     missing_document = f"/session/{session_id}/document/9"
     invalid_document_responses = [
         client.post(f"{missing_document}/parse"),
@@ -224,14 +207,16 @@ def test_annotator_api_round_trip_and_route_statuses(annotator_client, monkeypat
         422
     ] * len(invalid_document_responses)
 
+
+def _add_berlin_and_parse(client, session_id: UUID, monkeypatch) -> str:
+    """Add a document and verify parsing, progress, and annotation routes."""
     added = client.post(
         f"/session/{session_id}/documents",
         data={"spacy_model": "en_core_web_sm"},
         files=[("files", ("berlin.txt", b"Berlin", "text/plain"))],
     )
-    assert added.status_code == 200
     documents = client.get(f"/session/{session_id}/documents")
-    assert documents.status_code == 200
+    assert (added.status_code, documents.status_code) == (200, 200)
     assert [document["filename"] for document in documents.json()] == [
         "paris.txt",
         "berlin.txt",
@@ -247,28 +232,44 @@ def test_annotator_api_round_trip_and_route_statuses(annotator_client, monkeypat
 
     monkeypatch.setattr(DocumentRepository, "parse", classmethod(fake_parse))
     document_url = f"/session/{session_id}/document/0"
-    assert (
-        client.delete(
-            f"{document_url}/annotation", params={"start": 1, "end": 3}
-        ).status_code
-        == 404
+    _assert_document_parse_routes(client, document_url, session_id)
+    return document_url
+
+
+def _assert_document_parse_routes(client, document_url: str, session_id: UUID) -> None:
+    """Validate parse state transitions and neighboring document endpoints."""
+    missing_annotation = client.delete(
+        f"{document_url}/annotation", params={"start": 1, "end": 3}
     )
-    assert client.post(f"{document_url}/parse").json() == {
+    first_parse = client.post(f"{document_url}/parse")
+    second_parse = client.post(f"{document_url}/parse")
+    progress = client.get(f"{document_url}/progress")
+    text = client.get(f"{document_url}/text")
+    invalid_progress = client.get(f"/session/{session_id}/document/99/progress")
+    extra_document = client.post(
+        f"/session/{session_id}/documents", data={"spacy_model": "en_core_web_sm"}
+    )
+
+    assert [
+        missing_annotation.status_code,
+        first_parse.status_code,
+        second_parse.status_code,
+        progress.status_code,
+        text.status_code,
+        invalid_progress.status_code,
+        extra_document.status_code,
+    ] == [404, 200, 200, 200, 200, 422, 422]
+    assert first_parse.json() == {
         "status": "success",
         "message": None,
         "parsed": True,
     }
-    assert client.post(f"{document_url}/parse").json()["parsed"] is False
-    assert client.get(f"{document_url}/progress").status_code == 200
-    assert client.get(f"{document_url}/text").json()["pre_annotated_text"] == "Paris"
-    assert client.get(f"/session/{session_id}/document/99/progress").status_code == 422
-    assert (
-        client.post(
-            f"/session/{session_id}/documents", data={"spacy_model": "en_core_web_sm"}
-        ).status_code
-        == 422
-    )
+    assert second_parse.json()["parsed"] is False
+    assert text.json()["pre_annotated_text"] == "Paris"
 
+
+def _assert_annotation_updates(client, document_url: str) -> None:
+    """Check annotation create, update, move, and invalid-move responses."""
     assert (
         client.post(
             f"{document_url}/annotation",
@@ -310,10 +311,39 @@ def test_annotator_api_round_trip_and_route_statuses(annotator_client, monkeypat
         == 404
     )
 
+
+def _assert_annotation_export_import(client, session_id: UUID) -> UUID:
+    """Round-trip an annotated session through the JSON download and import API."""
     download = client.get(f"/session/{session_id}/annotations/download")
     assert download.status_code == 200
     session_json = download.json()
-    round_trip = {
+    round_trip = _round_trip_payload(session_json)
+    golden_path = Path(__file__).parent / "fixtures" / "annotations_round_trip.json"
+    assert round_trip == json.loads(golden_path.read_text(encoding="utf-8"))
+
+    imported = client.post(
+        "/session/continue/file",
+        files={
+            "session_file": ("annotations.json", download.content, "application/json")
+        },
+    )
+    assert imported.status_code == 302
+    imported_id = UUID(imported.headers["location"].split("/")[2])
+    settings_read = client.get(f"/session/{imported_id}/settings")
+    settings_write = client.put(
+        f"/session/{imported_id}/settings",
+        json={
+            "auto_close_annotation_modal": False,
+            "one_sense_per_discourse": True,
+        },
+    )
+    assert (settings_read.status_code, settings_write.status_code) == (200, 200)
+    return imported_id
+
+
+def _round_trip_payload(session_json: dict[str, Any]) -> dict[str, Any]:
+    """Project the exported session onto the stable round-trip fixture fields."""
+    return {
         "gazetteer": session_json["gazetteer"],
         "documents": [
             {
@@ -334,39 +364,22 @@ def test_annotator_api_round_trip_and_route_statuses(annotator_client, monkeypat
             for document in session_json["documents"]
         ],
     }
-    golden_path = Path(__file__).parent / "fixtures" / "annotations_round_trip.json"
-    assert round_trip == json.loads(golden_path.read_text(encoding="utf-8"))
 
-    imported = client.post(
-        "/session/continue/file",
-        files={
-            "session_file": ("annotations.json", download.content, "application/json")
-        },
-    )
-    assert imported.status_code == 302
-    imported_id = UUID(imported.headers["location"].split("/")[2])
-    assert client.get(f"/session/{imported_id}/settings").status_code == 200
-    assert (
-        client.put(
-            f"/session/{imported_id}/settings",
-            json={
-                "auto_close_annotation_modal": False,
-                "one_sense_per_discourse": True,
-            },
-        ).status_code
-        == 200
-    )
 
-    assert client.delete(f"/session/{session_id}/document/1").status_code == 200
-    assert (
+def _assert_session_deletions(
+    client, missing_session: UUID, session_id: UUID, imported_id: UUID
+) -> None:
+    """Check document and session deletion status codes."""
+    statuses = [
+        client.delete(f"/session/{session_id}/document/1").status_code,
         client.delete(
             f"/session/{session_id}/document/0/annotation?start=0&end=5"
-        ).status_code
-        == 200
-    )
-    assert client.delete(f"/session/{session_id}").status_code == 200
-    assert client.delete(f"/session/{missing_session}").status_code == 404
-    assert client.delete(f"/session/{imported_id}").status_code == 200
+        ).status_code,
+        client.delete(f"/session/{session_id}").status_code,
+        client.delete(f"/session/{missing_session}").status_code,
+        client.delete(f"/session/{imported_id}").status_code,
+    ]
+    assert statuses == [200, 200, 200, 404, 200]
 
 
 def test_legacy_import_with_no_files_returns_empty_result(

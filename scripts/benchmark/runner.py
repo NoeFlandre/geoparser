@@ -14,6 +14,7 @@ import time
 import typing as t
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.benchmark import checkpoint as ckpt
@@ -22,6 +23,19 @@ from scripts.benchmark.corpus import Document
 
 RECOGNITION = "recognition"
 RESOLUTION = "resolution"
+
+
+@dataclass(frozen=True)
+class _PhaseExecution:
+    """Inputs shared by all chunk operations in one benchmark phase."""
+
+    phase: str
+    documents: Sequence[Document]
+    state: ckpt.Checkpoint
+    checkpoint_path: Path
+    device: str
+    chunk_size: int
+    log: t.Callable[[str], None]
 
 
 def gold_annotations(documents: Sequence[Document]) -> list[t.Any]:
@@ -159,37 +173,70 @@ def run_phase(  # noqa: PLR0913 - benchmark entry point mirrors its CLI flags
     # real cost of choosing that pipeline, and leaving it out understated the
     # slower one by minutes.
     loading_started = time.perf_counter()
-    recognizer = resolver = None
-    if phase == RECOGNITION:
-        recognizer = pipelines.build_recognizer(pipeline, device=device)
-    else:
-        resolver = pipelines.build_resolver(
-            pipeline, device=device, min_similarity=min_similarity
-        )
+    recognizer, resolver = _build_phase_models(
+        phase, pipeline, device=device, min_similarity=min_similarity
+    )
     names = pipelines.model_names(recognizer, resolver)
     state.elapsed_seconds += time.perf_counter() - loading_started
+    _run_chunks(
+        _PhaseExecution(
+            phase,
+            documents,
+            state,
+            checkpoint_path,
+            device,
+            chunk_size,
+            log,
+        ),
+        remaining,
+        (recognizer, resolver),
+    )
+    return names
+
+
+def _build_phase_models(
+    phase: str, pipeline: str, *, device: str, min_similarity: float
+) -> tuple[t.Any, t.Any]:
+    """Build only the model required by the requested benchmark phase."""
+    if phase == RECOGNITION:
+        return pipelines.build_recognizer(pipeline, device=device), None
+    return (
+        None,
+        pipelines.build_resolver(
+            pipeline, device=device, min_similarity=min_similarity
+        ),
+    )
+
+
+def _run_chunks(
+    execution: _PhaseExecution,
+    remaining: Sequence[Document],
+    models: tuple[t.Any, t.Any],
+) -> None:
+    """Process and checkpoint each chunk, then release the phase models."""
+    phase_chunks = chunks(remaining, execution.chunk_size)
+    recognizer, resolver = models
 
     try:
-        for index, chunk in enumerate(chunks(remaining, chunk_size), start=1):
+        for index, chunk in enumerate(phase_chunks, start=1):
             started = time.perf_counter()
             predictions = _process_chunk(
-                phase, chunk, recognizer=recognizer, resolver=resolver
+                execution.phase, chunk, recognizer=recognizer, resolver=resolver
             )
             for document_id, annotations in predictions.items():
-                state.record(phase, document_id, annotations)
-            state.elapsed_seconds += time.perf_counter() - started
-            ckpt.save(checkpoint_path, state)
-            log(
-                f"    chunk {index}/{len(chunks(remaining, chunk_size))} "
+                execution.state.record(execution.phase, document_id, annotations)
+            execution.state.elapsed_seconds += time.perf_counter() - started
+            ckpt.save(execution.checkpoint_path, execution.state)
+            execution.log(
+                f"    chunk {index}/{len(phase_chunks)} "
                 f"({len(chunk)} docs) saved; "
-                f"{len(state.completed(phase))}/{len(documents)} done"
+                f"{len(execution.state.completed(execution.phase))}/"
+                f"{len(execution.documents)} done"
             )
     finally:
         del recognizer, resolver
         gc.collect()
-        _empty_cuda_cache(device)
-
-    return names
+        _empty_cuda_cache(execution.device)
 
 
 def _empty_cuda_cache(device: str) -> None:

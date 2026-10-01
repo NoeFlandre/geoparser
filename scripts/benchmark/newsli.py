@@ -28,6 +28,42 @@ from scripts.benchmark.corpus import Document, GoldSpan
 MAX_DOCUMENTS = 500
 
 
+def _article(
+    archive: zipfile.ZipFile,
+    names: set[str],
+    language: str,
+    identifier: str,
+    entries: list[dict],
+) -> Document | None:
+    """Build one article when its text file exists and has valid gold spans."""
+    member = f"{language}_geotoponyms/{identifier}.txt"
+    if member not in names:
+        return None
+    text = archive.read(member).decode("utf-8")
+    spans = tuple(_aligned(entries, text))
+    if not spans:
+        return None
+    return Document(identifier, text, spans)
+
+
+def _articles(
+    archive: zipfile.ZipFile,
+    language: str,
+    gold: dict[str, list[dict]],
+    limit: int,
+) -> list[Document]:
+    """Read articles in stable identifier order, up to the requested cap."""
+    names = set(archive.namelist())
+    documents = []
+    for identifier in sorted(gold):
+        document = _article(archive, names, language, identifier, gold[identifier])
+        if document is not None:
+            documents.append(document)
+        if len(documents) >= limit:
+            break
+    return documents
+
+
 def parse_newsli(
     path: Path, language: str, *, limit: int | None = None
 ) -> list[Document]:
@@ -46,21 +82,9 @@ def parse_newsli(
         KeyError: When the release holds no such language
     """
     cap = min(MAX_DOCUMENTS, limit) if limit is not None else MAX_DOCUMENTS
-    documents: list[Document] = []
     with zipfile.ZipFile(path) as archive:
         gold = json.loads(archive.read(f"{language}_geotoponyms.json"))
-        names = set(archive.namelist())
-        for identifier in sorted(gold):
-            member = f"{language}_geotoponyms/{identifier}.txt"
-            if member not in names:
-                continue
-            text = archive.read(member).decode("utf-8")
-            spans = tuple(_aligned(gold[identifier], text))
-            if spans:
-                documents.append(Document(identifier, text, spans))
-            if len(documents) >= cap:
-                break
-    return documents
+        return _articles(archive, language, gold, cap)
 
 
 def _aligned(entries: list[dict], text: str):

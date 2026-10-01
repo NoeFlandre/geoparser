@@ -17,6 +17,15 @@ import torch
 from geoparser.modules._spacy import load_spacy_model
 
 
+def _document_tokenize_calls(tokenizer: Mock, text: str) -> int:
+    """Count tokenizer calls for the complete document rather than its sentences."""
+    return sum(
+        1
+        for call in tokenizer.tokenize.call_args_list
+        if call.args and call.args[0] == text
+    )
+
+
 @pytest.mark.unit
 def test_import_does_not_change_transformers_logging_verbosity():
     """Importing the resolver must leave process-wide logging settings alone."""
@@ -44,6 +53,39 @@ def test_import_does_not_change_transformers_logging_verbosity():
 class TestSentenceTransformerResolverInitialization:
     """Test SentenceTransformerResolver initialization."""
 
+    @patch(
+        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
+    )
+    def test_load_tokenizer_preserves_result_and_arguments(self, load_tokenizer):
+        """Loading retains the tokenizer and forwards checkpoint options."""
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        resolver = object.__new__(SentenceTransformerResolver)
+        result = resolver._load_tokenizer("test/model", revision="pinned")
+
+        assert result is load_tokenizer.return_value
+        load_tokenizer.assert_called_once_with("test/model", revision="pinned")
+
+    @patch(
+        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained",
+        return_value=None,
+    )
+    def test_load_tokenizer_rejects_missing_result(self, load_tokenizer):
+        """An absent tokenizer fails at loading, before context sizing."""
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        resolver = object.__new__(SentenceTransformerResolver)
+        with pytest.raises(
+            ValueError, match="No tokenizer was loaded for 'test/model'"
+        ):
+            resolver._load_tokenizer("test/model")
+
+        load_tokenizer.assert_called_once_with("test/model")
+
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
@@ -63,11 +105,19 @@ class TestSentenceTransformerResolverInitialization:
         resolver = SentenceTransformerResolver()
 
         # Assert
-        assert resolver.name == "SentenceTransformerResolver"
-        assert resolver.model_name == "dguzh/geo-all-MiniLM-L6-v2"
-        assert resolver.gazetteer_name == "geonames"
-        assert resolver.min_similarity == 0.6
-        assert resolver.max_tiers == 3
+        assert (
+            resolver.name,
+            resolver.model_name,
+            resolver.gazetteer_name,
+            resolver.min_similarity,
+            resolver.max_tiers,
+        ) == (
+            "SentenceTransformerResolver",
+            "dguzh/geo-all-MiniLM-L6-v2",
+            "geonames",
+            0.6,
+            3,
+        )
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
@@ -258,12 +308,14 @@ class TestSentenceTransformerResolverInitialization:
         resolver = SentenceTransformerResolver()
 
         # Assert
-        assert resolver.doc_tokens == {}
-        assert resolver.context_embeddings == {}
-        assert resolver.candidate_embeddings == {}
-        assert resolver.candidate_search_cache == {}
-        assert resolver.candidate_descriptions == {}
-        assert resolver.measured_sentences == {}
+        assert (
+            resolver.doc_tokens,
+            resolver.context_embeddings,
+            resolver.candidate_embeddings,
+            resolver.candidate_search_cache,
+            resolver.candidate_descriptions,
+            resolver.measured_sentences,
+        ) == ({}, {}, {}, {}, {}, {})
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
@@ -780,32 +832,22 @@ class TestSentenceTransformerResolverPredict:
         # Act - Call predict with document containing multiple references
         text = "Test text"
 
-        def doc_tokenize_calls() -> int:
-            """How many times the full document text was tokenized."""
-            # Sentence splitting tokenizes fragments; only the whole document
-            # counts towards the cache being honoured.
-            return sum(
-                1
-                for call in mock_tokenizer_instance.tokenize.call_args_list
-                if call.args and call.args[0] == text
-            )
-
         resolver.predict(texts=[text], references=[[(0, 4), (5, 9)]])
 
         # Assert - Token count for text should be cached, and the two
         # references in this one document share the single tokenization
-        assert text in resolver.doc_tokens
-        assert resolver.doc_tokens[text] == 2
-        after_first = doc_tokenize_calls()
-        assert after_first == 1
+        after_first = _document_tokenize_calls(mock_tokenizer_instance, text)
+        assert (resolver.doc_tokens.get(text), after_first) == (2, 1)
 
         # Call predict again with same text
         resolver.predict(texts=[text], references=[[(0, 4)]])
 
         # Assert - tokenize should not be called again for the document text
         # (it may be called for sentence tokenization, but not for full doc)
-        assert text in resolver.doc_tokens
-        assert doc_tokenize_calls() == after_first
+        assert (
+            resolver.doc_tokens.get(text),
+            _document_tokenize_calls(mock_tokenizer_instance, text),
+        ) == (2, after_first)
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
@@ -1052,12 +1094,7 @@ class TestSentenceTransformerResolverHelperMethods:
         description = resolver._generate_description(mock_candidate)
 
         # Assert
-        assert "Paris" in description
-        assert "city" in description
-        assert "France" in description
-        assert "Île-de-France" in description
-        # Should be in hierarchical order: level3, level2, level1
-        assert "in" in description
+        assert description == "Paris (city) in Paris, Île-de-France, France"
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(

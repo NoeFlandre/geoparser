@@ -105,11 +105,8 @@ class TestSpacyRecognizerInitialization:
 
         # Assert
         # Should remove tagger, parser, lemmatizer but keep ner
-        assert mock_nlp.remove_pipe.call_count == 3
-        removed_pipes = [call[0][0] for call in mock_nlp.remove_pipe.call_args_list]
-        assert "tagger" in removed_pipes
-        assert "parser" in removed_pipes
-        assert "lemmatizer" in removed_pipes
+        removed_pipes = {call.args[0] for call in mock_nlp.remove_pipe.call_args_list}
+        assert removed_pipes == {"tagger", "parser", "lemmatizer"}
 
     @patch("geoparser.modules.recognizers.spacy.spacy.load")
     def test_only_removes_existing_pipeline_components(self, mock_spacy_load):
@@ -253,19 +250,39 @@ class TestSpacyRecognizerInitialization:
         )
 
     @pytest.mark.parametrize(
-        ("model_name", "fallback"),
+        ("model_name", "fallback", "expected_fallback"),
         [
-            ("de_dep_news_trf", "de_core_news_lg"),
-            ("fr_dep_news_trf", "fr_core_news_lg"),
-            ("en_core_web_trf", "en_core_web_lg"),
+            (
+                "de_dep_news_trf",
+                "de_core_news_lg",
+                "the non-transformer 'de_core_news_lg' model",
+            ),
+            (
+                "fr_dep_news_trf",
+                "fr_core_news_lg",
+                "the non-transformer 'fr_core_news_lg' model",
+            ),
+            (
+                "en_core_web_trf",
+                "en_core_web_lg",
+                "the non-transformer 'en_core_web_lg' model",
+            ),
             # Upper case: the language code is normalized before lookup, so a
             # model named this way still finds its fallback.
-            ("EN_core_web_trf", "en_core_web_lg"),
-            ("xx_custom_trf", None),
+            (
+                "EN_core_web_trf",
+                "en_core_web_lg",
+                "the non-transformer 'en_core_web_lg' model",
+            ),
+            (
+                "xx_custom_trf",
+                None,
+                "a non-transformer spaCy model for the requested language",
+            ),
         ],
     )
     def test_recommends_a_language_preserving_fallback(
-        self, monkeypatch, model_name, fallback
+        self, monkeypatch, model_name, fallback, expected_fallback
     ):
         """Test known languages and the safe generic unknown-language guidance."""
         monkeypatch.setattr(spacy_module.sys, "version_info", (3, 14))
@@ -277,17 +294,11 @@ class TestSpacyRecognizerInitialization:
         )
 
         assert hint is not None
-        expected_fallback = (
-            "a non-transformer spaCy model for the requested language"
-            if fallback is None
-            else f"the non-transformer '{fallback}' model"
-        )
-        assert recognizer._non_transformer_fallback() == expected_fallback
-        if fallback is None:
-            assert expected_fallback in hint
-            assert "en_core_web_lg" not in hint
-        else:
-            assert expected_fallback in hint
+        assert (
+            recognizer._non_transformer_fallback(),
+            expected_fallback in hint,
+            "en_core_web_lg" in hint,
+        ) == (expected_fallback, True, fallback == "en_core_web_lg")
 
     @patch("geoparser.modules.recognizers.spacy.spacy.load")
     def test_does_not_rewrite_available_factory_mentions(self, mock_spacy_load):
@@ -743,10 +754,12 @@ class TestSpacyRecognizerFit:
 
         recognizer.fit(["Paris"], [[(0, 5)]], output_path)
 
-        assert optimizer.learn_rate == 0.001
-        assert nlp.update.call_count == 20
-        assert [len(item.args[0]) for item in nlp.update.call_args_list] == [8, 1] * 10
-        assert {item.kwargs["drop"] for item in nlp.update.call_args_list} == {0.1}
+        assert (
+            optimizer.learn_rate,
+            nlp.update.call_count,
+            tuple(len(item.args[0]) for item in nlp.update.call_args_list),
+            tuple(item.kwargs["drop"] for item in nlp.update.call_args_list),
+        ) == (0.001, 20, (8, 1) * 10, (0.1,) * 20)
 
     def test_rejects_empty_training_data(self):
         recognizer = SpacyRecognizer.__new__(SpacyRecognizer)

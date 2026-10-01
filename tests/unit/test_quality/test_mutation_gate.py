@@ -36,12 +36,14 @@ def test_mutation_gate_prints_actionable_mutant_diagnostics(
         ["--max-survivors", "0", "--stats", _stats_path(tmp_path, survived=2)]
     )
 
-    assert result == 1
-    assert calls == [(sys.executable, "-m", "mutmut", "results")]
     error = capsys.readouterr().err
-    assert "mutant_1: survived" in error
-    assert "mutant_2: timeout" in error
-    assert "mutant_3: killed" not in error
+    assert (
+        result,
+        calls,
+        "mutant_1: survived" in error,
+        "mutant_2: timeout" in error,
+        "mutant_3: killed" not in error,
+    ) == (1, [(sys.executable, "-m", "mutmut", "results")], True, True, True)
 
 
 def test_mutation_gate_reports_unavailable_mutant_diagnostics(
@@ -68,6 +70,17 @@ def _unaccounted_stats_path(tmp_path, **counts: int) -> str:
     path = tmp_path / "mutmut-cicd-stats.json"
     path.write_text(json.dumps(counts), encoding="utf-8")
     return str(path)
+
+
+def test_mutation_summary_labels_timeouts_as_inconclusive():
+    summary = mutation_gate.summarize(
+        {"killed": 3696, "survived": 4, "timeout": 36, "total": 3736}
+    )
+
+    assert (
+        "resolved-outcome kill rate 99.9% (3696 killed / 3700 decided)" in summary
+        and "timeout 36 (inconclusive; not counted as killed)" in summary
+    )
 
 
 def test_mutation_gate_fails_when_the_run_checked_nothing(
@@ -134,6 +147,7 @@ def test_mutation_gate_accepts_a_run_that_accounts_for_every_mutant(
     )
 
     assert result == 0
+    assert "timeout 3 (inconclusive; not counted as killed)" in capsys.readouterr().out
 
 
 def test_mutation_gate_fails_when_no_tests_exceed_the_baseline(

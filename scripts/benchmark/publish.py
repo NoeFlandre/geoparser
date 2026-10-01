@@ -22,6 +22,7 @@ import json
 import sys
 import typing as t
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.benchmark.chart import render_bar_chart
@@ -147,38 +148,50 @@ def collect_rows(evidence_dir: Path) -> list[dict[str, t.Any]]:
     Historical reports copied into a run for comparison live in folders named
     ``baseline*`` and are skipped, since the run they came from has its own row.
     """
-    rows = []
+    rows: list[dict[str, t.Any]] = []
     for path in sorted(evidence_dir.rglob(REPORT_NAME)):
         relative = path.relative_to(evidence_dir)
-        if any(part.startswith(BASELINE_PREFIX) for part in relative.parts):
+        if _is_baseline_path(relative):
             continue
         data = json.loads(path.read_text(encoding="utf-8"))
-        for pipeline in data["pipelines"]:
-            recognition = pipeline.get("recognition") or {}
-            resolution = pipeline.get("resolution") or {}
-            rows.append(
-                {
-                    "run": relative.parts[0],
-                    "corpus": data["corpus"],
-                    "language": data.get("language", "en"),
-                    "documents": data["documents"],
-                    "gold_toponyms": data["gold_toponyms"],
-                    "pipeline": pipeline["name"],
-                    **{
-                        role: (pipeline.get("models") or {}).get(role, "")
-                        for role in MODEL_ROLES
-                    },
-                    "f1": recognition.get("f1"),
-                    "accuracy_at_161km": resolution.get("accuracy_at_161km"),
-                    "auc": resolution.get("auc"),
-                    "median_error_km": resolution.get("median_error_km"),
-                    "mean_error_km": resolution.get("mean_error_km"),
-                    "elapsed_seconds": pipeline["elapsed_seconds"],
-                    "commit": data["commit"],
-                    "started_at": data.get("environment", {}).get("started_at", ""),
-                }
-            )
+        rows.extend(_report_rows(relative, data))
     return rows
+
+
+def _is_baseline_path(relative: Path) -> bool:
+    """Whether a report is a copied historical baseline, not a new run."""
+    return any(part.startswith(BASELINE_PREFIX) for part in relative.parts)
+
+
+def _report_rows(relative: Path, data: dict[str, t.Any]) -> list[dict[str, t.Any]]:
+    """Flatten the pipelines from one report into viewer rows."""
+    return [_pipeline_row(relative, data, pipeline) for pipeline in data["pipelines"]]
+
+
+def _pipeline_row(
+    relative: Path, data: dict[str, t.Any], pipeline: dict[str, t.Any]
+) -> dict[str, t.Any]:
+    """Combine one pipeline's scores with corpus and run provenance."""
+    recognition = pipeline.get("recognition") or {}
+    resolution = pipeline.get("resolution") or {}
+    models = pipeline.get("models") or {}
+    return {
+        "run": relative.parts[0],
+        "corpus": data["corpus"],
+        "language": data.get("language", "en"),
+        "documents": data["documents"],
+        "gold_toponyms": data["gold_toponyms"],
+        "pipeline": pipeline["name"],
+        **{role: models.get(role, "") for role in MODEL_ROLES},
+        "f1": recognition.get("f1"),
+        "accuracy_at_161km": resolution.get("accuracy_at_161km"),
+        "auc": resolution.get("auc"),
+        "median_error_km": resolution.get("median_error_km"),
+        "mean_error_km": resolution.get("mean_error_km"),
+        "elapsed_seconds": pipeline["elapsed_seconds"],
+        "commit": data["commit"],
+        "started_at": data.get("environment", {}).get("started_at", ""),
+    }
 
 
 def render_csv(rows: Sequence[dict[str, t.Any]]) -> str:
@@ -255,12 +268,22 @@ def latest_results(
     """
     latest: dict[tuple[str, str], dict[str, t.Any]] = {}
     for row in sorted(rows, key=lambda row: row.get("started_at", "")):
-        if metric is not None and row.get(metric) is None:
+        if _missing_metric(row, metric):
             continue
-        if pipelines is not None and row["pipeline"] not in pipelines:
+        if _excluded_pipeline(row, pipelines):
             continue
         latest[(row["corpus"].lower(), row["pipeline"])] = row
     return latest
+
+
+def _missing_metric(row: dict[str, t.Any], metric: str | None) -> bool:
+    """Whether a requested metric is absent from this result row."""
+    return metric is not None and row.get(metric) is None
+
+
+def _excluded_pipeline(row: dict[str, t.Any], pipelines: Sequence[str] | None) -> bool:
+    """Whether a pipeline filter excludes this row."""
+    return pipelines is not None and row["pipeline"] not in pipelines
 
 
 def mark_best(
@@ -275,16 +298,33 @@ def mark_best(
     Returns:
         One Markdown cell per value, a dash for a missing one
     """
-    shown = [None if value is None else _number(value) for value in values]
+    shown = [_display_score(value) for value in values]
+    emphasis = _score_emphasis(shown, higher_is_better=higher_is_better)
+    return [_emphasized_score(cell, emphasis) for cell in shown]
+
+
+def _display_score(value: float | None) -> str | None:
+    """Format one score to the precision used in the result tables."""
+    return None if value is None else _number(value)
+
+
+def _score_emphasis(
+    shown: Sequence[str | None], *, higher_is_better: bool
+) -> dict[str, str]:
+    """Choose displayed best and second-best score formatting."""
     ranked = sorted(
         {cell for cell in shown if cell is not None},
         key=float,
         reverse=higher_is_better,
     )
-    emphasis = dict(zip(ranked, ("**{}**", "<u>{}</u>"), strict=False))
-    return [
-        "-" if cell is None else emphasis.get(cell, "{}").format(cell) for cell in shown
-    ]
+    return dict(zip(ranked, ("**{}**", "<u>{}</u>"), strict=False))
+
+
+def _emphasized_score(cell: str | None, emphasis: dict[str, str]) -> str:
+    """Render a missing, best, second-best, or ordinary table cell."""
+    if cell is None:
+        return "-"
+    return emphasis.get(cell, "{}").format(cell)
 
 
 def _corpus_order(corpora: set[str]) -> list[str]:
@@ -302,27 +342,68 @@ def _leaderboard(
 ) -> list[str]:
     """One compact table: a row per corpus, a column per main pipeline."""
     latest = latest_results(rows, metric=metric, pipelines=MAIN_PIPELINES)
-    pipelines = [
-        name
-        for name in PIPELINE_DESCRIPTIONS
-        if any(pipeline == name for _, pipeline in latest)
-    ]
+    pipelines = _leaderboard_pipelines(latest)
     corpora = _corpus_order({corpus for corpus, _ in latest})
     lines = [
         f"### {title}",
         "",
+        *_leaderboard_header(pipelines),
+    ]
+    lines.extend(
+        _leaderboard_row(
+            corpus, pipelines, latest, metric, higher_is_better=higher_is_better
+        )
+        for corpus in corpora
+    )
+    return [*lines, ""]
+
+
+def _leaderboard_pipelines(
+    latest: dict[tuple[str, str], dict[str, t.Any]],
+) -> list[str]:
+    """Order only pipeline columns with a result row."""
+    available = {pipeline for _, pipeline in latest}
+    return [name for name in PIPELINE_DESCRIPTIONS if name in available]
+
+
+def _leaderboard_header(pipelines: list[str]) -> tuple[str, str]:
+    """Render the Markdown column heading and separator rows."""
+    return (
         "| Corpus | Lang | " + " | ".join(pipelines) + " |",
         "| --- | --- | " + " | ".join("---:" for _ in pipelines) + " |",
-    ]
-    for corpus in corpora:
-        cells = [latest.get((corpus, pipeline)) for pipeline in pipelines]
-        language = next(row["language"] for row in cells if row)
-        marked = mark_best(
-            [row[metric] if row else None for row in cells],
-            higher_is_better=higher_is_better,
-        )
-        lines.append(f"| {corpus} | {language} | " + " | ".join(marked) + " |")
-    return [*lines, ""]
+    )
+
+
+def _leaderboard_row(
+    corpus: str,
+    pipelines: list[str],
+    latest: dict[tuple[str, str], dict[str, t.Any]],
+    metric: str,
+    *,
+    higher_is_better: bool,
+) -> str:
+    """Render one corpus's scores and language label."""
+    cells = _leaderboard_cells(corpus, pipelines, latest)
+    language = next(row["language"] for row in cells if row)
+    values = _leaderboard_values(cells, metric)
+    marked = mark_best(values, higher_is_better=higher_is_better)
+    return f"| {corpus} | {language} | " + " | ".join(marked) + " |"
+
+
+def _leaderboard_cells(
+    corpus: str,
+    pipelines: list[str],
+    latest: dict[tuple[str, str], dict[str, t.Any]],
+) -> list[dict[str, t.Any] | None]:
+    """Look up the requested pipeline rows for one corpus."""
+    return [latest.get((corpus, pipeline)) for pipeline in pipelines]
+
+
+def _leaderboard_values(
+    cells: Sequence[dict[str, t.Any] | None], metric: str
+) -> list[float | None]:
+    """Select one metric from each available pipeline row."""
+    return [row[metric] if row else None for row in cells]
 
 
 def _settings(pipeline: str) -> tuple[str, str]:
@@ -331,58 +412,119 @@ def _settings(pipeline: str) -> tuple[str, str]:
     return ("on" if fallback else "off"), f"{weight:g}"
 
 
-def _ablation_section(rows: Sequence[dict[str, t.Any]]) -> list[str]:
-    """Hybrid and each variant, over the corpora every one of them ran on."""
+@dataclass(frozen=True)
+class _AblationData:
+    """Latest score tables and common corpora for one ablation card section."""
+
+    accuracy: dict[tuple[str, str], dict[str, t.Any]]
+    auc: dict[tuple[str, str], dict[str, t.Any]]
+    present: tuple[str, ...]
+    corpora: tuple[str, ...]
+
+
+def _ablation_data(rows: Sequence[dict[str, t.Any]]) -> _AblationData | None:
+    """Select the variant rows and corpora shared by every available variant."""
     variants = [*ABLATION_PIPELINES, *SWEEP_PIPELINES]
     accuracy = latest_results(rows, metric="accuracy_at_161km", pipelines=variants)
     auc = latest_results(rows, metric="auc", pipelines=variants)
-    present = [name for name in variants if any(p == name for _, p in accuracy)]
+    present = _present_variants(variants, accuracy)
     if len(present) < 2 or HYBRID not in present:
-        return []
-    corpora = sorted(
-        {corpus for corpus, _ in accuracy}.intersection(
-            *({c for c, p in accuracy if p == name} for name in present)
-        )
+        return None
+    corpora = _shared_corpora(accuracy, present)
+    return _AblationData(accuracy, auc, present, corpora)
+
+
+def _present_variants(
+    variants: Sequence[str],
+    accuracy: dict[tuple[str, str], dict[str, t.Any]],
+) -> tuple[str, ...]:
+    """Keep configured variants with at least one latest accuracy row."""
+    return tuple(
+        name for name in variants if any(pipeline == name for _, pipeline in accuracy)
     )
-    lines = [
+
+
+def _shared_corpora(
+    accuracy: dict[tuple[str, str], dict[str, t.Any]], present: tuple[str, ...]
+) -> tuple[str, ...]:
+    """Return corpora with a score for every present ablation variant."""
+    common = {corpus for corpus, _ in accuracy}
+    for name in present:
+        common.intersection_update(
+            corpus for corpus, pipeline in accuracy if pipeline == name
+        )
+    return tuple(sorted(common))
+
+
+def _ablation_value(
+    table: dict[tuple[str, str], dict[str, t.Any]],
+    corpus: str,
+    name: str,
+    metric: str,
+) -> float:
+    """Return one displayed score, rounded to the card's precision."""
+    return round(float(table[(corpus, name)][metric]), 3)
+
+
+def _ablation_mean(
+    table: dict[tuple[str, str], dict[str, t.Any]],
+    corpora: tuple[str, ...],
+    name: str,
+    metric: str,
+) -> float:
+    """Average a variant's displayed score over its common corpora."""
+    return sum(
+        _ablation_value(table, corpus, name, metric) for corpus in corpora
+    ) / len(corpora)
+
+
+def _ablation_win_counts(data: _AblationData, name: str) -> tuple[int, int]:
+    """Count corpora where this variant beats or trails the hybrid."""
+    deltas = [
+        _ablation_value(data.accuracy, corpus, name, "accuracy_at_161km")
+        - _ablation_value(data.accuracy, corpus, HYBRID, "accuracy_at_161km")
+        for corpus in data.corpora
+    ]
+    return sum(delta > 0 for delta in deltas), sum(delta < 0 for delta in deltas)
+
+
+def _ablation_row(data: _AblationData, name: str) -> str:
+    """Render one variant's metrics and wins against the hybrid."""
+    trimming, weight = _settings(name)
+    mean_acc = _ablation_mean(data.accuracy, data.corpora, name, "accuracy_at_161km")
+    mean_auc = _ablation_mean(data.auc, data.corpora, name, "auc")
+    better, worse = _ablation_win_counts(data, name)
+    return (
+        f"| {name} | {trimming} | {weight} | {mean_acc:.3f} | {mean_auc:.3f} "
+        f"| {better} / {worse} |"
+    )
+
+
+def _ablation_section(rows: Sequence[dict[str, t.Any]]) -> list[str]:
+    """Hybrid and each variant, over the corpora every one of them ran on."""
+    data = _ablation_data(rows)
+    if data is None:
+        return []
+    return [
         "## Ablation",
         "",
         "hybrid with one change at a time, recognition held fixed. Means are",
-        f"over the {len(corpora)} corpora every variant ran on; the last column",
+        f"over the {len(data.corpora)} corpora every variant ran on; the last column",
         "counts corpora where Acc@161km beats / trails hybrid.",
         "",
         "| Variant | Trimming | Prior weight | Mean Acc@161km | Mean AUC "
         "| Better / worse |",
         "| --- | --- | ---: | ---: | ---: | ---: |",
+        *(_ablation_row(data, name) for name in data.present),
+        "",
     ]
 
-    def value(table: dict, corpus: str, name: str, metric: str) -> float:
-        return round(float(table[(corpus, name)][metric]), 3)
 
-    for name in present:
-        trimming, weight = _settings(name)
-        mean_acc = sum(
-            value(accuracy, c, name, "accuracy_at_161km") for c in corpora
-        ) / len(corpora)
-        mean_auc = sum(value(auc, c, name, "auc") for c in corpora) / len(corpora)
-        deltas = [
-            value(accuracy, c, name, "accuracy_at_161km")
-            - value(accuracy, c, HYBRID, "accuracy_at_161km")
-            for c in corpora
-        ]
-        better = sum(delta > 0 for delta in deltas)
-        worse = sum(delta < 0 for delta in deltas)
-        lines.append(
-            f"| {name} | {trimming} | {weight} | {mean_acc:.3f} | {mean_auc:.3f} "
-            f"| {better} / {worse} |"
-        )
-    return [*lines, ""]
-
-
-def render_charts(rows: Sequence[dict[str, t.Any]]) -> dict[str, str]:
-    """Return each chart's upload path and SVG, from the latest results."""
-    corpora = _corpus_order({row["corpus"].lower() for row in rows})
-    charts = {
+def _main_charts(
+    rows: Sequence[dict[str, t.Any]], corpora: list[str]
+) -> dict[str, str]:
+    """Render the standard metric charts in their declared order."""
+    return {
         path: render_bar_chart(
             latest_results(rows, metric=metric, pipelines=MAIN_PIPELINES),
             metric,
@@ -392,16 +534,40 @@ def render_charts(rows: Sequence[dict[str, t.Any]]) -> dict[str, str]:
         )
         for metric, path in CHART_FILES.items()
     }
+
+
+def _ablation_corpora(
+    corpora: list[str],
+    ablation: dict[tuple[str, str], dict[str, t.Any]],
+) -> list[str]:
+    """Keep corpus chart labels represented in the ablation results."""
+    available = {corpus for corpus, _ in ablation}
+    return [corpus for corpus in corpora if corpus in available]
+
+
+def _ablation_chart(rows: Sequence[dict[str, t.Any]], corpora: list[str]) -> str | None:
+    """Render the optional ablation chart when multiple variants are present."""
     ablation = latest_results(
         rows, metric="accuracy_at_161km", pipelines=ABLATION_PIPELINES
     )
-    if len({pipeline for _, pipeline in ablation}) > 1:
-        charts[ABLATION_CHART] = render_bar_chart(
-            ablation,
-            "accuracy_at_161km",
-            "Ablation: Acc@161km, one change at a time (higher is better)",
-            corpora=[c for c in corpora if any(k[0] == c for k in ablation)],
-        )
+    present = {pipeline for _, pipeline in ablation}
+    if len(present) <= 1:
+        return None
+    return render_bar_chart(
+        ablation,
+        "accuracy_at_161km",
+        "Ablation: Acc@161km, one change at a time (higher is better)",
+        corpora=_ablation_corpora(corpora, ablation),
+    )
+
+
+def render_charts(rows: Sequence[dict[str, t.Any]]) -> dict[str, str]:
+    """Return each chart's upload path and SVG, from the latest results."""
+    corpora = _corpus_order({row["corpus"].lower() for row in rows})
+    charts = _main_charts(rows, corpora)
+    ablation = _ablation_chart(rows, corpora)
+    if ablation is not None:
+        charts[ABLATION_CHART] = ablation
     return charts
 
 

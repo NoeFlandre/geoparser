@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - main
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
   # The trunk itself is also tested. This is what keeps the README badges alive,
   # seeds the default-branch Actions cache that every pull request restores from
   # (caches written by a pull request are scoped to that pull request alone), and
@@ -18,28 +18,26 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-{0}', github.run_id) || 'validation' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   # Superseding a pull request commit is free; superseding a trunk commit would
   # leave a commit on main permanently untested.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   HYPOTHESIS_PROFILE: ci
-  # The hard coverage gate, applied to the combined report across the whole
-  # matrix. Single cells are not gated: platform-specific branches are
-  # unreachable off their own operating system, so only the combination is a
-  # fair measure -- and the combination is a union, so it can only be higher
-  # than any one cell. Raise this when coverage rises; never lower it to go green.
+  # The hard package-coverage gate is applied to the combined report across
+  # the whole matrix. Single cells are not gated: platform-specific branches
+  # are unreachable off their own operating system. Raise this when coverage
+  # rises; never lower it to go green. Scripts and tests are additionally
+  # measured by the CRAP gate below.
   COVERAGE_THRESHOLD: "100"
-  # The worst tolerated CRAP score (complexity^2 * (1-coverage)^3 + complexity).
-  # For fully covered code this is just a cyclomatic-complexity ceiling, so at
-  # 6 every measured function must stay under six branches.
+  # Exclusive CRAP ceiling (complexity^2 * (1-coverage)^3 + complexity):
+  # every measured function must score strictly below six.
   CRAP_THRESHOLD: "6"
 
 jobs:
   pytest:
-    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
-    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('metadata-edit-ignored (pytest {0}, {1})', matrix.os, matrix.python-version) || format('pytest ({0}, {1})', matrix.os, matrix.python-version) }}
+    name: ${{ format('pytest ({0}, {1})', matrix.os, matrix.python-version) }}
     strategy:
       fail-fast: false
       matrix:
@@ -109,7 +107,21 @@ jobs:
             huggingface-${{ runner.os }}-
 
       - name: Run pytest
+        # Run the opt-in model integration tests in one Linux cell so their
+        # assertions participate in the combined strict CRAP report.
+        env:
+          GEOPARSER_TEST_REMOTE_MODELS: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && '1' || '' }}
         run: uv run --no-sync pytest -v
+
+      # The opt-in benchmark suite includes deterministic operation-count
+      # contracts and test helpers that the all-source CRAP report measures.
+      # Run it once with timings disabled so those scenarios stay quick.
+      - name: Run deterministic benchmark contracts
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: >-
+          uv run --no-sync pytest tests/benchmarks -m benchmark --benchmark-disable
+          --cov=geoparser --cov=scripts --cov=tests --cov-append
+          --cov-report=term-missing
 
       - run: mkdir coverage
       - run: mv .coverage coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}
@@ -121,8 +133,7 @@ jobs:
           include-hidden-files: true
 
   coverage:
-    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
-    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (coverage)' || 'coverage' }}
+    name: coverage
     needs: [pytest]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -145,12 +156,12 @@ jobs:
       # Only the tools needed to combine and gate; no torch.
       - run: uv sync --locked --only-group lint
       - run: uv run --no-sync coverage combine coverage
-      - run: uv run --no-sync coverage report
+      - run: uv run --no-sync coverage report --include='geoparser/*'
 
       # The hard gate. Runs before the reporting steps so a coverage drop fails
       # the build rather than being quietly published.
       - name: Enforce the coverage threshold
-        run: uv run --no-sync coverage report --fail-under=${{ env.COVERAGE_THRESHOLD }}
+        run: uv run --no-sync coverage report --include='geoparser/*' --fail-under=${{ env.COVERAGE_THRESHOLD }}
 
       # Complexity is only half of CRAP; the other half is the combined
       # coverage that has just been assembled, so the gate lives here.
@@ -193,8 +204,8 @@ jobs:
   # matrix values, so requiring those directly deadlocks the ruleset as soon as
   # the matrix changes; this name never does.
   tests-passed:
-    if: always() && (github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null)
-    name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (tests-passed)' || 'tests-passed' }}
+    if: always()
+    name: tests-passed
     needs: [pytest, coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 5

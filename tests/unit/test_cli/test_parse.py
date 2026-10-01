@@ -77,24 +77,33 @@ def pipeline():
         )
 
 
+@pytest.fixture
+def stdin_jsonl_record(pipeline):
+    """Parse one stdin document and return its single JSONL record."""
+    result = runner.invoke(app, ["parse", "-"], input="Paris or Atlantis")
+    assert result.exit_code == 0, result.output
+    lines = result.stdout.strip().splitlines()
+    assert len(lines) == 1
+    return json.loads(lines[0])
+
+
 @pytest.mark.unit
 @pytest.mark.usefixtures("installed")
 class TestParseCommand:
     """Test the parse command end to end through the Typer app."""
 
-    def test_stdin_to_jsonl(self, pipeline):
-        result = runner.invoke(app, ["parse", "-"], input="Paris or Atlantis")
+    def test_stdin_jsonl_preserves_source_and_text(self, stdin_jsonl_record):
+        assert stdin_jsonl_record["source"] == "-"
+        assert stdin_jsonl_record["text"] == "Paris or Atlantis"
 
-        assert result.exit_code == 0, result.output
-        lines = result.stdout.strip().splitlines()
-        assert len(lines) == 1
-        record = json.loads(lines[0])
-        assert record["source"] == "-"
-        assert record["text"] == "Paris or Atlantis"
-        paris, atlantis = record["toponyms"]
+    def test_stdin_jsonl_serializes_resolved_place(self, stdin_jsonl_record):
+        paris = stdin_jsonl_record["toponyms"][0]
         assert paris["identifier"] == "2988507"
         assert paris["gazetteer"] == "geonames"
         assert paris["geometry"]["type"] == "Point"
+
+    def test_stdin_jsonl_serializes_unresolved_place(self, stdin_jsonl_record):
+        atlantis = stdin_jsonl_record["toponyms"][1]
         assert atlantis["identifier"] is None
         assert atlantis["geometry"] is None
 
@@ -158,8 +167,10 @@ class TestParseCommand:
         collection = json.loads(result.stdout)
         assert collection["type"] == "FeatureCollection"
         paris = collection["features"][0]
-        assert paris["geometry"]["coordinates"] == [2.35, 48.85]
-        assert paris["properties"]["text"] == "Paris"
+        assert (
+            paris["geometry"]["coordinates"],
+            paris["properties"]["text"],
+        ) == ([2.35, 48.85], "Paris")
         assert "geometry" not in paris["properties"]
 
     def test_output_file(self, pipeline, tmp_path):

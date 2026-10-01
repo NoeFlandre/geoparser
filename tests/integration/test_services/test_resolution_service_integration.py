@@ -228,10 +228,13 @@ class TestResolutionServiceIntegration:
 
         referents = ReferentRepository.get_by_reference(test_session, reference.id)
         assert len(referents) == 1
-        assert referents[0].gazetteer_name == "andorranames"
-        assert referents[0].feature_identifier == "3041563"
-        assert referents[0].feature is not None
-        assert referents[0].feature.identifier == "3041563"
+        feature = referents[0].feature
+        assert feature is not None
+        assert (
+            referents[0].gazetteer_name,
+            referents[0].feature_identifier,
+            feature.identifier,
+        ) == ("andorranames", "3041563", "3041563")
 
     def test_transactions_are_committed(
         self,
@@ -363,13 +366,9 @@ class TestResolutionServiceIntegration:
         # Assert
         from geoparser.db.crud import ResolutionRepository
 
-        for doc in documents:
-            test_session.refresh(doc)
-            for ref in doc.references:
-                resolutions = ResolutionRepository.get_by_reference(
-                    test_session, ref.id
-                )
-                assert len(resolutions) == 1
+        _assert_each_reference_was_resolved(
+            ResolutionRepository, test_session, documents
+        )
 
     def test_fit_trains_resolver_with_annotated_documents(
         self,
@@ -534,3 +533,12 @@ class TestResolutionServiceIntegration:
 
         # Cleanup
         project.delete()
+
+
+def _assert_each_reference_was_resolved(repository, session, documents):
+    """Verify every reference in a document batch received one resolution."""
+    for document in documents:
+        session.refresh(document)
+        for reference in document.references:
+            resolutions = repository.get_by_reference(session, reference.id)
+            assert len(resolutions) == 1

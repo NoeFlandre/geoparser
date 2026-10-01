@@ -14,8 +14,12 @@ The checkpoint is a large download, so these are opt-in: set
 import os
 
 import pytest
+from huggingface_hub import snapshot_download
 
 from geoparser.modules.recognizers.gliner import GLiNER2Recognizer
+
+GLINER_MODEL_ID = "fastino/gliner2.5-multi-v1"
+GLINER_MODEL_REVISION = "2ca71aafb3446d9014e1c55c7ff51c9bc7209c47"
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("GEOPARSER_TEST_REMOTE_MODELS"),
@@ -26,7 +30,11 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture(scope="module")
 def recognizer() -> GLiNER2Recognizer:
     """The real recognizer, loaded once for this module."""
-    return GLiNER2Recognizer()
+    model_path = snapshot_download(
+        repo_id=GLINER_MODEL_ID,
+        revision=GLINER_MODEL_REVISION,
+    )
+    return GLiNER2Recognizer(model_name=model_path)
 
 
 @pytest.mark.integration
@@ -100,10 +108,14 @@ class TestGLiNER2RecognizerIntegration:
         """Zero-shot labels are the point: asking for rivers finds rivers."""
         # Arrange
         text = "The Danube flows past Budapest."
-        rivers = GLiNER2Recognizer(entity_types=["river"])
+        original_entity_types = recognizer.entity_types
+        recognizer.entity_types = ["river"]
 
         # Act
-        (found,) = rivers.predict([text])
+        try:
+            (found,) = recognizer.predict([text])
+        finally:
+            recognizer.entity_types = original_entity_types
 
         # Assert
         assert found is not None

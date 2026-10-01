@@ -64,6 +64,49 @@ Seven additional names are available for ablations: `trim` enables inflection fa
 
 Recognition scores each pipeline's own spans by exact match. Resolution supplies every pipeline with the same gold spans and scores the distance to the predicted location, so the resolution comparison does not depend on each recognizer's recall. The [published results](https://huggingface.co/datasets/NoeFlandre/geoparser-benchmark-results) include the metrics, per-corpus charts, ablations, and evidence files.
 
+## PAN-X location recognition
+
+The separate PAN-X experiment compares the English upstream model,
+`fastino/gliner2.5-multi-v1`, and `Davlan/xlm-roberta-base-ner-hrl` on the
+existing WikiANN test splits. Its 85 target language codes and the WikiANN
+intersection are pinned in `scripts/panx_benchmark/`; the upstream language
+source and commit are recorded beside the list. The pinned dataset revision has
+test splits for 82 target languages (`ha`, `xh`, and `zu` are absent), totaling
+423,100 examples.
+
+Run a small, real-inference feasibility sample across every available language
+with:
+
+```bash
+python -m scripts.panx_benchmark --limit-per-language 8
+```
+
+This is a bounded sample from the pinned test splits, not a quality result. The
+full run uses every test example and can take substantial CPU time:
+
+```bash
+python -m scripts.panx_benchmark
+```
+
+The report records per-language exact-span location precision, recall and F1,
+macro and micro aggregates, test row counts, documented support versus
+cross-lingual transfer, training-overlap knowledge, checkpoint download and
+model-load times, and steady-state throughput. All models use the same joined
+WikiANN text, character offsets, fixed batch size, and CPU host. The spaCy
+control is scored on English only. No training, fine-tuning, resolution,
+publication, or dataset-scale export occurs. Reports are written locally under
+`benchmark-evidence/panx/` and are never uploaded by this command.
+
+### Historical feasibility evidence
+
+The September 30 sample in `benchmark-evidence/panx/feasibility-2026-09-30/`
+has an unavailable source revision. Its JSON and Markdown flag it as unverified
+and unsuitable for pipeline selection. It is retained as historical evidence,
+not a reproducible benchmark. Legacy timings include metric bookkeeping; new
+runs time prediction calls separately and must not combine timing estimates
+with those older records. Publish the exact source revision before treating
+any new run as remotely reproducible.
+
 ## Grid'5000
 
 The submission wrapper checks for a duplicate active OAR job, requests one GPU and a bounded walltime, and submits `run_benchmark.sh` to the node. The node script builds GeoNames on local scratch, keeps model caches and the database off the home quota, and writes checkpoints to the selected results directory.

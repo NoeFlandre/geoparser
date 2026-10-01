@@ -12,6 +12,12 @@ from pydantic import ValidationError
 
 from geoparser.gazetteer.build.schema import GazetteerConfig, split_data_value
 
+EXPECTED_BUILTIN_DISK_BUDGETS = {
+    "geonames.yaml": 30_700_000_000,
+    "geonames-cities.yaml": 800_000_000,
+    "swissnames3d.yaml": 3_500_000_000,
+}
+
 
 def minimal_config(**overrides) -> dict:
     """Return a minimal valid configuration, optionally overridden."""
@@ -509,25 +515,27 @@ class TestFromYaml:
 
         assert config.sources[0].path == absolute_path
 
-    def test_builtin_configs_declare_measured_disk(self):
-        """Each shipped gazetteer config carries a measured disk budget."""
+    def test_expected_builtin_configs_are_shipped(self):
         from importlib.resources import files
 
         configs_dir = files("geoparser.gazetteer") / "configs"
-        expected = {
-            "geonames.yaml": 30_700_000_000,
-            "geonames-cities.yaml": 800_000_000,
-            "swissnames3d.yaml": 3_500_000_000,
-        }
         shipped = {
             entry.name
             for entry in configs_dir.iterdir()
             if entry.name.endswith(".yaml")
         }
-        assert shipped == set(expected)
-        for name, disk in expected.items():
-            config = GazetteerConfig.from_yaml(str(configs_dir / name))
-            assert config.disk == disk, name
+        assert shipped == set(EXPECTED_BUILTIN_DISK_BUDGETS)
+
+    @pytest.mark.parametrize(
+        ("filename", "expected_disk"), EXPECTED_BUILTIN_DISK_BUDGETS.items()
+    )
+    def test_builtin_configs_declare_measured_disk(self, filename, expected_disk):
+        """Each shipped gazetteer config carries its measured disk budget."""
+        from importlib.resources import files
+
+        configs_dir = files("geoparser.gazetteer") / "configs"
+        config = GazetteerConfig.from_yaml(str(configs_dir / filename))
+        assert config.disk == expected_disk, filename
 
     def test_documented_example_config_is_valid(self):
         """The config the gazetteers guide walks through still validates."""

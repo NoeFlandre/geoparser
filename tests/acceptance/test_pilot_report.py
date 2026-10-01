@@ -22,6 +22,89 @@ pytestmark = pytest.mark.acceptance
 scenarios("features/pilot_report.feature")
 
 
+class _FakePilotModel:
+    """A tiny model object whose device conversion can be observed."""
+
+    def __init__(self):
+        self.converted = False
+
+    def float(self):
+        self.converted = True
+        return self
+
+    def parameters(self):
+        return iter([SimpleNamespace(dtype="float32")])
+
+
+class _FakePilotTransformer(_FakePilotModel):
+    def __init__(self):
+        super().__init__()
+        self.max_seq_length = 8192
+
+
+class _FakePilotRecognizer:
+    def __init__(self):
+        self.model_name = "recognizer-test"
+
+
+class _FakePilotResolver:
+    def __init__(self, *args, **kwargs):
+        self.transformer = _FakePilotTransformer()
+        self.reranker = _FakePilotModel()
+        self.model_name = "embedding-test"
+        self.reranker_name = "reranker-test"
+        self.rerank_top_k = 1
+        self._texts: list[str] = []
+
+    def predict(self, texts, references):
+        self._texts = texts
+        self._evaluate_candidates(texts, references)
+        return [[] for _ in texts]
+
+    def _evaluate_candidates(self, *args, **kwargs):
+        for text in self._texts:
+            self._evaluate_document(text)
+
+    def _evaluate_document(self, text):
+        return None
+
+
+class _FakePilotGazetteerBuilder:
+    output_path: Any = None
+
+    def build(self, config_path):
+        return self.output_path
+
+
+class _FakePilotProject:
+    instances: ClassVar[list["_FakePilotProject"]] = []
+
+    def __init__(self, name):
+        self.name = name
+        self.documents = []
+        self.instances.append(self)
+
+    def create_documents(self, texts):
+        self.texts = texts
+        self.documents = [SimpleNamespace(toponyms=[]) for _ in texts]
+        return list(range(len(texts)))
+
+    def run_recognizer(self, recognizer):
+        self.recognizer = recognizer
+
+    def run_resolver(self, resolver):
+        self.resolver = resolver
+        resolver.predict(self.texts, [[] for _ in self.texts])
+
+    def get_documents(self, ids=None):
+        if ids is None:
+            return self.documents
+        return [self.documents[index] for index in ids]
+
+    def delete(self):
+        self.deleted = True
+
+
 @pytest.fixture
 def pilot_state() -> dict[str, Any]:
     return {}
@@ -175,65 +258,11 @@ def each_document_keeps_its_span(pilot_state: dict[str, Any]) -> None:
     ]
 
 
-def test_run_pilot_caps_context_and_uses_cpu_reranker(monkeypatch, tmp_path):
-    class FakeModel:
-        def __init__(self):
-            self.converted = False
-
-        def float(self):
-            self.converted = True
-            return self
-
-        def parameters(self):
-            return iter([SimpleNamespace(dtype="float32")])
-
-    class FakeTransformer(FakeModel):
-        def __init__(self):
-            super().__init__()
-            self.max_seq_length = 8192
-
-    class FakeRecognizer:
-        def __init__(self):
-            self.model_name = "recognizer-test"
-
-    class FakeResolver:
-        def __init__(self, *args, **kwargs):
-            self.transformer = FakeTransformer()
-            self.reranker = FakeModel()
-            self.model_name = "embedding-test"
-            self.reranker_name = "reranker-test"
-            self.rerank_top_k = 1
-
-    class FakeGazetteerBuilder:
-        def build(self, config_path):
-            return tmp_path / "andorranames.gazetteer"
-
-    class FakeProject:
-        instances: ClassVar[list] = []
-
-        def __init__(self, name):
-            self.name = name
-            self.documents = []
-            self.instances.append(self)
-
-        def create_documents(self, texts):
-            self.documents = [SimpleNamespace(toponyms=[]) for _ in texts]
-            return list(range(len(texts)))
-
-        def run_recognizer(self, recognizer):
-            self.recognizer = recognizer
-
-        def run_resolver(self, resolver):
-            self.resolver = resolver
-
-        def get_documents(self, ids=None):
-            if ids is None:
-                return self.documents
-            return [self.documents[index] for index in ids]
-
-        def delete(self):
-            self.deleted = True
-
+@pytest.fixture
+def timed_fake_pilot(monkeypatch, tmp_path):
+    """Run the pilot with small model fakes that keep timing instrumentation real."""
+    _FakePilotGazetteerBuilder.output_path = tmp_path / "andorranames.gazetteer"
+    _FakePilotProject.instances.clear()
     monkeypatch.setitem(
         sys.modules,
         "torch",
@@ -242,40 +271,59 @@ def test_run_pilot_caps_context_and_uses_cpu_reranker(monkeypatch, tmp_path):
     monkeypatch.setitem(
         sys.modules,
         "geoparser.gazetteer.build",
-        SimpleNamespace(GazetteerBuilder=FakeGazetteerBuilder),
+        SimpleNamespace(GazetteerBuilder=_FakePilotGazetteerBuilder),
     )
     monkeypatch.setitem(
         sys.modules,
         "geoparser.modules",
-        SimpleNamespace(GLiNER2Recognizer=FakeRecognizer, JinaResolver=FakeResolver),
+        SimpleNamespace(
+            GLiNER2Recognizer=_FakePilotRecognizer,
+            JinaResolver=_FakePilotResolver,
+        ),
     )
     monkeypatch.setitem(
-        sys.modules, "geoparser.project", SimpleNamespace(Project=FakeProject)
+        sys.modules, "geoparser.project", SimpleNamespace(Project=_FakePilotProject)
     )
     monkeypatch.setattr(pilot, "_configure_runtime", lambda *args, **kwargs: None)
 
     pilot.run_pilot(
         config_path=tmp_path / "andorranames.yaml", output_dir=tmp_path / "output"
     )
+    return _FakePilotProject.instances[-1].resolver
 
-    resolver = FakeProject.instances[-1].resolver
+
+def test_run_pilot_caps_context_and_uses_cpu_reranker(timed_fake_pilot):
+    resolver = timed_fake_pilot
+
     assert resolver.transformer.max_seq_length == 128
     assert not resolver.transformer.converted
     assert resolver.reranker.converted
 
 
-def test_pilot_cases_have_valid_hand_written_gold_spans():
+def test_run_pilot_records_time_for_every_case(timed_fake_pilot):
+    resolver = timed_fake_pilot
+
+    assert set(resolver.document_timings_ms) == {case.text for case in PILOT_CASES}
+    assert all(elapsed >= 0 for elapsed in resolver.document_timings_ms.values())
+
+
+def test_pilot_cases_include_expected_gold_annotations():
     assert len(PILOT_CASES) == 13
     assert sum(len(case.gold) for case in PILOT_CASES) == 15
 
-    for case in PILOT_CASES:
-        for span in case.gold:
-            assert 0 <= span.start < span.end <= len(case.text)
-            assert case.text[span.start : span.end].strip()
-            assert span.identifier.isdigit()
+
+@pytest.mark.parametrize(
+    ("case", "span"),
+    [(case, span) for case in PILOT_CASES for span in case.gold],
+)
+def test_each_pilot_gold_span_is_valid(case, span):
+    assert 0 <= span.start < span.end <= len(case.text)
+    assert case.text[span.start : span.end].strip()
+    assert span.identifier.isdigit()
 
 
-def test_build_report_records_annotations_metrics_and_timings():
+@pytest.fixture
+def report_with_populated_and_empty_documents():
     cases = (
         PilotCase(
             "capital",
@@ -286,7 +334,7 @@ def test_build_report_records_annotations_metrics_and_timings():
     )
     predictions = ((Annotation(0, 16, "3041563"),), ())
 
-    report = build_report(
+    return build_report(
         cases,
         predictions,
         (12.34567, 2.0),
@@ -294,6 +342,11 @@ def test_build_report_records_annotations_metrics_and_timings():
         configuration={"gazetteer": "andorranames"},
     )
 
+
+def test_build_report_records_document_and_annotation_counts(
+    report_with_populated_and_empty_documents,
+):
+    report = report_with_populated_and_empty_documents
     assert report["schema_version"] == 1
     assert report["models"] == {"recognizer": "recognizer-test"}
     assert report["configuration"] == {"gazetteer": "andorranames"}
@@ -304,6 +357,12 @@ def test_build_report_records_annotations_metrics_and_timings():
         "recognition": {"precision": 1.0, "recall": 1.0, "f1": 1.0},
         "resolution": {"accuracy": 1.0},
     }
+
+
+def test_build_report_preserves_empty_and_annotated_documents(
+    report_with_populated_and_empty_documents,
+):
+    report = report_with_populated_and_empty_documents
     assert report["documents"][0] == {
         "id": "capital",
         "text": "Andorra la Vella is the capital.",

@@ -24,6 +24,17 @@ from geoparser.gazetteer.artifact import (
 )
 
 
+@pytest.fixture
+def registered_sql_functions():
+    """Record the SQLite functions and their registration options."""
+    connection = Mock()
+    register_functions(connection)
+    return {
+        call.args[0]: (call.args[1], call.kwargs)
+        for call in connection.create_function.call_args_list
+    }
+
+
 @pytest.mark.unit
 class TestGazetteersDir:
     """Where installed artifacts are looked for."""
@@ -100,7 +111,10 @@ class TestListArtifacts:
 class TestRegisterFunctions:
     """The SQL functions the fuzzy search relies on."""
 
-    def test_registers_soundex_and_levenshtein_with_their_arities(self):
+    @pytest.mark.parametrize(("name", "arity"), [("soundex", 1), ("levenshtein", 2)])
+    def test_registers_soundex_and_levenshtein_with_their_arities(
+        self, registered_sql_functions, name, arity
+    ):
         """
         The names and argument counts are what the generated SQL calls.
 
@@ -108,20 +122,9 @@ class TestRegisterFunctions:
         indexed queries; declaring otherwise silently degrades search.
         """
         # Arrange
-        connection = Mock()
-
-        # Act
-        register_functions(connection)
-
-        # Assert
-        registered = {
-            call.args[0]: (call.args[1], call.kwargs)
-            for call in connection.create_function.call_args_list
-        }
-        assert registered["soundex"][0] == 1
-        assert registered["levenshtein"][0] == 2
-        assert registered["soundex"][1]["deterministic"] is True
-        assert registered["levenshtein"][1]["deterministic"] is True
+        registered = registered_sql_functions[name]
+        assert registered[0] == arity
+        assert registered[1]["deterministic"] is True
 
     def test_the_registered_functions_are_callable_from_sql(self):
         """A real connection can use both by name."""

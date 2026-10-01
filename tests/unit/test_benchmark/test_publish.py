@@ -92,13 +92,16 @@ class TestCollectRows:
 class TestRenderCard:
     """The dataset card."""
 
-    def test_declares_mixed_corpus_licenses(self):
+    def test_declares_a_neutral_license_for_mixed_sources(self):
         """The card names a neutral metadata license and source terms by corpus."""
         card = render_card([])
 
         assert card.startswith("---\n")
         assert f"license: {LICENSE}" in card
         assert LICENSE == "other"
+
+    def test_lists_license_terms_for_each_corpus(self):
+        card = render_card([])
         assert "license_name: Mixed corpus terms; see the dataset card" in card
         assert "HIPE-2022: CC BY-NC-SA 4.0" in card
         assert "GeoVirus and NewsLi: Apache-2.0" in card
@@ -189,35 +192,42 @@ class TestMarkBest:
 class TestPublish:
     """What reaches the Hub."""
 
-    def test_creates_a_public_dataset_and_uploads_evidence_and_card(self, tmp_path):
-        """Test that the repo is public and gets the evidence plus a README."""
-        report(tmp_path, "run-a")
-        api = FakeApi()
-
-        publish(tmp_path, "me/results", api=api)
-
-        kinds = [call[0] for call in api.calls]
-        assert kinds == [
-            "create_repo",
-            "upload_folder",
-            *["upload_file"] * (2 + len(CHART_FILES)),
-        ]
-        assert [c[2]["path_in_repo"] for c in api.calls[2:]] == [
-            RESULTS_FILE,
-            *CHART_FILES.values(),
-            "README.md",
-        ]
+    def test_publishes_a_public_dataset_repository(self, tmp_path):
+        api = _published_dataset(tmp_path)
         create = api.calls[0][2]
         assert create == {"repo_type": "dataset", "private": False, "exist_ok": True}
+
+    def test_publishes_the_evidence_folder(self, tmp_path):
+        api = _published_dataset(tmp_path)
         folder = api.calls[1][2]
         assert folder["folder_path"] == str(tmp_path)
         assert folder["path_in_repo"] == "runs"
         assert folder["repo_type"] == "dataset"
 
+    def test_uploads_the_results_table_charts_and_card(self, tmp_path):
+        api = _published_dataset(tmp_path)
+        kinds = [call[0] for call in api.calls]
+        paths = [call[2]["path_in_repo"] for call in api.calls[2:]]
+
+        assert kinds == [
+            "create_repo",
+            "upload_folder",
+            *["upload_file"] * (2 + len(CHART_FILES)),
+        ]
+        assert paths == [RESULTS_FILE, *CHART_FILES.values(), "README.md"]
+
     def test_refuses_an_empty_evidence_folder(self, tmp_path):
         """Test that nothing is published when there is nothing to show."""
         with pytest.raises(ValueError):
             publish(tmp_path, "me/results", api=FakeApi())
+
+
+def _published_dataset(tmp_path):
+    """Run the publishing flow against a recorder and return its evidence."""
+    report(tmp_path, "run-a")
+    api = FakeApi()
+    publish(tmp_path, "me/results", api=api)
+    return api
 
 
 class TestViewer:
@@ -411,30 +421,34 @@ def _ablation_rows():
 class TestAblationSection:
     """One factor at a time, summarised against hybrid."""
 
-    def test_lists_each_variant_with_its_settings(self):
+    @pytest.mark.parametrize(
+        "variant_row",
+        (
+            "| hybrid | off | 0 |",
+            "| trim | on | 0 |",
+            "| population | off | 0.1 |",
+            "| prior | off | 0.3 |",
+            "| population-0.2 | off | 0.2 |",
+        ),
+    )
+    def test_lists_each_variant_with_its_settings(self, variant_row):
         """The table says which factor each row turns on."""
         card = render_card(_ablation_rows())
-
         assert "## Ablation" in card
-        assert "| hybrid | off | 0 |" in card
-        assert "| trim | on | 0 |" in card
-        assert "| population | off | 0.1 |" in card
-        assert "| prior | off | 0.3 |" in card
-        assert "| population-0.2 | off | 0.2 |" in card
+        assert variant_row in card
 
-    def test_reports_means_and_wins_against_hybrid(self):
+    @pytest.mark.parametrize(
+        ("pipeline", "mean", "wins"),
+        [("trim", "0.575", "1 / 0"), ("population", "0.575", "1 / 1")],
+    )
+    def test_reports_means_and_wins_against_hybrid(self, pipeline, mean, wins):
         """Mean Acc@161km over corpora, and corpora better or worse."""
         card = render_card(_ablation_rows())
-
-        trim_row = next(
-            line for line in card.splitlines() if line.startswith("| trim |")
+        row = next(
+            line for line in card.splitlines() if line.startswith(f"| {pipeline} |")
         )
-        assert "0.575" in trim_row
-        assert "1 / 0" in trim_row
-        population = next(
-            line for line in card.splitlines() if line.startswith("| population |")
-        )
-        assert "1 / 1" in population
+        assert mean in row
+        assert wins in row
 
     def test_is_absent_without_ablation_results(self):
         """A card without ablation runs has no empty section."""

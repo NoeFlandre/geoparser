@@ -6,6 +6,25 @@ All notable changes to GeoParser are recorded here. This project follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep required CI check names stable and avoid replacing validation with
+  skipped suites when pull-request metadata changes.
+- Exclude metric bookkeeping from PAN-X prediction timing and preserve malformed
+  gold-tag counts in micro aggregates. Mark unreproducible historical sample
+  evidence explicitly, and bind diagnostic mutant IDs to their source checkout.
+
+- Reject missing sentence-transformer tokenizers with a clear error, and test
+  resolver input alignment without accepting unrelated exceptions.
+- Remove redundant resolver validation and record exact mutation-replay evidence.
+
+### Security
+
+- Update the locked JupyterLab development dependency to 4.6.4 to address
+  CVE-2026-102830, CVE-2026-102831, and CVE-2026-102904.
+- Update the locked Notebook demo dependency to 7.6.3 to address
+  PYSEC-2026-4112.
+
 ## [0.6.0]
 
 ### Added

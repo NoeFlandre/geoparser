@@ -96,6 +96,13 @@ def run_names(
 @pytest.fixture
 def connection():
     con = duckdb.connect()
+    yield con
+    con.close()
+
+
+@pytest.fixture
+def spatial_connection():
+    con = duckdb.connect()
     con.load_extension("spatial")
     yield con
     con.close()
@@ -365,8 +372,73 @@ class TestDuplicateMerge:
 class TestGeometry:
     """Test geometry projection and merging."""
 
-    def test_point_geometry_from_coordinates(self, connection):
+    def test_duplicate_geometry_query_uses_only_the_feature_source(self):
+        """Duplicate geometry unions are compiled separately without joins."""
+        config, compiler = build_compiler(
+            {
+                "name": "testgaz",
+                "sources": [
+                    spatial(
+                        "places",
+                        ("id", "integer"),
+                        ("name", "text"),
+                        ("geometry", "geometry"),
+                    ),
+                    tabular("regions", ("code", "text")),
+                ],
+                "features": [
+                    {
+                        "source": "places",
+                        "joins": ["LEFT JOIN regions r ON id = r.code"],
+                        "identifier": "id",
+                        "geometry": "geometry",
+                        "names": ["name"],
+                    }
+                ],
+            }
+        )
+
+        query = compiler.duplicate_geometry_query(config.features[0])
+
+        assert query is not None
+        assert 'FROM "places" AS src' in query
+        assert '"regions"' not in query
+        assert "ST_Union_Agg" in query
+
+    def test_constructed_geometry_sql_reprojects_declared_source_crs(self):
+        """Coordinates are transformed when source and artifact CRS differ."""
+        config, compiler = build_compiler(
+            {
+                "name": "testgaz",
+                "crs": "EPSG:4326",
+                "sources": [
+                    tabular(
+                        "places",
+                        ("id", "integer"),
+                        ("e", "real"),
+                        ("n", "real"),
+                    )
+                    | {"crs": "EPSG:2056"}
+                ],
+                "features": [
+                    {
+                        "source": "places",
+                        "identifier": "id",
+                        "names": ["CAST(id AS VARCHAR)"],
+                        "geometry": "ST_Point(e, n)",
+                    }
+                ],
+            }
+        )
+
+        geometry = compiler._feature_geometry(config.features[0])
+
+        assert geometry.startswith("ST_Transform(")
+        assert "'EPSG:2056', 'EPSG:4326'" in geometry
+
+    def test_point_geometry_from_coordinates(self, spatial_connection):
         """A point expression over lon/lat columns becomes a WKB point."""
+        connection = spatial_connection
         connection.execute(
             "CREATE TABLE places (id INTEGER, name VARCHAR, lon DOUBLE, lat DOUBLE)"
         )
@@ -405,8 +477,9 @@ class TestGeometry:
         # ST_Point over NULL coordinates yields no geometry
         assert features["2"]["geometry"] is None
 
-    def test_geometry_union_merge(self, connection):
+    def test_geometry_union_merge(self, spatial_connection):
         """Geometries of duplicate rows are combined by union."""
+        connection = spatial_connection
         connection.execute(
             "CREATE TABLE places (id INTEGER, name VARCHAR, geometry GEOMETRY)"
         )
@@ -444,19 +517,13 @@ class TestGeometry:
         assert union.geom_type == "MultiPoint"
         assert len(union.geoms) == 2
 
-    def test_staged_geometry_column_is_not_transformed_again(self, connection):
+    def test_staged_geometry_column_is_not_transformed_again(self):
         """
         A geometry column is passed through whatever CRS its source declares.
 
         Spatial sources are re-projected as they are staged (see the loader),
         so transforming here as well would move the geometry twice.
         """
-        connection.execute(
-            "CREATE TABLE places (id INTEGER, name VARCHAR, geometry GEOMETRY)"
-        )
-        connection.execute(
-            "INSERT INTO places VALUES (1, 'Bern', ST_Point(7.44, 46.95))"
-        )
         config, compiler = build_compiler(
             {
                 "name": "testgaz",
@@ -481,15 +548,15 @@ class TestGeometry:
             }
         )
 
-        features = run_features(connection, compiler, config)
+        geometry = compiler._feature_geometry(config.features[0])
 
-        from shapely import wkb
+        assert geometry == 'src."geometry"'
 
-        point = wkb.loads(bytes(features["1"]["geometry"]))
-        assert (point.x, point.y) == pytest.approx((7.44, 46.95))
-
-    def test_constructed_geometry_is_reprojected_to_gazetteer_crs(self, connection):
+    def test_constructed_geometry_is_reprojected_to_gazetteer_crs(
+        self, spatial_connection
+    ):
         """A geometry built from coordinate columns is transformed here."""
+        connection = spatial_connection
         connection.execute(
             "CREATE TABLE places (id INTEGER, name VARCHAR, e DOUBLE, n DOUBLE)"
         )
@@ -690,8 +757,9 @@ class TestJoins:
 
         assert features["1"]["data"]["parent_label"] == "Top level"
 
-    def test_spatial_join(self, connection):
+    def test_spatial_join(self, spatial_connection):
         """A spatial join clause matches the feature geometry against boundaries."""
+        connection = spatial_connection
         connection.execute(
             "CREATE TABLE places (id INTEGER, name VARCHAR, lon DOUBLE, lat DOUBLE)"
         )
@@ -737,13 +805,14 @@ class TestJoins:
         assert features["1"]["data"]["zone_name"] == "Unit Square"
         assert features["2"]["data"]["zone_name"] is None
 
-    def test_spatial_join_qualifies_ambiguous_geometry(self, connection):
+    def test_spatial_join_qualifies_ambiguous_geometry(self, spatial_connection):
         """A bare geometry column in an ON condition is qualified to the source.
 
         Both the source and the joined source expose a ``geometry`` column, so
         an unqualified reference would be ambiguous; the compiler qualifies it
         to ``src`` implicitly.
         """
+        connection = spatial_connection
         connection.execute("CREATE TABLE places (id INTEGER, geometry GEOMETRY)")
         connection.execute("INSERT INTO places VALUES (1, ST_Point(0.5, 0.5))")
         connection.execute("CREATE TABLE zones (zone_name VARCHAR, geometry GEOMETRY)")

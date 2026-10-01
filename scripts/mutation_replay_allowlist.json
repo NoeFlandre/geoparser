@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "source": {
+    "workflow_run_id": "36842110918",
+    "pull_request_head_sha": "f0f07a630fda3be4b758d27690bd12a2c280897c",
+    "checkout_sha": "da46b4841404493012e07f2e8df6165ffe8f02ec",
+    "report_sha256": "03431720966578a31913849bf3d1b945cc7a3294d3d9312f95691c8c6c9f1c0a",
+    "timeout_count": 27,
+    "replay_source_sha": "f0f07a630fda3be4b758d27690bd12a2c280897c",
+    "source_tree_sha": "fb77bc0a9cb2516c16343c6c39d971560f6a9878"
+  },
+  "max_selected_per_dispatch": 8,
+  "mutant_ids": [
+    "geoparser.modules.resolvers._similarity.xǁSimilarityMixinǁ_calculate_similarity_batches__mutmut_20",
+    "geoparser.modules.resolvers._similarity.xǁSimilarityMixinǁ_calculate_similarity_batches__mutmut_24",
+    "geoparser.modules.resolvers._similarity.xǁSimilarityMixinǁ_non_empty__mutmut_4",
+    "geoparser.modules.resolvers._similarity.xǁSimilarityMixinǁ_non_empty__mutmut_7",
+    "geoparser.modules.resolvers._similarity.xǁSimilarityMixinǁ_non_empty__mutmut_8",
+    "geoparser.modules.resolvers._similarity.xǁSimilarityMixinǁ_flat_similarities__mutmut_9",
+    "geoparser.modules.resolvers._similarity.xǁSimilarityMixinǁ_flat_similarities__mutmut_12",
+    "geoparser.modules.resolvers._similarity.xǁSimilarityMixinǁ_flat_similarities__mutmut_17",
+    "geoparser.modules.resolvers._similarity.xǁSimilarityMixinǁ_flat_similarities__mutmut_23",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_search_tier__mutmut_14",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_candidates__mutmut_17",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_candidates__mutmut_21",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_candidates__mutmut_22",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_pending_pairs__mutmut_4",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_pending_pairs__mutmut_8",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_pending_pairs__mutmut_9",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_pending_pairs__mutmut_13",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_pending_pairs__mutmut_17",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_pending_pairs__mutmut_18",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_pending_pairs__mutmut_19",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_document_similarities__mutmut_8",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_document_similarities__mutmut_11",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_document_similarities__mutmut_12",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_document__mutmut_5",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_document__mutmut_9",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_document__mutmut_10",
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_document__mutmut_20"
+  ]
+}

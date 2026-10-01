@@ -183,7 +183,11 @@ class SentenceTransformerResolver(
         from transformers import logging
 
         logging.set_verbosity_error()
-        return AutoTokenizer.from_pretrained(model_name, **kwargs)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, **kwargs)
+        if tokenizer is None:
+            message = f"No tokenizer was loaded for {model_name!r}"
+            raise ValueError(message)
+        return tokenizer
 
     def _validate_and_set_attribute_map(
         self, gazetteer_name: str, attribute_map: dict | None = None
@@ -615,9 +619,10 @@ class SentenceTransformerResolver(
                 [candidate_list for _, candidate_list in pending],
             )
         )
-        for doc_contexts, doc_candidates, doc_results in zip(
-            contexts, candidates, results, strict=True
-        ):
+        # _pending_pairs already validates document and reference alignment.
+        for document_index, doc_contexts in enumerate(contexts):
+            doc_candidates = candidates[document_index]
+            doc_results = results[document_index]
             self._evaluate_document(
                 doc_contexts,
                 doc_candidates,

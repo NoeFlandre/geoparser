@@ -265,9 +265,8 @@ class TestProjectIntegration:
         documents = project.get_documents(tag="manual_annotations")
         assert len(documents) == 1
         assert len(documents[0].toponyms) == 1
-        assert documents[0].toponyms[0].text == "Paris"
-        assert documents[0].toponyms[0].start == 0
-        assert documents[0].toponyms[0].end == 5
+        reference = documents[0].toponyms[0]
+        assert (reference.text, reference.start, reference.end) == ("Paris", 0, 5)
 
         # Cleanup
         project.delete()
@@ -295,10 +294,14 @@ class TestProjectIntegration:
         documents = project.get_documents(tag="annotations")
         assert len(documents) == 1
         assert len(documents[0].toponyms) == 1
-        assert documents[0].toponyms[0].text == "Paris"
-        assert documents[0].toponyms[0].location is not None
-        assert documents[0].toponyms[0].location.gazetteer_name == "andorranames"
-        assert documents[0].toponyms[0].location.identifier == "3041563"
+        toponym = documents[0].toponyms[0]
+        location = toponym.location
+        assert location is not None
+        assert (toponym.text, location.gazetteer_name, location.identifier) == (
+            "Paris",
+            "andorranames",
+            "3041563",
+        )
 
         # Cleanup
         project.delete()

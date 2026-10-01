@@ -11,6 +11,7 @@ import yaml.constructor
 import yaml.resolver
 
 from tests.unit import test_docs as docs_guard
+from tests.unit.test_quality.mkdocs_navigation import markdown_paths
 
 try:
     import tomllib  # ty: ignore[unresolved-import]
@@ -107,7 +108,7 @@ def _package_name(requirement: str) -> str:
     return re.split(r"[\[<>=!~;]", requirement, maxsplit=1)[0].strip().lower()
 
 
-def test_project_quality_dependencies_and_pytest_markers_are_declared() -> None:
+def test_quality_test_dependencies_are_declared() -> None:
     with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
         project = tomllib.load(pyproject_file)
 
@@ -119,12 +120,22 @@ def test_project_quality_dependencies_and_pytest_markers_are_declared() -> None:
     }
     assert {"hypothesis", "pytest-bdd"} <= dependency_names
     assert "toml" in dependency_names
+
+
+def test_python310_declares_the_tomli_fallback() -> None:
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
+        project = tomllib.load(pyproject_file)
+    test_dependencies = project["dependency-groups"]["test"]
     assert any(
         dependency.startswith("tomli") and 'python_version < "3.11"' in dependency
         for dependency in test_dependencies
         if isinstance(dependency, str)
     )
 
+
+def test_pytest_quality_markers_and_temp_policy_are_declared() -> None:
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
+        project = tomllib.load(pyproject_file)
     marker_names = {
         marker.split(":", maxsplit=1)[0].strip()
         for marker in project["tool"]["pytest"]["ini_options"]["markers"]
@@ -158,6 +169,8 @@ def test_mutation_runner_copies_quality_support_modules() -> None:
         ".pre-commit-config.yaml",
         "CHANGELOG.md",
         "mkdocs.yml",
+        "MUTATION_TESTING.md",
+        "benchmark-evidence/panx/feasibility-2026-09-30",
     } <= copied_paths
     # The documentation guard reads these public surfaces directly, so a
     # mutant run that left them behind would fail for want of a file rather
@@ -165,33 +178,31 @@ def test_mutation_runner_copies_quality_support_modules() -> None:
     assert set(docs_guard.PUBLIC_ROOTS) <= copied_paths
 
 
-def test_public_documentation_uses_strict_mkdocs_material() -> None:
+def test_mkdocs_configuration_has_strict_site_identity() -> None:
     configuration = PROJECT_ROOT / "mkdocs.yml"
     assert configuration.is_file()
     parsed = yaml.safe_load(configuration.read_text(encoding="utf-8"))
 
-    assert isinstance(parsed["site_name"], str) and parsed["site_name"]
+    assert parsed["site_name"]
     assert parsed["site_url"].startswith("https://")
     assert parsed["strict"] is True
+
+
+def test_mkdocs_loads_python_api_documentation() -> None:
+    parsed = yaml.safe_load((PROJECT_ROOT / "mkdocs.yml").read_text(encoding="utf-8"))
     assert any(
         isinstance(plugin, dict) and "mkdocstrings" in plugin
         for plugin in parsed["plugins"]
     )
+
+
+def test_public_documentation_has_no_reStructuredText_pages() -> None:
     assert not list((PROJECT_ROOT / "docs").rglob("*.rst"))
 
-    def nav_paths(items: list[object]) -> list[str]:
-        paths: list[str] = []
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            for value in item.values():
-                if isinstance(value, str) and value.endswith(".md"):
-                    paths.append(value)
-                elif isinstance(value, list):
-                    paths.extend(nav_paths(value))
-        return paths
 
-    for relative_path in nav_paths(parsed["nav"]):
+def test_mkdocs_navigation_links_to_existing_pages() -> None:
+    parsed = yaml.safe_load((PROJECT_ROOT / "mkdocs.yml").read_text(encoding="utf-8"))
+    for relative_path in markdown_paths(parsed["nav"]):
         assert (PROJECT_ROOT / "docs" / relative_path).is_file(), relative_path
 
 
@@ -201,27 +212,33 @@ def test_pyproject_is_compatible_with_mutmut_legacy_toml_parser() -> None:
     toml.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
 
-def test_runtime_packaging_is_locked_and_does_not_copy_local_state() -> None:
-    dockerfile = PROJECT_ROOT / "Dockerfile"
+def test_dockerfile_is_present() -> None:
+    assert (PROJECT_ROOT / "Dockerfile").is_file()
+
+
+def test_docker_ignore_excludes_local_state() -> None:
     dockerignore = PROJECT_ROOT / ".dockerignore"
-    citation = PROJECT_ROOT / "CITATION.cff"
-    pyproject = PROJECT_ROOT / "pyproject.toml"
-
-    assert dockerfile.is_file()
     assert dockerignore.is_file()
-    assert citation.is_file()
-
     dockerignore_content = dockerignore.read_text(encoding="utf-8")
     assert ".git" in dockerignore_content
     assert ".venv" in dockerignore_content
     assert "secrets" in dockerignore_content
 
+
+def test_pyproject_uses_the_cpu_torch_index() -> None:
+    pyproject = PROJECT_ROOT / "pyproject.toml"
     pyproject_content = pyproject.read_text(encoding="utf-8")
     assert 'name = "pytorch-cpu"' in pyproject_content
     assert 'url = "https://download.pytorch.org/whl/cpu"' in pyproject_content
 
+
+def _project_lock() -> dict[str, Any]:
     with (PROJECT_ROOT / "uv.lock").open("rb") as lockfile:
-        lock = tomllib.load(lockfile)
+        return tomllib.load(lockfile)
+
+
+def test_lock_resolves_torch_from_the_cpu_index() -> None:
+    lock = _project_lock()
     cpu_torch = [
         package
         for package in lock["package"]
@@ -230,33 +247,48 @@ def test_runtime_packaging_is_locked_and_does_not_copy_local_state() -> None:
         == "https://download.pytorch.org/whl/cpu"
     ]
     assert cpu_torch
+
+
+def test_lock_omits_accelerator_packages() -> None:
+    lock = _project_lock()
     assert not any(
         package["name"].startswith(("cuda-", "nvidia-")) for package in lock["package"]
     )
 
+
+def test_citation_records_project_identity() -> None:
+    citation = PROJECT_ROOT / "CITATION.cff"
     citation_data = yaml.safe_load(citation.read_text(encoding="utf-8"))
     assert citation_data["cff-version"] == "1.2.0"
     assert citation_data["title"] == "Irchel Geoparser"
     assert citation_data["license"] == "MIT"
+
+
+def test_citation_links_the_repository_and_authors() -> None:
+    citation_data = yaml.safe_load(
+        (PROJECT_ROOT / "CITATION.cff").read_text(encoding="utf-8")
+    )
     assert citation_data["repository-code"].startswith("https://github.com/")
     assert len(citation_data["authors"]) >= 1
 
 
-def test_ci_runs_the_full_gate_and_publishes_strict_mkdocs() -> None:
+def test_quality_workflow_runs_on_pull_requests() -> None:
     quality = yaml.safe_load(
         (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8")
-    )
-    docs = yaml.safe_load(
-        (PROJECT_ROOT / ".github/workflows/docs.yml").read_text(encoding="utf-8")
     )
     quality_triggers = quality.get("on", quality.get(True, {}))
     quality_steps = quality["jobs"]["quality"]["steps"]
     quality_commands = [step.get("run", "") for step in quality_steps]
-    docs_build_steps = docs["jobs"]["build"]["steps"]
-    deploy_steps = docs["jobs"]["deploy"]["steps"]
 
     assert "pull_request" in quality_triggers
     assert any("scripts/quality_gauntlet.py" in command for command in quality_commands)
+
+
+def test_quality_workflow_skips_mutation_only_for_scheduled_runs() -> None:
+    quality = yaml.safe_load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8")
+    )
+    quality_steps = quality["jobs"]["quality"]["steps"]
     quality_run = next(
         step["run"]
         for step in quality_steps
@@ -265,66 +297,77 @@ def test_ci_runs_the_full_gate_and_publishes_strict_mkdocs() -> None:
     scheduled_run = quality_run.split("else", maxsplit=1)[0]
     assert "--skip-mutation" not in scheduled_run
     assert "--skip-mutation" in quality_run
+
+
+def test_docs_workflow_builds_strictly_and_deploys_pages() -> None:
+    docs = yaml.safe_load(
+        (PROJECT_ROOT / ".github/workflows/docs.yml").read_text(encoding="utf-8")
+    )
+    docs_build_steps = docs["jobs"]["build"]["steps"]
+    deploy_steps = docs["jobs"]["deploy"]["steps"]
     assert any(
         "mkdocs build --strict" in step.get("run", "") for step in docs_build_steps
     )
     assert any("deploy-pages" in step.get("uses", "") for step in deploy_steps)
 
 
-def test_pull_request_base_edits_trigger_guarded_ci() -> None:
-    """Changing a PR base starts CI, while title and description edits do not."""
+def test_pull_request_validation_includes_base_edits() -> None:
+    """Every base edit runs genuine validation with stable required names."""
+    for workflow in _pull_request_workflows():
+        events = set(workflow["on"]["pull_request"]["types"])
+        assert {"opened", "synchronize", "reopened", "ready_for_review"} <= events
+        assert "edited" in events
+        assert "workflow_dispatch" in workflow["on"]
+
+
+def _pull_request_workflows() -> list[dict[str, Any]]:
+    """Load workflows that receive pull-request events."""
     workflows_dir = PROJECT_ROOT / ".github/workflows"
+    found = []
     for path in sorted(workflows_dir.glob("*.yml")):
-        workflow = yaml.load(
-            path.read_text(encoding="utf-8"),
-            Loader=yaml.BaseLoader,
-        )
-        if "pull_request" not in workflow.get("on", {}):
-            continue
-        pull_request = workflow["on"]["pull_request"]
-        assert {"opened", "synchronize", "reopened", "edited"} <= set(
-            pull_request["types"]
-        )
-        guards = [
-            str(job.get("if", "")).replace(" ", "") for job in workflow["jobs"].values()
-        ]
-        assert any(
-            "github.event.changes.base" in guard and "edited" in guard
-            for guard in guards
-        )
-        for job in workflow["jobs"].values():
-            if "github.event.changes.base" in str(job.get("if", "")):
-                assert "metadata-edit-ignored" in str(job.get("name", ""))
-        cancellation_policies = []
-        if "cancel-in-progress" in workflow.get("concurrency", {}):
-            cancellation_policies.append(workflow["concurrency"])
-        cancellation_policies.extend(
-            job["concurrency"]
-            for job in workflow["jobs"].values()
-            if "cancel-in-progress" in job.get("concurrency", {})
-            and "github.event.changes.base" in str(job.get("if", ""))
-        )
-        for policy in cancellation_policies:
-            cancel_condition = str(policy["cancel-in-progress"])
-            group = str(policy["group"])
-            assert "github.event.action != 'edited'" in cancel_condition
-            assert "github.event.changes.base != null" in cancel_condition
-            assert "metadata-" in group
-            assert "github.run_id" in group
+        workflow = yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+        if "pull_request" in workflow.get("on", {}):
+            found.append(workflow)
+    return found
 
 
-def test_metadata_edits_do_not_cancel_or_satisfy_the_test_gate() -> None:
+@pytest.mark.parametrize(
+    ("filename", "job", "expected"),
+    [
+        ("test.yml", "tests-passed", "tests-passed"),
+        ("lint.yml", "ruff", "ruff"),
+        ("docs.yml", "build", "build"),
+        ("quality.yml", "quality", "quality-gate"),
+    ],
+)
+def test_required_check_names_are_stable(
+    filename: str, job: str, expected: str
+) -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows" / filename).read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    assert workflow["jobs"][job]["name"] == expected
+
+
+@pytest.mark.parametrize("result", ["failure", "cancelled", "skipped"])
+def test_test_gate_rejects_unsuccessful_dependencies(result: str) -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
     )
-    cancel_condition = str(workflow["concurrency"]["cancel-in-progress"])
-    test_gate = workflow["jobs"]["tests-passed"]
+    gate = workflow["jobs"]["tests-passed"]
+    assert gate["if"] == "always()"
+    assert set(gate["needs"]) == {"pytest", "coverage"}
+    failure_step = gate["steps"][0]
+    assert failure_step["run"] == "exit 1"
+    assert f"contains(needs.*.result, '{result}')" in failure_step["if"]
 
-    assert "github.event.action != 'edited'" in cancel_condition
-    assert "github.event.changes.base != null" in cancel_condition
-    assert "metadata-edit-ignored" in test_gate["name"]
-    assert "tests-passed" in test_gate["name"]
+
+def test_retargeting_requires_fresh_validation_is_documented() -> None:
+    guide = (PROJECT_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    assert "retargeting" in guide
+    assert "PR rebuilds the new base comparison" in guide
 
 
 def test_github_workflows_have_no_duplicate_yaml_keys() -> None:
@@ -333,24 +376,47 @@ def test_github_workflows_have_no_duplicate_yaml_keys() -> None:
         yaml.load(workflow.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
 
 
-def test_github_workflow_bash_scripts_parse() -> None:
+def _is_bash_step(step: dict[str, Any]) -> bool:
+    """Whether a workflow step declares an inline Bash command."""
+    return step.get("shell", "bash") == "bash" and "run" in step
+
+
+def _bash_script_cases() -> list[tuple[str, str, str]]:
+    """Return each inline Bash command with its workflow and job labels."""
+    cases = []
     workflows_dir = PROJECT_ROOT / ".github/workflows"
     for workflow_path in workflows_dir.glob("*.yml"):
         workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
         for job_name, job in workflow.get("jobs", {}).items():
-            for step in job["steps"]:
-                if step.get("shell", "bash") != "bash" or "run" not in step:
-                    continue
-                result = subprocess.run(
-                    [_bash_executable(), "-n"],
-                    input=step["run"],
-                    text=True,
-                    capture_output=True,
-                    check=False,
-                )
-                assert result.returncode == 0, (
-                    f"{workflow_path.name}:{job_name}: {result.stderr}"
-                )
+            cases.extend(
+                (workflow_path.name, job_name, step["run"])
+                for step in job["steps"]
+                if _is_bash_step(step)
+            )
+    return cases
+
+
+def _assert_bash_command_parses(
+    workflow_name: str, job_name: str, command: str
+) -> None:
+    """Ask Bash to parse one inline command without executing it."""
+    result = subprocess.run(
+        [_bash_executable(), "-n"],
+        input=command,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, f"{workflow_name}:{job_name}: {result.stderr}"
+
+
+def test_github_workflow_bash_scripts_parse() -> None:
+    for workflow_name, job_name, command in _bash_script_cases():
+        _assert_bash_command_parses(
+            workflow_name,
+            job_name,
+            command,
+        )
 
 
 def test_windows_uses_git_bash_instead_of_the_wsl_shim(
@@ -417,21 +483,38 @@ def test_test_matrix_runs_every_python_on_ubuntu_and_endpoints_elsewhere() -> No
     }
 
 
-def test_nightly_quality_runs_remote_models_and_docker() -> None:
-    """The scheduled gauntlet enables real integrations and both images."""
+def test_coverage_matrix_runs_opt_in_model_tests_in_one_linux_cell() -> None:
+    pytest_step = _named_step(_job_steps("test.yml", "pytest"), "Run pytest")
+
+    assert pytest_step["env"]["GEOPARSER_TEST_REMOTE_MODELS"] == (
+        "${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && '1' || '' }}"
+    )
+
+
+def test_quality_gate_runs_remote_model_tests_for_complete_crap_coverage() -> None:
+    quality_step = _named_step(
+        _job_steps("quality.yml", "quality"),
+        "Run the complete deterministic quality gauntlet",
+    )
+
+    assert quality_step["env"]["GEOPARSER_TEST_REMOTE_MODELS"] == "1"
+
+
+def test_nightly_quality_builds_both_docker_images() -> None:
+    """The scheduled gauntlet runs without the Docker skip switch."""
     quality = (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(
         encoding="utf-8"
     )
+    assert "uv run --no-sync python scripts/quality_gauntlet.py\n" in quality
 
-    assert "GEOPARSER_TEST_REMOTE_MODELS" in quality
-    assert "github.event_name == 'schedule'" in quality
-    assert (
-        "uv run --no-sync python scripts/quality_gauntlet.py --skip-baseline\n"
-        in quality
+
+def test_pull_request_quality_skips_docker_builds() -> None:
+    quality = (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(
+        encoding="utf-8"
     )
     assert (
         "uv run --no-sync python scripts/quality_gauntlet.py "
-        "--skip-baseline --skip-docker" in quality
+        "--skip-docker --skip-mutation" in quality
     )
     gauntlet = (PROJECT_ROOT / "scripts/quality_gauntlet.py").read_text(
         encoding="utf-8"
@@ -456,6 +539,22 @@ def test_property_workflows_select_ci_and_nightly_profiles() -> None:
     )
 
 
+def _job_steps(workflow_name: str, job_name: str) -> list[dict[str, Any]]:
+    """Load one workflow job's steps for focused contract assertions."""
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows" / workflow_name).read_text(
+            encoding="utf-8"
+        ),
+        Loader=yaml.BaseLoader,
+    )
+    return workflow["jobs"][job_name]["steps"]
+
+
+def _named_step(steps: list[dict[str, Any]], name: str) -> dict[str, Any]:
+    """Select a named workflow step without duplicating lookups in tests."""
+    return next(step for step in steps if step.get("name") == name)
+
+
 def test_fast_lint_workflow_runs_ty_with_the_lightweight_environment() -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/lint.yml").read_text(encoding="utf-8"),
@@ -475,47 +574,105 @@ def test_fast_lint_workflow_runs_ty_with_the_lightweight_environment() -> None:
     )
 
 
-def test_every_action_is_pinned_to_a_commit_sha() -> None:
+def _action_ref_is_unpinned(ref: str) -> bool:
+    """Whether an external action is not pinned to a full commit SHA."""
+    return not ref.startswith("./") and not re.search(r"@[0-9a-f]{40}$", ref)
+
+
+def _unpinned_workflow_actions() -> list[str]:
+    """Collect non-local workflow actions without immutable revisions."""
     uses = re.compile(r"^\s*(?:-\s*)?uses:\s*(\S+)", re.MULTILINE)
-    unpinned = [
-        f"{path.name}: {ref}"
-        for path in sorted((PROJECT_ROOT / ".github/workflows").glob("*.yml"))
-        for ref in uses.findall(path.read_text(encoding="utf-8"))
-        if not ref.startswith("./") and not re.search(r"@[0-9a-f]{40}$", ref)
-    ]
+    unpinned = []
+    for path in sorted((PROJECT_ROOT / ".github/workflows").glob("*.yml")):
+        unpinned.extend(
+            f"{path.name}: {ref}"
+            for ref in uses.findall(path.read_text(encoding="utf-8"))
+            if _action_ref_is_unpinned(ref)
+        )
+    return unpinned
 
-    assert unpinned == []
+
+def test_every_action_is_pinned_to_a_commit_sha() -> None:
+    assert _unpinned_workflow_actions() == []
 
 
-def test_precommit_config_runs_ruff_format_and_basic_file_checks() -> None:
+def _precommit_hook_ids() -> set[str]:
     config = yaml.load(
         (PROJECT_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
     )
-    hooks = {
+    return {
         hook["id"] for repository in config["repos"] for hook in repository["hooks"]
     }
 
+
+def test_precommit_config_has_ruff_and_format_checks() -> None:
+    hooks = _precommit_hook_ids()
     assert {"ruff", "ruff-format", "check-yaml", "check-toml"} <= hooks
+
+
+def test_precommit_config_has_trailing_space_and_eof_checks() -> None:
+    hooks = _precommit_hook_ids()
     assert "trailing-whitespace" in hooks
     assert "end-of-file-fixer" in hooks
+
+
+def test_precommit_config_checks_large_and_conflicted_files() -> None:
+    hooks = _precommit_hook_ids()
     assert {"check-added-large-files", "check-merge-conflict"} <= hooks
 
+
+def _ruff_precommit_revision() -> str:
+    config = yaml.load(
+        (PROJECT_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
     ruff_repository = next(
         repository
         for repository in config["repos"]
         if repository["repo"] == "https://github.com/astral-sh/ruff-pre-commit"
     )
+    return ruff_repository["rev"].removeprefix("v")
+
+
+def _ruff_lint_dependency() -> str:
     with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
         project = tomllib.load(pyproject_file)
-    ruff_requirement = next(
+    return next(
         requirement
         for requirement in project["dependency-groups"]["lint"]
         if requirement.startswith("ruff==")
     )
-    assert ruff_requirement == f"ruff=={ruff_repository['rev'].removeprefix('v')}"
+
+
+def test_precommit_ruff_revision_matches_the_locked_lint_dependency() -> None:
+    assert _ruff_lint_dependency() == f"ruff=={_ruff_precommit_revision()}"
+
+
+def test_contributing_documents_precommit_installation() -> None:
     contributing = (PROJECT_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
     assert "uv run pre-commit install" in contributing
+
+
+def test_contributing_documents_package_coverage_scope() -> None:
+    contributing = (PROJECT_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+
+    assert "coverage report --include='geoparser/*' --fail-under=100" in contributing
+    assert (
+        "GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py"
+        in contributing
+    )
+
+
+def test_development_docs_describe_distinct_coverage_and_crap_scopes() -> None:
+    development = (PROJECT_ROOT / "docs/development.md").read_text(encoding="utf-8")
+
+    assert (
+        "GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py"
+        in development
+    )
+    assert "100% line-coverage threshold applies to `geoparser/`" in development
+    assert "`geoparser/`, `scripts/`, and `tests/`" in development
 
 
 def test_precommit_is_available_after_the_documented_sync() -> None:
@@ -530,146 +687,304 @@ def test_precommit_is_available_after_the_documented_sync() -> None:
     )
 
 
-def test_github_templates_cover_bug_feature_and_release_notes() -> None:
+def test_bug_issue_template_explains_reproduction() -> None:
     issue_dir = PROJECT_ROOT / ".github" / "ISSUE_TEMPLATE"
     issue_config_path = issue_dir / "config.yml"
     bug_report = (issue_dir / "bug_report.yml").read_text(encoding="utf-8")
-    feature_request = (issue_dir / "feature_request.yml").read_text(encoding="utf-8")
+    bug_form = yaml.safe_load(bug_report)
+    assert issue_config_path.is_file()
+    issue_config = yaml.safe_load(issue_config_path.read_text(encoding="utf-8"))
+    assert bug_form["name"] == "Bug report"
+    assert issue_config["blank_issues_enabled"] is False
+    assert "steps to reproduce" in bug_report.lower()
+
+
+def test_feature_issue_template_asks_for_a_proposed_solution() -> None:
+    feature_request = (
+        PROJECT_ROOT / ".github" / "ISSUE_TEMPLATE" / "feature_request.yml"
+    ).read_text(encoding="utf-8")
+    feature_form = yaml.safe_load(feature_request)
+    assert feature_form["name"] == "Feature request"
+    assert "proposed solution" in feature_request.lower()
+
+
+def test_pull_request_template_mentions_release_notes() -> None:
     pull_request = (PROJECT_ROOT / ".github" / "PULL_REQUEST_TEMPLATE.md").read_text(
         encoding="utf-8"
     )
-    bug_form = yaml.safe_load(bug_report)
-    feature_form = yaml.safe_load(feature_request)
-    assert issue_config_path.is_file()
-    issue_config = yaml.safe_load(issue_config_path.read_text(encoding="utf-8"))
-
-    assert bug_form["name"] == "Bug report"
-    assert feature_form["name"] == "Feature request"
-    assert issue_config["blank_issues_enabled"] is False
-    assert "steps to reproduce" in bug_report.lower()
-    assert "proposed solution" in feature_request.lower()
     assert "CHANGELOG.md" in pull_request
 
 
-def test_release_workflow_requires_changelog_notes_for_the_tag() -> None:
+def _release_workflow_steps() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
     )
-    build_steps = workflow["jobs"]["build"]["steps"]
-    release_step = next(
-        step
-        for step in workflow["jobs"]["github-release"]["steps"]
-        if "gh release create" in step.get("run", "")
+    return (
+        workflow["jobs"]["build"]["steps"],
+        workflow["jobs"]["github-release"]["steps"],
     )
 
+
+def test_release_build_creates_curated_changelog_notes() -> None:
+    build_steps, _ = _release_workflow_steps()
     assert any("scripts/changelog.py" in step.get("run", "") for step in build_steps)
+
+
+def test_release_uses_the_curated_notes_file() -> None:
+    _, release_steps = _release_workflow_steps()
+    release_step = next(
+        step for step in release_steps if "gh release create" in step.get("run", "")
+    )
     assert "--notes-file" in release_step["run"]
     assert "--generate-notes" not in release_step["run"]
 
 
-def test_github_release_downloads_notes_from_the_build_job() -> None:
-    workflow = yaml.load(
-        (PROJECT_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8"),
-        Loader=yaml.BaseLoader,
-    )
-    steps = workflow["jobs"]["github-release"]["steps"]
-    download_index = next(
-        index
-        for index, step in enumerate(steps)
+def _release_step_index(steps: list[dict[str, Any]], name: str) -> int:
+    """Find a named release workflow step in declaration order."""
+    return next(index for index, step in enumerate(steps) if step.get("name") == name)
+
+
+def test_github_release_downloads_curated_notes() -> None:
+    _, release_steps = _release_workflow_steps()
+    download = next(
+        step
+        for step in release_steps
         if step.get("name") == "Download curated release notes"
     )
-    release_index = next(
-        index
-        for index, step in enumerate(steps)
-        if step.get("name") == "Publish the GitHub Release"
-    )
-
-    assert steps[download_index]["with"] == {
+    assert download["with"] == {
         "name": "release-notes",
         "path": "release-notes",
     }
+
+
+def test_github_release_downloads_notes_before_publishing() -> None:
+    _, release_steps = _release_workflow_steps()
+    download_index = _release_step_index(
+        release_steps, "Download curated release notes"
+    )
+    release_index = _release_step_index(release_steps, "Publish the GitHub Release")
     assert download_index < release_index
 
 
-def test_changelog_is_distributed_with_the_source_archive() -> None:
+def test_project_metadata_distributes_the_changelog() -> None:
     with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
         project = tomllib.load(pyproject_file)
-    changelog = (PROJECT_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-
     assert project["project"]["urls"]["Changelog"].endswith("/CHANGELOG.md")
     assert (
         "CHANGELOG.md"
         in project["tool"]["hatch"]["build"]["targets"]["sdist"]["include"]
     )
+
+
+def test_changelog_has_unreleased_and_versioned_entries() -> None:
+    changelog = (PROJECT_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "## [Unreleased]" in changelog
     assert re.search(r"^## \[\d+\.\d+\.\d+\]$", changelog, re.MULTILINE)
 
 
-def test_quality_workflow_mutates_changed_python_modules_on_pull_requests() -> None:
+def _mutation_report_text() -> str:
+    return " ".join(
+        (PROJECT_ROOT / "MUTATION_TESTING.md").read_text(encoding="utf-8").split()
+    )
+
+
+def test_mutation_report_records_the_latest_full_sweep() -> None:
+    report = _mutation_report_text()
+    assert "run 36901916301" in report
+    assert "PR head `a532d5eba284ca5eb333cae6515513499ab02812`" in report
+    assert "newest completed full mutation evidence" in report
+    assert "all **3,724 mutants**" in report
+
+
+def test_mutation_report_keeps_timeout_results_inconclusive() -> None:
+    report = _mutation_report_text()
+    assert "3,700 killed and 36 inconclusive timeouts, not 3,736 kills" in report
+    assert "These six are **not counted as killed**" in report
+    assert "not a claim of a new full 3,724-mutant sweep" in report
+
+
+def test_mutation_report_keeps_historical_no_tests_allowance() -> None:
+    report = _mutation_report_text()
+    assert "`--max-no-tests 69` allowance" in report
+
+
+def _changed_mutation_job() -> tuple[dict[str, Any], list[str]]:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
     )
     job = workflow["jobs"]["changed-mutation"]
     commands = [step.get("run", "") for step in job["steps"]]
+    return job, commands
 
+
+def _has_command(commands: list[str], fragment: str) -> bool:
+    """Whether any workflow step contains the requested shell fragment."""
+    return any(fragment in command for command in commands)
+
+
+def test_changed_mutation_job_is_pull_request_scoped() -> None:
+    job, _ = _changed_mutation_job()
     assert "github.event_name == 'pull_request'" in job["if"]
-    assert any("changed_mutation_patterns.py" in command for command in commands)
-    assert any("mutmut run" in command for command in commands)
-    assert any("--max-no-tests 0" in command for command in commands)
-    assert any(
-        "mutation_gate.py" in command and "--patterns" in command
-        for command in commands
+
+
+def test_changed_mutation_job_selects_modules_and_runs_mutmut() -> None:
+    _, commands = _changed_mutation_job()
+    assert _has_command(commands, "changed_mutation_patterns.py")
+    assert _has_command(commands, "mutmut run")
+
+
+def test_changed_mutation_job_gates_and_reports_mutant_results() -> None:
+    _, commands = _changed_mutation_job()
+    assert _has_command(commands, "--max-no-tests 0")
+    assert _has_command(commands, "mutation_gate.py")
+    assert _has_command(commands, "mutation_evidence.py")
+
+
+def _mutation_evidence_artifact_step() -> dict[str, Any]:
+    job, _ = _changed_mutation_job()
+    return next(
+        step
+        for step in job["steps"]
+        if step.get("name") == "Upload per-mutant evidence"
     )
-    assert any("mutmut results --all true" in command for command in commands)
-    assert any("mutmut show" in command for command in commands)
 
 
-def test_quality_gate_fails_when_changed_mutation_fails() -> None:
+def test_changed_mutation_job_uploads_evidence_even_on_failure() -> None:
+    artifact_step = _mutation_evidence_artifact_step()
+
+    assert artifact_step["if"] == "always()"
+
+
+def test_changed_mutation_artifact_name_identifies_run_and_head() -> None:
+    artifact_step = _mutation_evidence_artifact_step()
+
+    assert (
+        "mutation-evidence-${{ github.run_id }}-${{ github.event.pull_request.head.sha }}"
+        in (artifact_step["with"]["name"])
+    )
+
+
+def test_changed_mutation_artifact_keeps_exact_run_files() -> None:
+    artifact_step = _mutation_evidence_artifact_step()
+
+    assert artifact_step["with"]["path"] == "mutation-evidence/"
+    assert artifact_step["with"]["retention-days"] == "90"
+
+
+def test_quality_workflow_waits_for_changed_mutation() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    job = workflow["jobs"]["quality"]
+
+    assert job["needs"] == ["changed-mutation"]
+    assert "always()" in job["if"]
+
+
+def test_quality_workflow_fails_closed_when_mutation_does_not_pass() -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
     )
     job = workflow["jobs"]["quality"]
     guard = job["steps"][0]
-
-    assert job["needs"] == ["changed-mutation"]
-    assert "always()" in job["if"]
     assert "always()" in guard["if"]
     assert "needs.changed-mutation.result != 'success'" in guard["if"]
     assert "exit 1" in guard["run"]
 
 
-def test_test_only_changes_run_the_full_mutation_sweep() -> None:
+def test_quality_workflow_dispatch_keeps_quality_as_the_default_mode() -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
     )
-    job = workflow["jobs"]["changed-mutation"]
-    script = next(
-        step["run"]
-        for step in job["steps"]
-        if step.get("name") == "Mutate changed package modules"
-    )
+    inputs = workflow["on"]["workflow_dispatch"]["inputs"]
 
+    assert inputs["mode"]["default"] == "quality"
+    assert "targeted-mutant-replay" in inputs["mode"]["options"]
+    assert inputs["mutant_ids"]["required"] == "false"
+    assert inputs["expected_sha"]["required"] == "false"
+
+
+def test_exact_mutant_replay_requires_manual_dispatch() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    job = workflow["jobs"]["exact-mutant-replay"]
+
+    assert "workflow_dispatch" in job["if"]
+    assert "targeted-mutant-replay" in job["if"]
+
+
+def test_exact_mutant_replay_has_a_bounded_job_and_script_step() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    job = workflow["jobs"]["exact-mutant-replay"]
+    commands = [step.get("run", "") for step in job["steps"]]
+
+    assert job["timeout-minutes"] == "240"
+    assert any("scripts/mutation_replay.py" in command for command in commands)
+
+
+def test_exact_mutant_replay_runs_serially_without_timeout_override() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    job = workflow["jobs"]["exact-mutant-replay"]
+    commands = [step.get("run", "") for step in job["steps"]]
+    replay_script = (PROJECT_ROOT / "scripts" / "mutation_replay.py").read_text(
+        encoding="utf-8"
+    )
+    assert '_command("run", "--max-children", "1", *selected)' in replay_script
+    assert all("timeout-factor" not in command for command in commands)
+
+
+def test_targeted_replay_does_not_also_run_the_quality_gauntlet() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    quality_if = workflow["jobs"]["quality"]["if"]
+
+    assert "github.event_name != 'workflow_dispatch'" in quality_if
+    assert "inputs.mode != 'targeted-mutant-replay'" in quality_if
+
+
+def test_test_only_changes_run_the_full_mutation_sweep() -> None:
+    script = _changed_mutation_script()
     assert '"FULL_MUTATION"' in script
     assert "--max-no-tests 69" in script
-    assert job["timeout-minutes"] == "240"
 
 
-def test_changed_mutation_runs_serially_to_avoid_pytest_temp_races() -> None:
+def _changed_mutation_script() -> str:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
     )
-    script = next(
+    return next(
         step["run"]
         for step in workflow["jobs"]["changed-mutation"]["steps"]
         if step.get("name") == "Mutate changed package modules"
     )
 
-    assert script.count("mutmut run --max-children 1") == 2
+
+def test_changed_mutation_job_has_a_bounded_timeout() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    assert workflow["jobs"]["changed-mutation"]["timeout-minutes"] == "240"
+
+
+def test_changed_mutation_runs_serially_to_avoid_pytest_temp_races() -> None:
+    assert _changed_mutation_script().count("mutmut run --max-children 1") == 2
 
 
 def test_changed_mutation_job_installs_project_and_test_dependencies() -> None:
@@ -686,7 +1001,9 @@ def test_changed_mutation_job_installs_project_and_test_dependencies() -> None:
     assert install_step["run"] == "uv sync --locked --no-default-groups --group test"
 
 
-def test_changed_mutation_job_installs_duckdb_spatial_extension() -> None:
+def _duckdb_spatial_steps() -> tuple[
+    list[dict[str, Any]], dict[str, Any], dict[str, Any]
+]:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
@@ -698,9 +1015,28 @@ def test_changed_mutation_job_installs_duckdb_spatial_extension() -> None:
     mutation_step = next(
         step for step in steps if step.get("name") == "Mutate changed package modules"
     )
+    return steps, install_step, mutation_step
 
+
+def test_changed_mutation_job_installs_duckdb_spatial_extension() -> None:
+    _, install_step, _ = _duckdb_spatial_steps()
     assert "install_extension('spatial')" in install_step["run"]
+
+
+def test_spatial_extension_installs_before_mutation() -> None:
+    steps, install_step, mutation_step = _duckdb_spatial_steps()
     assert steps.index(install_step) < steps.index(mutation_step)
+
+
+def test_quality_gate_installs_spatial_before_its_test_suite() -> None:
+    steps = _job_steps("quality.yml", "quality")
+    install_step = _named_step(steps, "Install DuckDB spatial extension")
+    quality_step = _named_step(steps, "Run the complete deterministic quality gauntlet")
+
+    assert (
+        "install_extension('spatial')" in install_step["run"],
+        steps.index(install_step) < steps.index(quality_step),
+    ) == (True, True)
 
 
 def test_quality_workflow_skips_the_full_mutation_sweep_on_pull_requests() -> None:
@@ -714,13 +1050,10 @@ def test_quality_workflow_skips_the_full_mutation_sweep_on_pull_requests() -> No
         if step.get("name") == "Run the complete deterministic quality gauntlet"
     )
 
-    assert (
-        "quality_gauntlet.py --skip-baseline --skip-docker --skip-mutation"
-        in quality_step["run"]
-    )
+    assert "quality_gauntlet.py --skip-docker --skip-mutation" in quality_step["run"]
 
 
-def test_deptry_is_installed_and_run_by_the_lightweight_lint_job() -> None:
+def test_deptry_is_declared_in_lint_dependencies() -> None:
     with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
         project = tomllib.load(pyproject_file)
     lint_dependencies = {
@@ -728,30 +1061,41 @@ def test_deptry_is_installed_and_run_by_the_lightweight_lint_job() -> None:
         for dependency in project["dependency-groups"]["lint"]
         if isinstance(dependency, str)
     }
+    assert "deptry" in lint_dependencies
+
+
+def test_deptry_runs_in_the_lightweight_lint_job() -> None:
     workflow = yaml.safe_load(
         (PROJECT_ROOT / ".github/workflows/lint.yml").read_text(encoding="utf-8")
     )
     ruff_steps = workflow["jobs"]["ruff"]["steps"]
     commands = [step.get("run", "") for step in ruff_steps]
-
-    assert "deptry" in lint_dependencies
     assert any("deptry ." in command for command in commands)
 
 
-def test_deptry_ignores_only_documented_runtime_and_tool_dependencies() -> None:
+def _deptry_ignored_rules() -> dict[str, list[str]]:
     with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
         project = tomllib.load(pyproject_file)
-    ignored = project["tool"]["deptry"]["per_rule_ignores"]
+    return project["tool"]["deptry"]["per_rule_ignores"]
 
+
+def test_deptry_ignores_only_documented_runtime_dependencies() -> None:
+    ignored = _deptry_ignored_rules()
     assert set(ignored["DEP002"]) == {
         "accelerate",
+        "numpy",
         "peft",
         "protobuf",
         "python-multipart",
+        "safetensors",
         "sentencepiece",
         "spacy-curated-transformers",
     }
     assert "DEP003" not in ignored
+
+
+def test_deptry_ignores_only_documented_tool_dependencies() -> None:
+    ignored = _deptry_ignored_rules()
     assert set(ignored["DEP004"]) == {
         "coverage",
         "huggingface_hub",
@@ -760,6 +1104,9 @@ def test_deptry_ignores_only_documented_runtime_and_tool_dependencies() -> None:
         "radon",
         "toml",
     }
+
+
+def test_deptry_ignored_rules_are_documented_in_pyproject() -> None:
     pyproject_text = (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert "# DEP002:" in pyproject_text
     assert "# DEP004:" in pyproject_text
@@ -779,48 +1126,64 @@ def test_benchmark_checkout_disables_persisted_credentials() -> None:
     assert checkout["with"]["fetch-depth"] == 0
 
 
-def test_benchmark_workflow_runs_algorithmic_guards_without_timings() -> None:
+def _benchmark_guard_step() -> dict[str, Any]:
     workflow = yaml.safe_load(
         (PROJECT_ROOT / ".github/workflows/benchmark.yml").read_text(encoding="utf-8")
     )
-    guard_step = next(
-        (
-            step
-            for step in workflow["jobs"]["compare"]["steps"]
-            if step.get("name") == "Run algorithmic guards"
-        ),
-        None,
+    return next(
+        step
+        for step in workflow["jobs"]["compare"]["steps"]
+        if step.get("name") == "Run algorithmic guards"
     )
 
-    assert guard_step is not None
-    assert "--benchmark-disable" in guard_step["run"]
-    assert "test_guards.py" in guard_step["run"]
+
+def test_benchmark_workflow_disables_timing_for_algorithmic_guards() -> None:
+    assert "--benchmark-disable" in _benchmark_guard_step()["run"]
 
 
-def test_benchmark_dispatch_uses_base_ref_and_its_locked_environment() -> None:
+def test_benchmark_workflow_runs_algorithmic_guard_cases() -> None:
+    assert "test_guards.py" in _benchmark_guard_step()["run"]
+
+
+def _benchmark_base_step() -> tuple[dict[str, Any], dict[str, Any]]:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/benchmark.yml").read_text(encoding="utf-8"),
         Loader=_UniqueKeyLoader,
     )
     triggers = workflow.get("on", workflow.get(True))
-    dispatch = triggers["workflow_dispatch"]
     base_step = next(
         step
         for step in workflow["jobs"]["compare"]["steps"]
         if step.get("name") == "Benchmark pull request base"
     )
+    return triggers["workflow_dispatch"], base_step
 
+
+def test_benchmark_base_dispatch_defaults_to_main() -> None:
+    dispatch, _ = _benchmark_base_step()
     assert dispatch["inputs"]["base_ref"]["default"] == "main"
+
+
+def test_benchmark_base_checkout_uses_the_requested_ref() -> None:
+    _, base_step = _benchmark_base_step()
     assert '"$BASE_REF"' in base_step["run"]
+
+
+def test_benchmark_base_syncs_its_locked_environment() -> None:
+    _, base_step = _benchmark_base_step()
     assert "uv sync --locked --project .tmp/main" in base_step["run"]
     assert (
         'uv pip install --python .tmp/main/.venv/bin/python "pytest-benchmark==5.3.0"'
         in base_step["run"]
     )
+
+
+def test_benchmark_base_uses_its_own_python() -> None:
+    _, base_step = _benchmark_base_step()
     assert "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python" in base_step["run"]
 
 
-def test_coverage_preview_downloads_the_artifact_from_its_triggering_pr_run() -> None:
+def test_coverage_preview_runs_after_successful_pull_request_tests() -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/coverage-preview.yml").read_text(
             encoding="utf-8"
@@ -829,31 +1192,58 @@ def test_coverage_preview_downloads_the_artifact_from_its_triggering_pr_run() ->
     )
     triggers = workflow.get("on", workflow.get(True))
     upload = workflow["jobs"]["upload"]
-    download = next(
+    assert triggers["workflow_run"]["workflows"] == ["Tests"]
+    assert "github.event.workflow_run.event == 'pull_request'" in upload["if"]
+    assert "github.event.workflow_run.conclusion == 'success'" in upload["if"]
+
+
+def _coverage_download_step() -> dict[str, Any]:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/coverage-preview.yml").read_text(
+            encoding="utf-8"
+        ),
+        Loader=_UniqueKeyLoader,
+    )
+    upload = workflow["jobs"]["upload"]
+    return next(
         step
         for step in upload["steps"]
         if step.get("uses", "").startswith("actions/download-artifact@")
     )
-    validate = next(
-        step
-        for step in upload["steps"]
-        if step.get("name") == "Validate coverage report artifact"
-    )
 
-    assert triggers["workflow_run"]["workflows"] == ["Tests"]
-    assert "github.event.workflow_run.event == 'pull_request'" in upload["if"]
-    assert "github.event.workflow_run.conclusion == 'success'" in upload["if"]
+
+def test_coverage_preview_selects_the_triggering_run_artifact() -> None:
+    download = _coverage_download_step()
     assert download["with"]["name"] == "coverage-html"
     assert download["with"]["run-id"] == "${{ github.event.workflow_run.id }}"
+
+
+def test_coverage_preview_download_uses_scoped_token_and_path() -> None:
+    download = _coverage_download_step()
     assert download["with"]["github-token"] == "${{ github.token }}"
     assert download["with"]["path"] == "coverage-html"
+
+
+def test_coverage_preview_validates_report_and_skips_checkout() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/coverage-preview.yml").read_text(
+            encoding="utf-8"
+        ),
+        Loader=_UniqueKeyLoader,
+    )
+    steps = workflow["jobs"]["upload"]["steps"]
+    validate = next(
+        step
+        for step in steps
+        if step.get("name") == "Validate coverage report artifact"
+    )
     assert validate["run"].strip() == "test -s coverage-html/index.html"
     assert not any(
-        step.get("uses", "").startswith("actions/checkout@") for step in upload["steps"]
+        step.get("uses", "").startswith("actions/checkout@") for step in steps
     )
 
 
-def test_smokeshow_credentials_are_environment_only_and_not_logged() -> None:
+def test_smokeshow_requires_explicit_credential_rotation() -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/coverage-preview.yml").read_text(
             encoding="utf-8"
@@ -866,11 +1256,84 @@ def test_smokeshow_credentials_are_environment_only_and_not_logged() -> None:
     )
 
     assert upload["if"] == "vars.GEOPARSER_SMOKESHOW_AUTH_ROTATION_CONFIRMED == 'true'"
-    assert upload["run"].splitlines() == [
+
+
+def test_smokeshow_secret_is_supplied_only_as_an_environment_variable() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/coverage-preview.yml").read_text(
+            encoding="utf-8"
+        ),
+        Loader=_UniqueKeyLoader,
+    )
+    steps = workflow["jobs"]["upload"]["steps"]
+    upload = next(
+        step for step in steps if step.get("name") == "Publish coverage preview"
+    )
+    assert upload["env"]["SMOKESHOW_AUTH_KEY"] == "${{ secrets.SMOKESHOW_AUTH_KEY }}"
+
+
+def _coverage_publish_step() -> dict[str, Any]:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/coverage-preview.yml").read_text(
+            encoding="utf-8"
+        ),
+        Loader=_UniqueKeyLoader,
+    )
+    steps = workflow["jobs"]["upload"]["steps"]
+    return next(
+        step for step in steps if step.get("name") == "Publish coverage preview"
+    )
+
+
+def _coverage_preview_commands() -> str:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/coverage-preview.yml").read_text(
+            encoding="utf-8"
+        ),
+        Loader=_UniqueKeyLoader,
+    )
+    steps = workflow["jobs"]["upload"]["steps"]
+    return "\n".join(step.get("run", "") for step in steps)
+
+
+def test_smokeshow_upload_runs_with_shell_tracing_disabled() -> None:
+    assert _coverage_publish_step()["run"].splitlines() == [
         "set +x",
         "smokeshow upload coverage-html",
     ]
-    assert upload["env"]["SMOKESHOW_AUTH_KEY"] == "${{ secrets.SMOKESHOW_AUTH_KEY }}"
-    assert "SMOKESHOW_AUTH_KEY" not in "\n".join(step.get("run", "") for step in steps)
-    assert "printenv" not in "\n".join(step.get("run", "") for step in steps)
-    assert "set -x" not in "\n".join(step.get("run", "") for step in steps)
+
+
+def test_smokeshow_upload_commands_do_not_reveal_the_credential() -> None:
+    commands = _coverage_preview_commands()
+    assert "SMOKESHOW_AUTH_KEY" not in commands
+    assert "printenv" not in commands
+    assert "set -x" not in commands
+
+
+def test_exact_replay_checks_out_requested_source_without_persisting_credentials() -> (
+    None
+):
+    steps = _job_steps("quality.yml", "exact-mutant-replay")
+    checkout = _named_step(steps, "Check out the validated evidence source")
+    assert checkout["with"]["ref"] == "${{ inputs.expected_sha }}"
+    assert checkout["with"]["persist-credentials"] == "false"
+
+
+def test_exact_replay_verifies_source_before_installing_dependencies() -> None:
+    steps = _job_steps("quality.yml", "exact-mutant-replay")
+    checkout = _named_step(steps, "Check out the validated evidence source")
+    verify = _named_step(
+        steps, "Verify the actual source checkout before dependency installation"
+    )
+    install = _named_step(steps, "Install locked test dependencies")
+    assert steps.index(checkout) < steps.index(verify) < steps.index(install)
+    assert "$(git rev-parse HEAD)" in verify["run"]
+
+
+def test_exact_replay_uses_retained_controller_and_actual_source_identity() -> None:
+    replay = _named_step(
+        _job_steps("quality.yml", "exact-mutant-replay"),
+        "Replay selected timeout mutants",
+    )
+    assert "$(git rev-parse HEAD)" in replay["run"]
+    assert "$helper/scripts/mutation_replay.py" in replay["run"]

@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import Mock
 
 from scripts.quality_gauntlet import (
     build_stages,
@@ -10,9 +11,7 @@ from scripts.quality_gauntlet import (
 
 def test_quality_stages_have_the_required_order(tmp_path: Path) -> None:
     stages = build_stages(Path("/repo"), tmp_path)
-
     assert [stage.name for stage in stages] == [
-        "baseline",
         "ruff",
         "ty",
         "dependencies",
@@ -25,20 +24,148 @@ def test_quality_stages_have_the_required_order(tmp_path: Path) -> None:
         "smoke",
         "diff-review",
     ]
-    ty_command = next(stage for stage in stages if stage.name == "ty").commands[0]
-    assert ty_command[-3:] == ("geoparser", "scripts", "tests")
 
 
-def test_quality_stages_can_skip_the_redundant_baseline(tmp_path: Path) -> None:
-    """CI can keep the coverage test stage without repeating its baseline."""
-    stages = build_stages(Path("/repo"), tmp_path, skip_baseline=True)
+def _named_stage(stages, name: str):
+    """Return one quality stage by its stable name."""
+    return next(stage for stage in stages if stage.name == name)
+
+
+def _stage_command(stages, name: str) -> tuple[str, ...]:
+    """Return the first command from one named quality stage."""
+    return _named_stage(stages, name).commands[0]
+
+
+def test_ty_stage_checks_all_first_party_code_roots(tmp_path: Path) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+    assert _stage_command(stages, "ty")[-3:] == ("geoparser", "scripts", "tests")
+
+
+def test_crap_stage_uses_the_strict_six_ceiling(tmp_path: Path) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+    command = _stage_command(stages, "crap")
+    assert command[command.index("--max-crap") + 1] == "6"
+
+
+def test_default_coverage_stage_runs_the_main_suite(tmp_path: Path) -> None:
+    pytest_run = _named_stage(build_stages(Path("/repo"), tmp_path), "tests").commands[
+        0
+    ]
+    assert "pytest" in pytest_run
+    assert "--cov-fail-under=0" in pytest_run
+
+
+def test_default_coverage_stage_runs_benchmark_contracts_without_timing(
+    tmp_path: Path,
+) -> None:
+    benchmark_run = _named_stage(
+        build_stages(Path("/repo"), tmp_path), "tests"
+    ).commands[1]
+    assert benchmark_run[4:8] == (
+        "pytest",
+        "tests/benchmarks",
+        "-m",
+        "benchmark",
+    )
+    assert "--benchmark-disable" in benchmark_run
+    assert "--cov-append" in benchmark_run
+
+
+def test_default_coverage_stage_reports_package_coverage(tmp_path: Path) -> None:
+    package_report = _named_stage(
+        build_stages(Path("/repo"), tmp_path), "tests"
+    ).commands[2]
+    assert "coverage" in package_report
+
+
+def test_main_coverage_suite_uses_the_provisioned_offline_environment(
+    tmp_path: Path,
+) -> None:
+    pytest_run = _named_stage(build_stages(Path("/repo"), tmp_path), "tests").commands[
+        0
+    ]
+
+    assert pytest_run[:5] == (
+        "uv",
+        "run",
+        "--no-sync",
+        "--offline",
+        "pytest",
+    )
+
+
+def test_benchmark_coverage_suite_uses_the_provisioned_offline_environment(
+    tmp_path: Path,
+) -> None:
+    benchmark_run = _named_stage(
+        build_stages(Path("/repo"), tmp_path), "tests"
+    ).commands[1]
+    assert benchmark_run[:8] == (
+        "uv",
+        "run",
+        "--no-sync",
+        "--offline",
+        "pytest",
+        "tests/benchmarks",
+        "-m",
+        "benchmark",
+    )
+    assert "--benchmark-disable" in benchmark_run
+    assert "--cov-append" in benchmark_run
+
+
+def test_package_coverage_report_uses_the_provisioned_offline_environment(
+    tmp_path: Path,
+) -> None:
+    package_report = _named_stage(
+        build_stages(Path("/repo"), tmp_path), "tests"
+    ).commands[2]
+    assert package_report == (
+        "uv",
+        "run",
+        "--no-sync",
+        "--offline",
+        "coverage",
+        "report",
+        "--include=geoparser/*",
+        "--fail-under=100",
+    )
+
+
+def test_diagnostic_baseline_uses_the_same_package_coverage_floor(
+    tmp_path: Path,
+) -> None:
+    baseline = _named_stage(
+        build_stages(Path("/repo"), tmp_path, include_baseline=True), "baseline"
+    )
+
+    assert "--cov-fail-under=0" in baseline.commands[0]
+    assert baseline.commands[1] == (
+        "uv",
+        "run",
+        "--no-sync",
+        "--offline",
+        "coverage",
+        "report",
+        "--include=geoparser/*",
+        "--fail-under=100",
+    )
+
+
+def test_default_quality_stages_do_not_repeat_a_baseline_run(tmp_path: Path) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
 
     assert "baseline" not in {stage.name for stage in stages}
+
+
+def test_default_quality_stages_include_the_test_suite(tmp_path: Path) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+
     assert "tests" in {stage.name for stage in stages}
 
 
-def test_quality_cli_accepts_skip_baseline(monkeypatch) -> None:
-    """The workflow can request the lean CI stage list explicitly."""
+def test_quality_cli_can_include_an_extra_diagnostic_baseline(monkeypatch) -> None:
+    """The redundant coverage pass is available only by explicit request."""
     names = []
 
     def fake_run_stages(stages, environment):
@@ -47,8 +174,8 @@ def test_quality_cli_accepts_skip_baseline(monkeypatch) -> None:
 
     monkeypatch.setattr("scripts.quality_gauntlet.run_stages", fake_run_stages)
 
-    assert main(["--skip-baseline", "--skip-mutation", "--skip-docker"]) == 0
-    assert "baseline" not in names
+    assert main(["--include-baseline", "--skip-mutation", "--skip-docker"]) == 0
+    assert names[0] == "baseline"
     assert "tests" in names
 
 
@@ -61,10 +188,8 @@ def test_dependency_stage_uses_the_documented_pyproject_config(
     on the command line would let the two lists drift apart.
     """
     stages = build_stages(Path("/repo"), tmp_path)
-    dependencies = next(stage for stage in stages if stage.name == "dependencies")
-    deptry = next(command for command in dependencies.commands if "deptry" in command)
-
-    assert deptry[deptry.index("deptry") :] == ("deptry", ".")
+    dependency_stage = next(stage for stage in stages if stage.name == "dependencies")
+    assert dependency_stage.commands[-1][-2:] == ("deptry", ".")
 
 
 def test_uv_quality_commands_do_not_resolve_network_dependencies(
@@ -111,20 +236,18 @@ def test_quality_stages_can_skip_expensive_local_checks(tmp_path: Path) -> None:
 
 def test_mutation_gate_uses_the_measured_no_tests_baseline(tmp_path: Path) -> None:
     stages = build_stages(Path("/repo"), tmp_path)
-    mutation = next(stage for stage in stages if stage.name == "mutation")
-    gate_command = next(
-        command
-        for command in mutation.commands
-        if any("mutation_gate.py" in part for part in command)
-    )
-
+    mutation_stage = next(stage for stage in stages if stage.name == "mutation")
+    gate_command = mutation_stage.commands[-1]
     assert gate_command[gate_command.index("--max-no-tests") + 1] == "69"
 
 
-def test_quality_runner_uses_the_requested_ephemeral_docker_tag(tmp_path: Path) -> None:
+def _smoke_stage(tmp_path: Path):
     stages = build_stages(Path("/repo"), tmp_path, docker_tag="geoparser:test")
-    smoke = next(stage for stage in stages if stage.name == "smoke")
+    return next(stage for stage in stages if stage.name == "smoke")
 
+
+def test_quality_runner_builds_the_requested_runtime_image(tmp_path: Path) -> None:
+    smoke = _smoke_stage(tmp_path)
     assert (
         "docker",
         "build",
@@ -134,7 +257,15 @@ def test_quality_runner_uses_the_requested_ephemeral_docker_tag(tmp_path: Path) 
         "geoparser:test",
         ".",
     ) in smoke.commands
+
+
+def test_quality_runner_runs_the_requested_runtime_image(tmp_path: Path) -> None:
+    smoke = _smoke_stage(tmp_path)
     assert ("docker", "run", "--rm", "geoparser:test") in smoke.commands
+
+
+def test_quality_runner_builds_the_requested_demo_image(tmp_path: Path) -> None:
+    smoke = _smoke_stage(tmp_path)
     assert (
         "docker",
         "build",
@@ -144,6 +275,10 @@ def test_quality_runner_uses_the_requested_ephemeral_docker_tag(tmp_path: Path) 
         "geoparser:test-demo",
         ".",
     ) in smoke.commands
+
+
+def test_quality_runner_checks_the_requested_demo_image(tmp_path: Path) -> None:
+    smoke = _smoke_stage(tmp_path)
     assert (
         "docker",
         "run",
@@ -220,11 +355,56 @@ def test_quality_runner_stops_on_first_failed_command(
 
     result = run_stages(stages, {"GEOPARSER_QA_ARTIFACT_DIR": str(tmp_path)})
 
-    assert result == 17
-    assert len(calls) == 1
-    assert calls[0][0] == stages[0].commands[0]
-    assert calls[0][1] == stages[0].cwd
-    assert calls[0][2]["GEOPARSER_QA_ARTIFACT_DIR"] == str(tmp_path)
+    assert (result, calls) == (
+        17,
+        [
+            (
+                stages[0].commands[0],
+                stages[0].cwd,
+                {"GEOPARSER_QA_ARTIFACT_DIR": str(tmp_path)},
+            )
+        ],
+    )
+
+
+def test_coverage_failure_is_returned_without_running_later_gates(
+    monkeypatch, tmp_path: Path
+) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+    tests = _named_stage(stages, "tests")
+    property_stage = _named_stage(stages, "property")
+    fail_coverage = Mock(return_value=type("Completed", (), {"returncode": 23})())
+    monkeypatch.setattr("scripts.quality_gauntlet.subprocess.run", fail_coverage)
+
+    result = run_stages([tests, property_stage], {})
+
+    assert result == 23
+    fail_coverage.assert_called_once_with(
+        tests.commands[0], cwd=tests.cwd, env={}, check=False
+    )
+
+
+def test_package_coverage_failure_stops_before_later_gates(
+    monkeypatch, tmp_path: Path
+) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+    tests = _named_stage(stages, "tests")
+    property_stage = _named_stage(stages, "property")
+    fail_package_report = Mock(
+        side_effect=[
+            type("Completed", (), {"returncode": 0})(),
+            type("Completed", (), {"returncode": 0})(),
+            type("Completed", (), {"returncode": 23})(),
+        ]
+    )
+    monkeypatch.setattr("scripts.quality_gauntlet.subprocess.run", fail_package_report)
+
+    result = run_stages([tests, property_stage], {})
+
+    assert result == 23
+    assert [call.args[0] for call in fail_package_report.call_args_list] == list(
+        tests.commands
+    )
 
 
 def test_quality_runner_preserves_stage_order_and_artifact_environment(

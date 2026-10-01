@@ -178,3 +178,28 @@ def test_the_command_line_check_passes_when_pure_modules_stay_pure(
     monkeypatch.setattr(check_architecture, "PURE_MODULES", {"pkg.pure"})
 
     assert check_architecture.main(["--package", str(package)]) == 0
+
+
+@pytest.mark.parametrize(
+    ("target", "expected"), [(None, "pkg"), ("db.models", "pkg.db.models")]
+)
+def test_relative_impure_targets_resolve_within_the_package(
+    target: str | None, expected: str
+) -> None:
+    assert check_architecture._relative_impure_target("pkg", target) == expected
+
+
+def test_architecture_diagnostics_print_only_present_cycles_and_edges(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    check_architecture._print_cycles([])
+    check_architecture._print_edges("Forbidden edges", [])
+    check_architecture._print_cycles([("pkg.a", "pkg.b", "pkg.a")])
+    check_architecture._print_edges("Forbidden edges", [("pkg.a", "pkg.b")])
+
+    assert capsys.readouterr().out.splitlines() == [
+        "Import cycles:",
+        "  pkg.a -> pkg.b -> pkg.a",
+        "Forbidden edges:",
+        "  pkg.a -> pkg.b",
+    ]

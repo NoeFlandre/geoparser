@@ -34,42 +34,48 @@ class _CountingSpan(tuple):
     __hash__ = tuple.__hash__
 
 
+_SIZE = 256
+_RECOGNIZER_TEXTS = [_CountingText(f"Place {index:04d}") for index in range(_SIZE)]
+_QUERY_TEXTS = [_CountingText(str(text)) for text in _RECOGNIZER_TEXTS]
+_STORED_REFERENCES = [[(0, 5)] for _ in _RECOGNIZER_TEXTS]
+_RESOLVER_REFERENCES = [[_CountingSpan(0, 5)] for _ in _RECOGNIZER_TEXTS]
+_QUERY_REFERENCES = [[_CountingSpan(0, 5)] for _ in _RECOGNIZER_TEXTS]
+_REFERENTS = [[("benchmark", str(index))] for index in range(_SIZE)]
+
+
 def test_manual_recognizer_lookup_comparisons_scale_linearly():
     from geoparser.modules.recognizers.manual import ManualRecognizer
 
-    size = 256
-    texts = [_CountingText(f"Place {index:04d}") for index in range(size)]
-    query_texts = [_CountingText(str(text)) for text in texts]
-    stored_references = [[(0, 5)] for _ in texts]
-    recognizer = ManualRecognizer("complexity", cast(Any, texts), stored_references)
+    recognizer = ManualRecognizer(
+        "complexity", cast(Any, _RECOGNIZER_TEXTS), _STORED_REFERENCES
+    )
     _CountingText.comparisons = 0
 
-    predictions = recognizer.predict(cast(Any, query_texts))
+    predictions = recognizer.predict(cast(Any, _QUERY_TEXTS))
 
-    assert len(predictions) == size
-    assert _CountingText.comparisons <= 4 * size
+    assert len(predictions) == _SIZE
+    assert _CountingText.comparisons <= 4 * _SIZE
 
 
 def test_manual_resolver_lookup_comparisons_scale_linearly():
     from geoparser.modules.resolvers.manual import ManualResolver
 
-    size = 256
-    texts = [_CountingText(f"Place {index:04d}") for index in range(size)]
-    references = [[_CountingSpan(0, 5)] for _ in texts]
-    query_texts = [_CountingText(str(text)) for text in texts]
-    query_references = [[_CountingSpan(0, 5)] for _ in texts]
-    referents = [[("benchmark", str(index))] for index in range(size)]
     resolver = ManualResolver(
-        "complexity", cast(Any, texts), cast(Any, references), referents
+        "complexity",
+        cast(Any, _RECOGNIZER_TEXTS),
+        cast(Any, _RESOLVER_REFERENCES),
+        _REFERENTS,
     )
     _CountingText.comparisons = 0
     _CountingSpan.comparisons = 0
 
-    predictions = resolver.predict(cast(Any, query_texts), cast(Any, query_references))
+    predictions = resolver.predict(
+        cast(Any, _QUERY_TEXTS), cast(Any, _QUERY_REFERENCES)
+    )
 
-    assert len(predictions) == size
-    assert _CountingText.comparisons <= 4 * size
-    assert _CountingSpan.comparisons <= 4 * size
+    assert len(predictions) == _SIZE
+    assert _CountingText.comparisons <= 4 * _SIZE
+    assert _CountingSpan.comparisons <= 4 * _SIZE
 
 
 def test_importing_geoparser_does_not_load_model_frameworks():
@@ -94,6 +100,12 @@ def test_importing_geoparser_does_not_load_model_frameworks():
         capture_output=True,
         text=True,
     )
+
+
+def test_benchmark_sessions_use_the_isolated_database(benchmark_database):
+    from geoparser.db.db import get_engine
+
+    assert get_engine() is benchmark_database
 
 
 @pytest.mark.parametrize(

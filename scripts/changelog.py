@@ -14,16 +14,38 @@ def extract_release_notes(changelog: str, tag: str) -> str:
     Release candidates use the notes for their eventual stable version, so
     ``0.6.0rc2`` resolves to the ``0.6.0`` section.
     """
-    version = re.sub(r"rc\d+$", "", tag)
-    headings = list(re.finditer(r"(?m)^## \[([^\]]+)\].*$", changelog))
-    selected = next(
-        (index for index, heading in enumerate(headings) if heading[1] == version),
-        None,
-    )
+    version = _stable_version(tag)
+    headings = _headings(changelog)
+    selected = _heading_index(headings, version)
     if selected is None:
         msg = f"No changelog section for {version}"
         raise ValueError(msg)
 
+    return _nonempty_notes(changelog, headings, selected, version)
+
+
+def _stable_version(tag: str) -> str:
+    """Map a release-candidate tag to its eventual stable version."""
+    return re.sub(r"rc\d+$", "", tag)
+
+
+def _headings(changelog: str) -> list[re.Match[str]]:
+    """Find version headings in file order."""
+    return list(re.finditer(r"(?m)^## \[([^\]]+)\].*$", changelog))
+
+
+def _heading_index(headings: list[re.Match[str]], version: str) -> int | None:
+    """Return the index of a stable version heading, if present."""
+    return next(
+        (index for index, heading in enumerate(headings) if heading[1] == version),
+        None,
+    )
+
+
+def _nonempty_notes(
+    changelog: str, headings: list[re.Match[str]], selected: int, version: str
+) -> str:
+    """Extract the selected heading's section and reject an empty one."""
     section_start = headings[selected].end()
     section_end = (
         headings[selected + 1].start()

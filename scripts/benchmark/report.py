@@ -119,14 +119,7 @@ def render_markdown(
         "| Pipeline | Device | Precision | Recall | F1 |",
         "| --- | --- | ---: | ---: | ---: |",
     ]
-    lines += [
-        f"| {result.name} | {result.device} "
-        f"| {result.recognition['precision']:.3f} "
-        f"| {result.recognition['recall']:.3f} "
-        f"| {result.recognition['f1']:.3f} |"
-        for result in results
-        if result.recognition
-    ]
+    lines += _recognition_rows(results)
     lines += [
         "",
         "## Resolution (gold spans supplied, distance scored)",
@@ -135,24 +128,13 @@ def render_markdown(
         "| AUC | Seconds |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
     ]
-    lines += [
-        f"| {result.name} | {result.device} "
-        f"| {result.resolution['accuracy_at_161km']:.3f} "
-        f"| {result.resolution['mean_error_km']:.1f} "
-        f"| {result.resolution['median_error_km']:.1f} "
-        f"| {result.resolution['auc']:.3f} "
-        f"| {result.elapsed_seconds:.1f} |"
-        for result in results
-        if result.resolution
-    ]
+    lines += _resolution_rows(results)
     lines += [
         "",
         "## Models",
         "",
     ]
-    for result in results:
-        models = ", ".join(f"{role}={name}" for role, name in result.models.items())
-        lines.append(f"- **{result.name}**: {models}")
+    lines += _model_rows(results)
     lines += [
         "",
         "Resolution is scored on the gold spans, supplied to both pipelines",
@@ -171,6 +153,41 @@ def render_markdown(
         "",
     ]
     return "\n".join(lines)
+
+
+def _recognition_rows(results: Sequence[PipelineResult]) -> list[str]:
+    """Format measured recognition rows, leaving resolution-only runs blank."""
+    return [
+        f"| {result.name} | {result.device} "
+        f"| {result.recognition['precision']:.3f} "
+        f"| {result.recognition['recall']:.3f} "
+        f"| {result.recognition['f1']:.3f} |"
+        for result in results
+        if result.recognition
+    ]
+
+
+def _resolution_rows(results: Sequence[PipelineResult]) -> list[str]:
+    """Format measured resolution rows, leaving recognition-only runs blank."""
+    return [
+        f"| {result.name} | {result.device} "
+        f"| {result.resolution['accuracy_at_161km']:.3f} "
+        f"| {result.resolution['mean_error_km']:.1f} "
+        f"| {result.resolution['median_error_km']:.1f} "
+        f"| {result.resolution['auc']:.3f} "
+        f"| {result.elapsed_seconds:.1f} |"
+        for result in results
+        if result.resolution
+    ]
+
+
+def _model_rows(results: Sequence[PipelineResult]) -> list[str]:
+    """List the model revisions used by each pipeline in the report."""
+    return [
+        f"- **{result.name}**: "
+        f"{', '.join(f'{role}={name}' for role, name in result.models.items())}"
+        for result in results
+    ]
 
 
 def render_summary(rows: Sequence[dict[str, t.Any]]) -> str:

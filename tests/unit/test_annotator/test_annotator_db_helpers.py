@@ -42,6 +42,8 @@ def test_create_db_and_tables_creates_annotator_schema():
 def test_get_db_closes_session_when_generator_finishes(monkeypatch):
     """The request dependency always closes its yielded database session."""
     fake_session = Mock()
+    fake_engine = Mock()
+    monkeypatch.setattr(annotator_db, "get_engine", lambda: fake_engine)
     monkeypatch.setattr(annotator_db, "Session", lambda engine: fake_session)
     dependency = cast(Generator[Any, None, None], annotator_db.get_db())
 

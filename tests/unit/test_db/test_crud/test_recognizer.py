@@ -66,28 +66,23 @@ class TestRecognizerRepositoryGetByNameAndConfig:
         # Assert
         assert found_recognizer is None
 
+    @pytest.mark.parametrize(
+        ("selected_config", "other_config"),
+        [
+            ({"model": "en_core_web_sm"}, {"model": "en_core_web_lg"}),
+            ({"model": "en_core_web_lg"}, {"model": "en_core_web_sm"}),
+        ],
+    )
     def test_distinguishes_between_same_name_different_configs(
-        self, test_session: Session, recognizer_factory
+        self, test_session: Session, recognizer_factory, selected_config, other_config
     ):
-        """Test that method can distinguish recognizers with same name but different configs."""
-        # Arrange
-        config1 = {"model": "en_core_web_sm"}
-        config2 = {"model": "en_core_web_lg"}
+        """The selected config still matches when another config shares its name."""
+        selected = recognizer_factory(name="SpacyRecognizer", config=selected_config)
+        recognizer_factory(name="SpacyRecognizer", config=other_config)
 
-        rec1 = recognizer_factory(name="SpacyRecognizer", config=config1)
-        rec2 = recognizer_factory(name="SpacyRecognizer", config=config2)
-
-        # Act
-        found_rec1 = RecognizerRepository.get_by_name_and_config(
-            test_session, "SpacyRecognizer", config1
-        )
-        found_rec2 = RecognizerRepository.get_by_name_and_config(
-            test_session, "SpacyRecognizer", config2
+        found = RecognizerRepository.get_by_name_and_config(
+            test_session, "SpacyRecognizer", selected_config
         )
 
-        # Assert
-        assert found_rec1 is not None
-        assert found_rec2 is not None
-        assert found_rec1.id == rec1.id
-        assert found_rec2.id == rec2.id
-        assert found_rec1.id != found_rec2.id
+        assert found is not None
+        assert found.id == selected.id

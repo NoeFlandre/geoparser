@@ -69,8 +69,11 @@ checkpoints, which together are several gigabytes. Run them when you touch
 either module: they are the only tests that can catch a zero-shot label the
 model does not respond to, a prompt name the checkpoint does not define, or a
 change in the reranker's return shape — all of which pass silently under a
-mock. They are not in the default run because paying that download in each of
-the fifteen matrix cells would cost far more than it catches.
+mock. A local default `uv run pytest` still skips these files. CI enables them
+in the Ubuntu/Python 3.12 coverage cell and the single-run quality gauntlet so
+both strict CRAP reports include their assertions; other operating-system and
+Python matrix cells keep the downloads disabled. The first run on a fresh
+runner can fetch several gigabytes of model files.
 
 Run the full suite:
 
@@ -78,11 +81,24 @@ Run the full suite:
 uv run pytest
 ```
 
-Coverage is collected for `geoparser` (HTML report in `htmlcov/`; open `htmlcov/index.html`). `geoparser/annotator/` is omitted from coverage. CI enforces a hard floor on the combined coverage of the whole matrix:
+Coverage is collected for `geoparser/`, `scripts/`, and `tests/` so the CRAP
+gate can score every function. The quality gauntlet also appends coverage from
+the deterministic benchmark contracts with timing disabled. CI combines
+coverage across its matrix and enforces a hard 100% line-coverage floor on
+`geoparser/`, including `geoparser/annotator/` (the HTML report is in
+`htmlcov/`; open
+`htmlcov/index.html`). To check the same package floor locally with the real
+model tests enabled, run:
 
 ```bash
-uv run pytest --cov-fail-under=100
+GEOPARSER_TEST_REMOTE_MODELS=1 uv run pytest
+uv run coverage report --include='geoparser/*' --fail-under=100
 ```
+
+On a fresh environment, the real-model tests can download several gigabytes
+of checkpoints. The quality gauntlet collects the main suite and deterministic
+benchmark contracts, verifies this package floor, and then runs the strict
+whole-tree CRAP check.
 
 The suite is kept fast on purpose. Two things matter if you are adding to it:
 
@@ -111,7 +127,7 @@ One command reproduces the deterministic quality gate CI enforces. Run it from t
 
 ```bash
 uv sync --locked
-uv run python scripts/quality_gauntlet.py
+GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py
 ```
 
 The gate removes its temporary reports, mutation tree, and per-run Docker
@@ -133,19 +149,17 @@ What each step guards:
 
 - **ruff check / ruff format** — lint, import order, unused code and formatting.
 - **[ty](https://github.com/astral-sh/ty)** — static type checking of the configured source tree. Fix the type error rather than adding a blanket `# type: ignore`; where a suppression is genuinely right, make it specific and comment why.
-- **pytest** — the unit, integration and end-to-end suites, with the hard coverage floor.
-- **scripts/crap.py** — the [CRAP score](https://testing.googleblog.com/2011/02/this-code-is-crap.html) gate, `complexity² × (1 − coverage)³ + complexity`, per function. For fully covered code this reduces to a cyclomatic-complexity ceiling, so it fails both on untested code and on code that has grown too branchy. It reads the coverage data that pytest just wrote, so run it after the suite.
+- **pytest / coverage report** — the unit, integration, end-to-end, and deterministic benchmark contract tests record coverage for all CRAP roots; `coverage report --include='geoparser/*' --fail-under=100` enforces the package floor.
+- **scripts/crap.py** — the [CRAP score](https://testing.googleblog.com/2011/02/this-code-is-crap.html) gate, `complexity² × (1 − coverage)³ + complexity`, per function. For fully covered code this reduces to a cyclomatic-complexity ceiling, so it fails both on untested code and on code that has grown too branchy. It reads the coverage data that pytest just wrote, so run it after both test passes.
 - **[mutmut](https://mutmut.readthedocs.io/)** — mutation testing. It edits the source in small ways and re-runs the tests; a mutant that survives is a line the suite does not really check. Configuration lives under `[tool.mutmut]` in `pyproject.toml`; `scripts/mutation_gate.py` reads the exported stats and fails when more mutants survive than the agreed baseline.
 
-Mutation testing currently generates 1,999 mutants against the **unit** suite, at about 31.2 mutants/second once the one-off pass that maps tests to code has finished.
-
-The verified baseline on this tree is **1,786 killed, 0 survived, 1 timeout, and 212 with no covering unit test — a 100% mutation score over judged mutants**. The 212 no-test mutants are an intentional scope boundary: the integration and e2e suites plus the 100% coverage gate cover paths the unit suite does not reach. They remain visible in exported stats, but they are not survivors and are not governed by a separate `MAX_NO_TESTS` ratchet. The quality gauntlet passes `--max-survivors 0` to the mutation gate.
+Mutation testing targets selected package modules with the **unit** suite; the scope and exclusions are listed in [MUTATION_TESTING.md](./MUTATION_TESTING.md). The latest recorded fit-coverage campaign generated 3,568 mutants: 3,424 killed, 62 survived, 69 had no covering unit test, and 13 timed out. This is a historical snapshot, not a verified count for the current tree. The no-test allowance remains capped at 69 and the survivor limit remains zero; a mutant with no covering test is not counted as killed. The quality gauntlet and CI use both limits.
 
 Judging mutants with the integration suite as well was measured and rejected. It is genuinely more thorough — every `no tests` mutant disappears and survival falls from 29% to about 11% — but each mutant it reaches then rebuilds a real gazetteer, roughly 23 seconds apiece and some thirteen hours for the package. The build pipeline is covered by the integration and e2e suites and by the 100% coverage gate instead. If you want the thorough run, add `"tests/integration"` to `pytest_add_cli_args_test_selection` and set aside an evening.
 
-The clean sweep recorded one timeout, with no suspicious results or segfaults.
-The timeout is retained in the evidence rather than silently presented as a
-fully killed mutant; the zero-survivor gate still passes.
+The older clean sweep recorded one timeout and 212 mutants with no covering
+unit test. Those figures predate the later fit-coverage campaign and are not
+the current allowance or a claim that the current tree passes mutation gates.
 
 Inspect survivors with:
 
@@ -192,7 +206,7 @@ A few practical tips that make reviews easier:
 
 CI runs on pull requests into `main` and on `main` itself, never on feature-branch pushes. The matrix is three operating systems across Python 3.10–3.14, with uv providing the interpreter on all of them. Pushing again to an open pull request cancels the previous run.
 
-Four workflows run: **Lint** (Ruff), **Tests** (the platform matrix, combined coverage and CRAP), **Quality** (the complete ordered gauntlet, including mutation testing), and **Documentation** (strict MkDocs and GitHub Pages). The stable required contexts for the `main` ruleset are `tests-passed`, `ruff`, `build`, and `quality-gate`; see the [CI safety and merge protection guide](docs/guides/ci-safety.md) for their workflow mapping and rationale. Mutation testing is intentionally part of the quality gate even though its cold run is expensive, because merge acceptance must include the complete deterministic contract.
+Four workflows run: **Lint** (Ruff), **Tests** (the platform matrix, combined coverage and CRAP), **Quality** (the ordered gauntlet), and **Documentation** (strict MkDocs and GitHub Pages). Pull requests skip Docker builds and the full mutation sweep in the quality gauntlet; the separate changed-mutation job checks modified package code. The scheduled quality run keeps the full mutation and Docker stages. The stable required contexts for the `main` ruleset are `tests-passed`, `ruff`, `build`, and `quality-gate`; see the [CI safety and merge protection guide](docs/guides/ci-safety.md) for their workflow mapping and rationale.
 
 If you add a dependency, commit the updated `uv.lock` alongside `pyproject.toml` (`uv add <package>` updates both). Prefer permissively licensed packages; geoparser is MIT-licensed.
 
@@ -242,3 +256,13 @@ A final release can also be published from the GitHub web UI when the notes are 
 ## Licensing
 
 This project is MIT-licensed; see [LICENSE](./LICENSE). Dependencies are declared rather than bundled, so each is distributed under its own license by its own maintainers.
+
+## Pull-request validation lifecycle
+
+Code pushes, opened or reopened pull requests, promotion from draft, and edits
+run the full required checks with stable job names. In particular, retargeting
+a PR rebuilds the new base comparison. Metadata edits also rerun validation:
+this deliberately costs another CI run rather than publishing skipped suites
+that hide actual results. Batch title/description edits before final validation.
+No branch-protection requirement is removed or relaxed. Manual dispatch remains
+available for explicit diagnostics.

@@ -18,26 +18,38 @@ def _medians(report: dict[str, Any]) -> dict[str, float]:
 
     medians = {}
     for benchmark in benchmarks:
-        name = benchmark.get("fullname")
-        median = benchmark.get("stats", {}).get("median")
-        if not isinstance(name, str) or not name:
-            msg_0 = "every benchmark must have a fullname"
-            raise ValueError(msg_0)
+        name = _benchmark_name(benchmark)
         if name in medians:
-            msg_0 = f"duplicate benchmark fullname: {name}"
-            raise ValueError(msg_0)
-        if (
-            isinstance(median, bool)
-            or not isinstance(median, int | float)
-            or not math.isfinite(median)
-        ):
-            msg_0 = f"benchmark {name} must have a finite median"
-            raise ValueError(msg_0)
-        if median < 0:
-            msg_0 = f"benchmark {name} median must not be negative"
-            raise ValueError(msg_0)
-        medians[name] = float(median)
+            msg = f"duplicate benchmark fullname: {name}"
+            raise ValueError(msg)
+        medians[name] = _finite_median(name, benchmark.get("stats", {}).get("median"))
     return medians
+
+
+def _benchmark_name(benchmark: dict[str, Any]) -> str:
+    """Validate the stable identifier used to pair benchmark measurements."""
+    name = benchmark.get("fullname")
+    if not isinstance(name, str) or not name:
+        msg = "every benchmark must have a fullname"
+        raise ValueError(msg)
+    return name
+
+
+def _finite_median(name: str, median: Any) -> float:
+    """Validate a timing value before using it in relative comparisons."""
+    if isinstance(median, bool):
+        msg = f"benchmark {name} must have a finite median"
+        raise ValueError(msg)  # noqa: TRY004 - malformed reports share one error type.
+    if not isinstance(median, int | float):
+        msg = f"benchmark {name} must have a finite median"
+        raise ValueError(msg)  # noqa: TRY004 - preserve the existing ValueError contract.
+    if not math.isfinite(median):
+        msg = f"benchmark {name} must have a finite median"
+        raise ValueError(msg)
+    if median < 0:
+        msg = f"benchmark {name} median must not be negative"
+        raise ValueError(msg)
+    return float(median)
 
 
 def compare_reports(
@@ -60,7 +72,15 @@ def compare_reports(
         f"base is missing benchmark {name}"
         for name in sorted(candidate.keys() - baseline.keys())
     )
+    failures.extend(_regressions(baseline, candidate, maximum_regression))
+    return failures
 
+
+def _regressions(
+    baseline: dict[str, float], candidate: dict[str, float], maximum_regression: float
+) -> list[str]:
+    """Describe common benchmarks whose candidate median exceeds the limit."""
+    failures = []
     limit = 1 + maximum_regression
     for name in sorted(baseline.keys() & candidate.keys()):
         before = baseline[name]

@@ -12,26 +12,55 @@ from sqlmodel import Session
 from geoparser.db.models import ReferenceCreate, ReferenceUpdate
 
 
+@pytest.fixture
+def new_york_reference(test_session, reference_factory, document_factory):
+    """Create a persisted reference whose text is read from its document."""
+    document = document_factory(text="New York is a city")
+    return reference_factory(start=0, end=8, document_id=document.id)
+
+
+@pytest.fixture
+def fully_populated_reference_update():
+    """Build an update together with the expected values for every field."""
+    reference_id = uuid.uuid4()
+    document_id = uuid.uuid4()
+    values = {
+        "id": reference_id,
+        "document_id": document_id,
+        "recognizer_id": "new_rec",
+        "start": 5,
+        "end": 10,
+    }
+    return ReferenceUpdate(**values), values
+
+
+@pytest.fixture
+def empty_reference_update():
+    """Build an update with only its required identifier."""
+    reference_id = uuid.uuid4()
+    return ReferenceUpdate(id=reference_id), reference_id
+
+
 @pytest.mark.unit
 class TestReferenceModel:
     """Test the Reference model."""
 
-    def test_creates_reference_with_valid_data(
-        self, test_session: Session, reference_factory, document_factory
-    ):
-        """Test that a Reference can be created with valid data."""
-        # Arrange
-        document = document_factory(text="New York is a city")
-
-        # Act
-        reference = reference_factory(start=0, end=8, document_id=document.id)
-
-        # Assert
+    def test_created_reference_has_uuid(self, new_york_reference):
+        reference = new_york_reference
         assert reference.id is not None
         assert isinstance(reference.id, uuid.UUID)
+
+    def test_created_reference_keeps_its_span(self, new_york_reference):
+        reference = new_york_reference
         assert reference.start == 0
         assert reference.end == 8
+
+    def test_created_reference_extracts_text_from_document(self, new_york_reference):
+        reference = new_york_reference
         assert reference.text == "New York"  # Auto-populated from document
+
+    def test_created_reference_keeps_its_database_links(self, new_york_reference):
+        reference = new_york_reference
         assert reference.document_id is not None
         assert reference.recognizer_id is not None
 
@@ -288,39 +317,15 @@ class TestReferenceCreate:
 class TestReferenceUpdate:
     """Test the ReferenceUpdate model."""
 
-    def test_creates_update_with_all_fields(self):
-        """Test that ReferenceUpdate can be created with all fields."""
-        # Arrange
-        ref_id = uuid.uuid4()
-        doc_id = uuid.uuid4()
+    @pytest.mark.parametrize(
+        "field", ("id", "document_id", "recognizer_id", "start", "end")
+    )
+    def test_stores_each_supplied_field(self, fully_populated_reference_update, field):
+        """A supplied update field is retained with its original value."""
+        update, values = fully_populated_reference_update
+        assert getattr(update, field) == values[field]
 
-        # Act
-        reference_update = ReferenceUpdate(
-            id=ref_id,
-            document_id=doc_id,
-            recognizer_id="new_rec",
-            start=5,
-            end=10,
-        )
-
-        # Assert
-        assert reference_update.id == ref_id
-        assert reference_update.document_id == doc_id
-        assert reference_update.recognizer_id == "new_rec"
-        assert reference_update.start == 5
-        assert reference_update.end == 10
-
-    def test_allows_optional_fields(self):
-        """Test that ReferenceUpdate allows optional fields."""
-        # Arrange
-        ref_id = uuid.uuid4()
-
-        # Act
-        reference_update = ReferenceUpdate(id=ref_id)
-
-        # Assert
-        assert reference_update.id == ref_id
-        assert reference_update.document_id is None
-        assert reference_update.recognizer_id is None
-        assert reference_update.start is None
-        assert reference_update.end is None
+    @pytest.mark.parametrize("field", ("document_id", "recognizer_id", "start", "end"))
+    def test_optional_fields_default_to_none(self, empty_reference_update, field):
+        update, _ = empty_reference_update
+        assert getattr(update, field) is None

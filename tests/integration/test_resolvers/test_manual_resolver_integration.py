@@ -234,15 +234,7 @@ class TestManualResolverIntegration:
         results = resolver.predict(texts, references)
 
         # Assert
-        predictions = results[0]
-        assert predictions is not None
-        assert len(predictions) == 2
-        first_prediction = predictions[0]
-        second_prediction = predictions[1]
-        assert first_prediction is not None
-        assert second_prediction is not None
-        assert first_prediction[0] == "geonames"
-        assert second_prediction[0] == "swissnames3d"
+        assert results == [[("geonames", "2988507"), ("swissnames3d", "12345")]]
 
     def test_handles_large_reference_set(self):
         """Test that ManualResolver can handle many references efficiently."""
@@ -273,9 +265,7 @@ class TestManualResolverIntegration:
         results = resolver.predict(texts, references_list)
 
         # Assert
-        assert len(results) == 1
-        assert len(results[0]) == num_refs
-        assert all(ref is not None for ref in results[0])
+        assert results == [referents_list[0]]
 
     def test_config_contains_only_label(self):
         """Test that resolver config contains only the label."""
@@ -317,8 +307,4 @@ class TestManualResolverIntegration:
         results = resolver.predict(texts, references)
 
         # Assert
-        assert len(results) == 4
-        assert len(results[0]) == 1
-        assert len(results[1]) == 2
-        assert len(results[2]) == 0
-        assert len(results[3]) == 1
+        assert [len(document_results) for document_results in results] == [1, 2, 0, 1]

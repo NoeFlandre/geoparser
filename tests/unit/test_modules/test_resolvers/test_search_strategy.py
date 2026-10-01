@@ -190,6 +190,15 @@ class TestEncode:
 class TestEvaluateDocument:
     """Assigning referents to one document's references."""
 
+    def test_pending_reference_without_scores_has_actionable_error(self, resolver):
+        """Missing scores fail before assigning a referent or changing results."""
+        results = [None]
+        message = "^a pending reference is missing precomputed similarities$"
+        with pytest.raises(ValueError, match=message):
+            resolver._evaluate_document(["context"], [[Mock()]], results, 0.5, [None])
+
+        assert results == [None]
+
     @staticmethod
     def _evaluate(resolver, contexts, candidates, results, best="referent"):
         """Run _evaluate_document with _best_referent stubbed."""
@@ -267,16 +276,17 @@ class TestEvaluateDocument:
         # Assert
         assert results == [("geonames", "kept"), ("geonames", "referent")]
 
+    @pytest.mark.parametrize("counts", [(2, 1, 1), (1, 2, 1), (1, 1, 2)])
     def test_rejects_contexts_candidates_and_results_of_different_lengths(
-        self, resolver
+        self, resolver, counts
     ):
         """The three per-reference lists must describe the same references."""
         # Act & Assert
-        with (
-            patch.object(resolver, "_best_referent", return_value=None),
-            pytest.raises(ValueError),
-        ):
-            resolver._evaluate_document(["a", "b"], [["cand"]], [None], 0.5, [None])
+        contexts = ["context"] * counts[0]
+        candidates = [[] for _ in range(counts[1])]
+        results = [None] * counts[2]
+        with pytest.raises(ValueError, match="zip"):
+            resolver._evaluate_document(contexts, candidates, results, 0.5, [None])
 
 
 @pytest.mark.unit
@@ -632,3 +642,34 @@ class TestPerDocumentAlignment:
                 "exact",
                 1,
             )
+
+
+@pytest.mark.unit
+class TestRankingInputAlignment:
+    """Misaligned batches fail instead of silently losing references."""
+
+    @pytest.mark.parametrize("counts", [(2, 1, 1), (1, 2, 1), (1, 1, 2)])
+    def test_pending_pairs_rejects_misaligned_documents(self, resolver, counts):
+        """Each document needs matching context, candidate and result lists."""
+        contexts = [[] for _ in range(counts[0])]
+        candidates = [[] for _ in range(counts[1])]
+        results = [[] for _ in range(counts[2])]
+        with pytest.raises(ValueError, match="zip"):
+            resolver._pending_pairs(contexts, candidates, results)
+
+    @pytest.mark.parametrize("counts", [(2, 1, 1), (1, 2, 1), (1, 1, 2)])
+    def test_pending_pairs_rejects_misaligned_references(self, resolver, counts):
+        """Reference alignment is checked even when no candidates were found."""
+        contexts = ["context"] * counts[0]
+        candidates = [[] for _ in range(counts[1])]
+        results = [None] * counts[2]
+        with pytest.raises(ValueError, match="zip"):
+            resolver._pending_pairs([contexts], [candidates], [results])
+
+    @pytest.mark.parametrize("counts", [(2, 1), (1, 2)])
+    def test_document_similarities_rejects_misaligned_results(self, resolver, counts):
+        """A missing result slot cannot consume or drop another reference's score."""
+        candidates = [[] for _ in range(counts[0])]
+        results = [None] * counts[1]
+        with pytest.raises(ValueError, match="zip"):
+            resolver._document_similarities(candidates, results, iter(()))

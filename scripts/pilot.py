@@ -216,12 +216,30 @@ def build_report(
         msg = "cases, predictions, and timings_ms must have the same length"
         raise ValueError(msg)
 
-    documents = [
+    documents = _document_reports(cases, predictions, timings_ms)
+    gold, predicted = _aggregate_annotations(cases, predictions)
+
+    return _report_payload(cases, documents, gold, predicted, models, configuration)
+
+
+def _document_reports(
+    cases: Sequence[PilotCase],
+    predictions: Sequence[Sequence[Annotation]],
+    timings_ms: Sequence[float],
+) -> list[Report]:
+    """Build the evidence record for each pilot sentence."""
+    return [
         build_document_report(case, predicted, elapsed_ms)
         for case, predicted, elapsed_ms in zip(
             cases, predictions, timings_ms, strict=True
         )
     ]
+
+
+def _aggregate_annotations(
+    cases: Sequence[PilotCase], predictions: Sequence[Sequence[Annotation]]
+) -> tuple[list[Annotation], list[Annotation]]:
+    """Tag gold and predicted spans so corpus metrics retain document identity."""
     gold = [
         annotation
         for case in cases
@@ -232,7 +250,18 @@ def build_report(
         for case, document in zip(cases, predictions, strict=True)
         for annotation in _qualified(case, document)
     ]
+    return gold, predicted
 
+
+def _report_payload(
+    cases: Sequence[PilotCase],
+    documents: list[Report],
+    gold: Sequence[Annotation],
+    predicted: Sequence[Annotation],
+    models: Mapping[str, str],
+    configuration: Mapping[str, object] | None,
+) -> Report:
+    """Assemble corpus-level metrics and all per-document evidence."""
     from geoparser.evaluation import (
         recognition_f1,
         recognition_precision,

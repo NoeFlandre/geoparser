@@ -87,11 +87,10 @@ class TestRecognitionServicePredict:
 
         statement = select(Reference).where(Reference.document_id == document.id)
         references = test_session.exec(statement).unique().all()
-        assert len(references) == 2
-        assert references[0].start == 0
-        assert references[0].end == 4
-        assert references[1].start == 5
-        assert references[1].end == 13
+        assert [(reference.start, reference.end) for reference in references] == [
+            (0, 4),
+            (5, 13),
+        ]
 
     def test_creates_recognition_record(
         self, test_session, mock_spacy_recognizer, document_factory
@@ -208,6 +207,52 @@ class TestRecognitionServicePredict:
         statement2 = select(Reference).where(Reference.document_id == doc2.id)
         refs2 = test_session.exec(statement2).unique().all()
         assert len(refs2) == 1
+
+
+@pytest.mark.unit
+class TestRecognitionServiceFit:
+    """Preparation of annotated documents for recognizer training."""
+
+    def test_reports_when_recognizer_does_not_implement_fit(self):
+        """The missing-fit error identifies the recognizer kind and name."""
+        recognizer = SimpleNamespace(name="ManualRecognizer")
+
+        with pytest.raises(
+            ValueError,
+            match="Recognizer 'ManualRecognizer'",
+        ):
+            RecognitionService(cast(Any, recognizer)).fit([])
+
+    def test_fits_only_annotated_documents_and_forwards_spans_and_options(
+        self, mock_spacy_recognizer
+    ):
+        """Annotations become offsets while unannotated text is omitted."""
+        documents = [
+            SimpleNamespace(
+                text="New York, Paris",
+                toponyms=[
+                    SimpleNamespace(start=0, end=8),
+                    SimpleNamespace(start=10, end=15),
+                ],
+            ),
+            SimpleNamespace(text="No places here", toponyms=[]),
+            SimpleNamespace(
+                text="London",
+                toponyms=[SimpleNamespace(start=0, end=6)],
+            ),
+        ]
+        fit = Mock()
+        mock_spacy_recognizer.fit = fit
+        service = RecognitionService(mock_spacy_recognizer)
+
+        service.fit(cast(Any, documents), output_path="model", epochs=4)
+
+        fit.assert_called_once_with(
+            ["New York, Paris", "London"],
+            [[(0, 8), (10, 15)], [(0, 6)]],
+            output_path="model",
+            epochs=4,
+        )
 
 
 @pytest.mark.unit
@@ -399,23 +444,26 @@ class TestRecordReferencePredictions:
 class TestRecognitionBatchPersistence:
     """The services stage validated mappings in core bulk writes."""
 
-    def test_recognition_core_inserts_ordered_rows_without_orm_adds(self):
-        """References and the processing marker retain values and client IDs."""
-        ids = [uuid.uuid4() for _ in range(3)]
-        document = SimpleNamespace(id=uuid.uuid4(), text="Paris Berlin")
-        service = RecognitionService(Mock())
-
-        session = Mock()
-        with patch("geoparser.services.recognition.uuid.uuid4", side_effect=ids):
-            service._record_reference_predictions(
-                session, cast(Any, [document]), [[(0, 5), (6, 12)]], "rec"
-            )
-
+    def test_recognition_core_executes_ordered_insertions(
+        self, recorded_recognition_batch
+    ):
+        (
+            session,
+            reference_statement,
+            _,
+            recognition_statement,
+            _,
+            _,
+            _,
+        ) = recorded_recognition_batch
         assert len(session.execute.call_args_list) == 2
-        reference_statement, reference_rows = session.execute.call_args_list[0].args
-        recognition_statement, recognition_rows = session.execute.call_args_list[1].args
-        assert reference_statement.table.name == "reference"
-        assert recognition_statement.table.name == "recognition"
+        assert (reference_statement.table.name, recognition_statement.table.name) == (
+            "reference",
+            "recognition",
+        )
+
+    def test_recognition_core_stores_reference_rows(self, recorded_recognition_batch):
+        _, _, ids, _, document, reference_rows, _ = recorded_recognition_batch
         assert reference_rows == [
             {
                 "id": ids[0],
@@ -434,11 +482,43 @@ class TestRecognitionBatchPersistence:
                 "recognizer_id": "rec",
             },
         ]
+
+    def test_recognition_core_stores_processing_marker(
+        self, recorded_recognition_batch
+    ):
+        _, _, ids, _, document, _, recognition_rows = recorded_recognition_batch
         assert recognition_rows == [
             {"id": ids[2], "document_id": document.id, "recognizer_id": "rec"}
         ]
+
+    def test_recognition_core_avoids_orm_additions(self, recorded_recognition_batch):
+        session = recorded_recognition_batch[0]
         session.add_all.assert_not_called()
         session.commit.assert_not_called()
+
+
+@pytest.fixture
+def recorded_recognition_batch():
+    """Record one recognition batch and expose its staged database rows."""
+    ids = [uuid.uuid4() for _ in range(3)]
+    document = SimpleNamespace(id=uuid.uuid4(), text="Paris Berlin")
+    service = RecognitionService(Mock())
+    session = Mock()
+    with patch("geoparser.services.recognition.uuid.uuid4", side_effect=ids):
+        service._record_reference_predictions(
+            session, cast(Any, [document]), [[(0, 5), (6, 12)]], "rec"
+        )
+    reference_statement, reference_rows = session.execute.call_args_list[0].args
+    recognition_statement, recognition_rows = session.execute.call_args_list[1].args
+    return (
+        session,
+        reference_statement,
+        ids,
+        recognition_statement,
+        document,
+        reference_rows,
+        recognition_rows,
+    )
 
 
 @pytest.mark.unit
