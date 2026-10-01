@@ -18,7 +18,6 @@ from scripts.panx_benchmark.checkpoint import (
     require_clean_commit,
 )
 from scripts.panx_benchmark.constants import (
-    BATCH_SIZE,
     DATASET_ID,
     DATASET_REVISION,
     DATASET_SPLIT,
@@ -99,10 +98,12 @@ def hardware_facts(torch_threads: int) -> dict[str, Any]:
     }
 
 
-def _batches(examples: Sequence[Example]) -> Iterator[Sequence[Example]]:
+def _batches(
+    examples: Sequence[Example], batch_size: int
+) -> Iterator[Sequence[Example]]:
     """Partition sentences using the fixed, recorded model batch size."""
-    for offset in range(0, len(examples), BATCH_SIZE):
-        yield examples[offset : offset + BATCH_SIZE]
+    for offset in range(0, len(examples), batch_size):
+        yield examples[offset : offset + batch_size]
 
 
 def _valid_predictions(
@@ -128,12 +129,13 @@ def _warm_up(
     predictor: BatchPredictor,
     examples_by_language: dict[str, tuple[Example, ...]],
     supported_languages: tuple[str, ...] | None,
+    batch_size: int,
 ) -> tuple[float, int]:
     """Warm one fixed batch before timing steady-state test inference."""
     warmup_language = _first_warmup_language(examples_by_language, supported_languages)
     if warmup_language is None:
         return 0.0, 0
-    examples = examples_by_language[warmup_language][:BATCH_SIZE]
+    examples = examples_by_language[warmup_language][:batch_size]
     started = time.perf_counter()
     _valid_predictions(predictor, examples)
     return time.perf_counter() - started, len(examples)
@@ -166,11 +168,12 @@ def _support_status(spec: ModelSpec, language: str) -> str:
 def _score_language(
     predictor: BatchPredictor,
     examples: tuple[Example, ...],
+    batch_size: int,
 ) -> Counts:
     """Score every sentence in one language and time only model inference."""
     counts = Counts()
     started = time.perf_counter()
-    for batch in _batches(examples):
+    for batch in _batches(examples, batch_size):
         predictions = _valid_predictions(predictor, batch)
         for example, spans in zip(batch, predictions, strict=True):
             counts.add(example.gold_spans, spans, text_length=len(example.text))
@@ -254,7 +257,9 @@ def _checkpoint_identity(
         },
         "evaluation": {
             "seed": SEED,
-            "batch_size": BATCH_SIZE,
+            "batch_sizes_by_model": {
+                spec.key: spec.batch_size for spec in models
+            },
             "gliner_threshold": GLINER_THRESHOLD,
             "device": "cpu",
             "span_policy": "exact half-open Python character offsets",
@@ -264,6 +269,7 @@ def _checkpoint_identity(
                 "key": spec.key,
                 "model_id": spec.model_id,
                 "revision": spec.revision,
+                "batch_size": spec.batch_size,
                 "documented_languages": list(spec.documented_languages or ()),
             }
             for spec in models
@@ -289,7 +295,7 @@ def _language_result(
             "evaluated_examples": 0,
             "metrics": None,
         }
-    counts = _score_language(predictor, examples)
+    counts = _score_language(predictor, examples, spec.batch_size)
     return {
         "status": "evaluated",
         "documented_support": support,
@@ -386,7 +392,10 @@ def evaluate_model(
     """Evaluate one recognizer and separate startup, warmup and steady timing."""
     predictor = loaded.predictor
     warmup_seconds, warmup_examples = _warm_up(
-        predictor, dataset.examples_by_language, spec.documented_languages
+        predictor,
+        dataset.examples_by_language,
+        spec.documented_languages,
+        spec.batch_size,
     )
     per_language = _language_results(spec, predictor, dataset, checkpoints)
     inference_seconds = sum(
@@ -408,7 +417,7 @@ def evaluate_model(
         "training_data_note": spec.training_data_note,
         "training_overlap_note": spec.overlap_note,
         "location_mapping": _location_mapping(spec),
-        "batch_size": BATCH_SIZE,
+        "batch_size": spec.batch_size,
         "gliner_threshold": GLINER_THRESHOLD if spec.key == "gliner2_multi" else None,
         "device": "cpu",
         "hub_snapshot_cached_before_run": loaded.cache_hit,
@@ -542,7 +551,9 @@ def run_benchmark(
             "limit_per_language": limit,
         },
         "evaluation": {
-            "batch_size": BATCH_SIZE,
+            "batch_sizes_by_model": {
+                spec.key: spec.batch_size for spec in models_to_run
+            },
             "seed": SEED,
             "span_policy": "exact half-open Python character offsets",
             "gold_text_reconstruction": "WikiANN tokens joined by one ASCII space",

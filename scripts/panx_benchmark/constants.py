@@ -25,6 +25,7 @@ class ModelSpec:
     training_data_note: str
     overlap_note: str
     model_card_url: str
+    batch_size: int = BATCH_SIZE
 
 
 SPACY_MODEL_LANGUAGES = ("en",)
@@ -75,6 +76,7 @@ MODELS = (
             "is unknown from the pinned model card."
         ),
         model_card_url=("https://huggingface.co/fastino/gliner2.5-multi-v1"),
+        batch_size=1,
     ),
     ModelSpec(
         key="xlmr_ner_hrl",

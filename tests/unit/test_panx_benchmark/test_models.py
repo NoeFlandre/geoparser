@@ -50,7 +50,7 @@ def test_gliner_adapter_uses_fixed_labels_batch_size_and_threshold():
             return [{"entities": {"location": [{"start": 0, "end": 4}]}}]
 
     model = FakeModel()
-    predictions = GLiNERPredictor(model).predict_batch(["Town"])
+    predictions = GLiNERPredictor(model, MODELS[1].batch_size).predict_batch(["Town"])
 
     assert (predictions, model.calls) == (
         [{(0, 4)}],
@@ -58,7 +58,7 @@ def test_gliner_adapter_uses_fixed_labels_batch_size_and_threshold():
             (
                 ["Town"],
                 ["city", "country", "location"],
-                {"batch_size": 8, "threshold": 0.5, "include_spans": True},
+                {"batch_size": 1, "threshold": 0.5, "include_spans": True},
             )
         ],
     )

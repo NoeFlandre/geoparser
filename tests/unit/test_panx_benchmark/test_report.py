@@ -29,7 +29,7 @@ def _feasibility_result():
             "evaluated_examples": 1,
             "data_load_seconds": 0.1,
         },
-        "evaluation": {"batch_size": 8},
+        "evaluation": {"batch_sizes_by_model": {"gliner2_multi": 1}},
         "language_list": {
             "source_revision": "c6b5039",
             "source_path": "docs/sentence-splitting.md",
@@ -105,6 +105,7 @@ def test_unspecified_multilingual_card_does_not_render_as_zero_languages():
     row = _model_summary(
         {
             "model_id": "fastino/gliner2.5-multi-v1",
+            "batch_size": 1,
             "documented_languages": [],
             "evaluated_examples": 1,
             "macro": {"precision": 0.0, "recall": 0.0, "f1": 0.0},
@@ -115,3 +116,4 @@ def test_unspecified_multilingual_card_does_not_render_as_zero_languages():
     )
 
     assert "unspecified" in row
+    assert "| 1 |" in row

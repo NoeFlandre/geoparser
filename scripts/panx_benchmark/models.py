@@ -40,15 +40,16 @@ class LoadedModel:
 class GLiNERPredictor:
     """Ask GLiNER2's project-default place labels and union them as LOC."""
 
-    def __init__(self, model: Any):
+    def __init__(self, model: Any, batch_size: int = BATCH_SIZE):
         self.model = model
+        self.batch_size = batch_size
 
     def predict_batch(self, texts: list[str]) -> list[set[Span]]:
         """Run pinned GLiNER2 entity extraction for a batch."""
         results = self.model.batch_extract_entities(
             texts,
             list(GLINER_ENTITY_LABELS),
-            batch_size=BATCH_SIZE,
+            batch_size=self.batch_size,
             threshold=GLINER_THRESHOLD,
             include_spans=True,
         )
@@ -58,20 +59,22 @@ class GLiNERPredictor:
 class XLMRecognizer:
     """Group XLM-R token tags into character-offset location spans."""
 
-    def __init__(self, inference_pipeline: Any):
+    def __init__(self, inference_pipeline: Any, batch_size: int = BATCH_SIZE):
         self.inference_pipeline = inference_pipeline
+        self.batch_size = batch_size
 
     def predict_batch(self, texts: list[str]) -> list[set[Span]]:
         """Run the Hugging Face token-classification pipeline on one batch."""
-        results = self.inference_pipeline(texts, batch_size=BATCH_SIZE)
+        results = self.inference_pipeline(texts, batch_size=self.batch_size)
         return [_xlm_location_spans(result) for result in results]
 
 
 class SpacyRecognizer:
     """Run the upstream English spaCy pipeline with its location labels."""
 
-    def __init__(self, pipeline: Any):
+    def __init__(self, pipeline: Any, batch_size: int = BATCH_SIZE):
         self.pipeline = pipeline
+        self.batch_size = batch_size
 
     def predict_batch(self, texts: list[str]) -> list[set[Span]]:
         """Run spaCy's batched document pipeline and keep its place entities."""
@@ -81,7 +84,7 @@ class SpacyRecognizer:
                 for entity in document.ents
                 if entity.label_ in SPACY_LOCATION_LABELS
             }
-            for document in self.pipeline.pipe(texts, batch_size=BATCH_SIZE)
+            for document in self.pipeline.pipe(texts, batch_size=self.batch_size)
         ]
 
 
@@ -149,7 +152,7 @@ def _load_gliner(spec: ModelSpec, cache_dir: Path) -> LoadedModel:
     started = time.perf_counter()
     model = AutoExtractor.from_pretrained(local_path, local_files_only=True)
     return LoadedModel(
-        GLiNERPredictor(model),
+        GLiNERPredictor(model, spec.batch_size),
         download_seconds,
         time.perf_counter() - started,
         cache_hit,
@@ -178,7 +181,7 @@ def _load_xlmr(spec: ModelSpec, cache_dir: Path) -> LoadedModel:
         device=-1,
     )
     return LoadedModel(
-        XLMRecognizer(inference_pipeline),
+        XLMRecognizer(inference_pipeline, spec.batch_size),
         download_seconds,
         time.perf_counter() - started,
         cache_hit,
@@ -200,7 +203,7 @@ def _load_spacy(spec: ModelSpec) -> LoadedModel:
         if component in pipeline.pipe_names:
             pipeline.remove_pipe(component)
     return LoadedModel(
-        SpacyRecognizer(pipeline),
+        SpacyRecognizer(pipeline, spec.batch_size),
         0.0,
         time.perf_counter() - started,
         None,

@@ -279,6 +279,12 @@ def test_checkpoint_identity_pins_code_data_models_and_cpu_configuration():
         "abc123",
         {"torch_threads": 4, "device_used": "cpu"},
     )
+    changed_group_identity = runner._checkpoint_identity(
+        dataset,
+        [MODELS[0], replace(MODELS[1], batch_size=2), MODELS[2]],
+        "abc123",
+        {"torch_threads": 4, "device_used": "cpu"},
+    )
 
     assert (
         identity["repository_commit"],
@@ -293,6 +299,8 @@ def test_checkpoint_identity_pins_code_data_models_and_cpu_configuration():
         identity["dataset"]["held_out_examples_by_language"]["en"]["example_count"],
         identity["dataset"]["held_out_examples_by_language"]["en"]["sha256"]
         != changed_identity["dataset"]["held_out_examples_by_language"]["en"]["sha256"],
+        identity["evaluation"]["batch_sizes_by_model"],
+        identity != changed_group_identity,
     ) == (
         "abc123",
         "f0a3be6dc5564c0cc4150bb660144800a1f539d4",
@@ -304,6 +312,8 @@ def test_checkpoint_identity_pins_code_data_models_and_cpu_configuration():
         4,
         {"target_languages_sha256", "test_split_sha256"},
         1,
+        True,
+        {"spacy_en": 8, "gliner2_multi": 1, "xlmr_ner_hrl": 8},
         True,
     )
 

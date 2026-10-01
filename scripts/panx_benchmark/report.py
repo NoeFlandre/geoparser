@@ -19,7 +19,8 @@ def _model_summary(model: dict[str, Any]) -> str:
     coverage = str(language_count) if language_count else "unspecified"
     return (
         f"| `{model['model_id']}` | {coverage} | "
-        f"{model['evaluated_examples']} | {_number(macro['precision'])} | "
+        f"{model['evaluated_examples']} | {model['batch_size']} | "
+        f"{_number(macro['precision'])} | "
         f"{_number(macro['recall'])} | {_number(macro['f1'])} | "
         f"{_number(model['steady_examples_per_second'])} | "
         f"{_number(model['checkpoint_download_seconds'])} | "
@@ -51,6 +52,14 @@ def _language_rows(model: dict[str, Any]) -> list[str]:
     return rows
 
 
+def _batch_size_summary(result: dict[str, Any]) -> str:
+    """Render each recognizer's actual input group size."""
+    return ", ".join(
+        f"`{key}`={size}"
+        for key, size in result["evaluation"]["batch_sizes_by_model"].items()
+    )
+
+
 def _document_lines(result: dict[str, Any]) -> list[str]:
     """Render benchmark identity, source and resource provenance."""
     dataset = result["dataset"]
@@ -77,8 +86,8 @@ def _document_lines(result: dict[str, Any]) -> list[str]:
         f"- Hardware: `{result['hardware']['platform']}`, "
         f"{result['hardware']['torch_threads']} CPU threads, "
         f"CUDA available: `{result['hardware']['cuda_available']}`",
-        f"- Seed: `{result['seed']}`; batch size: `{result['evaluation']['batch_size']}`; "
-        "no training or fine-tuning",
+        f"- Seed: `{result['seed']}`; per-model input group sizes: "
+        f"{_batch_size_summary(result)}; no training or fine-tuning",
         f"- Dataset acquisition/materialization: {dataset['data_load_seconds']:.2f}s",
         "",
         "The canonical 85-code list is copied from the upstream sentence-splitting "
@@ -89,9 +98,9 @@ def _document_lines(result: dict[str, Any]) -> list[str]:
         "",
         "## Model summary",
         "",
-        "| Recognizer | Documented language count | Evaluated sentences | Macro P | Macro R | Macro F1 | "
+        "| Recognizer | Documented language count | Evaluated sentences | Group size | Macro P | Macro R | Macro F1 | "
         "Steady sentences/s | Checkpoint fetch s | Model load s |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
         *[_model_summary(model) for model in result["models"]],
         "",
         "Model fetch time, local model load time, warmup, data acquisition, and "
@@ -114,6 +123,7 @@ def _model_coverage_lines(model: dict[str, Any]) -> list[str]:
         f"- Training data: {model['training_data_note']}",
         f"- WikiANN overlap: {model['training_overlap_note']}",
         f"- Location mapping: {model['location_mapping']}",
+        f"- Input group size: {model['batch_size']} sentences",
         f"- Warmup: {model['warmup_examples']} sentences in "
         f"{model['warmup_seconds']:.4f}s; steady inference: "
         f"{model['steady_inference_seconds']:.4f}s",

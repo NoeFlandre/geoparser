@@ -84,6 +84,33 @@ def test_multilingual_evaluation_scores_all_languages_after_warmup():
     ) == (2, 1, 1.0, "evaluated", 1)
 
 
+def test_gliner_group_size_is_used_for_warmup_and_every_inference_call():
+    class RecordingPredictor(ExactPredictor):
+        def __init__(self):
+            self.group_sizes = []
+
+        def predict_batch(self, texts):
+            self.group_sizes.append(len(texts))
+            return super().predict_batch(texts)
+
+    examples = tuple(
+        Example("en", f"Town {index}", frozenset()) for index in range(3)
+    )
+    dataset = LoadedDataset(
+        examples_by_language={"en": examples},
+        source_counts={"en": len(examples)},
+        load_seconds=0.0,
+        limit_per_language=None,
+    )
+    predictor = RecordingPredictor()
+
+    result = evaluate_model(MODELS[1], _loaded(predictor), dataset)
+
+    assert (result["batch_size"], result["warmup_examples"]) == (1, 1)
+    assert result["evaluated_examples"] == 3
+    assert predictor.group_sizes == [1, 1, 1, 1]
+
+
 def test_completed_language_checkpoints_prevent_duplicate_inference(tmp_path):
     class CountingPredictor(ExactPredictor):
         def __init__(self):
@@ -150,7 +177,10 @@ def test_support_status_separates_documented_support_from_transfer():
 
 def test_warm_up_skips_languages_outside_the_model_support():
     seconds, examples = _warm_up(
-        ExactPredictor(), {"fr": (Example("fr", "Lyon", frozenset()),)}, ("en",)
+        ExactPredictor(),
+        {"fr": (Example("fr", "Lyon", frozenset()),)},
+        ("en",),
+        8,
     )
 
     assert (seconds, examples) == (0.0, 0)
