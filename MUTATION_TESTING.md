@@ -41,6 +41,39 @@ timeouts remain inconclusive; the identities of the 36 and 32 timeouts in
 those runs are unavailable. The later run below retained a per-mutant report
 and supplies the exact allowlist for bounded replays.
 
+## Local recovery of the 36 timeouts (1 October 2026)
+
+The latest completed full CI sweep is [run 36874286263](https://github.com/NoeFlandre/geoparser/actions/runs/36874286263),
+for PR head `060b2851c6ac80f0c97fd6cd231e7d330b6506ba`. Its
+[artifact 11170019901](https://github.com/NoeFlandre/geoparser/actions/runs/36874286263/artifacts/11170019901)
+has SHA-256 `2f08712e1dc6737b3a43697053aa4c75471a64f6ad936203f936b2fa0a008d83`.
+It reports 3,700 killed and 36 inconclusive timeouts, not 3,736 kills.
+
+Each timed-out mutation's generated diff was checked against that artifact
+before replay in a fresh Python process, with a passing unmutated baseline.
+The first replay killed 14 and exposed 22 survivors. Stronger tests then
+killed 16 of those survivors: mismatched document/reference/candidate lists
+must raise instead of silently truncating, and missing precomputed scores
+must produce the correct diagnostic. The former document-length test had
+accidentally accepted a different `ValueError`; it now isolates the intended
+shape error.
+
+The other six mutations changed redundant defaults or repeated validation:
+`zip(strict=False)` versus its default/`None`, cosine similarity's default
+axis, and a second document-alignment check after `_pending_pairs` had
+already validated the same lists. Small implementation cleanups removed
+that redundant work. These six are **not counted as killed**. No mutation
+exclusions were added and no quality threshold was lowered.
+
+On the updated local code, a targeted mutation run over the four changed
+functions killed all 80 selected mutants, with zero survivors or timeouts.
+It used one mutation child and one OpenMP/MKL/OpenBLAS thread. This is scoped
+validation, not a claim of a new full 3,724-mutant sweep. All 2,340 tests
+(including benchmark and real GLiNER/Jina integration tests) passed locally;
+the repository-wide CRAP check covered 3,637 functions, with a maximum of
+5.67, below the exclusive threshold of 6. Full hosted CI must still validate
+the resulting commit before merging.
+
 ## Recorded run history
 
 The counts below are historical snapshots recorded in the named documentation
@@ -58,6 +91,7 @@ campaigns and are not contradictory.
 | PR head `fb896a2`; run `36818760703` | Full sweep with per-mutant artifact | 3736 | 3705 | **0** | 0 | 31 | 0 | 100% of decided outcomes |
 | PR head `6fc75e4`; run `36832597467` | Full sweep after fit assertions | 3736 | 3709 | **0** | 0 | 27 | 0 | 100% of decided outcomes |
 | PR head `ff0f369`; run `36860416064` | Full sweep after PAN-X integration | 3736 | 3710 | **0** | 0 | 26 | 0 | 100% of decided outcomes |
+| PR head `060b285`; run `36874286263` | Full sweep after Transformers 5 update | 3736 | 3700 | **0** | 0 | 36 | 0 | 100% of decided outcomes |
 
 The historical `f92c594` campaign sums to 3,568 outcomes: 3,424 killed,
 62 survived, 69 had no covering unit test, and 13 timed out. It did **not**
@@ -66,11 +100,11 @@ pass the zero-survivor gate. The quality gauntlet and CI still enforce
 the historical no-tests ceiling, not a claim that the latest run had that many
 no-test mutants.
 
-The latest full mutation run was [quality workflow run 36860416064](https://github.com/NoeFlandre/geoparser/actions/runs/36860416064), for PR #111 head `ff0f369f37000d56620251c5376d84eca5ac2a28` (merge checkout `9d260404ac78663558f75b323e449a53ed509944`). Its artifact is [mutation-evidence-36860416064](https://github.com/NoeFlandre/geoparser/actions/runs/36860416064/artifacts/11163287916), SHA-256 `3419f776a4f85540ed0b35656992248e001fe4adca20d0ea211957d1f172aab9`.
+The preceding full mutation run was [quality workflow run 36860416064](https://github.com/NoeFlandre/geoparser/actions/runs/36860416064), for PR #111 head `ff0f369f37000d56620251c5376d84eca5ac2a28` (merge checkout `9d260404ac78663558f75b323e449a53ed509944`). Its artifact is [mutation-evidence-36860416064](https://github.com/NoeFlandre/geoparser/actions/runs/36860416064/artifacts/11163287916), SHA-256 `3419f776a4f85540ed0b35656992248e001fe4adca20d0ea211957d1f172aab9`.
 
 It recorded 3,710 killed, zero survived, zero with no covering tests, and 26 timeouts (3,736 total). The 100% rate is only across 3,710 decided outcomes; timeouts remain inconclusive and are not counted as kills. The four earlier `RecognitionService.fit` survivors (`mutmut_3`, `mutmut_6`, `mutmut_7`, `mutmut_8`) were killed.
 
-The 26 current timeouts are all in resolver similarity and ranking code:
+That run recorded 26 timeouts in resolver similarity and ranking code:
 
 | Function | Timeouts |
 | --- | ---: |
@@ -83,7 +117,7 @@ The 26 current timeouts are all in resolver similarity and ranking code:
 | `SentenceTransformerResolver._evaluate_document` | 4 |
 
 The exact-mutant-replay job was skipped for the pull-request event, so these 26
-outcomes remain unresolved. All 26 exact IDs are present in the manual replay
+outcomes were unresolved in that snapshot. All 26 exact IDs are present in the manual replay
 allowlist from the preceding 27-timeout run; none was replayed on this head.
 The replay workflow accepts at most eight allowlisted IDs per dispatch and
 checks the expected full commit SHA. A replay must report a terminal killed
@@ -265,7 +299,7 @@ Two practical consequences:
   Do not delete `mutants/` before one.
 
 The `fb896a2` sweep recorded 31 unresolved timeouts. Run `36832597467`
-is the newest completed full mutation evidence; it has 27 timeouts pending
-replay. Neither run counts a timeout as killed. The historical
+is an earlier full mutation snapshot; it recorded 27 timeouts before the
+later campaigns listed above. Neither run counts a timeout as killed. The historical
 `69` no-tests allowance remains unchanged even though the latest run reported
 zero no-test mutants.

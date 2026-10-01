@@ -134,6 +134,9 @@ jobs:
       - name: Replay selected timeout mutants
         env:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+          OPENBLAS_NUM_THREADS: "1"
         run: |
           uv run --no-sync python scripts/mutation_replay.py \
             --selection-file "$RUNNER_TEMP/validated-mutant-ids.txt" \
@@ -177,6 +180,9 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          OMP_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+          OPENBLAS_NUM_THREADS: "1"
         shell: bash
         run: |
           scope_text="$(uv run --no-sync python scripts/changed_mutation_patterns.py "$BASE_SHA" "$HEAD_SHA")"

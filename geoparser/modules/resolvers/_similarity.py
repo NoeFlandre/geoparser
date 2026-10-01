@@ -29,10 +29,8 @@ class SimilarityMixin:
         lengths = [len(candidate_list) for _, _, candidate_list in pending]
         similarities = self._flat_similarities(pending, lengths)
         offsets = [0, *itertools.accumulate(lengths)]
-        for (index, _, _), start, end in zip(
-            pending, offsets, offsets[1:], strict=False
-        ):
-            scores[index] = similarities[start:end]
+        for position, (index, _, _) in enumerate(pending):
+            scores[index] = similarities[offsets[position] : offsets[position + 1]]
         return scores
 
     @staticmethod
@@ -80,5 +78,5 @@ class SimilarityMixin:
             dim=0,
         )
         return torch.nn.functional.cosine_similarity(
-            repeated_contexts, candidate_tensor, dim=1
+            repeated_contexts, candidate_tensor
         ).tolist()

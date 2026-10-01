@@ -7,6 +7,20 @@ from unittest.mock import Mock, patch
 import pytest
 import torch
 
+from geoparser.modules.resolvers._similarity import SimilarityMixin
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("context_count,candidate_count", [(1, 0), (0, 1), (2, 1)])
+def test_similarity_batch_rejects_misaligned_inputs(context_count, candidate_count):
+    """Missing contexts or candidate lists must not be silently truncated."""
+    resolver = SimilarityMixin()
+    contexts = ["context"] * context_count
+    candidates = [[] for _ in range(candidate_count)]
+
+    with pytest.raises(ValueError, match="zip"):
+        resolver._calculate_similarity_batches(contexts, candidates)
+
 
 @pytest.mark.unit
 class TestSimilarity:
@@ -83,9 +97,9 @@ class TestSimilarity:
                 candidates[0].identifier,
             )
         )
-        contexts = [["first", "second"]]
-        candidates = [[[first], [second]]]
-        results = [[None, None]]
+        contexts = [["first"], ["second"]]
+        candidates = [[[first]], [[second]]]
+        results = [[None], [None]]
 
         resolver._evaluate_candidates(contexts, cast(Any, candidates), results, 0.6)
 
@@ -93,7 +107,8 @@ class TestSimilarity:
             ["first", "second"], [[first], [second]]
         )
         assert results == [
-            [(resolver.gazetteer_name, "A"), (resolver.gazetteer_name, "B")]
+            [(resolver.gazetteer_name, "A")],
+            [(resolver.gazetteer_name, "B")],
         ]
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")

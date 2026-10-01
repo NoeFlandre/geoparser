@@ -46,6 +46,7 @@ class TestGeoparserDataDir:
         sys.platform == "win32", reason="macOS path semantics require POSIX paths"
     )
     def test_macos_uses_application_support(self, monkeypatch):
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
         monkeypatch.setenv("HOME", "/Users/u")
 
         assert (

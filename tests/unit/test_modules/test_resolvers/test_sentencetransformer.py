@@ -53,6 +53,39 @@ def test_import_does_not_change_transformers_logging_verbosity():
 class TestSentenceTransformerResolverInitialization:
     """Test SentenceTransformerResolver initialization."""
 
+    @patch(
+        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
+    )
+    def test_load_tokenizer_preserves_result_and_arguments(self, load_tokenizer):
+        """Loading retains the tokenizer and forwards checkpoint options."""
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        resolver = object.__new__(SentenceTransformerResolver)
+        result = resolver._load_tokenizer("test/model", revision="pinned")
+
+        assert result is load_tokenizer.return_value
+        load_tokenizer.assert_called_once_with("test/model", revision="pinned")
+
+    @patch(
+        "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained",
+        return_value=None,
+    )
+    def test_load_tokenizer_rejects_missing_result(self, load_tokenizer):
+        """An absent tokenizer fails at loading, before context sizing."""
+        from geoparser.modules.resolvers.sentencetransformer import (
+            SentenceTransformerResolver,
+        )
+
+        resolver = object.__new__(SentenceTransformerResolver)
+        with pytest.raises(
+            ValueError, match="No tokenizer was loaded for 'test/model'"
+        ):
+            resolver._load_tokenizer("test/model")
+
+        load_tokenizer.assert_called_once_with("test/model")
+
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
         "geoparser.modules.resolvers.sentencetransformer.AutoTokenizer.from_pretrained"
