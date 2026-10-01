@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "source": {
-    "workflow_run_id": "36818760703",
-    "pull_request_head_sha": "fb896a2b181fd03416653610b2f54f63c3e759e3",
-    "checkout_sha": "2ce099a0bc175e3727fdd990089523574461aca6",
-    "report_sha256": "9f163a8ce146003e9094323e2d9a2eb77e25b21c3c63b56560e7e86f0ecb2c1e",
-    "timeout_count": 31
+    "workflow_run_id": "36842110918",
+    "pull_request_head_sha": "f0f07a630fda3be4b758d27690bd12a2c280897c",
+    "checkout_sha": "da46b4841404493012e07f2e8df6165ffe8f02ec",
+    "report_sha256": "03431720966578a31913849bf3d1b945cc7a3294d3d9312f95691c8c6c9f1c0a",
+    "timeout_count": 27
   },
   "max_selected_per_dispatch": 8,
   "mutant_ids": [
@@ -19,9 +19,6 @@
     "geoparser.modules.resolvers._similarity.xǁSimilarityMixinǁ_flat_similarities__mutmut_17",
     "geoparser.modules.resolvers._similarity.xǁSimilarityMixinǁ_flat_similarities__mutmut_23",
     "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_search_tier__mutmut_14",
-    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_embed_candidates__mutmut_11",
-    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_embed_candidates__mutmut_14",
-    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_embed_candidates__mutmut_15",
     "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_candidates__mutmut_17",
     "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_candidates__mutmut_21",
     "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_candidates__mutmut_22",
@@ -38,7 +35,6 @@
     "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_document__mutmut_5",
     "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_document__mutmut_9",
     "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_document__mutmut_10",
-    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_document__mutmut_20",
-    "geoparser.modules.resolvers._context.xǁContextWindowMixinǁ_extract_context__mutmut_6"
+    "geoparser.modules.resolvers.sentencetransformer.xǁSentenceTransformerResolverǁ_evaluate_document__mutmut_20"
   ]
 }

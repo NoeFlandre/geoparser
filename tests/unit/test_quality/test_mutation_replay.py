@@ -13,7 +13,7 @@ from scripts import mutation_replay
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ALLOWLIST = PROJECT_ROOT / "scripts" / "mutation_replay_allowlist.json"
-CURRENT_SHA = "fb896a2b181fd03416653610b2f54f63c3e759e3"
+CURRENT_SHA = "f0f07a630fda3be4b758d27690bd12a2c280897c"
 
 
 def _known_mutant_ids() -> list[str]:
@@ -63,9 +63,14 @@ def _run_timeout_replay(
 def test_allowlist_records_the_complete_versioned_timeout_inventory() -> None:
     allowlist = json.loads(ALLOWLIST.read_text(encoding="utf-8"))
 
-    assert allowlist["source"]["workflow_run_id"] == "36818760703"
-    assert allowlist["source"]["timeout_count"] == 31
-    assert len(allowlist["mutant_ids"]) == 31
+    assert allowlist["source"] == {
+        "workflow_run_id": "36842110918",
+        "pull_request_head_sha": CURRENT_SHA,
+        "checkout_sha": "da46b4841404493012e07f2e8df6165ffe8f02ec",
+        "report_sha256": "03431720966578a31913849bf3d1b945cc7a3294d3d9312f95691c8c6c9f1c0a",
+        "timeout_count": 27,
+    }
+    assert len(allowlist["mutant_ids"]) == 27
     assert allowlist["max_selected_per_dispatch"] == 8
 
 
@@ -77,7 +82,7 @@ def test_selection_accepts_only_an_exact_allowed_id_for_the_selected_sha() -> No
     )
 
     assert selected == [mutant_id]
-    assert allowlist["source"]["timeout_count"] == 31
+    assert allowlist["source"]["timeout_count"] == 27
 
 
 def test_selection_rejects_globs_and_other_unlisted_ids() -> None:
@@ -116,7 +121,7 @@ def test_selection_rejects_a_mismatched_or_abbreviated_sha() -> None:
         (lambda allowlist: allowlist.update(mutant_ids=[]), "no mutant IDs"),
         (
             lambda allowlist: allowlist.update(
-                mutant_ids=[allowlist["mutant_ids"][0]] * 31
+                mutant_ids=[allowlist["mutant_ids"][0]] * 27
             ),
             "duplicate",
         ),
