@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - main
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
   # The trunk itself is also tested. This is what keeps the README badges alive,
   # seeds the default-branch Actions cache that every pull request restores from
   # (caches written by a pull request are scoped to that pull request alone), and

@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - main
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
   push:
     branches:
       - main
@@ -25,7 +25,7 @@ on:
         required: false
         type: string
       expected_sha:
-        description: Full commit SHA of the selected ref
+        description: Full source SHA recorded by the timeout allowlist
         required: false
         type: string
 
@@ -110,14 +110,34 @@ jobs:
           MUTANT_IDS: ${{ inputs.mutant_ids }}
           EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: |
-          mkdir -p mutation-replay
+          helper="$RUNNER_TEMP/replay-helper"
+          mkdir -p "$helper/scripts"
+          cp scripts/mutation_replay.py scripts/mutation_evidence.py \
+            scripts/mutation_replay_allowlist.json "$helper/scripts/"
           printf '%s\n' "$MUTANT_IDS" > "$RUNNER_TEMP/mutation-replay-ids.txt"
           PYTHONDONTWRITEBYTECODE=1 python scripts/mutation_replay.py \
             --selection-file "$RUNNER_TEMP/mutation-replay-ids.txt" \
             --expected-sha "$EXPECTED_SHA" \
-            --actual-sha "$GITHUB_SHA" \
+            --actual-sha "$EXPECTED_SHA" \
             --validate-only > "$RUNNER_TEMP/validated-mutant-ids.txt"
           cat "$RUNNER_TEMP/validated-mutant-ids.txt"
+
+      - name: Check out the validated evidence source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.expected_sha }}
+          persist-credentials: false
+
+      - name: Verify the actual source checkout before dependency installation
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          helper="$RUNNER_TEMP/replay-helper"
+          PYTHONPATH="$helper" python "$helper/scripts/mutation_replay.py" \
+            --allowlist "$helper/scripts/mutation_replay_allowlist.json" \
+            --selection-file "$RUNNER_TEMP/validated-mutant-ids.txt" \
+            --expected-sha "$EXPECTED_SHA" \
+            --actual-sha "$(git rev-parse HEAD)" --validate-only
 
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
@@ -137,10 +157,12 @@ jobs:
           MKL_NUM_THREADS: "1"
           OPENBLAS_NUM_THREADS: "1"
         run: |
-          uv run --no-sync python scripts/mutation_replay.py \
+          helper="$RUNNER_TEMP/replay-helper"
+          PYTHONPATH="$helper" uv run --no-sync python "$helper/scripts/mutation_replay.py" \
+            --allowlist "$helper/scripts/mutation_replay_allowlist.json" \
             --selection-file "$RUNNER_TEMP/validated-mutant-ids.txt" \
             --expected-sha "$EXPECTED_SHA" \
-            --actual-sha "$GITHUB_SHA" \
+            --actual-sha "$(git rev-parse HEAD)" \
             --evidence-dir mutation-replay
 
       - name: Upload exact-mutant replay evidence

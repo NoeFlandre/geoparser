@@ -13,7 +13,7 @@ from scripts import mutation_replay
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ALLOWLIST = PROJECT_ROOT / "scripts" / "mutation_replay_allowlist.json"
-CURRENT_SHA = "da46b4841404493012e07f2e8df6165ffe8f02ec"
+CURRENT_SHA = "f0f07a630fda3be4b758d27690bd12a2c280897c"
 
 
 def _known_mutant_ids() -> list[str]:
@@ -69,6 +69,8 @@ def test_allowlist_records_the_complete_versioned_timeout_inventory() -> None:
         "checkout_sha": "da46b4841404493012e07f2e8df6165ffe8f02ec",
         "report_sha256": "03431720966578a31913849bf3d1b945cc7a3294d3d9312f95691c8c6c9f1c0a",
         "timeout_count": 27,
+        "replay_source_sha": CURRENT_SHA,
+        "source_tree_sha": "fb77bc0a9cb2516c16343c6c39d971560f6a9878",
     }
     assert len(allowlist["mutant_ids"]) == 27
     assert allowlist["max_selected_per_dispatch"] == 8

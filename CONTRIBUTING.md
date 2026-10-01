@@ -259,13 +259,10 @@ This project is MIT-licensed; see [LICENSE](./LICENSE). Dependencies are declare
 
 ## Pull-request validation lifecycle
 
-Code pushes, opened or reopened pull requests, and promotion from draft run the
-full required checks. Title and description edits do not start validation or
-replace successful results with skipped check suites. Required job names remain
-stable; no branch-protection requirement is removed or relaxed.
-
-After changing a pull request's base branch, reopen it or push a new commit to
-validate the new comparison before merging. Do not treat results from the
-previous base as fresh validation. Workflows also retain manual dispatch for
-explicit diagnostics. Avoid retargeting a validated candidate solely for
-bookkeeping; use one main-targeted integration PR.
+Code pushes, opened or reopened pull requests, promotion from draft, and edits
+run the full required checks with stable job names. In particular, retargeting
+a PR rebuilds the new base comparison. Metadata edits also rerun validation:
+this deliberately costs another CI run rather than publishing skipped suites
+that hide actual results. Batch title/description edits before final validation.
+No branch-protection requirement is removed or relaxed. Manual dispatch remains
+available for explicit diagnostics.

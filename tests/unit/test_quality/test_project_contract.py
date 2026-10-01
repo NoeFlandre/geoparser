@@ -311,12 +311,12 @@ def test_docs_workflow_builds_strictly_and_deploys_pages() -> None:
     assert any("deploy-pages" in step.get("uses", "") for step in deploy_steps)
 
 
-def test_pull_request_validation_excludes_metadata_events() -> None:
-    """Description edits must not replace real checks with skipped suites."""
+def test_pull_request_validation_includes_base_edits() -> None:
+    """Every base edit runs genuine validation with stable required names."""
     for workflow in _pull_request_workflows():
         events = set(workflow["on"]["pull_request"]["types"])
         assert {"opened", "synchronize", "reopened", "ready_for_review"} <= events
-        assert "edited" not in events
+        assert "edited" in events
         assert "workflow_dispatch" in workflow["on"]
 
 
@@ -366,8 +366,8 @@ def test_test_gate_rejects_unsuccessful_dependencies() -> None:
 
 def test_retargeting_requires_fresh_validation_is_documented() -> None:
     guide = (PROJECT_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    assert "After changing a pull request's base branch" in guide
-    assert "reopen it or push a new commit" in guide
+    assert "retargeting" in guide
+    assert "PR rebuilds the new base comparison" in guide
 
 
 def test_github_workflows_have_no_duplicate_yaml_keys() -> None:
@@ -1308,3 +1308,19 @@ def test_smokeshow_upload_commands_do_not_reveal_the_credential() -> None:
     assert "SMOKESHOW_AUTH_KEY" not in commands
     assert "printenv" not in commands
     assert "set -x" not in commands
+
+
+def test_exact_replay_checks_out_source_and_verifies_it_before_installing() -> None:
+    steps = _job_steps("quality.yml", "exact-mutant-replay")
+    checkout = _named_step(steps, "Check out the validated evidence source")
+    verify = _named_step(
+        steps, "Verify the actual source checkout before dependency installation"
+    )
+    install = _named_step(steps, "Install locked test dependencies")
+    replay = _named_step(steps, "Replay selected timeout mutants")
+    assert checkout["with"]["ref"] == "${{ inputs.expected_sha }}"
+    assert checkout["with"]["persist-credentials"] == "false"
+    assert steps.index(checkout) < steps.index(verify) < steps.index(install)
+    assert "$(git rev-parse HEAD)" in verify["run"]
+    assert "$(git rev-parse HEAD)" in replay["run"]
+    assert "$helper/scripts/mutation_replay.py" in replay["run"]

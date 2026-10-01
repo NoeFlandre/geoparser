@@ -124,8 +124,8 @@ def validate_selection(
     )
     allowlist = _load_allowlist(allowlist_path)
     _require(
-        "Selected ref differs from the allowlist source checkout; mutant IDs are revision-specific",
-        condition=actual_sha == allowlist["source"].get("checkout_sha"),
+        "Selected ref differs from the allowlist replay revision; mutant IDs are revision-specific",
+        condition=actual_sha == allowlist["source"].get("replay_source_sha"),
     )
     selected = _selection_lines(selection_text, allowlist["max_selected_per_dispatch"])
     allowed = set(allowlist["mutant_ids"])

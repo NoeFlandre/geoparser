@@ -175,8 +175,11 @@ mutants, including the four former survivors, were killed in this sweep.
 The current `scripts/mutation_replay_allowlist.json` instead records the later
 27-timeout inventory from run `36842110918`, bound to source checkout
 `da46b4841404493012e07f2e8df6165ffe8f02ec`. The Quality workflow's manual
-`targeted-mutant-replay` mode accepts only those literal IDs, requires both the
-requested SHA and the actual checkout to match that evidence revision, and
+`targeted-mutant-replay` mode accepts only those literal IDs, checks out the retained source head `f0f07a630fda3be4b758d27690bd12a2c280897c`
+and requires the actual checkout to match it. Both that head and the historical
+merge checkout have tree `fb77bc0a9cb2516c16343c6c39d971560f6a9878`
+(verified through GitHub Git commit metadata). The current controller is kept
+separately while the source and locked dependencies use the evidence revision. It
 runs at most eight IDs serially per dispatch. Ordinal mutant IDs cannot be
 reused on later code revisions; generate a new inventory for new code. It uses mutmut's
 configured timeout policy without a timeout-factor override and uploads the
