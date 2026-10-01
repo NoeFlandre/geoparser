@@ -101,6 +101,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         shell: bash
         run: |
           scope_text="$(uv run --no-sync python scripts/changed_mutation_patterns.py "$BASE_SHA" "$HEAD_SHA")"
@@ -121,44 +122,73 @@ jobs:
           else
             mapfile -t patterns <<< "$patterns_text"
           fi
-          mkdir -p mutants
+          mkdir -p mutants mutation-evidence
           rm -f mutants/mutmut-cicd-stats.json
           run_status=0
           if [[ "$full_mutation" == true ]]; then
-            uv run --no-sync mutmut run --max-children 1 || run_status=$?
+            uv run --no-sync mutmut run --max-children 1 \
+              > mutation-evidence/mutmut-run.log 2>&1 || run_status=$?
           else
-            uv run --no-sync mutmut run --max-children 1 "${patterns[@]}" || run_status=$?
+            uv run --no-sync mutmut run --max-children 1 "${patterns[@]}" \
+              > mutation-evidence/mutmut-run.log 2>&1 || run_status=$?
           fi
+          cat mutation-evidence/mutmut-run.log
           export_status=0
-          uv run --no-sync mutmut export-cicd-stats || export_status=$?
-          if (( export_status != 0 )); then
-            exit "$export_status"
-          fi
+          uv run --no-sync mutmut export-cicd-stats \
+            > mutation-evidence/stats-export.log 2>&1 || export_status=$?
+          cat mutation-evidence/stats-export.log
           gate_status=0
-          if [[ "$full_mutation" == true ]]; then
-            gate_args=(
-              --max-survivors 0
-              --max-no-tests 69
-              --stats mutants/mutmut-cicd-stats.json
-            )
+          if (( export_status != 0 )); then
+            gate_status=1
+            echo "Mutation stats export failed; the mutation gate cannot pass." \
+              > mutation-evidence/mutation-gate.log
           else
-            gate_args=(
-              --max-survivors 0
-              --max-no-tests 0
-              --stats mutants/mutmut-cicd-stats.json
-              --patterns "${patterns[@]}"
-            )
+            if [[ "$full_mutation" == true ]]; then
+              gate_args=(
+                --max-survivors 0
+                --max-no-tests 69
+                --stats mutants/mutmut-cicd-stats.json
+              )
+            else
+              gate_args=(
+                --max-survivors 0
+                --max-no-tests 0
+                --stats mutants/mutmut-cicd-stats.json
+                --patterns "${patterns[@]}"
+              )
+            fi
+            uv run --no-sync python scripts/mutation_gate.py "${gate_args[@]}" \
+              > mutation-evidence/mutation-gate.log 2>&1 || gate_status=$?
           fi
-          uv run --no-sync python scripts/mutation_gate.py "${gate_args[@]}" || gate_status=$?
-          if (( gate_status != 0 )); then
-            while IFS= read -r mutant; do
-              [[ -z "$mutant" ]] || uv run --no-sync mutmut show "$mutant"
-            done < <(
-              uv run --no-sync mutmut results --all true \
-                | sed -n 's/^[[:space:]]*\(geoparser\..*\): survived$/\1/p'
-            )
+          cat mutation-evidence/mutation-gate.log
+          evidence_scope=()
+          if [[ "$full_mutation" == false ]]; then
+            evidence_scope+=(--patterns "${patterns[@]}")
+          fi
+          evidence_status=0
+          uv run --no-sync python scripts/mutation_evidence.py \
+            --evidence-dir mutation-evidence \
+            --stats mutants/mutmut-cicd-stats.json \
+            --run-exit-code "$run_status" \
+            --export-exit-code "$export_status" \
+            --gate-exit-code "$gate_status" \
+            "${evidence_scope[@]}" || evidence_status=$?
+          if (( evidence_status != 0 )); then
+            exit "$evidence_status"
           fi
           if (( run_status != 0 )); then
             exit "$run_status"
           fi
+          if (( export_status != 0 )); then
+            exit "$export_status"
+          fi
           exit "$gate_status"
+
+      - name: Upload per-mutant evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mutation-evidence-${{ github.run_id }}-${{ github.event.pull_request.head.sha }}
+          path: mutation-evidence/
+          if-no-files-found: warn
+          retention-days: 90

@@ -169,6 +169,7 @@ def test_mutation_runner_copies_quality_support_modules() -> None:
         ".pre-commit-config.yaml",
         "CHANGELOG.md",
         "mkdocs.yml",
+        "MUTATION_TESTING.md",
     } <= copied_paths
     # The documentation guard reads these public surfaces directly, so a
     # mutant run that left them behind would fail for want of a file rather
@@ -820,18 +821,28 @@ def test_changelog_has_unreleased_and_versioned_entries() -> None:
     assert re.search(r"^## \[\d+\.\d+\.\d+\]$", changelog, re.MULTILINE)
 
 
-def test_mutation_report_keeps_current_timeouts_inconclusive() -> None:
-    report = " ".join(
+def _mutation_report_text() -> str:
+    return " ".join(
         (PROJECT_ROOT / "MUTATION_TESTING.md").read_text(encoding="utf-8").split()
     )
 
-    assert "`7cdd960` (2026-10-01)" in report
+
+def test_mutation_report_records_the_latest_full_sweep() -> None:
+    assert "`7cdd960` (2026-10-01)" in _mutation_report_text()
+
+
+def test_mutation_report_keeps_timeout_results_inconclusive() -> None:
+    report = _mutation_report_text()
     assert (
         "3,704 killed, zero survived, zero had no covering tests, and 32 timed out"
         in report
     )
     assert "the 32 timeouts remain inconclusive" in report
     assert "not established" in report
+
+
+def test_mutation_report_keeps_historical_no_tests_allowance() -> None:
+    report = _mutation_report_text()
     assert "`--max-no-tests 69` allowance" in report
 
 
@@ -865,8 +876,38 @@ def test_changed_mutation_job_gates_and_reports_mutant_results() -> None:
     _, commands = _changed_mutation_job()
     assert _has_command(commands, "--max-no-tests 0")
     assert _has_command(commands, "mutation_gate.py")
-    assert _has_command(commands, "mutmut results --all true")
-    assert _has_command(commands, "mutmut show")
+    assert _has_command(commands, "mutation_evidence.py")
+
+
+def _mutation_evidence_artifact_step() -> dict[str, Any]:
+    job, _ = _changed_mutation_job()
+    return next(
+        step
+        for step in job["steps"]
+        if step.get("name") == "Upload per-mutant evidence"
+    )
+
+
+def test_changed_mutation_job_uploads_evidence_even_on_failure() -> None:
+    artifact_step = _mutation_evidence_artifact_step()
+
+    assert artifact_step["if"] == "always()"
+
+
+def test_changed_mutation_artifact_name_identifies_run_and_head() -> None:
+    artifact_step = _mutation_evidence_artifact_step()
+
+    assert (
+        "mutation-evidence-${{ github.run_id }}-${{ github.event.pull_request.head.sha }}"
+        in (artifact_step["with"]["name"])
+    )
+
+
+def test_changed_mutation_artifact_keeps_exact_run_files() -> None:
+    artifact_step = _mutation_evidence_artifact_step()
+
+    assert artifact_step["with"]["path"] == "mutation-evidence/"
+    assert artifact_step["with"]["retention-days"] == "90"
 
 
 def test_quality_workflow_waits_for_changed_mutation() -> None:

@@ -325,6 +325,8 @@ also_copy = [
     # Local link targets of README.md, checked by the packaging tests.
     "ROADMAP.md",
     "CONTRIBUTING.md",
+    # Mutation-report contract tests read the recorded campaign evidence.
+    "MUTATION_TESTING.md",
     "LICENSE",
 ]
 

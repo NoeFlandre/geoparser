@@ -18,6 +18,29 @@ Inspect one function's survivors with `uv run mutmut results` and
 Pragmas only take effect when the mutant tree is regenerated, so delete
 `mutants/` before a run that is meant to pick them up.
 
+## CI evidence and timeout follow-up
+
+The pull-request mutation job uploads an artifact named
+`mutation-evidence-<run-id>-<commit>`, even when the mutation gate fails. It
+contains the run, stats-export, and gate logs; raw `mutmut results --all true`
+output; the exported stats when available; and `report.json`. The report records
+the tested commit and run metadata, changed-module patterns, every parsed
+mutant ID and outcome, a one-mutant replay command, and `mutmut show` output for
+each unresolved result. Mutants left unchecked after a baseline failure are
+identified without pretending that they were killed; their count is also
+compared with the exported total.
+
+To replay an individual result, copy its command from `report.json`, for
+example:
+
+```bash
+uv run --no-sync mutmut run --max-children 1 geoparser.services.recognition.fit__mutmut_3
+```
+
+The `81fabc7` and `7cdd960` campaigns predate this artifact and retained only
+aggregate logs. Their timeout counts remain inconclusive; the identities and
+causes of the 32 timeouts in the newest recorded run are not known.
+
 ## Recorded run history
 
 The counts below are historical snapshots recorded in the named documentation
@@ -31,6 +54,7 @@ campaigns and are not contradictory.
 | `8d07b9b` (2026-09-12) | Clean sweep after model pass | 1999 | 1786 | **0** | 212 | 1 | 0 | 31.2/s |
 | `f92c594` (2026-09-28) | Fit coverage, before latest assertions | 3568 | 3424 | **62** | 69 | 13 | 0 | — |
 | `81fabc7` (2026-10-01) | Full sweep after quality refactor | 3736 | 3696 | **4** | 0 | 36 | 0 | 99.9% of decided outcomes |
+| `7cdd960` (2026-10-01) | Full sweep after fit assertions and PAN-X span scoring | 3736 | 3704 | **0** | 0 | 32 | 0 | 100% of decided outcomes |
 
 The September 28, 2026 campaign sums to 3,568 outcomes: 3,424 killed, 62
 survived, 69 had no covering unit test, and 13 timed out. It did **not** pass
@@ -45,15 +69,28 @@ left without tests. The resolved-outcome kill rate was 99.9% (3,696 of 3,700
 decided outcomes); the 36 timeouts are inconclusive and are **not** counted as
 killed. The gate failed on four `RecognitionService.fit` survivors whose
 mutations changed the recognizer-kind label passed to `require_fit`. A focused
-test now checks the missing-fit error names a recognizer and its name; its
-local unit test passed, but only a new exact-head mutation run can confirm the
-survivors are gone. All 36 timeouts were in
+test now checks the missing-fit error names a recognizer and its name. The
+later exact-head run below confirms those four mutants no longer survive. All
+36 timeouts were in
 `SimilarityMixin._calculate_similarity_batches`, `_non_empty`,
 `_flat_similarities`, or `SentenceTransformerResolver._search_tier`,
 `_gather_candidates`, `_embed_candidates`, `_evaluate_candidates`,
 `_pending_pairs`, `_document_similarities`, and `_evaluate_document`. They need
 their own runtime/evidence triage; the resolved-outcome percentage does not
 settle them.
+
+The full sweep on exact head
+`7cdd960dc559089aacb1614019a0f6dc0c3a409e` generated 3,736 mutants: 3,704
+killed, zero survived, zero had no covering tests, and 32 timed out. The
+resolved-outcome kill rate was 100% (3,704 of 3,704 decided outcomes); the 32
+timeouts remain inconclusive and are **not** counted as killed. This confirms
+the four earlier `RecognitionService.fit` label mutants no longer survive.
+The retained Actions log reports aggregate counts only, and the run has no
+per-mutant artifact, so the identities and causes of these 32 timeouts are not
+established. The earlier function list is triage context for the 36-timeout
+run, not a disposition of the newer 32. The zero-no-tests count applies to
+this full run and does not change the established `--max-no-tests 69`
+allowance.
 
 ## Scope, and why
 
@@ -184,6 +221,7 @@ Two practical consequences:
 - A filtered run (`mutmut run <pattern>`) needs the mapping a full run builds.
   Do not delete `mutants/` before one.
 
-The later `81fabc7` full sweep above supersedes the `f92c594` fit-coverage
-campaign as the newest recorded evidence. The zero-survivor gate remains
-required, and timeouts remain unresolved outcomes.
+The `7cdd960` full sweep above is the newest recorded mutation evidence. It
+passes the zero-survivor gate, while its 32 timeouts remain unresolved
+outcomes. The earlier `69` no-tests count and its unchanged ceiling remain a
+separate, historical fit-coverage baseline.
