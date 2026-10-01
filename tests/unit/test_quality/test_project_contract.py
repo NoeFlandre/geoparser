@@ -691,6 +691,23 @@ def test_contributing_documents_precommit_installation() -> None:
     assert "uv run pre-commit install" in contributing
 
 
+def test_docs_keep_package_coverage_and_whole_tree_crap_scopes_distinct() -> None:
+    contributing = (PROJECT_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    development = (PROJECT_ROOT / "docs/development.md").read_text(encoding="utf-8")
+
+    assert "coverage report --include='geoparser/*' --fail-under=100" in contributing
+    assert (
+        "GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py"
+        in contributing
+    )
+    assert (
+        "GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py"
+        in development
+    )
+    assert "100% line-coverage threshold applies to `geoparser/`" in development
+    assert "`geoparser/`, `scripts/`, and `tests/`" in development
+
+
 def test_precommit_is_available_after_the_documented_sync() -> None:
     with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
         project = tomllib.load(pyproject_file)

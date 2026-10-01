@@ -24,7 +24,7 @@ confidence.
 Run the complete deterministic gate with:
 
 ```bash
-uv run python scripts/quality_gauntlet.py
+GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py
 ```
 
 By default the command runs Ruff, `ty`, locked dependency validation, one
@@ -41,6 +41,11 @@ scores every function under `geoparser/`, `scripts/`, and `tests/` and requires
 each score to be strictly below 6. Nested functions are scored separately,
 their executable statements belong to the innermost function, and a function
 with no recorded coverage is treated as uncovered.
+
+The quality gauntlet collects coverage for all three roots during its single
+test pass, then explicitly enforces the 100% floor on `geoparser/` before the
+whole-tree CRAP check. Opt-in performance tests remain outside the default test
+pass, while their functions remain in the CRAP scope.
 
 The CI coverage matrix enables the opt-in GLiNER2 and Jina integration tests in
 one Ubuntu/Python 3.12 cell. The separate quality gauntlet also runs them so

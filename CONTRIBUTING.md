@@ -81,11 +81,21 @@ Run the full suite:
 uv run pytest
 ```
 
-Coverage is collected for the package, including `geoparser/annotator/` (HTML report in `htmlcov/`; open `htmlcov/index.html`). CI enforces a hard floor on the combined coverage of the whole matrix:
+Coverage is collected for `geoparser/`, `scripts/`, and `tests/` so the CRAP
+gate can score every function. CI combines coverage across its matrix and
+enforces a hard 100% line-coverage floor on the package, including
+`geoparser/annotator/` (the HTML report is in `htmlcov/`; open
+`htmlcov/index.html`). To check the same package floor locally with the real
+model tests enabled, run:
 
 ```bash
-uv run pytest --cov-fail-under=100
+GEOPARSER_TEST_REMOTE_MODELS=1 uv run pytest
+uv run coverage report --include='geoparser/*' --fail-under=100
 ```
+
+On a fresh environment, the real-model tests can download several gigabytes
+of checkpoints. The quality gauntlet uses one coverage test pass, verifies this
+package floor, and then runs the strict whole-tree CRAP check.
 
 The suite is kept fast on purpose. Two things matter if you are adding to it:
 
@@ -114,7 +124,7 @@ One command reproduces the deterministic quality gate CI enforces. Run it from t
 
 ```bash
 uv sync --locked
-uv run python scripts/quality_gauntlet.py
+GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py
 ```
 
 The gate removes its temporary reports, mutation tree, and per-run Docker
@@ -136,7 +146,7 @@ What each step guards:
 
 - **ruff check / ruff format** — lint, import order, unused code and formatting.
 - **[ty](https://github.com/astral-sh/ty)** — static type checking of the configured source tree. Fix the type error rather than adding a blanket `# type: ignore`; where a suppression is genuinely right, make it specific and comment why.
-- **pytest** — the unit, integration and end-to-end suites, with the hard coverage floor.
+- **pytest / coverage report** — the unit, integration and end-to-end suites record coverage for all CRAP roots; `coverage report --include='geoparser/*' --fail-under=100` enforces the package floor.
 - **scripts/crap.py** — the [CRAP score](https://testing.googleblog.com/2011/02/this-code-is-crap.html) gate, `complexity² × (1 − coverage)³ + complexity`, per function. For fully covered code this reduces to a cyclomatic-complexity ceiling, so it fails both on untested code and on code that has grown too branchy. It reads the coverage data that pytest just wrote, so run it after the suite.
 - **[mutmut](https://mutmut.readthedocs.io/)** — mutation testing. It edits the source in small ways and re-runs the tests; a mutant that survives is a line the suite does not really check. Configuration lives under `[tool.mutmut]` in `pyproject.toml`; `scripts/mutation_gate.py` reads the exported stats and fails when more mutants survive than the agreed baseline.
 

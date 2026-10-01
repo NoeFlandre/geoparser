@@ -40,6 +40,14 @@ def _uv(*arguments: str) -> Command:
     return ("uv", "run", "--no-sync", "--offline", *arguments)
 
 
+_PACKAGE_COVERAGE_COMMAND = _uv(
+    "coverage",
+    "report",
+    "--include=geoparser/*",
+    "--fail-under=100",
+)
+
+
 def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI flags
     root: Path,
     artifact_dir: Path,
@@ -84,11 +92,14 @@ def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI fla
         Stage(
             "tests",
             (
+                # Coverage stays recorded for all CRAP roots; the next command
+                # applies the hard line floor to the production package.
                 _uv(
                     "pytest",
-                    "--cov-fail-under=100",
+                    "--cov-fail-under=0",
                     f"--cov-report=html:{coverage_report}",
                 ),
+                _PACKAGE_COVERAGE_COMMAND,
             ),
             root,
         ),
@@ -162,7 +173,15 @@ def _append_trailing_stages(
     """Add optional diagnostics and the build/documentation smoke stage."""
     if options.include_baseline:
         stages.insert(
-            0, Stage("baseline", (_uv("pytest", "--cov-fail-under=100"),), root)
+            0,
+            Stage(
+                "baseline",
+                (
+                    _uv("pytest", "--cov-fail-under=0"),
+                    _PACKAGE_COVERAGE_COMMAND,
+                ),
+                root,
+            ),
         )
     if not options.skip_mutation:
         stages.append(_mutation_stage(root))

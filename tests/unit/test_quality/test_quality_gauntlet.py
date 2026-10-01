@@ -48,34 +48,61 @@ def test_crap_stage_uses_the_strict_six_ceiling(tmp_path: Path) -> None:
 
 
 def test_default_quality_stages_run_the_coverage_suite_once(tmp_path: Path) -> None:
-    """The default gauntlet retains one full coverage test stage."""
+    """One full test pass feeds the strict package and whole-tree CRAP gates."""
     stages = build_stages(Path("/repo"), tmp_path)
+    tests = _named_stage(stages, "tests")
 
-    coverage_runs = [
-        command
-        for stage in stages
-        for command in stage.commands
-        if "--cov-fail-under=100" in command
-    ]
-    assert len(coverage_runs) == 1
+    pytest_runs = [command for command in tests.commands if "pytest" in command]
+    package_reports = [command for command in tests.commands if "coverage" in command]
+
+    assert len(pytest_runs) == 1
+    assert "--cov-fail-under=0" in pytest_runs[0]
+    assert len(package_reports) == 1
 
 
 def test_coverage_suite_uses_the_provisioned_offline_environment(
     tmp_path: Path,
 ) -> None:
     stages = build_stages(Path("/repo"), tmp_path)
-    coverage_run = next(
-        command
-        for stage in stages
-        for command in stage.commands
-        if "--cov-fail-under=100" in command
-    )
-    assert coverage_run[:5] == (
+    tests = _named_stage(stages, "tests")
+    pytest_run, package_report = tests.commands
+
+    assert pytest_run[:5] == (
         "uv",
         "run",
         "--no-sync",
         "--offline",
         "pytest",
+    )
+    assert package_report == (
+        "uv",
+        "run",
+        "--no-sync",
+        "--offline",
+        "coverage",
+        "report",
+        "--include=geoparser/*",
+        "--fail-under=100",
+    )
+
+
+def test_diagnostic_baseline_uses_the_same_package_coverage_floor(
+    tmp_path: Path,
+) -> None:
+    baseline = _named_stage(
+        build_stages(Path("/repo"), tmp_path, include_baseline=True), "baseline"
+    )
+
+    assert "--cov-fail-under=0" in baseline.commands[0]
+    assert baseline.commands[1] == (
+        "uv",
+        "run",
+        "--no-sync",
+        "--offline",
+        "coverage",
+        "report",
+        "--include=geoparser/*",
+        "--fail-under=100",
     )
 
 
@@ -308,6 +335,28 @@ def test_coverage_failure_is_returned_without_running_later_gates(
     assert result == 23
     fail_coverage.assert_called_once_with(
         tests.commands[0], cwd=tests.cwd, env={}, check=False
+    )
+
+
+def test_package_coverage_failure_stops_before_later_gates(
+    monkeypatch, tmp_path: Path
+) -> None:
+    stages = build_stages(Path("/repo"), tmp_path)
+    tests = _named_stage(stages, "tests")
+    property_stage = _named_stage(stages, "property")
+    fail_package_report = Mock(
+        side_effect=[
+            type("Completed", (), {"returncode": 0})(),
+            type("Completed", (), {"returncode": 23})(),
+        ]
+    )
+    monkeypatch.setattr("scripts.quality_gauntlet.subprocess.run", fail_package_report)
+
+    result = run_stages([tests, property_stage], {})
+
+    assert result == 23
+    assert [call.args[0] for call in fail_package_report.call_args_list] == list(
+        tests.commands
     )
 
 
