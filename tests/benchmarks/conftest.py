@@ -78,19 +78,19 @@ def synthetic_gazetteer(
 
 
 @pytest.fixture
-def benchmark_database(request: pytest.FixtureRequest):
-    """Route every application session through one isolated SQLite database."""
+def benchmark_database(request: pytest.FixtureRequest, tmp_path: Path):
+    """Use production-like connection isolation in a temporary SQLite file."""
     from unittest.mock import patch
 
-    from sqlalchemy.pool import StaticPool
+    from sqlalchemy.pool import NullPool
     from sqlmodel import SQLModel, create_engine
 
     import geoparser.db.models  # noqa: F401 - register mapped tables
     from geoparser.db import db
 
     engine = create_engine(
-        "sqlite:///:memory:",
-        poolclass=StaticPool,
+        f"sqlite:///{tmp_path / 'benchmark.db'}",
+        poolclass=NullPool,
         connect_args={"check_same_thread": False},
     )
     SQLModel.metadata.create_all(engine)

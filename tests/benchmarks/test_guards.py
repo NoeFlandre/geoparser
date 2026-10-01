@@ -133,3 +133,22 @@ def test_foreign_key_lookup_has_indexed_query_plan(benchmark_database, table, co
 
     details = " ".join(row[-1] for row in plan)
     assert f"ix_{table}_{column}" in details
+
+
+def test_benchmark_connections_keep_transaction_boundaries(benchmark_database):
+    """A second session must neither see nor roll back a writer's pending row."""
+    from sqlalchemy import text
+
+    identifier = "0" * 32
+    with benchmark_database.connect() as writer:
+        writer.execute(
+            text("INSERT INTO project (id, name) VALUES (:id, :name)"),
+            {"id": identifier, "name": "transaction-boundary"},
+        )
+        with benchmark_database.connect() as reader:
+            assert (
+                reader.execute(text("SELECT count(*) FROM project")).scalar_one() == 0
+            )
+        writer.commit()
+    with benchmark_database.connect() as reader:
+        assert reader.execute(text("SELECT count(*) FROM project")).scalar_one() == 1
