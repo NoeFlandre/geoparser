@@ -109,6 +109,10 @@ jobs:
             huggingface-${{ runner.os }}-
 
       - name: Run pytest
+        # Exercise the actual GLiNER2 and Jina checkpoints once on CI so
+        # dependency upgrades cannot pass on mocked model constructors alone.
+        env:
+          GEOPARSER_TEST_REMOTE_MODELS: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && '1' || '' }}
         run: uv run --no-sync pytest -v
 
       - run: mkdir coverage

@@ -40,21 +40,15 @@ jobs:
       # and the spaCy model URLs cannot be looked up on PyPI and are reported
       # as skipped.
       #
-      # Ignored: transformers advisories whose fixes exist only in 5.x.
-      # gliner2 requires transformers<5 (see pyproject.toml), so they cannot be
-      # taken yet; remove each ignore once the cap is lifted.
+      # Keep the lockfile audit unfiltered: known vulnerabilities must be
+      # resolved by the dependency constraints, not suppressed here.
       - name: Audit locked dependencies
         run: |
           uv export --locked --all-groups --no-hashes --no-emit-project \
             --output-file "$RUNNER_TEMP/requirements.txt"
           uvx pip-audit==2.10.1 \
             --requirement "$RUNNER_TEMP/requirements.txt" \
-            --no-deps --disable-pip --progress-spinner off \
-            --ignore-vuln PYSEC-2025-217 \
-            --ignore-vuln PYSEC-2026-2288 \
-            --ignore-vuln PYSEC-2026-2289 \
-            --ignore-vuln PYSEC-2026-2290 \
-            --ignore-vuln PYSEC-2026-3929
+            --no-deps --disable-pip --progress-spinner off
 
   codeql:
     if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null
