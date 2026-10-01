@@ -8,6 +8,9 @@ All notable changes to GeoParser are recorded here. This project follows
 
 ### Fixed
 
+- Isolate CI event concurrency so editing a merged pull request cannot cancel
+  main-branch checks; skip redundant validation for closed pull requests.
+
 - Keep required CI check names stable and avoid replacing validation with
   skipped suites when pull-request metadata changes.
 - Exclude metric bookkeeping from PAN-X prediction timing and preserve malformed

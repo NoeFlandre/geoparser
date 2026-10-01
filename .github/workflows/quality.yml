@@ -33,14 +33,15 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.pull_request.state == 'open' }}
 
 jobs:
   quality:
     needs: [changed-mutation]
     if: >-
       always() &&
+      (github.event_name != 'pull_request' || github.event.pull_request.state == 'open') &&
       (github.event_name != 'workflow_dispatch' || inputs.mode != 'targeted-mutant-replay')
     name: quality-gate
     runs-on: ubuntu-latest
@@ -175,7 +176,7 @@ jobs:
           retention-days: 90
 
   changed-mutation:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.state == 'open'
     name: changed-mutation
     runs-on: ubuntu-latest
     timeout-minutes: 240

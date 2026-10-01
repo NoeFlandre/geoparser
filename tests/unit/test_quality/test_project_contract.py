@@ -357,7 +357,7 @@ def test_test_gate_rejects_unsuccessful_dependencies(result: str) -> None:
         Loader=yaml.BaseLoader,
     )
     gate = workflow["jobs"]["tests-passed"]
-    assert gate["if"] == "always()"
+    assert "always()" in gate["if"]
     assert set(gate["needs"]) == {"pytest", "coverage"}
     failure_step = gate["steps"][0]
     assert failure_step["run"] == "exit 1"
@@ -1337,3 +1337,64 @@ def test_exact_replay_uses_retained_controller_and_actual_source_identity() -> N
     )
     assert "$(git rev-parse HEAD)" in replay["run"]
     assert "$helper/scripts/mutation_replay.py" in replay["run"]
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "benchmark.yml",
+        "docker.yml",
+        "lint.yml",
+        "quality.yml",
+        "security.yml",
+        "test.yml",
+    ],
+)
+def test_workflow_concurrency_separates_push_from_pull_request(filename: str) -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows" / filename).read_text(),
+        Loader=yaml.BaseLoader,
+    )
+    assert "github.event_name" in workflow["concurrency"]["group"]
+    assert (
+        "github.event.pull_request.state == 'open'"
+        in workflow["concurrency"]["cancel-in-progress"]
+    )
+
+
+def test_documentation_build_concurrency_separates_event_types() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/docs.yml").read_text(),
+        Loader=yaml.BaseLoader,
+    )
+    concurrency = workflow["jobs"]["build"]["concurrency"]
+    assert "github.event_name" in concurrency["group"]
+    assert (
+        "github.event.pull_request.state == 'open'" in concurrency["cancel-in-progress"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("filename", "job"),
+    [
+        ("benchmark.yml", "compare"),
+        ("docker.yml", "docker-smoke"),
+        ("docs.yml", "build"),
+        ("lint.yml", "ruff"),
+        ("lint.yml", "ty"),
+        ("quality.yml", "quality"),
+        ("quality.yml", "changed-mutation"),
+        ("security.yml", "dependency-audit"),
+        ("security.yml", "codeql"),
+        ("security.yml", "workflow-lint"),
+        ("test.yml", "pytest"),
+        ("test.yml", "coverage"),
+        ("test.yml", "tests-passed"),
+    ],
+)
+def test_closed_pr_edits_do_not_repeat_validation(filename: str, job: str) -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows" / filename).read_text(),
+        Loader=yaml.BaseLoader,
+    )
+    assert "github.event.pull_request.state == 'open'" in workflow["jobs"][job]["if"]

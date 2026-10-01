@@ -18,10 +18,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   # Superseding a pull request commit is free; superseding a trunk commit would
   # leave a commit on main permanently untested.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.pull_request.state == 'open' }}
 
 env:
   HYPOTHESIS_PROFILE: ci
@@ -37,6 +37,7 @@ env:
 
 jobs:
   pytest:
+    if: github.event_name != 'pull_request' || github.event.pull_request.state == 'open'
     name: ${{ format('pytest ({0}, {1})', matrix.os, matrix.python-version) }}
     strategy:
       fail-fast: false
@@ -133,6 +134,7 @@ jobs:
           include-hidden-files: true
 
   coverage:
+    if: github.event_name != 'pull_request' || github.event.pull_request.state == 'open'
     name: coverage
     needs: [pytest]
     runs-on: ubuntu-latest
@@ -204,7 +206,7 @@ jobs:
   # matrix values, so requiring those directly deadlocks the ruleset as soon as
   # the matrix changes; this name never does.
   tests-passed:
-    if: always()
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.state == 'open')
     name: tests-passed
     needs: [pytest, coverage]
     runs-on: ubuntu-latest
