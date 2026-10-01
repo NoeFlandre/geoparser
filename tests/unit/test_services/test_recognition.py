@@ -213,6 +213,16 @@ class TestRecognitionServicePredict:
 class TestRecognitionServiceFit:
     """Preparation of annotated documents for recognizer training."""
 
+    def test_reports_when_recognizer_does_not_implement_fit(self):
+        """The missing-fit error identifies the recognizer kind and name."""
+        recognizer = SimpleNamespace(name="ManualRecognizer")
+
+        with pytest.raises(
+            ValueError,
+            match="Recognizer 'ManualRecognizer'",
+        ):
+            RecognitionService(cast(Any, recognizer)).fit([])
+
     def test_fits_only_annotated_documents_and_forwards_spans_and_options(
         self, mock_spacy_recognizer
     ):

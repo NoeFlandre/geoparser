@@ -47,11 +47,14 @@ def summarize(stats: dict[str, int]) -> str:
     """
     killed = stats.get("killed", 0)
     survived = stats.get("survived", 0)
+    timed_out = stats.get("timeout", 0)
     judged = killed + survived
     score = f"{100 * killed / judged:.1f}%" if judged else "n/a"
     return (
-        f"score {score}  killed {killed}  survived {survived}  "
-        f"timeout {stats.get('timeout', 0)}  suspicious {stats.get('suspicious', 0)}  "
+        f"resolved-outcome kill rate {score} ({killed} killed / {judged} decided); "
+        f"survived {survived}; timeout {timed_out} "
+        "(inconclusive; not counted as killed); "
+        f"suspicious {stats.get('suspicious', 0)}  "
         f"no tests {stats.get('no_tests', 0)}  skipped {stats.get('skipped', 0)}  "
         f"total {stats.get('total', 0)}"
     )

@@ -30,13 +30,30 @@ campaigns and are not contradictory.
 | `2d993fd` (2026-09-11) | Clean sweep after context extraction | 2028 | 1816 | **0** | 212 | 0 | 0 | — |
 | `8d07b9b` (2026-09-12) | Clean sweep after model pass | 1999 | 1786 | **0** | 212 | 1 | 0 | 31.2/s |
 | `f92c594` (2026-09-28) | Fit coverage, before latest assertions | 3568 | 3424 | **62** | 69 | 13 | 0 | — |
+| `81fabc7` (2026-10-01) | Full sweep after quality refactor | 3736 | 3696 | **4** | 0 | 36 | 0 | 99.9% of decided outcomes |
 
-The latest recorded campaign sums to 3,568 outcomes: 3,424 killed, 62
+The September 28, 2026 campaign sums to 3,568 outcomes: 3,424 killed, 62
 survived, 69 had no covering unit test, and 13 timed out. It did **not** pass
 the zero-survivor gate. The quality gauntlet and CI still enforce
 `--max-survivors 0 --max-no-tests 69`; neither limit has been raised. `69` is
 the last measured no-tests count and the unchanged ceiling, not a claim that a
 new run on the current tree has passed.
+
+The completed sweep on `81fabc76532002dede430534b60a7110c12db279` generated
+3,736 mutants: 3,696 were killed, four survived, 36 timed out, and none were
+left without tests. The resolved-outcome kill rate was 99.9% (3,696 of 3,700
+decided outcomes); the 36 timeouts are inconclusive and are **not** counted as
+killed. The gate failed on four `RecognitionService.fit` survivors whose
+mutations changed the recognizer-kind label passed to `require_fit`. A focused
+test now checks the missing-fit error names a recognizer and its name; its
+local unit test passed, but only a new exact-head mutation run can confirm the
+survivors are gone. All 36 timeouts were in
+`SimilarityMixin._calculate_similarity_batches`, `_non_empty`,
+`_flat_similarities`, or `SentenceTransformerResolver._search_tier`,
+`_gather_candidates`, `_embed_candidates`, `_evaluate_candidates`,
+`_pending_pairs`, `_document_similarities`, and `_evaluate_document`. They need
+their own runtime/evidence triage; the resolved-outcome percentage does not
+settle them.
 
 ## Scope, and why
 
@@ -167,6 +184,6 @@ Two practical consequences:
 - A filtered run (`mutmut run <pattern>`) needs the mapping a full run builds.
   Do not delete `mutants/` before one.
 
-The last recorded fit-coverage campaign killed 3,424 mutants, left 62
-survivors, and recorded 13 timeouts. The zero-survivor gate remains required.
-Rerun mutation testing before treating any of those counts as current.
+The later `81fabc7` full sweep above supersedes the `f92c594` fit-coverage
+campaign as the newest recorded evidence. The zero-survivor gate remains
+required, and timeouts remain unresolved outcomes.

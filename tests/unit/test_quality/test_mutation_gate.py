@@ -72,6 +72,17 @@ def _unaccounted_stats_path(tmp_path, **counts: int) -> str:
     return str(path)
 
 
+def test_mutation_summary_labels_timeouts_as_inconclusive():
+    summary = mutation_gate.summarize(
+        {"killed": 3696, "survived": 4, "timeout": 36, "total": 3736}
+    )
+
+    assert (
+        "resolved-outcome kill rate 99.9% (3696 killed / 3700 decided)" in summary
+        and "timeout 36 (inconclusive; not counted as killed)" in summary
+    )
+
+
 def test_mutation_gate_fails_when_the_run_checked_nothing(
     tmp_path, capsys: Any
 ) -> None:
@@ -136,6 +147,7 @@ def test_mutation_gate_accepts_a_run_that_accounts_for_every_mutant(
     )
 
     assert result == 0
+    assert "timeout 3 (inconclusive; not counted as killed)" in capsys.readouterr().out
 
 
 def test_mutation_gate_fails_when_no_tests_exceed_the_baseline(
