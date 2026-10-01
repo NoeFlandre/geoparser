@@ -117,3 +117,19 @@ def test_unspecified_multilingual_card_does_not_render_as_zero_languages():
 
     assert "unspecified" in row
     assert "| 1 |" in row
+
+
+def test_historical_sample_discloses_unavailable_source_revision():
+    import json
+    from pathlib import Path
+
+    directory = (
+        Path(__file__).resolve().parents[3]
+        / "benchmark-evidence/panx/feasibility-2026-09-30"
+    )
+    report = json.loads((directory / "report.json").read_text())
+    audit = report["provenance_audit"]
+    assert audit["source_commit_retrievable"] is False
+    assert audit["usable_for_pipeline_selection"] is False
+    assert audit["status"] == "unverified_source_unavailable"
+    assert "not reproducible evidence" in (directory / "report.md").read_text()

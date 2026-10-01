@@ -1,5 +1,13 @@
 # PAN-X / WikiANN place recognition
 
+**Provenance warning (1 October 2026):** the declared source commit below cannot
+be retrieved from this repository or GitHub. These historical sample results
+are retained for traceability, but are not reproducible evidence and must not
+be used to select a pipeline. The original timing also includes metric
+bookkeeping; throughput is not inference-only. No replacement commit or
+corrected timing is fabricated. A future validated run must supersede this
+sample before scientific use.
+
 **Feasibility sample only:** metrics below are descriptive of the bounded prefix, not a full-test quality comparison.
 
 - Repository commit: `dd3a7e78836f9560fe24f7546b3ecc0c202a0fa7`

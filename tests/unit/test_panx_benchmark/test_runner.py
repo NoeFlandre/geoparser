@@ -206,3 +206,39 @@ def test_full_matrix_estimate_requires_every_model_estimate():
             [{"full_matrix_estimated_inference_seconds": None}]
         ),
     ) == (0, 4.0, None)
+
+
+def test_scoring_timer_excludes_metric_bookkeeping(monkeypatch):
+    from scripts.panx_benchmark import runner
+
+    clock = {"seconds": 0.0}
+    original_add = runner.Counts.add
+
+    class TimedPredictor(ExactPredictor):
+        def predict_batch(self, texts):
+            clock["seconds"] += 2.0
+            return super().predict_batch(texts)
+
+    def slow_add(self, *args, **kwargs):
+        clock["seconds"] += 100.0
+        return original_add(self, *args, **kwargs)
+
+    monkeypatch.setattr(runner.time, "perf_counter", lambda: clock["seconds"])
+    monkeypatch.setattr(runner.Counts, "add", slow_add)
+    examples = (Example("en", "Paris", frozenset({(0, 5)})),) * 3
+    counts = runner._score_language(TimedPredictor(), examples, batch_size=2)
+    assert counts.elapsed_seconds == 4.0
+    assert counts.sentences == 3
+    assert clock["seconds"] == 304.0
+
+
+def test_micro_scores_preserve_malformed_gold_counts():
+    from scripts.panx_benchmark.metrics import Counts
+
+    result = _micro_scores(
+        {
+            "en": Counts(malformed_gold_tags=2).scores(),
+            "fr": Counts(malformed_gold_tags=3).scores(),
+        }
+    )
+    assert result["malformed_gold_tags"] == 5

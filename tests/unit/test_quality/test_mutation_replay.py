@@ -13,7 +13,7 @@ from scripts import mutation_replay
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ALLOWLIST = PROJECT_ROOT / "scripts" / "mutation_replay_allowlist.json"
-CURRENT_SHA = "f0f07a630fda3be4b758d27690bd12a2c280897c"
+CURRENT_SHA = "da46b4841404493012e07f2e8df6165ffe8f02ec"
 
 
 def _known_mutant_ids() -> list[str]:
@@ -65,7 +65,7 @@ def test_allowlist_records_the_complete_versioned_timeout_inventory() -> None:
 
     assert allowlist["source"] == {
         "workflow_run_id": "36842110918",
-        "pull_request_head_sha": CURRENT_SHA,
+        "pull_request_head_sha": "f0f07a630fda3be4b758d27690bd12a2c280897c",
         "checkout_sha": "da46b4841404493012e07f2e8df6165ffe8f02ec",
         "report_sha256": "03431720966578a31913849bf3d1b945cc7a3294d3d9312f95691c8c6c9f1c0a",
         "timeout_count": 27,
@@ -264,3 +264,10 @@ def test_replay_fails_on_a_survivor(tmp_path: Path) -> None:
     )
 
     assert result == 1
+
+
+def test_selection_rejects_stale_ids_even_when_requested_sha_matches_checkout():
+    with pytest.raises(mutation_replay.ReplaySelectionError, match="revision-specific"):
+        mutation_replay.validate_selection(
+            _known_mutant_ids()[0], ALLOWLIST, "a" * 40, "a" * 40
+        )

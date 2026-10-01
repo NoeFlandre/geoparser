@@ -172,13 +172,13 @@ def _score_language(
 ) -> Counts:
     """Score every sentence in one language and time only model inference."""
     counts = Counts()
-    started = time.perf_counter()
     for batch in _batches(examples, batch_size):
+        started = time.perf_counter()
         predictions = _valid_predictions(predictor, batch)
+        counts.elapsed_seconds += time.perf_counter() - started
         for example, spans in zip(batch, predictions, strict=True):
             counts.add(example.gold_spans, spans, text_length=len(example.text))
             counts.malformed_gold_tags += example.malformed_location_tags
-    counts.elapsed_seconds = time.perf_counter() - started
     return counts
 
 
@@ -192,6 +192,7 @@ def _micro_scores(
         total.false_positive += int(row["false_positive"])
         total.false_negative += int(row["false_negative"])
         total.sentences += int(row["sentences"])
+        total.malformed_gold_tags += int(row.get("malformed_gold_tags", 0))
         total.invalid_prediction_spans += int(row.get("invalid_prediction_spans", 0))
         total.elapsed_seconds += float(row["elapsed_seconds"])
     return total.scores()

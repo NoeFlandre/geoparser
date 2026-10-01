@@ -4321,6 +4321,15 @@
       "warmup_seconds": 0.25070466400029545
     }
   ],
+  "provenance_audit": {
+    "checked_on": "2026-10-01",
+    "next_step": "Keep this historical sample separate; replace scientific evidence only after a validated run from a retained source revision.",
+    "reason": "The declared source commit is absent from the repository and GitHub commit lookup returned no commit. No substitute revision is asserted.",
+    "source_commit_retrievable": false,
+    "status": "unverified_source_unavailable",
+    "timing_scope": "Legacy elapsed time includes metric bookkeeping; not inference-only throughput.",
+    "usable_for_pipeline_selection": false
+  },
   "repository_commit": "dd3a7e78836f9560fe24f7546b3ecc0c202a0fa7",
   "resources": {
     "cache_directory": "/workspace/.panx-hf",

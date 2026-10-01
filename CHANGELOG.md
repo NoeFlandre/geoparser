@@ -8,6 +8,12 @@ All notable changes to GeoParser are recorded here. This project follows
 
 ### Fixed
 
+- Keep required CI check names stable and avoid replacing validation with
+  skipped suites when pull-request metadata changes.
+- Exclude metric bookkeeping from PAN-X prediction timing and preserve malformed
+  gold-tag counts in micro aggregates. Mark unreproducible historical sample
+  evidence explicitly, and bind diagnostic mutant IDs to their source checkout.
+
 - Reject missing sentence-transformer tokenizers with a clear error, and test
   resolver input alignment without accepting unrelated exceptions.
 - Remove redundant resolver validation and record exact mutation-replay evidence.

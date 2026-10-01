@@ -172,10 +172,13 @@ timeouts: three `_embed_candidates` role-value mutations and one
 `_extract_context` end-boundary mutation. All 17 `RecognitionService.fit`
 mutants, including the four former survivors, were killed in this sweep.
 
-`scripts/mutation_replay_allowlist.json` records the 31 exact timeout IDs from
-that artifact. The Quality workflow's manual `targeted-mutant-replay` mode
-accepts only those literal IDs, checks the selected ref against a full commit
-SHA, and runs at most eight IDs serially per dispatch. It uses mutmut's
+The current `scripts/mutation_replay_allowlist.json` instead records the later
+27-timeout inventory from run `36842110918`, bound to source checkout
+`da46b4841404493012e07f2e8df6165ffe8f02ec`. The Quality workflow's manual
+`targeted-mutant-replay` mode accepts only those literal IDs, requires both the
+requested SHA and the actual checkout to match that evidence revision, and
+runs at most eight IDs serially per dispatch. Ordinal mutant IDs cannot be
+reused on later code revisions; generate a new inventory for new code. It uses mutmut's
 configured timeout policy without a timeout-factor override and uploads the
 per-mutant logs and report. This is a diagnostic workflow, separate from the
 normal PR gates; a timeout in a replay remains inconclusive and is never

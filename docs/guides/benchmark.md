@@ -97,6 +97,16 @@ control is scored on English only. No training, fine-tuning, resolution,
 publication, or dataset-scale export occurs. Reports are written locally under
 `benchmark-evidence/panx/` and are never uploaded by this command.
 
+### Historical feasibility evidence
+
+The September 30 sample in `benchmark-evidence/panx/feasibility-2026-09-30/`
+has an unavailable source revision. Its JSON and Markdown flag it as unverified
+and unsuitable for pipeline selection. It is retained as historical evidence,
+not a reproducible benchmark. Legacy timings include metric bookkeeping; new
+runs time prediction calls separately and must not combine timing estimates
+with those older records. Publish the exact source revision before treating
+any new run as remotely reproducible.
+
 ## Grid'5000
 
 The submission wrapper checks for a duplicate active OAR job, requests one GPU and a bounded walltime, and submits `run_benchmark.sh` to the node. The node script builds GeoNames on local scratch, keeps model caches and the database off the home quota, and writes checkpoints to the selected results directory.
