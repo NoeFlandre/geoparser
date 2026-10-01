@@ -93,9 +93,7 @@ def test_gliner_group_size_is_used_for_warmup_and_every_inference_call():
             self.group_sizes.append(len(texts))
             return super().predict_batch(texts)
 
-    examples = tuple(
-        Example("en", f"Town {index}", frozenset()) for index in range(3)
-    )
+    examples = tuple(Example("en", f"Town {index}", frozenset()) for index in range(3))
     dataset = LoadedDataset(
         examples_by_language={"en": examples},
         source_counts={"en": len(examples)},

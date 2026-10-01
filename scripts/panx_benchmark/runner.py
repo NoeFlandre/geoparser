@@ -257,9 +257,7 @@ def _checkpoint_identity(
         },
         "evaluation": {
             "seed": SEED,
-            "batch_sizes_by_model": {
-                spec.key: spec.batch_size for spec in models
-            },
+            "batch_sizes_by_model": {spec.key: spec.batch_size for spec in models},
             "gliner_threshold": GLINER_THRESHOLD,
             "device": "cpu",
             "span_policy": "exact half-open Python character offsets",
