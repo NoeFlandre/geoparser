@@ -16,6 +16,8 @@ All notable changes to GeoParser are recorded here. This project follows
 
 - Update the locked JupyterLab development dependency to 4.6.4 to address
   CVE-2026-102830, CVE-2026-102831, and CVE-2026-102904.
+- Update the locked Notebook demo dependency to 7.6.3 to address
+  PYSEC-2026-4112.
 
 ## [0.6.0]
 

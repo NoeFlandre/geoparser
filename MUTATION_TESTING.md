@@ -41,9 +41,20 @@ timeouts remain inconclusive; the identities of the 36 and 32 timeouts in
 those runs are unavailable. The later run below retained a per-mutant report
 and supplies the exact allowlist for bounded replays.
 
+## Latest completed hosted sweep (1 October 2026)
+
+The newest completed full mutation evidence is [run 36901916301](https://github.com/NoeFlandre/geoparser/actions/runs/36901916301),
+for PR head `a532d5eba284ca5eb333cae6515513499ab02812`.
+It killed all **3,724 mutants**, with **zero survivors, zero timeouts, zero
+no-test mutants, zero skipped mutants, and zero suspicious outcomes**.
+[Artifact 11183505541](https://github.com/NoeFlandre/geoparser/actions/runs/36901916301/artifacts/11183505541)
+contains the per-mutant evidence. The sweep used one mutation child and one
+OpenMP/MKL/OpenBLAS thread. This supersedes the earlier inconclusive sweeps
+for this exact source revision; their historical results remain below.
+
 ## Local recovery of the 36 timeouts (1 October 2026)
 
-The latest completed full CI sweep is [run 36874286263](https://github.com/NoeFlandre/geoparser/actions/runs/36874286263),
+The previous completed full CI sweep is [run 36874286263](https://github.com/NoeFlandre/geoparser/actions/runs/36874286263),
 for PR head `060b2851c6ac80f0c97fd6cd231e7d330b6506ba`. Its
 [artifact 11170019901](https://github.com/NoeFlandre/geoparser/actions/runs/36874286263/artifacts/11170019901)
 has SHA-256 `2f08712e1dc6737b3a43697053aa4c75471a64f6ad936203f936b2fa0a008d83`.
