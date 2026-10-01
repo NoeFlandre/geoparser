@@ -350,7 +350,8 @@ def test_required_check_names_are_stable(
     assert workflow["jobs"][job]["name"] == expected
 
 
-def test_test_gate_rejects_unsuccessful_dependencies() -> None:
+@pytest.mark.parametrize("result", ["failure", "cancelled", "skipped"])
+def test_test_gate_rejects_unsuccessful_dependencies(result: str) -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
@@ -360,8 +361,7 @@ def test_test_gate_rejects_unsuccessful_dependencies() -> None:
     assert set(gate["needs"]) == {"pytest", "coverage"}
     failure_step = gate["steps"][0]
     assert failure_step["run"] == "exit 1"
-    for result in ("failure", "cancelled", "skipped"):
-        assert f"contains(needs.*.result, '{result}')" in failure_step["if"]
+    assert f"contains(needs.*.result, '{result}')" in failure_step["if"]
 
 
 def test_retargeting_requires_fresh_validation_is_documented() -> None:
@@ -1310,17 +1310,30 @@ def test_smokeshow_upload_commands_do_not_reveal_the_credential() -> None:
     assert "set -x" not in commands
 
 
-def test_exact_replay_checks_out_source_and_verifies_it_before_installing() -> None:
+def test_exact_replay_checks_out_requested_source_without_persisting_credentials() -> (
+    None
+):
+    steps = _job_steps("quality.yml", "exact-mutant-replay")
+    checkout = _named_step(steps, "Check out the validated evidence source")
+    assert checkout["with"]["ref"] == "${{ inputs.expected_sha }}"
+    assert checkout["with"]["persist-credentials"] == "false"
+
+
+def test_exact_replay_verifies_source_before_installing_dependencies() -> None:
     steps = _job_steps("quality.yml", "exact-mutant-replay")
     checkout = _named_step(steps, "Check out the validated evidence source")
     verify = _named_step(
         steps, "Verify the actual source checkout before dependency installation"
     )
     install = _named_step(steps, "Install locked test dependencies")
-    replay = _named_step(steps, "Replay selected timeout mutants")
-    assert checkout["with"]["ref"] == "${{ inputs.expected_sha }}"
-    assert checkout["with"]["persist-credentials"] == "false"
     assert steps.index(checkout) < steps.index(verify) < steps.index(install)
     assert "$(git rev-parse HEAD)" in verify["run"]
+
+
+def test_exact_replay_uses_retained_controller_and_actual_source_identity() -> None:
+    replay = _named_step(
+        _job_steps("quality.yml", "exact-mutant-replay"),
+        "Replay selected timeout mutants",
+    )
     assert "$(git rev-parse HEAD)" in replay["run"]
     assert "$helper/scripts/mutation_replay.py" in replay["run"]
