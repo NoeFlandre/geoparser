@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import gc
+import hashlib
+import json
 import os
 import platform
 import random
@@ -11,6 +13,10 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
+from scripts.panx_benchmark.checkpoint import (
+    ModelLanguageCheckpoints,
+    require_clean_commit,
+)
 from scripts.panx_benchmark.constants import (
     BATCH_SIZE,
     DATASET_ID,
@@ -21,7 +27,14 @@ from scripts.panx_benchmark.constants import (
     SEED,
     ModelSpec,
 )
-from scripts.panx_benchmark.data import Example, LoadedDataset, split_manifest
+from scripts.panx_benchmark.data import (
+    TARGET_LANGUAGES_PATH,
+    TEST_SPLITS_PATH,
+    Example,
+    LoadedDataset,
+    split_manifest,
+    target_languages,
+)
 from scripts.panx_benchmark.metrics import Counts, macro_scores
 from scripts.panx_benchmark.models import BatchPredictor, LoadedModel, load_model
 
@@ -192,6 +205,84 @@ def _micro_scores(
     return total.scores()
 
 
+def _file_sha256(path: Path) -> str:
+    """Hash a pinned input manifest into the immutable run identity."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _dataset_fingerprints(dataset: LoadedDataset) -> dict[str, dict[str, Any]]:
+    """Fingerprint the ordered held-out text and gold spans for every language."""
+    fingerprints = {}
+    for language, examples in dataset.examples_by_language.items():
+        digest = hashlib.sha256()
+        for example in examples:
+            record = {
+                "language": example.language,
+                "text": example.text,
+                "gold_spans": sorted(example.gold_spans),
+                "malformed_location_tags": example.malformed_location_tags,
+            }
+            digest.update(
+                json.dumps(
+                    record,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            )
+            digest.update(b"\n")
+        fingerprints[language] = {
+            "example_count": len(examples),
+            "sha256": digest.hexdigest(),
+        }
+    return fingerprints
+
+
+def _checkpoint_identity(
+    dataset: LoadedDataset,
+    models: Sequence[ModelSpec],
+    repository_commit: str,
+    hardware: dict[str, Any],
+) -> dict[str, Any]:
+    """Describe every code, data, model and runtime input that shapes scores."""
+    manifest = split_manifest()
+    return {
+        "repository_commit": repository_commit,
+        "input_manifests": {
+            "target_languages_sha256": _file_sha256(TARGET_LANGUAGES_PATH),
+            "test_split_sha256": _file_sha256(TEST_SPLITS_PATH),
+        },
+        "dataset": {
+            "id": DATASET_ID,
+            "revision": DATASET_REVISION,
+            "split": DATASET_SPLIT,
+            "canonical_target_languages": list(target_languages()),
+            "eligible_languages": list(dataset.examples_by_language),
+            "missing_target_languages": manifest["missing_target_languages"],
+            "source_test_examples_by_language": dataset.source_counts,
+            "held_out_examples_by_language": _dataset_fingerprints(dataset),
+            "limit_per_language": dataset.limit_per_language,
+        },
+        "evaluation": {
+            "seed": SEED,
+            "batch_size": BATCH_SIZE,
+            "gliner_threshold": GLINER_THRESHOLD,
+            "device": "cpu",
+            "span_policy": "exact half-open Python character offsets",
+        },
+        "models": [
+            {
+                "key": spec.key,
+                "model_id": spec.model_id,
+                "revision": spec.revision,
+                "documented_languages": list(spec.documented_languages or ()),
+            }
+            for spec in models
+        ],
+        "hardware": hardware,
+    }
+
+
 def _language_result(
     spec: ModelSpec,
     predictor: BatchPredictor,
@@ -220,19 +311,39 @@ def _language_result(
 
 
 def _language_results(
-    spec: ModelSpec, predictor: BatchPredictor, dataset: LoadedDataset
+    spec: ModelSpec,
+    predictor: BatchPredictor,
+    dataset: LoadedDataset,
+    checkpoints: ModelLanguageCheckpoints | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Build the per-language records for one recognizer."""
-    return {
-        language: _language_result(
-            spec,
-            predictor,
-            language,
-            examples,
-            dataset.source_counts[language],
+    results = {}
+    for language, examples in dataset.examples_by_language.items():
+        source_count = dataset.source_counts[language]
+        result = (
+            checkpoints.load_language(
+                spec.key,
+                spec.model_id,
+                spec.revision,
+                language,
+                source_count,
+            )
+            if checkpoints is not None
+            else None
         )
-        for language, examples in dataset.examples_by_language.items()
-    }
+        if result is None:
+            result = _language_result(spec, predictor, language, examples, source_count)
+            if checkpoints is not None:
+                checkpoints.save_language(
+                    spec.key,
+                    spec.model_id,
+                    spec.revision,
+                    language,
+                    source_count,
+                    result,
+                )
+        results[language] = result
+    return results
 
 
 def _metric_rows(
@@ -281,15 +392,19 @@ def evaluate_model(
     spec: ModelSpec,
     loaded: LoadedModel,
     dataset: LoadedDataset,
+    checkpoints: ModelLanguageCheckpoints | None = None,
 ) -> dict[str, Any]:
     """Evaluate one recognizer and separate startup, warmup and steady timing."""
     predictor = loaded.predictor
     warmup_seconds, warmup_examples = _warm_up(
         predictor, dataset.examples_by_language, spec.documented_languages
     )
-    inference_started = time.perf_counter()
-    per_language = _language_results(spec, predictor, dataset)
-    inference_seconds = time.perf_counter() - inference_started
+    per_language = _language_results(spec, predictor, dataset, checkpoints)
+    inference_seconds = sum(
+        float(row["metrics"]["elapsed_seconds"])
+        for row in per_language.values()
+        if row["metrics"] is not None
+    )
     evaluated = _metric_rows(per_language)
     inference_summary = _steady_inference_summary(
         spec, dataset, per_language, inference_seconds
@@ -366,9 +481,17 @@ def run_benchmark(
     cache_dir: Path,
     thread_count: int,
     models_to_run: Sequence[ModelSpec] = MODELS,
+    checkpoint_dir: Path | None = None,
+    repository_commit: str | None = None,
 ) -> dict[str, Any]:
     """Run and report the three fixed model comparisons without training."""
     started_at = time.time()
+    repository_commit = require_clean_commit(repository_commit or _commit_id())
+    hardware = hardware_facts(thread_count)
+    checkpoints = ModelLanguageCheckpoints(
+        checkpoint_dir or cache_dir / "benchmark-checkpoints",
+        _checkpoint_identity(dataset, models_to_run, repository_commit, hardware),
+    )
     models: list[dict[str, Any]] = []
     for spec in models_to_run:
         loaded = load_model(spec, cache_dir)
@@ -377,6 +500,7 @@ def run_benchmark(
                 spec,
                 loaded,
                 dataset,
+                checkpoints,
             )
         )
         del loaded
@@ -392,9 +516,11 @@ def run_benchmark(
         "evaluation_kind": evaluation_kind,
         "full_quality_comparison": limit is None,
         "seed": SEED,
-        "repository_commit": _commit_id(),
+        "repository_commit": repository_commit,
         "started_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started_at)),
-        "hardware": hardware_facts(thread_count),
+        "hardware": hardware,
+        "checkpoint_snapshot_id": checkpoints.snapshot_id,
+        "checkpoint_directory": str(checkpoints.directory),
         "dataset": {
             "id": DATASET_ID,
             "revision": DATASET_REVISION,

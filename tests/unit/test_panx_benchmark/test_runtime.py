@@ -9,7 +9,7 @@ import pytest
 from scripts.panx_benchmark import __main__ as cli
 from scripts.panx_benchmark import models, runner
 from scripts.panx_benchmark.constants import MODELS
-from scripts.panx_benchmark.data import LoadedDataset
+from scripts.panx_benchmark.data import Example, LoadedDataset
 
 
 def _dataset(limit_per_language=1):
@@ -245,21 +245,84 @@ def test_benchmark_record_distinguishes_bounded_and_full_matrix(monkeypatch, tmp
     assert complete["dataset"]["missing_target_languages"] == ["ha", "xh", "zu"]
 
 
+def test_checkpoint_identity_pins_code_data_models_and_cpu_configuration():
+    dataset = replace(
+        _dataset(None),
+        examples_by_language={"en": (Example("en", "Paris", frozenset({(0, 5)})),)},
+    )
+    identity = runner._checkpoint_identity(
+        dataset,
+        MODELS,
+        "abc123",
+        {"torch_threads": 4, "device_used": "cpu"},
+    )
+    changed_examples = dict(dataset.examples_by_language)
+    changed_examples["en"] = (replace(changed_examples["en"][0], text="London"),)
+    changed_identity = runner._checkpoint_identity(
+        replace(dataset, examples_by_language=changed_examples),
+        MODELS,
+        "abc123",
+        {"torch_threads": 4, "device_used": "cpu"},
+    )
+
+    assert (
+        identity["repository_commit"],
+        identity["dataset"]["revision"],
+        identity["dataset"]["split"],
+        identity["dataset"]["missing_target_languages"],
+        identity["dataset"]["source_test_examples_by_language"],
+        [model["revision"] for model in identity["models"]],
+        identity["evaluation"]["device"],
+        identity["hardware"]["torch_threads"],
+        set(identity["input_manifests"]),
+        identity["dataset"]["held_out_examples_by_language"]["en"]["example_count"],
+        identity["dataset"]["held_out_examples_by_language"]["en"]["sha256"]
+        != changed_identity["dataset"]["held_out_examples_by_language"]["en"]["sha256"],
+    ) == (
+        "abc123",
+        "f0a3be6dc5564c0cc4150bb660144800a1f539d4",
+        "test",
+        ["ha", "xh", "zu"],
+        {"en": 3, "fr": 4},
+        [model.revision for model in MODELS],
+        "cpu",
+        4,
+        {"target_languages_sha256", "test_split_sha256"},
+        1,
+        True,
+    )
+
+
 def test_cli_main_runs_with_a_bounded_sample_and_writes_reports(monkeypatch, tmp_path):
     cache_dir = tmp_path / "cache"
+    checkpoint_dir = tmp_path / "checkpoints"
     report_dir = tmp_path / "report"
     dataset = _dataset(2)
     result = {"evaluation_kind": "bounded_feasibility_sample"}
     calls = []
+    benchmark_calls = []
     monkeypatch.setattr(
         sys,
         "argv",
-        ["panx", "--limit-per-language", "2", "--cache-dir", str(cache_dir)],
+        [
+            "panx",
+            "--limit-per-language",
+            "2",
+            "--cache-dir",
+            str(cache_dir),
+            "--checkpoint-dir",
+            str(checkpoint_dir),
+        ],
     )
     monkeypatch.setattr(cli, "_default_output_dir", lambda: report_dir)
+    monkeypatch.setattr(cli, "_commit_id", lambda: "abc123")
     monkeypatch.setattr(cli, "configure_cpu", lambda: 2)
     monkeypatch.setattr(cli, "load_test_examples", lambda *_args, **_kwargs: dataset)
-    monkeypatch.setattr(cli, "run_benchmark", lambda *_args, **_kwargs: result)
+    monkeypatch.setattr(
+        cli,
+        "run_benchmark",
+        lambda *_args, **kwargs: benchmark_calls.append(kwargs) or result,
+    )
     monkeypatch.setattr(
         cli,
         "write_reports",
@@ -276,7 +339,9 @@ def test_cli_main_runs_with_a_bounded_sample_and_writes_reports(monkeypatch, tmp
         calls[0][0],
         calls[0][1]["resources"]["cache_directory"],
         bool(calls[0][1]["language_list"]["language_codes"]),
-    ) == (0, report_dir, str(cache_dir.resolve()), True)
+        benchmark_calls[0]["checkpoint_dir"],
+        benchmark_calls[0]["repository_commit"],
+    ) == (0, report_dir, str(cache_dir.resolve()), True, checkpoint_dir, "abc123")
 
 
 def test_cli_rejects_a_nonpositive_sample_limit(monkeypatch, tmp_path):

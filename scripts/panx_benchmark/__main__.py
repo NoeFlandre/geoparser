@@ -13,6 +13,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+from scripts.panx_benchmark.checkpoint import require_clean_commit
 from scripts.panx_benchmark.constants import MODELS
 from scripts.panx_benchmark.data import (
     TARGET_LANGUAGES_PATH,
@@ -20,7 +21,7 @@ from scripts.panx_benchmark.data import (
     read_json,
 )
 from scripts.panx_benchmark.report import write_reports
-from scripts.panx_benchmark.runner import configure_cpu, run_benchmark
+from scripts.panx_benchmark.runner import _commit_id, configure_cpu, run_benchmark
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -47,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
             )
         ),
         help="External cache for pinned Hub models and WikiANN test data",
+    )
+    parser.add_argument(
+        "--checkpoint-dir",
+        type=Path,
+        help="Base directory for immutable run identity and per-language checkpoints",
     )
     parser.add_argument(
         "--output-dir",
@@ -77,6 +83,7 @@ def main() -> int:
     arguments = build_parser().parse_args()
     if arguments.limit_per_language is not None and arguments.limit_per_language < 1:
         build_parser().error("--limit-per-language must be positive")
+    repository_commit = require_clean_commit(_commit_id())
     arguments.cache_dir.mkdir(parents=True, exist_ok=True)
     resources = _resource_facts(arguments.cache_dir)
     thread_count = configure_cpu()
@@ -89,6 +96,10 @@ def main() -> int:
         cache_dir=arguments.cache_dir,
         thread_count=thread_count,
         models_to_run=MODELS,
+        checkpoint_dir=(
+            arguments.checkpoint_dir or arguments.cache_dir / "benchmark-checkpoints"
+        ),
+        repository_commit=repository_commit,
     )
     result["resources"] = resources
     result["language_list"] = read_json(TARGET_LANGUAGES_PATH)

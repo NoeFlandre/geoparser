@@ -1,10 +1,12 @@
 import pytest
 
+from scripts.panx_benchmark.checkpoint import ModelLanguageCheckpoints
 from scripts.panx_benchmark.constants import MODELS
 from scripts.panx_benchmark.data import Example, LoadedDataset
 from scripts.panx_benchmark.models import LoadedModel
 from scripts.panx_benchmark.runner import (
     _elapsed_full_matrix_seconds,
+    _language_results,
     _micro_scores,
     _support_status,
     _valid_predictions,
@@ -80,6 +82,24 @@ def test_multilingual_evaluation_scores_all_languages_after_warmup():
         result["per_language"]["fr"]["status"],
         result["per_language"]["fr"]["metrics"]["sentences"],
     ) == (2, 1, 1.0, "evaluated", 1)
+
+
+def test_completed_language_checkpoints_prevent_duplicate_inference(tmp_path):
+    class CountingPredictor(ExactPredictor):
+        def __init__(self):
+            self.batches = 0
+
+        def predict_batch(self, texts):
+            self.batches += 1
+            return super().predict_batch(texts)
+
+    predictor = CountingPredictor()
+    checkpoints = ModelLanguageCheckpoints(tmp_path, {"repository_commit": "abc123"})
+
+    first = _language_results(MODELS[1], predictor, _dataset(), checkpoints)
+    resumed = _language_results(MODELS[1], predictor, _dataset(), checkpoints)
+
+    assert (predictor.batches, resumed) == (2, first)
 
 
 def test_spacy_is_reported_only_for_english():

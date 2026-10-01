@@ -65,6 +65,7 @@ def _document_lines(result: dict[str, Any]) -> list[str]:
         sample_note,
         "",
         f"- Repository commit: `{result['repository_commit']}`",
+        f"- Immutable run snapshot: `{result['checkpoint_snapshot_id']}`; each completed model/language is checkpointed",
         f"- Dataset: `{dataset['id']}` at `{dataset['revision']}`, split `{dataset['split']}`",
         f"- Test intersection: {len(dataset['eligible_languages'])} languages, "
         f"{dataset['source_test_examples']:,} rows; this run used "

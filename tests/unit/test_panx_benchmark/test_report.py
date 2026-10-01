@@ -12,6 +12,7 @@ def _feasibility_result():
     return {
         "evaluation_kind": "bounded_feasibility_sample",
         "repository_commit": "abc123",
+        "checkpoint_snapshot_id": "snapshot-123",
         "seed": 0,
         "hardware": {
             "platform": "linux",
@@ -45,6 +46,7 @@ def test_feasibility_markdown_clearly_distinguishes_sample_from_full_quality():
 
     assert "Feasibility sample only" in markdown
     assert "not a full-test quality comparison" in markdown
+    assert "Immutable run snapshot: `snapshot-123`" in markdown
 
 
 def test_feasibility_markdown_names_missing_target_languages():
