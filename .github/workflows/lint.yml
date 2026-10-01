@@ -14,11 +14,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.pull_request.state == 'open' }}
 
 jobs:
   ruff:
+    if: github.event_name != 'pull_request' || github.event.pull_request.state == 'open'
     name: ruff
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -48,6 +49,7 @@ jobs:
         run: uv run --no-sync deptry .
 
   ty:
+    if: github.event_name != 'pull_request' || github.event.pull_request.state == 'open'
     name: ty
     runs-on: ubuntu-latest
     timeout-minutes: 10

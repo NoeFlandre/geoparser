@@ -17,11 +17,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.pull_request.state == 'open' }}
 
 jobs:
   dependency-audit:
+    if: github.event_name != 'pull_request' || github.event.pull_request.state == 'open'
     name: dependency-audit
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -50,6 +51,7 @@ jobs:
             --no-deps --disable-pip --progress-spinner off
 
   codeql:
+    if: github.event_name != 'pull_request' || github.event.pull_request.state == 'open'
     name: ${{ format('codeql ({0})', matrix.language) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -77,6 +79,7 @@ jobs:
           category: /language:${{ matrix.language }}
 
   workflow-lint:
+    if: github.event_name != 'pull_request' || github.event.pull_request.state == 'open'
     name: workflow-lint
     runs-on: ubuntu-latest
     timeout-minutes: 5

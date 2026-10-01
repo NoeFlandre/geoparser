@@ -260,9 +260,12 @@ This project is MIT-licensed; see [LICENSE](./LICENSE). Dependencies are declare
 ## Pull-request validation lifecycle
 
 Code pushes, opened or reopened pull requests, promotion from draft, and edits
-run the full required checks with stable job names. In particular, retargeting
+to open pull requests run the full required checks with stable job names. In particular, retargeting
 a PR rebuilds the new base comparison. Metadata edits also rerun validation:
 this deliberately costs another CI run rather than publishing skipped suites
 that hide actual results. Batch title/description edits before final validation.
 No branch-protection requirement is removed or relaxed. Manual dispatch remains
 available for explicit diagnostics.
+
+Push and pull-request events have separate concurrency groups. Editing a closed
+or merged PR skips validation and cannot cancel an in-progress main-branch run.
