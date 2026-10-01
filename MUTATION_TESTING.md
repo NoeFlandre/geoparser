@@ -1,4 +1,3 @@
-# Mutation testing status
 
 A living record of the campaign to leave no surviving mutant. Update the
 numbers and the checklist below whenever you work on it.
@@ -58,6 +57,7 @@ campaigns and are not contradictory.
 | `7cdd960` (2026-10-01) | Full sweep after fit assertions and PAN-X span scoring | 3736 | 3704 | **0** | 0 | 32 | 0 | 100% of decided outcomes |
 | PR head `fb896a2`; run `36818760703` | Full sweep with per-mutant artifact | 3736 | 3705 | **0** | 0 | 31 | 0 | 100% of decided outcomes |
 | PR head `6fc75e4`; run `36832597467` | Full sweep after fit assertions | 3736 | 3709 | **0** | 0 | 27 | 0 | 100% of decided outcomes |
+| PR head `ff0f369`; run `36860416064` | Full sweep after PAN-X integration | 3736 | 3710 | **0** | 0 | 26 | 0 | 100% of decided outcomes |
 
 The historical `f92c594` campaign sums to 3,568 outcomes: 3,424 killed,
 62 survived, 69 had no covering unit test, and 13 timed out. It did **not**
@@ -66,28 +66,28 @@ pass the zero-survivor gate. The quality gauntlet and CI still enforce
 the historical no-tests ceiling, not a claim that the latest run had that many
 no-test mutants.
 
-The latest full mutation run was [quality workflow run 36832597467](https://github.com/NoeFlandre/geoparser/actions/runs/36832597467), for PR #111 head `6fc75e48f28443a4f1c64b7a38ba6d3b85de9d88` (merge checkout `558e82dab3ed30a90d50a3d603fc665b7e4379c3`). Its artifact is [mutation-evidence-36832597467](https://github.com/NoeFlandre/geoparser/actions/runs/36832597467/artifacts/11149861021), SHA-256 `0d94d001eef400c15e578cca07191b4b1601d2696a29867568aeb1e6cb6aa581`.
+The latest full mutation run was [quality workflow run 36860416064](https://github.com/NoeFlandre/geoparser/actions/runs/36860416064), for PR #111 head `ff0f369f37000d56620251c5376d84eca5ac2a28` (merge checkout `9d260404ac78663558f75b323e449a53ed509944`). Its artifact is [mutation-evidence-36860416064](https://github.com/NoeFlandre/geoparser/actions/runs/36860416064/artifacts/11163287916), SHA-256 `3419f776a4f85540ed0b35656992248e001fe4adca20d0ea211957d1f172aab9`.
 
-It recorded 3,709 killed, zero survived, zero with no covering tests, and 27 timeouts (3,736 total). The 100% rate is only across 3,709 decided outcomes; timeouts remain inconclusive and are not counted as kills. The four earlier `RecognitionService.fit` survivors (`mutmut_3`, `mutmut_6`, `mutmut_7`, `mutmut_8`) were killed.
+It recorded 3,710 killed, zero survived, zero with no covering tests, and 26 timeouts (3,736 total). The 100% rate is only across 3,710 decided outcomes; timeouts remain inconclusive and are not counted as kills. The four earlier `RecognitionService.fit` survivors (`mutmut_3`, `mutmut_6`, `mutmut_7`, `mutmut_8`) were killed.
 
-The latest 27 timeouts are all in resolver similarity/training code:
+The 26 current timeouts are all in resolver similarity and ranking code:
 
 | Function | Timeouts |
 | --- | ---: |
 | `SimilarityMixin._calculate_similarity_batches` | 2 |
 | `SimilarityMixin._non_empty` | 3 |
 | `SimilarityMixin._flat_similarities` | 4 |
-| `SentenceTransformerResolver._search_tier` | 1 |
 | `SentenceTransformerResolver._evaluate_candidates` | 3 |
 | `SentenceTransformerResolver._pending_pairs` | 7 |
 | `SentenceTransformerResolver._document_similarities` | 3 |
 | `SentenceTransformerResolver._evaluate_document` | 4 |
 
-The exact-mutant-replay job was skipped for the pull-request event, so these 27
-outcomes remain unresolved. The existing manual replay workflow accepts at most
-eight allowlisted IDs per dispatch and checks the expected full commit SHA.
-The replay must report a terminal killed outcome before any timeout can be
-counted as killed.
+The exact-mutant-replay job was skipped for the pull-request event, so these 26
+outcomes remain unresolved. All 26 exact IDs are present in the manual replay
+allowlist from the preceding 27-timeout run; none was replayed on this head.
+The replay workflow accepts at most eight allowlisted IDs per dispatch and
+checks the expected full commit SHA. A replay must report a terminal killed
+outcome before any timeout can be counted as killed.
 
 
 The completed sweep on `81fabc76532002dede430534b60a7110c12db279` generated
