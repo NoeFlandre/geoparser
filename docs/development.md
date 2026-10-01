@@ -80,7 +80,7 @@ reusable; remove that exact cache directory when it is no longer useful.
 
 The Security workflow runs on every pull request, on pushes to `main` and weekly:
 
-- **Dependency audit**: `pip-audit` checks every version pinned in `uv.lock` against published advisories, without installing anything. A vulnerable locked version fails the job. The few advisories that cannot be fixed yet (transformers fixes that exist only in 5.x, which gliner2 does not support) are ignored by ID in `security.yml`, with the reason; remove them when the cap is lifted.
+- **Dependency audit**: `pip-audit` checks every version pinned in `uv.lock` against published advisories, without installing anything. A vulnerable locked version fails the job; dependency constraints and the lockfile must resolve advisories rather than suppress them.
 - **CodeQL** for Python and for the workflows themselves; results appear under *Security > Code scanning*.
 - **zizmor** and **actionlint** over `.github/workflows`. An accepted zizmor finding carries an inline `# zizmor: ignore[...]` comment explaining why.
 

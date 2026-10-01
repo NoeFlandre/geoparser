@@ -1118,9 +1118,11 @@ def test_deptry_ignores_only_documented_runtime_dependencies() -> None:
     ignored = _deptry_ignored_rules()
     assert set(ignored["DEP002"]) == {
         "accelerate",
+        "numpy",
         "peft",
         "protobuf",
         "python-multipart",
+        "safetensors",
         "sentencepiece",
         "spacy-curated-transformers",
     }
@@ -1133,7 +1135,6 @@ def test_deptry_ignores_only_documented_tool_dependencies() -> None:
         "coverage",
         "huggingface_hub",
         "mutmut",
-        "numpy",
         "plotly",
         "radon",
         "toml",
