@@ -464,6 +464,27 @@ def _commit_id() -> str:
     return f"{commit}-dirty" if dirty else commit
 
 
+def _evaluation_scope_metadata(limit: int | None) -> dict[str, str | bool]:
+    """Describe whether these scores cover the held-out split or a sample."""
+    if limit is None:
+        return {
+            "evaluation_kind": "full_test_split",
+            "full_quality_comparison": True,
+            "full_matrix_estimate_note": (
+                "Measured inference over the complete pinned test intersection."
+            ),
+        }
+    return {
+        "evaluation_kind": "bounded_feasibility_sample",
+        "full_quality_comparison": False,
+        "full_matrix_estimate_note": (
+            "Linear estimate from measured steady-state inference throughput; "
+            "excludes model download/load and data acquisition. Small feasibility "
+            "samples are not a quality result and may not predict every language."
+        ),
+    }
+
+
 def run_benchmark(
     dataset: LoadedDataset,
     *,
@@ -497,13 +518,9 @@ def run_benchmark(
 
     manifest = split_manifest()
     limit = dataset.limit_per_language
-    evaluation_kind = (
-        "full_test_split" if limit is None else "bounded_feasibility_sample"
-    )
     return {
         "benchmark": "PAN-X/WikiANN location recognition (#98)",
-        "evaluation_kind": evaluation_kind,
-        "full_quality_comparison": limit is None,
+        **_evaluation_scope_metadata(limit),
         "seed": SEED,
         "repository_commit": repository_commit,
         "started_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started_at)),
@@ -534,11 +551,4 @@ def run_benchmark(
         },
         "models": models,
         "estimated_full_matrix_inference_seconds": _elapsed_full_matrix_seconds(models),
-        "full_matrix_estimate_note": (
-            "Linear estimate from measured steady-state inference throughput; "
-            "excludes model download/load and data acquisition. Small feasibility "
-            "samples are not a quality result and may not predict every language."
-            if limit is not None
-            else "Measured inference over the complete pinned test intersection."
-        ),
     }

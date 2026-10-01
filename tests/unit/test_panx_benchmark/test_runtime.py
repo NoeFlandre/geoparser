@@ -238,9 +238,16 @@ def test_benchmark_record_distinguishes_bounded_and_full_matrix(monkeypatch, tmp
         "bounded_feasibility_sample",
         False,
     )
+    assert (
+        "Small feasibility samples are not a quality result"
+        in bounded["full_matrix_estimate_note"]
+    )
     assert (complete["evaluation_kind"], complete["full_quality_comparison"]) == (
         "full_test_split",
         True,
+    )
+    assert complete["full_matrix_estimate_note"] == (
+        "Measured inference over the complete pinned test intersection."
     )
     assert complete["dataset"]["missing_target_languages"] == ["ha", "xh", "zu"]
 
