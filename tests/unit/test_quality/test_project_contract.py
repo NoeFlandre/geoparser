@@ -829,14 +829,16 @@ def _mutation_report_text() -> str:
 
 def test_mutation_report_records_the_latest_full_sweep() -> None:
     report = _mutation_report_text()
-    assert "PR head `fb896a2`; run `36818760703`" in report
-    assert "newest completed full mutation evidence" in report
+    assert "run 36874286263" in report
+    assert "PR head `060b2851c6ac80f0c97fd6cd231e7d330b6506ba`" in report
+    assert "latest completed full CI sweep" in report
 
 
 def test_mutation_report_keeps_timeout_results_inconclusive() -> None:
     report = _mutation_report_text()
-    assert "3,705 killed, zero survived, zero with no tests, and 31 timed out" in report
-    assert "all 31 timeouts are still inconclusive, not kills" in report
+    assert "3,700 killed and 36 inconclusive timeouts, not 3,736 kills" in report
+    assert "These six are **not counted as killed**" in report
+    assert "not a claim of a new full 3,724-mutant sweep" in report
 
 
 def test_mutation_report_keeps_historical_no_tests_allowance() -> None:
