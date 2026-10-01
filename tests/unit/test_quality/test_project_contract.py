@@ -828,17 +828,15 @@ def _mutation_report_text() -> str:
 
 
 def test_mutation_report_records_the_latest_full_sweep() -> None:
-    assert "`7cdd960` (2026-10-01)" in _mutation_report_text()
+    report = _mutation_report_text()
+    assert "PR head `fb896a2`; run `36818760703`" in report
+    assert "newest completed full mutation evidence" in report
 
 
 def test_mutation_report_keeps_timeout_results_inconclusive() -> None:
     report = _mutation_report_text()
-    assert (
-        "3,704 killed, zero survived, zero had no covering tests, and 32 timed out"
-        in report
-    )
-    assert "the 32 timeouts remain inconclusive" in report
-    assert "not established" in report
+    assert "3,705 killed, zero survived, zero with no tests, and 31 timed out" in report
+    assert "all 31 timeouts are still inconclusive, not kills" in report
 
 
 def test_mutation_report_keeps_historical_no_tests_allowance() -> None:
@@ -931,6 +929,49 @@ def test_quality_workflow_fails_closed_when_mutation_does_not_pass() -> None:
     assert "always()" in guard["if"]
     assert "needs.changed-mutation.result != 'success'" in guard["if"]
     assert "exit 1" in guard["run"]
+
+
+def test_quality_workflow_dispatch_keeps_quality_as_the_default_mode() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    inputs = workflow["on"]["workflow_dispatch"]["inputs"]
+
+    assert inputs["mode"]["default"] == "quality"
+    assert "targeted-mutant-replay" in inputs["mode"]["options"]
+    assert inputs["mutant_ids"]["required"] == "false"
+    assert inputs["expected_sha"]["required"] == "false"
+
+
+def test_exact_mutant_replay_is_manual_serial_and_bounded() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    job = workflow["jobs"]["exact-mutant-replay"]
+    commands = [step.get("run", "") for step in job["steps"]]
+
+    assert "workflow_dispatch" in job["if"]
+    assert "targeted-mutant-replay" in job["if"]
+    assert job["timeout-minutes"] == "240"
+    assert any("scripts/mutation_replay.py" in command for command in commands)
+    replay_script = (PROJECT_ROOT / "scripts" / "mutation_replay.py").read_text(
+        encoding="utf-8"
+    )
+    assert '_command("run", "--max-children", "1", *selected)' in replay_script
+    assert all("timeout-factor" not in command for command in commands)
+
+
+def test_targeted_replay_does_not_also_run_the_quality_gauntlet() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    quality_if = workflow["jobs"]["quality"]["if"]
+
+    assert "github.event_name != 'workflow_dispatch'" in quality_if
+    assert "inputs.mode != 'targeted-mutant-replay'" in quality_if
 
 
 def test_test_only_changes_run_the_full_mutation_sweep() -> None:

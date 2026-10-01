@@ -11,6 +11,23 @@ on:
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Quality gauntlet or a bounded timeout-mutant diagnostic replay
+        required: true
+        type: choice
+        default: quality
+        options:
+          - quality
+          - targeted-mutant-replay
+      mutant_ids:
+        description: Exact allowlisted mutant IDs, one per line (maximum eight)
+        required: false
+        type: string
+      expected_sha:
+        description: Full commit SHA of the selected ref
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -22,7 +39,10 @@ concurrency:
 jobs:
   quality:
     needs: [changed-mutation]
-    if: always() && (github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null)
+    if: >-
+      always() &&
+      (github.event_name != 'workflow_dispatch' || inputs.mode != 'targeted-mutant-replay') &&
+      (github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null)
     name: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && 'metadata-edit-ignored (quality-gate)' || 'quality-gate' }}
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -74,6 +94,61 @@ jobs:
           else
             uv run --no-sync python scripts/quality_gauntlet.py --skip-docker --skip-mutation
           fi
+
+  exact-mutant-replay:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'targeted-mutant-replay'
+    name: exact-mutant-replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Validate the exact selection before installing dependencies
+        env:
+          MUTANT_IDS: ${{ inputs.mutant_ids }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          mkdir -p mutation-replay
+          printf '%s\n' "$MUTANT_IDS" > "$RUNNER_TEMP/mutation-replay-ids.txt"
+          PYTHONDONTWRITEBYTECODE=1 python scripts/mutation_replay.py \
+            --selection-file "$RUNNER_TEMP/mutation-replay-ids.txt" \
+            --expected-sha "$EXPECTED_SHA" \
+            --actual-sha "$GITHUB_SHA" \
+            --validate-only > "$RUNNER_TEMP/validated-mutant-ids.txt"
+          cat "$RUNNER_TEMP/validated-mutant-ids.txt"
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+
+      - name: Install locked test dependencies
+        run: uv sync --locked --no-default-groups --group test
+
+      - name: Install DuckDB spatial extension
+        run: |
+          uv run --no-sync python -c "import duckdb; connection = duckdb.connect(); connection.install_extension('spatial'); connection.close()"
+
+      - name: Replay selected timeout mutants
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          uv run --no-sync python scripts/mutation_replay.py \
+            --selection-file "$RUNNER_TEMP/validated-mutant-ids.txt" \
+            --expected-sha "$EXPECTED_SHA" \
+            --actual-sha "$GITHUB_SHA" \
+            --evidence-dir mutation-replay
+
+      - name: Upload exact-mutant replay evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mutation-replay-${{ github.run_id }}-${{ github.sha }}
+          path: mutation-replay/
+          if-no-files-found: warn
+          retention-days: 90
 
   changed-mutation:
     if: github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null)

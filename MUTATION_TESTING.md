@@ -37,9 +37,10 @@ example:
 uv run --no-sync mutmut run --max-children 1 geoparser.services.recognition.fit__mutmut_3
 ```
 
-The `81fabc7` and `7cdd960` campaigns predate this artifact and retained only
-aggregate logs. Their timeout counts remain inconclusive; the identities and
-causes of the 32 timeouts in the newest recorded run are not known.
+The `81fabc7` and `7cdd960` campaigns retained only aggregate logs. Their
+timeouts remain inconclusive; the identities of the 36 and 32 timeouts in
+those runs are unavailable. The later run below retained a per-mutant report
+and supplies the exact allowlist for bounded replays.
 
 ## Recorded run history
 
@@ -55,6 +56,7 @@ campaigns and are not contradictory.
 | `f92c594` (2026-09-28) | Fit coverage, before latest assertions | 3568 | 3424 | **62** | 69 | 13 | 0 | — |
 | `81fabc7` (2026-10-01) | Full sweep after quality refactor | 3736 | 3696 | **4** | 0 | 36 | 0 | 99.9% of decided outcomes |
 | `7cdd960` (2026-10-01) | Full sweep after fit assertions and PAN-X span scoring | 3736 | 3704 | **0** | 0 | 32 | 0 | 100% of decided outcomes |
+| PR head `fb896a2`; run `36818760703` | Full sweep with per-mutant artifact | 3736 | 3705 | **0** | 0 | 31 | 0 | 100% of decided outcomes |
 
 The September 28, 2026 campaign sums to 3,568 outcomes: 3,424 killed, 62
 survived, 69 had no covering unit test, and 13 timed out. It did **not** pass
@@ -81,16 +83,33 @@ settle them.
 
 The full sweep on exact head
 `7cdd960dc559089aacb1614019a0f6dc0c3a409e` generated 3,736 mutants: 3,704
-killed, zero survived, zero had no covering tests, and 32 timed out. The
-resolved-outcome kill rate was 100% (3,704 of 3,704 decided outcomes); the 32
+killed, zero survived, zero had no covering tests, and 32 timed out. The 32
 timeouts remain inconclusive and are **not** counted as killed. This confirms
 the four earlier `RecognitionService.fit` label mutants no longer survive.
-The retained Actions log reports aggregate counts only, and the run has no
-per-mutant artifact, so the identities and causes of these 32 timeouts are not
-established. The earlier function list is triage context for the 36-timeout
-run, not a disposition of the newer 32. The zero-no-tests count applies to
-this full run and does not change the established `--max-no-tests 69`
-allowance.
+That run retained aggregate logs only, so its timeout identities are not
+established. Its zero-no-tests count did not change the established
+`--max-no-tests 69` allowance.
+
+The newer full sweep in workflow run `36818760703` used PR head
+`fb896a2b181fd03416653610b2f54f63c3e759e3` (the Actions merge checkout was
+`2ce099a0bc175e3727fdd990089523574461aca6`). It generated 3,736 mutants:
+3,705 killed, zero survived, zero with no tests, and 31 timed out. The resolved
+kill rate was 100% of the 3,705 decided outcomes; all 31 timeouts are still
+inconclusive, not kills. The artifact report SHA-256 is
+`9f163a8ce146003e9094323e2d9a2eb77e25b21c3c63b56560e7e86f0ecb2c1e`.
+Comparison with the preceding `c820ade` inventory identified four additional
+timeouts: three `_embed_candidates` role-value mutations and one
+`_extract_context` end-boundary mutation. All 17 `RecognitionService.fit`
+mutants, including the four former survivors, were killed in this sweep.
+
+`scripts/mutation_replay_allowlist.json` records the 31 exact timeout IDs from
+that artifact. The Quality workflow's manual `targeted-mutant-replay` mode
+accepts only those literal IDs, checks the selected ref against a full commit
+SHA, and runs at most eight IDs serially per dispatch. It uses mutmut's
+configured timeout policy without a timeout-factor override and uploads the
+per-mutant logs and report. This is a diagnostic workflow, separate from the
+normal PR gates; a timeout in a replay remains inconclusive and is never
+counted as killed.
 
 ## Scope, and why
 
@@ -221,7 +240,7 @@ Two practical consequences:
 - A filtered run (`mutmut run <pattern>`) needs the mapping a full run builds.
   Do not delete `mutants/` before one.
 
-The `7cdd960` full sweep above is the newest recorded mutation evidence. It
-passes the zero-survivor gate, while its 32 timeouts remain unresolved
-outcomes. The earlier `69` no-tests count and its unchanged ceiling remain a
-separate, historical fit-coverage baseline.
+The `fb896a2` full sweep above is the newest completed full mutation evidence
+recorded here. It passes the zero-survivor gate, while its 31 timeouts remain
+unresolved outcomes. The earlier `69` no-tests count and its unchanged ceiling
+remain a separate, historical fit-coverage baseline.
