@@ -47,13 +47,20 @@ def test_crap_stage_uses_the_strict_six_ceiling(tmp_path: Path) -> None:
     assert command[command.index("--max-crap") + 1] == "6"
 
 
-def test_default_quality_stages_collect_full_tree_coverage(tmp_path: Path) -> None:
-    """The main and deterministic benchmark tests feed the coverage gates."""
-    stages = build_stages(Path("/repo"), tmp_path)
-    pytest_run, benchmark_run, package_report = _named_stage(stages, "tests").commands
-
+def test_default_coverage_stage_runs_the_main_suite(tmp_path: Path) -> None:
+    pytest_run = _named_stage(build_stages(Path("/repo"), tmp_path), "tests").commands[
+        0
+    ]
     assert "pytest" in pytest_run
     assert "--cov-fail-under=0" in pytest_run
+
+
+def test_default_coverage_stage_runs_benchmark_contracts_without_timing(
+    tmp_path: Path,
+) -> None:
+    benchmark_run = _named_stage(
+        build_stages(Path("/repo"), tmp_path), "tests"
+    ).commands[1]
     assert benchmark_run[4:8] == (
         "pytest",
         "tests/benchmarks",
@@ -62,15 +69,21 @@ def test_default_quality_stages_collect_full_tree_coverage(tmp_path: Path) -> No
     )
     assert "--benchmark-disable" in benchmark_run
     assert "--cov-append" in benchmark_run
+
+
+def test_default_coverage_stage_reports_package_coverage(tmp_path: Path) -> None:
+    package_report = _named_stage(
+        build_stages(Path("/repo"), tmp_path), "tests"
+    ).commands[2]
     assert "coverage" in package_report
 
 
-def test_coverage_suite_uses_the_provisioned_offline_environment(
+def test_main_coverage_suite_uses_the_provisioned_offline_environment(
     tmp_path: Path,
 ) -> None:
-    stages = build_stages(Path("/repo"), tmp_path)
-    tests = _named_stage(stages, "tests")
-    pytest_run, benchmark_run, package_report = tests.commands
+    pytest_run = _named_stage(build_stages(Path("/repo"), tmp_path), "tests").commands[
+        0
+    ]
 
     assert pytest_run[:5] == (
         "uv",
@@ -79,6 +92,14 @@ def test_coverage_suite_uses_the_provisioned_offline_environment(
         "--offline",
         "pytest",
     )
+
+
+def test_benchmark_coverage_suite_uses_the_provisioned_offline_environment(
+    tmp_path: Path,
+) -> None:
+    benchmark_run = _named_stage(
+        build_stages(Path("/repo"), tmp_path), "tests"
+    ).commands[1]
     assert benchmark_run[:8] == (
         "uv",
         "run",
@@ -91,6 +112,14 @@ def test_coverage_suite_uses_the_provisioned_offline_environment(
     )
     assert "--benchmark-disable" in benchmark_run
     assert "--cov-append" in benchmark_run
+
+
+def test_package_coverage_report_uses_the_provisioned_offline_environment(
+    tmp_path: Path,
+) -> None:
+    package_report = _named_stage(
+        build_stages(Path("/repo"), tmp_path), "tests"
+    ).commands[2]
     assert package_report == (
         "uv",
         "run",
