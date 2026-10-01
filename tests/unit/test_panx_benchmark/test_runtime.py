@@ -208,7 +208,7 @@ def test_commit_id_marks_dirty_state_and_handles_git_failure(monkeypatch):
     assert runner._commit_id() == "unknown"
 
 
-def test_benchmark_record_distinguishes_bounded_and_full_matrix(monkeypatch, tmp_path):
+def _stub_benchmark_dependencies(monkeypatch):
     loaded = object()
     monkeypatch.setattr(runner, "load_model", lambda *_: loaded)
     monkeypatch.setattr(
@@ -227,11 +227,11 @@ def test_benchmark_record_distinguishes_bounded_and_full_matrix(monkeypatch, tmp
         },
     )
 
+
+def test_bounded_benchmark_record_disclaims_quality_comparison(monkeypatch, tmp_path):
+    _stub_benchmark_dependencies(monkeypatch)
     bounded = runner.run_benchmark(
         _dataset(), cache_dir=tmp_path, thread_count=2, models_to_run=MODELS[:1]
-    )
-    complete = runner.run_benchmark(
-        _dataset(None), cache_dir=tmp_path, thread_count=2, models_to_run=()
     )
 
     assert (bounded["evaluation_kind"], bounded["full_quality_comparison"]) == (
@@ -242,6 +242,14 @@ def test_benchmark_record_distinguishes_bounded_and_full_matrix(monkeypatch, tmp
         "Small feasibility samples are not a quality result"
         in bounded["full_matrix_estimate_note"]
     )
+
+
+def test_full_benchmark_record_marks_test_split_comparison(monkeypatch, tmp_path):
+    _stub_benchmark_dependencies(monkeypatch)
+    complete = runner.run_benchmark(
+        _dataset(None), cache_dir=tmp_path, thread_count=2, models_to_run=()
+    )
+
     assert (complete["evaluation_kind"], complete["full_quality_comparison"]) == (
         "full_test_split",
         True,

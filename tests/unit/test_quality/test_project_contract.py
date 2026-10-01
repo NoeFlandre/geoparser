@@ -691,15 +691,19 @@ def test_contributing_documents_precommit_installation() -> None:
     assert "uv run pre-commit install" in contributing
 
 
-def test_docs_keep_package_coverage_and_whole_tree_crap_scopes_distinct() -> None:
+def test_contributing_documents_package_coverage_scope() -> None:
     contributing = (PROJECT_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    development = (PROJECT_ROOT / "docs/development.md").read_text(encoding="utf-8")
 
     assert "coverage report --include='geoparser/*' --fail-under=100" in contributing
     assert (
         "GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py"
         in contributing
     )
+
+
+def test_development_docs_describe_distinct_coverage_and_crap_scopes() -> None:
+    development = (PROJECT_ROOT / "docs/development.md").read_text(encoding="utf-8")
+
     assert (
         "GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py"
         in development
@@ -814,6 +818,21 @@ def test_changelog_has_unreleased_and_versioned_entries() -> None:
     changelog = (PROJECT_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "## [Unreleased]" in changelog
     assert re.search(r"^## \[\d+\.\d+\.\d+\]$", changelog, re.MULTILINE)
+
+
+def test_mutation_report_keeps_current_timeouts_inconclusive() -> None:
+    report = " ".join(
+        (PROJECT_ROOT / "MUTATION_TESTING.md").read_text(encoding="utf-8").split()
+    )
+
+    assert "`7cdd960` (2026-10-01)" in report
+    assert (
+        "3,704 killed, zero survived, zero had no covering tests, and 32 timed out"
+        in report
+    )
+    assert "the 32 timeouts remain inconclusive" in report
+    assert "not established" in report
+    assert "`--max-no-tests 69` allowance" in report
 
 
 def _changed_mutation_job() -> tuple[dict[str, Any], list[str]]:

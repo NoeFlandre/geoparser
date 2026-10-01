@@ -50,14 +50,11 @@ def test_crap_stage_uses_the_strict_six_ceiling(tmp_path: Path) -> None:
 def test_default_quality_stages_run_the_coverage_suite_once(tmp_path: Path) -> None:
     """One full test pass feeds the strict package and whole-tree CRAP gates."""
     stages = build_stages(Path("/repo"), tmp_path)
-    tests = _named_stage(stages, "tests")
+    pytest_run, package_report = _named_stage(stages, "tests").commands
 
-    pytest_runs = [command for command in tests.commands if "pytest" in command]
-    package_reports = [command for command in tests.commands if "coverage" in command]
-
-    assert len(pytest_runs) == 1
-    assert "--cov-fail-under=0" in pytest_runs[0]
-    assert len(package_reports) == 1
+    assert "pytest" in pytest_run
+    assert "--cov-fail-under=0" in pytest_run
+    assert "coverage" in package_report
 
 
 def test_coverage_suite_uses_the_provisioned_offline_environment(
