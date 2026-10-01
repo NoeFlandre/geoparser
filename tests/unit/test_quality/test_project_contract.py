@@ -170,6 +170,7 @@ def test_mutation_runner_copies_quality_support_modules() -> None:
         "CHANGELOG.md",
         "mkdocs.yml",
         "MUTATION_TESTING.md",
+        "benchmark-evidence/panx/feasibility-2026-09-30",
     } <= copied_paths
     # The documentation guard reads these public surfaces directly, so a
     # mutant run that left them behind would fail for want of a file rather

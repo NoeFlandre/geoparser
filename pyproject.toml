@@ -331,6 +331,8 @@ also_copy = [
     "CONTRIBUTING.md",
     # Mutation-report contract tests read the recorded campaign evidence.
     "MUTATION_TESTING.md",
+    # Historical provenance contracts must run in the copied mutation tree too.
+    "benchmark-evidence/panx/feasibility-2026-09-30",
     "LICENSE",
 ]
 
