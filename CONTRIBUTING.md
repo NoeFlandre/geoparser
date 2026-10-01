@@ -82,9 +82,11 @@ uv run pytest
 ```
 
 Coverage is collected for `geoparser/`, `scripts/`, and `tests/` so the CRAP
-gate can score every function. CI combines coverage across its matrix and
-enforces a hard 100% line-coverage floor on the package, including
-`geoparser/annotator/` (the HTML report is in `htmlcov/`; open
+gate can score every function. The quality gauntlet also appends coverage from
+the deterministic benchmark contracts with timing disabled. CI combines
+coverage across its matrix and enforces a hard 100% line-coverage floor on
+`geoparser/`, including `geoparser/annotator/` (the HTML report is in
+`htmlcov/`; open
 `htmlcov/index.html`). To check the same package floor locally with the real
 model tests enabled, run:
 
@@ -94,8 +96,9 @@ uv run coverage report --include='geoparser/*' --fail-under=100
 ```
 
 On a fresh environment, the real-model tests can download several gigabytes
-of checkpoints. The quality gauntlet uses one coverage test pass, verifies this
-package floor, and then runs the strict whole-tree CRAP check.
+of checkpoints. The quality gauntlet collects the main suite and deterministic
+benchmark contracts, verifies this package floor, and then runs the strict
+whole-tree CRAP check.
 
 The suite is kept fast on purpose. Two things matter if you are adding to it:
 
@@ -146,8 +149,8 @@ What each step guards:
 
 - **ruff check / ruff format** — lint, import order, unused code and formatting.
 - **[ty](https://github.com/astral-sh/ty)** — static type checking of the configured source tree. Fix the type error rather than adding a blanket `# type: ignore`; where a suppression is genuinely right, make it specific and comment why.
-- **pytest / coverage report** — the unit, integration and end-to-end suites record coverage for all CRAP roots; `coverage report --include='geoparser/*' --fail-under=100` enforces the package floor.
-- **scripts/crap.py** — the [CRAP score](https://testing.googleblog.com/2011/02/this-code-is-crap.html) gate, `complexity² × (1 − coverage)³ + complexity`, per function. For fully covered code this reduces to a cyclomatic-complexity ceiling, so it fails both on untested code and on code that has grown too branchy. It reads the coverage data that pytest just wrote, so run it after the suite.
+- **pytest / coverage report** — the unit, integration, end-to-end, and deterministic benchmark contract tests record coverage for all CRAP roots; `coverage report --include='geoparser/*' --fail-under=100` enforces the package floor.
+- **scripts/crap.py** — the [CRAP score](https://testing.googleblog.com/2011/02/this-code-is-crap.html) gate, `complexity² × (1 − coverage)³ + complexity`, per function. For fully covered code this reduces to a cyclomatic-complexity ceiling, so it fails both on untested code and on code that has grown too branchy. It reads the coverage data that pytest just wrote, so run it after both test passes.
 - **[mutmut](https://mutmut.readthedocs.io/)** — mutation testing. It edits the source in small ways and re-runs the tests; a mutant that survives is a line the suite does not really check. Configuration lives under `[tool.mutmut]` in `pyproject.toml`; `scripts/mutation_gate.py` reads the exported stats and fails when more mutants survive than the agreed baseline.
 
 Mutation testing targets selected package modules with the **unit** suite; the scope and exclusions are listed in [MUTATION_TESTING.md](./MUTATION_TESTING.md). The latest recorded fit-coverage campaign generated 3,568 mutants: 3,424 killed, 62 survived, 69 had no covering unit test, and 13 timed out. This is a historical snapshot, not a verified count for the current tree. The no-test allowance remains capped at 69 and the survivor limit remains zero; a mutant with no covering test is not counted as killed. The quality gauntlet and CI use both limits.

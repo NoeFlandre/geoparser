@@ -27,13 +27,16 @@ Run the complete deterministic gate with:
 GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py
 ```
 
-By default the command runs Ruff, `ty`, locked dependency validation, one
-coverage test suite, property tests, acceptance tests, architecture checks,
-CRAP, mutation tests, a CLI smoke test, and diff review. Its smoke stage can
-also build and check Docker images. `--include-baseline` adds an extra coverage
-test pass for diagnosis; normal local and CI runs leave it off. Generated
-reports belong in a temporary directory and are not committed. The runner
-uses a unique Docker smoke-test tag and removes that image when it exits.
+By default the command runs Ruff, `ty`, locked dependency validation, the main
+coverage test suite, deterministic benchmark contracts with timing disabled,
+property tests, acceptance tests, architecture checks, CRAP, mutation tests, a
+CLI smoke test, and diff review. The benchmark contract run appends its coverage
+so every measured test function participates in the whole-tree CRAP check. Its
+smoke stage can also build and check Docker images. `--include-baseline` adds
+an extra coverage test pass for diagnosis; normal local and CI runs leave it
+off. Generated reports belong in a temporary directory and are not committed.
+The runner uses a unique Docker smoke-test tag and removes that image when it
+exits.
 
 CI combines coverage from its operating-system and Python matrix. The hard
 100% line-coverage threshold applies to `geoparser/`; the CRAP gate separately
@@ -42,10 +45,10 @@ each score to be strictly below 6. Nested functions are scored separately,
 their executable statements belong to the innermost function, and a function
 with no recorded coverage is treated as uncovered.
 
-The quality gauntlet collects coverage for all three roots during its single
-test pass, then explicitly enforces the 100% floor on `geoparser/` before the
-whole-tree CRAP check. Opt-in performance tests remain outside the default test
-pass, while their functions remain in the CRAP scope.
+The quality gauntlet collects coverage for all three roots during its main test
+pass and appends coverage from the deterministic benchmark contracts. It then
+explicitly enforces the 100% floor on `geoparser/` before the whole-tree CRAP
+check. Timed performance measurements remain opt-in.
 
 The CI coverage matrix enables the opt-in GLiNER2 and Jina integration tests in
 one Ubuntu/Python 3.12 cell. The separate quality gauntlet also runs them so

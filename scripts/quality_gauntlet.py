@@ -99,6 +99,17 @@ def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI fla
                     "--cov-fail-under=0",
                     f"--cov-report=html:{coverage_report}",
                 ),
+                # Keep the opt-in benchmark test bodies in the whole-tree
+                # coverage data without collecting noisy timing measurements.
+                _uv(
+                    "pytest",
+                    "tests/benchmarks",
+                    "-m",
+                    "benchmark",
+                    "--benchmark-disable",
+                    "--cov-append",
+                    "--cov-report=term-missing",
+                ),
                 _PACKAGE_COVERAGE_COMMAND,
             ),
             root,
