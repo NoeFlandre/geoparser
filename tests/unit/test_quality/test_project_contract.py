@@ -944,7 +944,18 @@ def test_quality_workflow_dispatch_keeps_quality_as_the_default_mode() -> None:
     assert inputs["expected_sha"]["required"] == "false"
 
 
-def test_exact_mutant_replay_is_manual_serial_and_bounded() -> None:
+def test_exact_mutant_replay_requires_manual_dispatch() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    job = workflow["jobs"]["exact-mutant-replay"]
+
+    assert "workflow_dispatch" in job["if"]
+    assert "targeted-mutant-replay" in job["if"]
+
+
+def test_exact_mutant_replay_has_a_bounded_job_and_script_step() -> None:
     workflow = yaml.load(
         (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
@@ -952,10 +963,17 @@ def test_exact_mutant_replay_is_manual_serial_and_bounded() -> None:
     job = workflow["jobs"]["exact-mutant-replay"]
     commands = [step.get("run", "") for step in job["steps"]]
 
-    assert "workflow_dispatch" in job["if"]
-    assert "targeted-mutant-replay" in job["if"]
     assert job["timeout-minutes"] == "240"
     assert any("scripts/mutation_replay.py" in command for command in commands)
+
+
+def test_exact_mutant_replay_runs_serially_without_timeout_override() -> None:
+    workflow = yaml.load(
+        (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    job = workflow["jobs"]["exact-mutant-replay"]
+    commands = [step.get("run", "") for step in job["steps"]]
     replay_script = (PROJECT_ROOT / "scripts" / "mutation_replay.py").read_text(
         encoding="utf-8"
     )
