@@ -1,7 +1,5 @@
 # Multilingual run (OAR job 6937547, commit 1115f8f)
 
-Complete: all 9 corpora, upstream and hybrid, threshold 0.0, one Tesla T4 on
-grue-4 (Nancy). The logs of the two earlier attempts are kept in `logs/`:
-job 6937505 (20k-character windows) and job 6937525 (10k-character windows)
-both ran out of GPU memory on NewsEye OCR, which led to `1115f8f`, where
-GLiNER2's long-document mode handles texts over 10k characters.
+The run is complete. It used all 9 corpora with the upstream pipeline and the hybrid pipeline. The threshold was 0.0. It ran on one Tesla T4 on grue-4 (Nancy).
+
+The logs of two earlier attempts are in `logs/`. Job 6937505 used windows of 20k characters. Job 6937525 used windows of 10k characters. Both jobs ran out of GPU memory on NewsEye OCR text. This led to commit `1115f8f`. In that commit, the long-document mode of GLiNER2 handles texts of more than 10k characters.
