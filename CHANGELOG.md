@@ -8,6 +8,10 @@ All notable changes to GeoParser are recorded here. This project follows
 
 ### Fixed
 
+- Give benchmark database sessions independent connections to a temporary
+  SQLite file, matching production transaction isolation instead of sharing
+  one in-memory connection across sessions.
+
 - Isolate CI event concurrency so editing a merged pull request cannot cancel
   main-branch checks; skip redundant validation for closed pull requests.
 
