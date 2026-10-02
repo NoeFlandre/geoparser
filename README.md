@@ -11,9 +11,13 @@
   <a href="https://github.com/NoeFlandre/geoparser/blob/main/LICENSE"><img src="https://img.shields.io/github/license/NoeFlandre/geoparser.svg" alt="License"></a>
 </p>
 
-A Python library for extracting place names from text and linking them to geographic locations.
+A Python library that finds place names in text and links them to geographic locations.
 
-Geoparsing is split into two stages, and the library keeps them separate: a *recognizer* finds which words are place names, and a *resolver* decides which place each name refers to, choosing from the entries of a *gazetteer*. You supply the recognizer, the resolver, and the gazetteer explicitly, and each can be exchanged for another: a module can be replaced by one that works differently, pointed at a different underlying model, or fine-tuned on your own annotated data, and you can write a module of your own against a small interface. The library ships gazetteer configurations for the modern world and for Switzerland, and other geographic data becomes a gazetteer through a YAML configuration file, with no code to write.
+Geoparsing has two stages. The library keeps the two stages separate. A *recognizer* finds the words that are place names. A *resolver* selects the place that each name refers to. The resolver selects the place from the entries of a *gazetteer*.
+
+You supply the recognizer, the resolver, and the gazetteer. You can replace each of them. You can use a module that works in a different way. You can use a different model. You can fine-tune a module on your own annotated data. You can also write your own module against a small interface.
+
+The library includes gazetteer configurations for the modern world and for Switzerland. You can change other geographic data into a gazetteer with a YAML configuration file. You do not write code.
 
 ## Installation
 
@@ -21,19 +25,19 @@ Geoparsing is split into two stages, and the library keeps them separate: a *rec
 pip install geoparser
 ```
 
-The library also needs a gazetteer, which is not bundled: it is the database of places that names are resolved against.
+The library also needs a gazetteer. The package does not include a gazetteer. A gazetteer is the database of places that the library uses to resolve names.
 
 ```bash
 geoparser install geonames
 ```
 
-Gazetteers and SQLite databases are stored in the operating system's standard application data directory. Set `GEOPARSER_DATA_DIR` to use a different location; the [installation guide](https://docs.geoparser.app/installation.html#where-data-is-stored) explains the directory layout.
+The library stores gazetteers and SQLite databases in the standard application data directory of the operating system. To use a different location, set `GEOPARSER_DATA_DIR`. The [installation guide](https://docs.geoparser.app/installation.html#where-data-is-stored) describes the directory layout.
 
-See the [installation guide](https://docs.geoparser.app/installation.html) for environment setup, the available gazetteers, and their disk requirements.
+Read the [installation guide](https://docs.geoparser.app/installation.html) for the environment setup, the available gazetteers, and their disk requirements.
 
 ## CLI
 
-Use the module entry point to manage gazetteers and launch the annotator:
+Use the module entry point to manage gazetteers and to start the annotator:
 
 ```bash
 python -m geoparser --help
@@ -41,11 +45,11 @@ python -m geoparser install geonames
 geoparser annotator --port 8000 --no-browser
 ```
 
-Text parsing is available through the Python API shown below.
+To parse text, use the Python API in the next section.
 
 ## Data Paths
 
-In Docker Compose, the named `geoparser-data` volume is mounted at `/data`. Gazetteers and SQLite databases use `/data/geoparser`, and Hugging Face model/cache files use `/data/hf`; both remain available when containers stop.
+In Docker Compose, the named `geoparser-data` volume is mounted at `/data`. Gazetteers and SQLite databases use `/data/geoparser`. Hugging Face model files and cache files use `/data/hf`. Both paths stay available when the containers stop.
 
 ## Quick Start
 
@@ -79,15 +83,15 @@ Geneva -> Geneva, Switzerland (46.20222, 6.14569)
 Basel -> Basel, Switzerland (47.55839, 7.57327)
 ```
 
-Each name here has been tied to one specific entry in GeoNames, so besides the name and coordinates printed above you also have a stable identifier for the place, what kind of place it is, the administrative units it belongs to, and a geometry you can map, measure, or export.
+The library links each name to one specific entry in GeoNames. You get the name and the coordinates, as shown above. You also get a stable identifier for the place and the type of the place. You get the administrative units that contain the place. You also get a geometry. You can use the geometry to map, measure, or export the place.
 
 ## Outputs
 
-`Geoparser.parse` returns a document with its detected `toponyms`. Each toponym keeps the source text and span; `toponym.location` is `None` when resolution finds no match and otherwise exposes the matched place's data, including its name and coordinates.
+`Geoparser.parse` returns a document. The document contains the detected `toponyms`. Each toponym keeps the source text and the span. If the resolver finds no match, `toponym.location` is `None`. If the resolver finds a match, `toponym.location` gives the data of the matched place. This data includes the name and the coordinates.
 
 ## Docker
 
-The runtime image is built from the checked-out source and `uv.lock`. Docker Compose gives the install and annotator services the same named data volume:
+The runtime image uses the checked-out source and `uv.lock`. Docker Compose gives the install service and the annotator service the same named data volume:
 
 ```bash
 docker compose build
@@ -95,32 +99,32 @@ docker compose --profile install run --rm install
 docker compose up annotator
 ```
 
-The annotator is available at [http://localhost:8000](http://localhost:8000). Set `HF_TOKEN` in the shell before running Compose only when a Hugging Face resource you use requires authentication. The volume keeps the installed gazetteer, databases, and Hugging Face cache when containers stop. See the [demo setup guide](demo/README.md) to build the notebook image locally; no prebuilt demo image is required.
+The annotator is at [http://localhost:8000](http://localhost:8000). Set `HF_TOKEN` in the shell before you run Compose. Do this only if a Hugging Face resource that you use needs authentication. The volume keeps the installed gazetteer, the databases, and the Hugging Face cache when the containers stop. To build the notebook image locally, read the [demo setup guide](demo/README.md). A prebuilt demo image is not necessary.
 
 ## Documentation
 
-Full documentation, including setup, guides, and the API reference, is available at **[docs.geoparser.app](https://docs.geoparser.app)**.
+The full documentation is at **[docs.geoparser.app](https://docs.geoparser.app)**. It includes the setup, the guides, and the API reference.
 
-The [benchmark results](https://huggingface.co/datasets/NoeFlandre/geoparser-benchmark-results) compare the built-in resolver pipelines across English and multilingual corpora.
+The [benchmark results](https://huggingface.co/datasets/NoeFlandre/geoparser-benchmark-results) compare the built-in resolver pipelines on English and multilingual corpora.
 
 ## Project Status
 
-The library is under active development and its architecture is still evolving; while the version remains below `1.0`, minor releases may make breaking changes. [ROADMAP.md](ROADMAP.md) describes the larger changes we intend to make.
+The library is in active development. The architecture can still change. While the version is below `1.0`, a minor release can include breaking changes. [ROADMAP.md](ROADMAP.md) describes the larger changes that we plan.
 
 ## Contributing
 
-Questions, bug reports, and ideas are always welcome via [issues](https://github.com/NoeFlandre/geoparser/issues). Pull requests are appreciated too — see [CONTRIBUTING.md](CONTRIBUTING.md) for local setup and development guidelines.
+We welcome questions, bug reports, and ideas in the [issues](https://github.com/NoeFlandre/geoparser/issues). We also welcome pull requests. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the local setup and the development guidelines.
 
 ## Acknowledgments
 
-The Irchel Geoparser originated as part of Diego Gomes' Master's thesis and was further developed with support from the [Department of Geography](https://www.geo.uzh.ch/) at the University of Zurich and the [Public Data Lab](https://publicdatalab.ch/) of the Digitalization Initiative of the Zurich Higher Education Institutions. We thank Prof. Dr. Ross Purves for the opportunity to continue this work as part of a research project.
+Diego Gomes started the Irchel Geoparser as part of his Master's thesis. The [Department of Geography](https://www.geo.uzh.ch/) at the University of Zurich and the [Public Data Lab](https://publicdatalab.ch/) of the Digitalization Initiative of the Zurich Higher Education Institutions supported the further development. We thank Prof. Dr. Ross Purves. He gave us the opportunity to continue this work in a research project.
 
 ## Citation
 
-If you use this project in research or software, cite it using the metadata in [CITATION.cff](CITATION.cff).
+To cite this project in research or software, use the metadata in [CITATION.cff](CITATION.cff).
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project has the MIT License. Read the [LICENSE](LICENSE) file for details.
 
-Geoparser depends on a number of third-party libraries, listed in [pyproject.toml](pyproject.toml). Each is distributed separately under its own license, which pip installs alongside it.
+Geoparser uses a number of third-party libraries. [pyproject.toml](pyproject.toml) lists them. Each library has its own license. pip installs each library with its license.

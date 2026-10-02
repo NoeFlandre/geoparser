@@ -1,64 +1,68 @@
 # Changelog
 
-All notable changes to GeoParser are recorded here. This project follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use
+This file records all notable changes to GeoParser. The project follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases use
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
 ### Fixed
 
-- Give benchmark database sessions independent connections to a temporary
-  SQLite file, matching production transaction isolation instead of sharing
-  one in-memory connection across sessions.
+- Give each benchmark database session an independent connection to a
+  temporary SQLite file. This matches the transaction isolation of production.
+  Sessions no longer share one in-memory connection.
 
-- Isolate CI event concurrency so editing a merged pull request cannot cancel
-  main-branch checks; skip redundant validation for closed pull requests.
+- Isolate CI event concurrency. An edit to a merged pull request can no longer
+  cancel the main-branch checks. Skip the redundant validation for closed pull
+  requests.
 
-- Keep required CI check names stable and avoid replacing validation with
-  skipped suites when pull-request metadata changes.
-- Exclude metric bookkeeping from PAN-X prediction timing and preserve malformed
-  gold-tag counts in micro aggregates. Mark unreproducible historical sample
-  evidence explicitly, and bind diagnostic mutant IDs to their source checkout.
+- Keep the names of the required CI checks stable. Do not replace validation
+  with skipped suites when the pull-request metadata changes.
+- Exclude the metric bookkeeping from the PAN-X prediction timing. Keep the
+  count of malformed gold tags in the micro aggregates. Mark the historical
+  sample evidence that you cannot reproduce. Bind the diagnostic mutant IDs to
+  their source checkout.
 
-- Reject missing sentence-transformer tokenizers with a clear error, and test
+- Reject a missing sentence-transformer tokenizer with a clear error. Test the
   resolver input alignment without accepting unrelated exceptions.
-- Remove redundant resolver validation and record exact mutation-replay evidence.
+- Remove the redundant resolver validation. Record the exact mutation-replay
+  evidence.
 
 ### Security
 
-- Update the locked JupyterLab development dependency to 4.6.4 to address
+- Update the locked JupyterLab development dependency to 4.6.4. This fixes
   CVE-2026-102830, CVE-2026-102831, and CVE-2026-102904.
-- Update the locked Notebook demo dependency to 7.6.3 to address
+- Update the locked Notebook demo dependency to 7.6.3. This fixes
   PYSEC-2026-4112.
 
 ## [0.6.0]
 
 ### Added
 
-- Add the `geoparser` command, version output, and a `parse` workflow for text
-  files, standard input, JSONL, JSON, and GeoJSON.
-- Add command options for annotator hosting and gazetteer installation, plus
-  clear errors for unknown gazetteers and failed installs.
-- Add population-prior and sentence-transformer resolver choices and document
-  benchmark pipelines, corpora, and reproducibility workflows.
+- Add the `geoparser` command, the version output, and a `parse` workflow. The
+  workflow accepts text files, standard input, JSONL, JSON, and GeoJSON.
+- Add command options to host the annotator and to install gazetteers. Add
+  clear errors for unknown gazetteers and failed installations.
+- Add the population-prior resolver and the sentence-transformer resolver.
+  Document the benchmark pipelines, the corpora, and the reproducibility
+  workflows.
 
 ### Changed
 
-- Use a population-only `PriorResolver` by default, with weight `0.3` and
-  inflection fallback disabled.
-- Support Python 3.10 through 3.14 and constrain Transformers and spaCy to
-  compatible releases.
-- Resolve the application data directory through platformdirs while preserving
-  existing platform paths.
+- Use a population-only `PriorResolver` by default. The weight is `0.3`. The
+  inflection fallback is disabled.
+- Support Python 3.10 through 3.14. Limit Transformers and spaCy to compatible
+  releases.
+- Find the application data directory with platformdirs. Keep the existing
+  platform paths.
 
 ### Fixed
 
-- Cache gazetteer access and fit-time location data, remove redundant resolver
-  caches, and bound retained cache state.
-- Share recognition and resolution service setup, require precomputed
-  similarities, and remove unreachable service code.
-- Narrow annotator database error handling and defer model logging changes
-  until a transformer model is loaded.
-- Validate annotation inputs and report malformed UTF-8 uploads without
-  interrupting legacy batch imports.
+- Cache the gazetteer access and the fit-time location data. Remove the
+  redundant resolver caches. Limit the size of the retained cache state.
+- Share the setup of the recognition service and the resolution service.
+  Require precomputed similarities. Remove the unreachable service code.
+- Narrow the error handling of the annotator database. Delay the changes to
+  model logging until a transformer model is loaded.
+- Validate the annotation inputs. Report malformed UTF-8 uploads. Do not
+  interrupt the legacy batch imports.
