@@ -12,6 +12,16 @@ At the initial checkpoint sync, HF commit `0502a2f0b7f7ab2ae6717001ee0353ccf128a
 
 The older incomplete archive stays separate. It is at results-dataset commit `270ec29b5692ae3792cef7ae76e40addaa586e04`, path `runs/incomplete/2026-10-01-panx-continuation-a9b1e86d-incomplete.zip`, SHA-256 `2c042e299087c59e4160aa644304b93f0a6e8b4af429e3926918c2d81d2eaff6`. Do not merge those records into this snapshot.
 
+## Separate historical runs
+
+The results dataset has another immutable incomplete run at commit `2d8403bca7edf01d903da10d08dd7e561b440a4a`. Its path is `runs/2026-10-01-panx-335eae9d25892ad70be42dac8855af8cf9e4fc23091658599e6527a26ecf3c1d/`. Its snapshot ID is `335eae9d25892ad70be42dac8855af8cf9e4fc23091658599e6527a26ecf3c1d`. Its source commit is `7cdd960dc559089aacb1614019a0f6dc0c3a409e`. It uses the same WikiANN revision and model revisions as this run. It has 39 completed GLiNER languages and one spaCy English evaluation of 10,000 examples. It did not start XLM-R. The other 81 spaCy rows are status records, not evaluated examples. The run stopped after a GLiNER model load reached its 16 GiB cgroup limit. Its environment file records three cgroup OOM kill events.
+
+We verified the historical archive at its exact HF commit. Its SHA-256 manifest lists 129 files. The archived path set has those 129 files plus the manifest itself. We checked the SHA-256 entries for its README, snapshot, run status, summary, environment, attempts, and lock file. The lock-file digest matches `environment.json`.
+
+Keep this run separate from the current run. The historical source used Transformers 4.57.6 and batch size 8 for all models. Its timer included score aggregation. The current run uses Transformers 5.18.0, GLiNER batch size 1, and prediction-only timing. These source, dependency, batching, and timing differences mean that the runs do not form one comparable result matrix. Do not fill current-protocol language rows with historical scores or combine their timing totals.
+
+The earlier continuation is a third record. It is at results-dataset commit `270ec29b5692ae3792cef7ae76e40addaa586e04`, in `runs/incomplete/2026-10-01-panx-continuation-a9b1e86d-incomplete.zip`. It has 13 saved GLiNER language records and 82 spaCy language/status records. Its source is the separate `dbbc3ad31021799f253c59968be473afc47bd530` protocol. Keep it separate from both the 39-language archive and this current run.
+
 ## Resume in the same workspace
 
 Keep the existing run root, checkpoint cache, HF cache, and `upload-state.json`. Install the repository-locked environment with uv 0.11.16 and `uv sync --locked`, then run:
