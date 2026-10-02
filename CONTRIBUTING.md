@@ -229,6 +229,6 @@ This project has the MIT license. Read [LICENSE](./LICENSE). The project declare
 
 ## Pull-request validation lifecycle
 
-These events run the full required checks with stable job names: code pushes, opened or reopened pull requests, promotion from draft, and edits to open pull requests. When you retarget a PR, the checks build the new base comparison again. Metadata edits also run the validation again. This costs another CI run on purpose. The alternative is to publish skipped suites that hide the actual results. Make all title and description edits before the final validation. We do not remove or relax any branch-protection requirement. Manual dispatch is still available for explicit diagnostics.
+These events run the full required checks with stable job names: code pushes, opened or reopened pull requests, promotion from draft, and edits to open pull requests. Retargeting a PR changes its base branch. The PR rebuilds the new base comparison. Metadata edits also run the validation again. This costs another CI run on purpose. The alternative is to publish skipped suites that hide the actual results. Make all title and description edits before the final validation. We do not remove or relax any branch-protection requirement. Manual dispatch is still available for explicit diagnostics.
 
 Push events and pull-request events have separate concurrency groups. An edit to a closed or merged PR skips the validation. It cannot cancel a main-branch run that is in progress.
