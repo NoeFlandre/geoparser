@@ -15,7 +15,7 @@ The reference policy is in `.github/branch-protection/main.json`. It names one s
 
 The names of the matrix jobs include the operating system and the Python version. If you require those individual names, branch protection depends on the details of the matrix. Therefore the aggregate job `tests-passed` is the required test check. The scheduled Quality run does the full mutation gates and the Docker gates.
 
-The repository ruleset `Protect main with required checks` is active. It targets only `refs/heads/main`. It requires pull requests, an up-to-date branch, and the four contexts above. It enforces the rule for administrators. Its bypass list is empty. The JSON file is the reference under version control. Use it to create the ruleset again. After you change a workflow, compare the exact status contexts with a recent pull request. Then update the ruleset.
+The repository ruleset `Protect main with required checks` is active. It targets only `refs/heads/main`. It requires pull requests, an up-to-date branch, and the four contexts above. It enforces the rule for administrators. It has an empty bypass list. The JSON file is the reference under version control. Use it to create the ruleset again. After you change a workflow, compare the exact status contexts with a recent pull request. Then update the ruleset.
 
 ## Coverage artifact flow
 
