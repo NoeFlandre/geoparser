@@ -1,14 +1,14 @@
 # Demo
 
-Every populated place mentioned in Jules Verne's *Around the World in Eighty Days*, extracted from the novel and mapped — 74 of them, across all 37 chapters. Marker size is how often the place is mentioned; hover over one to read the passages it appears in.
+The demo shows every populated place in the novel *Around the World in Eighty Days* by Jules Verne. The library extracted 74 places from the 37 chapters and mapped them. The size of a marker shows how often the novel mentions the place. Hover over a marker to read the passages where the place appears.
 
 <iframe src="_static/map.html" width="100%" height="550" frameborder="0"></iframe>
 
-The book is from [Project Gutenberg](https://www.gutenberg.org/ebooks/103), and the whole thing runs on the library as documented. The parts that concern geoparsing are walked through below; the rest is downloading the book, splitting it into chapters, and drawing the map.
+The book is from [Project Gutenberg](https://www.gutenberg.org/ebooks/103). The demo uses the library as the documentation describes it. The sections below explain the geoparsing parts. The other parts download the book, split it into chapters, and draw the map.
 
 ## What the Pipeline Does Here
 
-The novel is split into its 37 chapters, each chapter parsed as one document, and the resolved places aggregated across all of them. Two choices matter, and both differ from the defaults:
+The demo splits the novel into its 37 chapters. It parses each chapter as one document. It then aggregates the resolved places from all the chapters. Two choices are important. Both are different from the defaults:
 
 ``` python
 from geoparser import Geoparser
@@ -23,22 +23,22 @@ resolver = SentenceTransformerResolver(min_similarity=0.7)
 geoparser = Geoparser(recognizer=recognizer, resolver=resolver)
 ```
 
-`en_core_web_trf` rather than the default `en_core_web_sm`, because nineteenth-century narrative prose is unlike the news text the small model was trained on and it misses noticeably more. And `min_similarity=0.7` rather than `0.6`, because a wrong marker on a map is more damaging than a missing one: a mistake is visible and misleading, while an omission is merely absent. The gazetteer is not named here because `SentenceTransformerResolver` uses GeoNames unless told otherwise.
+The demo uses `en_core_web_trf` and not the default `en_core_web_sm`. Narrative prose of the nineteenth century is not like the news text that trained the small model. The small model misses many more names in it. The demo uses `min_similarity=0.7` and not `0.6`. A wrong marker on a map does more damage than a missing marker. A mistake is visible and gives wrong information. An omission is only absent. The code does not name the gazetteer. `SentenceTransformerResolver` uses GeoNames unless you give a different gazetteer.
 
-The `en_core_web_trf` pipeline requires the `spacy-curated-transformers` plugin. Install the pinned compatible line with `pip install "spacy-curated-transformers>=0.3.1,<1"`. The plugin has no Python 3.14 release yet; on that interpreter use a non-transformer model for the requested language, for example `en_core_web_lg` for English.
+The `en_core_web_trf` pipeline needs the `spacy-curated-transformers` plugin. To install the pinned compatible line, use `pip install "spacy-curated-transformers>=0.3.1,<1"`. The plugin has no release for Python 3.14 yet. On that interpreter, use a non-transformer model for the language that you need. For English, use `en_core_web_lg`.
 
-This is the general shape of tuning a pipeline: the defaults are a reasonable starting point, and the right values depend on your material and on which kind of error costs you more.
+This is the general method to tune a pipeline. The defaults are a good start. The correct values depend on your material. They also depend on which type of error costs more for you.
 
 ## Parsing and Aggregating
 
-Each chapter goes in as a document, and the results come back in the same order:
+Each chapter goes in as a document. The results come back in the same order:
 
 ``` python
 chapter_texts = [chapter["text"] for chapter in chapters]
 documents = geoparser.parse(chapter_texts)
 ```
 
-Then the mentions are grouped by the place they resolved to. Two details in this step are worth copying:
+Then the code groups the mentions by the place that they resolved to. Two details in this step are good to copy:
 
 ``` python
 from collections import defaultdict
@@ -65,19 +65,19 @@ for document, chapter in zip(documents, chapters):
         entry["mentions"].append((chapter["number"], document.text[start:end]))
 ```
 
-**Grouping by** `identifier`, **not by name**, is the important one. Names are shared between genuinely different places — GeoNames has 122 called Paris — so grouping by `data["name"]` would merge distinct places into a single marker.
+**Group by** `identifier`, **not by name.** This is the important detail. Different places can have the same name. GeoNames has 122 places with the name Paris. If you group by `data["name"]`, you merge different places into one marker.
 
-**Filtering on** `feature_class` is what keeps the map readable. GeoNames classifies every feature, and `"P"` means a populated place; without the filter, "Europe", "the Atlantic", and "the Rocky Mountains" all become single points, which is misleading rather than informative. The full list of classes is in [querying gazetteers](guides/gazetteers.md).
+**Filter on** `feature_class` to keep the map readable. GeoNames classifies each feature. `"P"` means a populated place. Without the filter, "Europe", "the Atlantic", and "the Rocky Mountains" each become a single point. This is misleading. The full list of classes is in [querying gazetteers](guides/gazetteers.md).
 
-Keeping the character offsets is what makes the popups possible. The library gives you positions into the original text, so the passage around each mention costs one slice.
+The code keeps the character offsets. This makes the popups possible. The library gives you positions in the original text. To get the passage around a mention, you need only one slice.
 
-From there it is an ordinary plot: read `latitude` and `longitude` from each feature's `data`, size the markers by `count`, and hand it to a plotting library. The notebook uses Plotly.
+The rest is an ordinary plot. Read `latitude` and `longitude` from the `data` of each feature. Set the size of the markers with `count`. Give the data to a plotting library. The notebook uses Plotly.
 
 ## Run It Yourself
 
-The complete notebook is in the repository at [demo/demo.ipynb](https://github.com/NoeFlandre/geoparser/blob/main/demo/demo.ipynb). It downloads the book, splits the chapters, runs the pipeline, and builds the map you see above.
+The complete notebook is in the repository at [demo/demo.ipynb](https://github.com/NoeFlandre/geoparser/blob/main/demo/demo.ipynb). It downloads the book and splits the chapters. It runs the pipeline and builds the map above.
 
-To run it in your own environment, you need the library and the `geonames` gazetteer, both covered in [installation](installation.md), plus two extras:
+To run it in your own environment, you need the library and the `geonames` gazetteer. [Installation](installation.md) describes them. You also need two extra packages:
 
 ``` bash
 pip install jupyter plotly
@@ -91,9 +91,9 @@ geoparser install geonames
 jupyter lab demo/demo.ipynb
 ```
 
-Expect the parse to take a few minutes: the transformer recognizer is slow on CPU, and there are 37 chapters. A GPU makes a substantial difference — see [Using a GPU](installation.md#using-a-gpu).
+The parse takes a few minutes. The transformer recognizer is slow on a CPU, and the book has 37 chapters. A GPU makes the parse much faster. Read [Using a GPU](installation.md#using-a-gpu).
 
-Alternatively, run the notebook in Docker. The demo image is built locally from this checkout and its lockfile; it does not contain the gazetteer, which is installed once into a persistent volume shared with the runtime image:
+You can also run the notebook in Docker. Docker builds the demo image locally from this checkout and its lockfile. The demo image does not contain the gazetteer. You install the gazetteer once into a persistent volume. The runtime image shares this volume:
 
 ``` bash
 export JUPYTER_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe())')"
@@ -102,4 +102,4 @@ docker compose --profile install run --rm install
 docker compose --profile demo up demo
 ```
 
-Then open `http://localhost:8888/lab/tree/demo.ipynb` and enter the value of `JUPYTER_TOKEN`. See `demo/README.md` in the repository for details.
+Then open `http://localhost:8888/lab/tree/demo.ipynb`. Enter the value of `JUPYTER_TOKEN`. For details, read `demo/README.md` in the repository.
