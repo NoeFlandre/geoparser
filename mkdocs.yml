@@ -81,6 +81,7 @@ nav:
       - Architecture: architecture.md
       - Data and Models: data-and-models.md
       - Technical Debt: technical-debt.md
+      - Glossary: glossary.md
       - Architecture Decision Records:
           - Quality Gates and MkDocs: decisions/0001-quality-gates-and-mkdocs.md
           - CPU-only Linux Containers: decisions/0002-linux-container-cpu-pytorch.md
