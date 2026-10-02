@@ -1,19 +1,27 @@
 from __future__ import annotations
 
+import argparse
 import ctypes
 import hashlib
 import json
 import os
 import signal
 import struct
-import sys
 import time
 from pathlib import Path
 
-PID = int(sys.argv[1])
+parser = argparse.ArgumentParser(
+    description="Gate model progress on remote checkpoint readback."
+)
+parser.add_argument("evaluator_pid", type=int)
+parser.add_argument("model_key", choices=("spacy_en", "gliner2_multi", "xlmr_ner_hrl"))
+arguments = parser.parse_args()
+PID = arguments.evaluator_pid
+MODEL_KEY = arguments.model_key
 CHECKPOINT_ROOT = Path("/workspace/panx-run/full/checkpoints")
 SNAPSHOT_ID = "62a90f96e0db98c1d881feb316bd8a2205c8a1665a152941b8b319abd4079653"
-WATCH_DIR = CHECKPOINT_ROOT / SNAPSHOT_ID / "languages" / "gliner2_multi"
+WATCH_DIR = CHECKPOINT_ROOT / SNAPSHOT_ID / "languages" / MODEL_KEY
+WATCH_DIR.mkdir(parents=True, exist_ok=True)
 STATE_PATH = Path("/workspace/panx-run/full/upload-state.json")
 IN_MOVED_TO = 0x00000080
 
@@ -25,7 +33,9 @@ watch = libc.inotify_add_watch(fd, os.fsencode(WATCH_DIR), IN_MOVED_TO)
 if watch < 0:
     raise OSError(ctypes.get_errno(), f"inotify_add_watch failed for {WATCH_DIR}")
 
-print(f"checkpoint_gate_ready pid={PID} watch={WATCH_DIR}", flush=True)
+print(
+    f"checkpoint_gate_ready pid={PID} model={MODEL_KEY} watch={WATCH_DIR}", flush=True
+)
 
 
 def sha256(path: Path) -> str:
