@@ -1,7 +1,6 @@
 # Development
 
-The repository uses `uv` for environments and locked dependencies, Ruff for
-linting and formatting, `ty` for type checking, and pytest for tests.
+The repository uses `uv` for environments and locked dependencies. It uses Ruff for linting and formatting, `ty` for type checking, and pytest for tests.
 
 ## Local workflow
 
@@ -13,55 +12,27 @@ uv run ty check geoparser scripts tests
 uv run pytest
 ```
 
-The intended development loop is RED → GREEN → REFACTOR: first write a
-focused failing test, make the smallest implementation change, then simplify
-and review the result. Tests are grouped as unit, integration, property-based,
-acceptance, and end-to-end checks where those boundaries provide useful
-confidence.
+The development loop is RED → GREEN → REFACTOR. First, write a focused test that fails. Then make the smallest change in the implementation. Then simplify and review the result. The tests are in these groups: unit, integration, property-based, acceptance, and end-to-end. Use a group when its boundary gives useful confidence.
 
 ## Quality gauntlet
 
-Run the complete deterministic gate with:
+To run the complete deterministic gate, use this command:
 
 ```bash
 GEOPARSER_TEST_REMOTE_MODELS=1 uv run python scripts/quality_gauntlet.py
 ```
 
-By default the command runs Ruff, `ty`, locked dependency validation, the main
-coverage test suite, deterministic benchmark contracts with timing disabled,
-property tests, acceptance tests, architecture checks, CRAP, mutation tests, a
-CLI smoke test, and diff review. The benchmark contract run appends its coverage
-so every measured test function participates in the whole-tree CRAP check. Its
-smoke stage can also build and check Docker images. `--include-baseline` adds
-an extra coverage test pass for diagnosis; normal local and CI runs leave it
-off. Generated reports belong in a temporary directory and are not committed.
-The runner uses a unique Docker smoke-test tag and removes that image when it
-exits.
+By default, the command runs these checks: Ruff, `ty`, locked dependency validation, the main coverage test suite, deterministic benchmark contracts with timing disabled, property tests, acceptance tests, architecture checks, CRAP, mutation tests, a CLI smoke test, and diff review. The benchmark contract run appends its coverage. Thus every measured test function is part of the whole-tree CRAP check. The smoke stage can also build and check Docker images. The `--include-baseline` option adds an extra coverage test pass for diagnosis. Normal local runs and CI runs do not use it. Put the generated reports in a temporary directory. Do not commit them. The runner uses a unique Docker smoke-test tag. It removes that image when it exits.
 
-CI combines coverage from its operating-system and Python matrix. The hard
-100% line-coverage threshold applies to `geoparser/`; the CRAP gate separately
-scores every function under `geoparser/`, `scripts/`, and `tests/` and requires
-each score to be strictly below 6. Nested functions are scored separately,
-their executable statements belong to the innermost function, and a function
-with no recorded coverage is treated as uncovered.
+CI combines the coverage from its operating-system and Python matrix. The hard threshold of 100% line coverage applies to `geoparser/`. The CRAP gate gives a score to every function under `geoparser/`, `scripts/`, and `tests/`. Each score must be strictly below 6. The gate scores nested functions separately. The executable statements of a nested function belong to the innermost function. A function with no recorded coverage counts as uncovered.
 
-The quality gauntlet collects coverage for all three roots during its main test
-pass and appends coverage from the deterministic benchmark contracts. It then
-explicitly enforces the 100% floor on `geoparser/` before the whole-tree CRAP
-check. Timed performance measurements remain opt-in.
+The quality gauntlet collects coverage for the three roots during its main test pass. It appends the coverage from the deterministic benchmark contracts. Then it enforces the 100% floor on `geoparser/` before the whole-tree CRAP check. The timed performance measurements stay opt-in.
 
-The CI coverage matrix enables the opt-in GLiNER2 and Jina integration tests in
-one Ubuntu/Python 3.12 cell. The separate quality gauntlet also runs them so
-its own CRAP calculation includes those test bodies; every other matrix cell
-keeps the model downloads disabled. On pull requests, the quality gauntlet
-skips Docker builds and the full mutation sweep because Docker is reserved for
-the scheduled run and changed code is checked by the separate mutation job.
+The CI coverage matrix enables the opt-in GLiNER2 and Jina integration tests in one Ubuntu and Python 3.12 cell. The separate quality gauntlet also runs them. Thus its own CRAP calculation includes those test bodies. In every other matrix cell, the model downloads stay disabled. On pull requests, the quality gauntlet skips the Docker builds and the full mutation sweep. Docker is only for the scheduled run. The separate mutation job checks the changed code.
 
 ### Resource-safe local gate
 
-Mutation testing can use several gigabytes while it runs. On a machine with a
-small system volume, point both temporary files and uv's cache at disposable
-directories on a larger volume; create them first:
+Mutation testing can use several gigabytes while it runs. If the system volume is small, set the temporary files and the uv cache to disposable directories on a larger volume. Create the directories first:
 
 ```bash
 mkdir -p /path/on-a-large-volume/geoparser-qa-tmp \
@@ -71,35 +42,28 @@ UV_CACHE_DIR=/path/on-a-large-volume/geoparser-qa-uv-cache \
 uv run --no-sync python scripts/quality_gauntlet.py
 ```
 
-The runner removes its temporary reports and mutation tree after the command.
-Training tests remove their generated model directories after each test, and
-pytest retains temporary directories only for failed tests. The uv cache is
-reusable; remove that exact cache directory when it is no longer useful.
+The runner removes its temporary reports and the mutation tree after the command. The training tests remove their generated model directories after each test. Pytest keeps temporary directories only for tests that fail. You can use the uv cache again. When you no longer need it, remove that exact cache directory.
 
 ## Security scanning
 
-The Security workflow runs on every pull request, on pushes to `main` and weekly:
+The Security workflow runs on every pull request, on every push to `main`, and every week:
 
-- **Dependency audit**: `pip-audit` checks every version pinned in `uv.lock` against published advisories, without installing anything. A vulnerable locked version fails the job; dependency constraints and the lockfile must resolve advisories rather than suppress them.
-- **CodeQL** for Python and for the workflows themselves; results appear under *Security > Code scanning*.
-- **zizmor** and **actionlint** over `.github/workflows`. An accepted zizmor finding carries an inline `# zizmor: ignore[...]` comment explaining why.
+- **Dependency audit**: `pip-audit` compares each version in `uv.lock` with the published advisories. It does not install anything. A locked version that is vulnerable makes the job fail. Resolve the advisories with the dependency constraints and the lockfile. Do not suppress them.
+- **CodeQL** checks Python and the workflows. The results are under *Security > Code scanning*.
+- **zizmor** and **actionlint** check `.github/workflows`. An accepted zizmor finding has an inline `# zizmor: ignore[...]` comment that gives the reason.
 
-Secret scanning with push protection is a repository setting, not a workflow: enable it under *Settings > Code security*.
+Secret scanning with push protection is a repository setting. It is not a workflow. Enable it under *Settings > Code security*.
 
 ## Documentation
 
-Build the public site locally with:
+To build the public site locally, use this command:
 
 ```bash
 uv run mkdocs build --strict
 ```
 
-The site uses MkDocs Material. API pages use `mkdocstrings` directly from the
-source package, so public signatures and docstrings remain close to the code.
+The site uses MkDocs Material. The API pages use `mkdocstrings` directly from the source package. Thus the public signatures and docstrings stay close to the code.
 
 ## Pull requests
 
-Keep changes small and behavior-focused. Add a permanent regression test for
-every discovered bug, update an ADR when a design tradeoff changes, and record
-known limitations in [Technical Debt](technical-debt.md). CI blocks acceptance
-when deterministic quality or architecture gates fail.
+Keep the changes small. Each change must have one clear behavior. Add a permanent regression test for each bug that you find. Update an ADR when a design tradeoff changes. Record the known limits in [Technical Debt](technical-debt.md). CI blocks acceptance when a deterministic quality gate or an architecture gate fails.
