@@ -25,14 +25,17 @@ HF_XET_CACHE=/workspace/hf-cache/xet \
 
 The helper runs model inference offline from the pinned local caches. Its uploader stays online. It resumes from atomic local checkpoints and repeats no completed model/language work whose identity matches this snapshot.
 
-Start the readback gate as soon as the benchmark subprocess appears. Find its PID as the child of `run_full_with_verified_sync.py`, then run:
+Start the readback gate as soon as the benchmark subprocess appears. Find its PID as the child of `run_full_with_verified_sync.py`. Start one gate for each model that still has languages to evaluate. Use these model keys:
 
 ```sh
 /workspace/geoparser/.venv/bin/python \
-  /workspace/panx-run/gate_next_language.py EVALUATOR_PID
+  /workspace/panx-run/gate_next_language.py EVALUATOR_PID gliner2_multi
+
+/workspace/geoparser/.venv/bin/python \
+  /workspace/panx-run/gate_next_language.py EVALUATOR_PID xlmr_ner_hrl
 ```
 
-The gate watches for each new atomic GLiNER language checkpoint. It pauses the evaluator until `upload-state.json` contains the same SHA-256 as a verified remote readback. If the remote upload fails, leave the evaluator paused and resolve the preservation error before continuing.
+Each gate watches for new atomic language checkpoints from its model. It pauses the evaluator until `upload-state.json` contains the same SHA-256 as a verified remote readback. If the remote upload fails, leave the evaluator paused and resolve the preservation error before continuing.
 
 ## Resume after workspace loss
 
@@ -49,7 +52,7 @@ The gate watches for each new atomic GLiNER language checkpoint. It pauses the e
 
    The helper reads the current dataset `main` revision unless `--revision` pins a known commit. It lists and downloads only files under this run's checkpoint prefix, and prints each restored SHA-256.
 4. Run the same-workspace command above. The publisher may upload restored files again if the local upload state is absent. It verifies each new upload by exact-commit readback.
-5. Start the gate before allowing the evaluator to begin another GLiNER language.
+5. Start a gate for each model that still has languages to evaluate. Start each gate before the evaluator enters that model.
 
 ## Outputs and limits
 
