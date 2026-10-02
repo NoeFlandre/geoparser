@@ -1,20 +1,20 @@
 # Training Modules
 
-This guide explains how to train and fine-tune modules on annotated data to improve performance for specific domains, languages, or use cases.
+This guide explains how to train modules and fine-tune them on annotated data. Training improves performance for specific domains, languages, or use cases.
 
 ## Overview
 
-The Irchel Geoparser supports training and fine-tuning of modules using annotated data. Any module that implements a `fit()` method with the appropriate interface can be trained. Training improves performance on texts that differ from the data the models were originally trained on, and it enables support for new languages or specialized geographic contexts.
+The Irchel Geoparser can train and fine-tune modules on annotated data. You can train any module that has a `fit()` method with the correct interface. Training improves performance on texts that are different from the data of the original training. It also adds support for new languages and for specialized geographic contexts.
 
-The built-in `SpacyRecognizer` and `SentenceTransformerResolver` modules implement a `fit()` method that trains the underlying models on annotated examples. The training process requires documents with ground-truth annotations: for recognizers, you need the positions of place names in text; for resolvers, you need both the place name positions and their correct linkages to gazetteer entries. If you do not have such annotations yet, [annotating](annotating.md) covers producing them. Training is performed through the project-level methods (`project.train_recognizer()` and `project.train_resolver()`), which automatically gather training data from annotated documents in the project and call the module's `fit()` method.
+The built-in `SpacyRecognizer` and `SentenceTransformerResolver` modules have a `fit()` method. It trains the underlying models on annotated examples. Training needs documents with ground-truth annotations. A recognizer needs the positions of place names in text. A resolver needs the positions of place names and also their correct links to gazetteer entries. If you do not have such annotations yet, refer to [annotating](annotating.md) to make them. Training uses the project-level methods (`project.train_recognizer()` and `project.train_resolver()`). These methods automatically collect the training data from the annotated documents in the project. Then they call the `fit()` method of the module.
 
 ## Training SpacyRecognizer
 
-The `SpacyRecognizer` uses spaCy's named entity recognition framework. Training involves fine-tuning an existing spaCy model to better recognize place names in your specific domain or language.
+The `SpacyRecognizer` uses the named entity recognition framework of spaCy. Training fine-tunes an existing spaCy model, so that it recognizes place names better in your domain or language.
 
 ### Preparing Training Data
 
-Training data consists of texts and the positions of place names within those texts. You can create annotations manually or load them from files:
+Training data is texts and the positions of the place names in those texts. You can make annotations by hand or load them from files:
 
 ``` python
 from geoparser import Project
@@ -37,16 +37,16 @@ project.create_references(
 project.load_annotations(path="annotations.json", tag="gold", create_documents=True)
 ```
 
-The tag you choose here matters: it is how you refer to this set of annotations later. Training reads its examples from one tag, so the tag you annotate under has to be the tag you train on. We use `"gold"` throughout this guide.
+The tag that you select here is important. It is the name that you use later to refer to this set of annotations. Training reads its examples from one tag. Thus you must train on the tag under which you annotated. This guide uses `"gold"` in all examples.
 
 > [!WARNING]
-> `create_references()` and `create_referents()` annotate documents that are already in the project; they do not create them. They match annotations to documents by **exact text equality**, and an annotation whose text matches no stored document is skipped without an error. So call `create_documents()` first, and pass exactly the same strings to both. `load_annotations()` differs in taking a `create_documents` flag, which is why Option 2 needs no separate call.
+> `create_references()` and `create_referents()` annotate documents that are already in the project. They do not create the documents. They match annotations to documents by **exact text equality**. If the text of an annotation matches no stored document, the project skips the annotation and gives no error. Therefore call `create_documents()` first. Give exactly the same strings to both methods. `load_annotations()` is different. It has a `create_documents` flag. Thus Option 2 does not need a separate call.
 
-See the [projects](projects.md) guide for detailed information on working with annotations.
+Refer to the [projects](projects.md) guide for more information about annotations.
 
 ### Training the Recognizer
 
-Once you have annotated documents in a project, training a recognizer is straightforward:
+When the project has annotated documents, training a recognizer is simple:
 
 ``` python
 from geoparser import Project
@@ -69,16 +69,16 @@ project.train_recognizer(
 )
 ```
 
-The `train_recognizer()` method retrieves all documents from the project that have reference annotations associated with the specified tag. It extracts the texts and reference positions, then calls the recognizer's `fit()` method to perform the actual training. The trained model is saved to the specified output path.
+The `train_recognizer()` method retrieves all documents from the project that have reference annotations for the specified tag. It extracts the texts and the reference positions. Then it calls the `fit()` method of the recognizer, which does the training. The method saves the trained model to the output path that you specified.
 
 > [!NOTE]
-> If the tag you train on has no annotations — most often because it is not the tag you annotated under — training fails with `ValueError: No training examples found. Ensure documents contain reference annotations.` rather than training on nothing. Check the tag first with `len(project.get_documents(tag="gold")[0].toponyms)`.
+> Assume that the tag you train on has no annotations. This is most often because it is not the tag under which you annotated. Training then fails with `ValueError: No training examples found. Ensure documents contain reference annotations.` It does not train on nothing. First check the tag with `len(project.get_documents(tag="gold")[0].toponyms)`.
 
-The training parameters control how the model learns. The `epochs` parameter determines how many times the training algorithm iterates over the dataset. More epochs can improve performance but may lead to overfitting if you have limited training data. The `batch_size` controls how many examples are processed together during each training step. Larger batches provide more stable gradients but require more memory. The `dropout` rate adds regularization by randomly dropping neural network connections during training, which helps prevent overfitting. The `learning_rate` determines how quickly the model adjusts its parameters during training.
+The training parameters control how the model learns. The `epochs` parameter sets how many times the training algorithm iterates over the dataset. More epochs can improve performance. But if you have little training data, they can cause overfitting. The `batch_size` parameter sets how many examples the model processes together in each training step. Larger batches give more stable gradients, but they need more memory. The `dropout` rate adds regularization. It randomly drops neural network connections during training, which helps to prevent overfitting. The `learning_rate` sets how fast the model changes its parameters during training.
 
 ### Using the Trained Model
 
-After training, you can use the trained model by specifying its path when creating a recognizer:
+After training, specify the path of the trained model when you create a recognizer:
 
 ``` python
 from geoparser import Project
@@ -91,15 +91,15 @@ project = Project("evaluation_corpus")
 project.run_recognizer(recognizer)
 ```
 
-The trained recognizer can be used in any workflow just like the pre-trained models. The model path becomes part of the recognizer's configuration, so results from the trained model are tracked separately from results from the base model.
+You can use the trained recognizer in any workflow, in the same way as the pre-trained models. The model path becomes part of the configuration of the recognizer. Thus the project tracks the results of the trained model separately from the results of the base model.
 
 ## Training SentenceTransformerResolver
 
-The `SentenceTransformerResolver` uses a SentenceTransformer model to compute embeddings of contexts and location descriptions. Training fine-tunes this model to better capture the semantic relationships between how places are mentioned in your texts and how they should be described for disambiguation.
+The `SentenceTransformerResolver` uses a SentenceTransformer model to calculate embeddings of contexts and location descriptions. Training fine-tunes this model. The model then better captures the semantic relationship between the way your texts mention places and the way the resolver must describe them to disambiguate them.
 
 ### Preparing Training Data
 
-Training a resolver requires both the positions of place names and their correct resolutions. Each place name must be linked to a specific feature in the gazetteer:
+Training a resolver needs the positions of place names and their correct resolutions. Each place name must link to a specific feature in the gazetteer:
 
 ``` python
 from geoparser import Project
@@ -127,11 +127,11 @@ project.create_referents(
 project.load_annotations(path="annotations.json", tag="gold", create_documents=True)
 ```
 
-Both calls are needed. `create_referents()` records which feature each place name refers to, but it does not record the place names themselves, so on its own it leaves nothing to train on and `train_resolver()` fails with `ValueError: No training examples found. Ensure documents contain references with referent annotations.` Pass the same `references` to both calls, and as with the recognizer, annotate and train under the same tag and create the documents first.
+You need both calls. `create_referents()` records which feature each place name refers to. It does not record the place names. If you use only this call, there is nothing to train on, and `train_resolver()` fails with `ValueError: No training examples found. Ensure documents contain references with referent annotations.` Give the same `references` to both calls. As for the recognizer, annotate and train under the same tag, and create the documents first.
 
-Note that the referent is a specific gazetteer feature, not a place in the abstract, so it is worth checking which one you have picked. GeoNames distinguishes the city of Geneva (`2660646`) from the canton of the same name (`2660645`); for this sentence the city is the right answer, and training on the canton would teach the resolver the wrong association. `Gazetteer("geonames").find("2660646")` is the quickest way to confirm an identifier before committing to it.
+Note that the referent is a specific gazetteer feature. It is not an abstract place. Thus check which feature you selected. GeoNames has different features for the city of Geneva (`2660646`) and the canton of the same name (`2660645`). For this sentence, the city is correct. If you train on the canton, the resolver learns the wrong association. Use `Gazetteer("geonames").find("2660646")` to confirm an identifier quickly before you use it.
 
-See the [projects](projects.md) guide for detailed information on working with annotations.
+Refer to the [projects](projects.md) guide for more information about annotations.
 
 ### Training the Resolver
 
@@ -160,13 +160,13 @@ project.train_resolver(
 )
 ```
 
-The `train_resolver()` method retrieves documents with both reference and referent annotations. For each reference that has a referent, it extracts the context, generates candidate descriptions from the gazetteer, and creates training examples that teach the model which candidate description matches the context.
+The `train_resolver()` method retrieves the documents that have reference annotations and referent annotations. For each reference that has a referent, it extracts the context and generates candidate descriptions from the gazetteer. Then it makes training examples that teach the model which candidate description matches the context.
 
-The training parameters differ slightly from the recognizer. Transformer models typically require fewer epochs—often a single epoch is sufficient for fine-tuning. The `learning_rate` is usually set quite low (2e-5 is a common default) to avoid destroying the knowledge the model already has. The `warmup_ratio` controls how gradually the learning rate increases from zero at the start of training, which helps stabilize the training process.
+The training parameters are slightly different from those of the recognizer. Transformer models usually need fewer epochs. One epoch is often sufficient for fine-tuning. Set the `learning_rate` low (2e-5 is a common default), so that you do not destroy the knowledge that the model already has. The `warmup_ratio` sets how slowly the learning rate increases from zero at the start of training. This helps to stabilize the training.
 
 ### Using the Trained Model
 
-After training, use the trained resolver by specifying its path:
+After training, specify the path of the trained resolver to use it:
 
 ``` python
 from geoparser import Project
@@ -182,11 +182,11 @@ project.run_recognizer(recognizer)
 project.run_resolver(resolver)
 ```
 
-Remember that trained transformer models are specific to the gazetteer they were trained with. A model trained with GeoNames will not work well with SwissNames3D because the location descriptions will have different formats and attributes. If you need to support multiple gazetteers, train separate models for each one.
+Remember that a trained transformer model is specific to the gazetteer that you used for training. A model that you trained with GeoNames does not work well with SwissNames3D, because the location descriptions have different formats and attributes. If you must support more than one gazetteer, train a separate model for each gazetteer.
 
 ## Evaluation
 
-After training, you should evaluate your models on held-out test data that wasn't used during training. Create a separate project with test annotations and run your trained modules on it:
+After training, evaluate your models on held-out test data that you did not use in training. Create a separate project with test annotations and run your trained modules on it:
 
 ``` python
 from geoparser import Project
@@ -218,4 +218,4 @@ print(f"Gold standard: {gold_count} toponyms")
 print(f"Predictions: {pred_count} toponyms")
 ```
 
-For more sophisticated evaluation, you'll want to compute precision, recall, and F1 scores for recognition, and accuracy metrics for resolution. The comparison requires aligning predicted toponyms with gold standard annotations based on position and then checking whether the resolved locations match.
+For a more thorough evaluation, calculate the precision, the recall, and the F1 score for recognition. Calculate accuracy metrics for resolution. To do this, align the predicted toponyms with the gold-standard annotations by position. Then check if the resolved locations match.

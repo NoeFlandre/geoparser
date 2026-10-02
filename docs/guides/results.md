@@ -1,10 +1,10 @@
 # Working with Results
 
-This guide describes what a pipeline gives you back and how to read it: the three kinds of object a parse produces, the attributes each one carries, and the two cases — an unresolved name and a missing attribute — that any code reading results has to allow for.
+This guide explains what a pipeline returns and how to read it. It describes the three kinds of object that a parse makes and the attributes of each object. It also describes two cases that your code must handle: an unresolved name and a missing attribute.
 
 ## The Shape of the Output
 
-Whatever you parse, you get **documents**. Each document holds the **toponyms** found in it, and each toponym may hold the **location** it resolved to.
+A parse always returns **documents**. Each document holds the **toponyms** that the recognizer found in it. Each toponym can hold the **location** that the resolver selected.
 
 ``` python
 from geoparser import Geoparser
@@ -29,7 +29,7 @@ Geneva 60 66 Feature(geonames:2660646)
 Basel 71 76 Feature(geonames:2661604)
 ```
 
-Three levels, each answering a different question:
+The output has three levels. Each level answers a different question:
 
 | Object                  | What you get from it                                                   |
 |-------------------------|------------------------------------------------------------------------|
@@ -37,36 +37,36 @@ Three levels, each answering a different question:
 | `Reference` (a toponym) | `text` as written, `start` and `end` character offsets, and `location` |
 | `Feature` (a location)  | `identifier`, `data` attributes, `geometry`, `crs`, `names`, `source`  |
 
-Full signatures for all three are in the [models API](../api/models.md) reference.
+The [models API](../api/models.md) reference gives the full signatures of the three objects.
 
 ## Toponyms
 
-A toponym is a place name as it was found in the text. `text` is the name as written, which need not be the gazetteer's name for the place: the toponym above reads `Zurich`, while GeoNames names that city `Zürich`.
+A toponym is a place name as the recognizer found it in the text. `text` is the name as written in the text. It can be different from the name in the gazetteer. For example, the toponym above reads `Zurich`, but GeoNames names the city `Zürich`.
 
-`start` and `end` are character offsets into `document.text`, with `end` exclusive, so `document.text[toponym.start:toponym.end]` gives the toponym back and a wider slice gives the text around it.
+`start` and `end` are character offsets into `document.text`. `end` is exclusive. Thus `document.text[toponym.start:toponym.end]` returns the toponym. A wider slice returns the text around the toponym.
 
 ## Locations
 
-A location is a `Feature`: one entry in the gazetteer the resolver was using.
+A location is a `Feature`. It is one entry in the gazetteer that the resolver used.
 
-`data` holds that gazetteer's attributes for the place, as a dictionary. Which keys exist depends on the gazetteer, and can differ between sources within one gazetteer, so read them with `.get()`:
+`data` is a dictionary of the attributes that the gazetteer has for the place. The keys depend on the gazetteer. They can be different between sources in the same gazetteer. Use `.get()` to read them:
 
 ``` python
 data = toponym.location.data
 print(data.get("name"), data.get("country_name"), data.get("feature_name"))
 ```
 
-`identifier` is the gazetteer's stable id for the place. It is what to store when you need a reference that survives — in annotations, in exported data, in anything you come back to — and what to group or count by. Names are not unique: GeoNames has 122 places called Paris, so counting by `data["name"]` silently merges places that happen to share a name, while counting by `identifier` does not.
+`identifier` is the stable ID of the place in the gazetteer. Store it when you need a reference that lasts, for example in annotations or in exported data. Use it also to group or count places. Names are not unique. GeoNames has 122 places named Paris. If you count by `data["name"]`, you merge places that have the same name. If you count by `identifier`, you do not.
 
-`geometry` is a Shapely object — usually a point, but lines, polygons, and multi-part geometries occur — expressed in the coordinate reference system named by `crs`, which is `EPSG:4326` for both pre-configured gazetteers. Because it is a Shapely object, it can be measured, transformed, or handed to any library that reads Shapely geometries.
+`geometry` is a Shapely object. It is usually a point. It can also be a line, a polygon, or a multi-part geometry. Its coordinate reference system is in `crs`. For both pre-configured gazetteers, `crs` is `EPSG:4326`. Because `geometry` is a Shapely object, you can measure it or transform it. You can also give it to any library that reads Shapely geometries.
 
-`names` lists every string the place is searchable by, and `source` names the gazetteer source the feature came from, which is how features of different kinds within one gazetteer can be told apart.
+`names` lists all the strings that you can use to search for the place. `source` gives the name of the gazetteer source of the feature. Use `source` to tell features of different kinds apart in the same gazetteer.
 
 ## What May Be Missing
 
-Two things are absent often enough that reading results means allowing for them.
+Two kinds of data are often absent. Your code must handle them.
 
-**A toponym may have no location.** `toponym.location` is `None` when a name was recognized but not resolved, either because the place is not in the gazetteer or because no candidate passed the resolver's similarity threshold.
+**A toponym can have no location.** `toponym.location` is `None` when the recognizer found a name but the resolver did not select a place. This occurs when the place is not in the gazetteer. It also occurs when no candidate passes the similarity threshold of the resolver.
 
 ``` python
 for toponym in document.toponyms:
@@ -76,7 +76,7 @@ for toponym in document.toponyms:
     print(f"{toponym.text}: {toponym.location.data.get('name')}")
 ```
 
-**A location may lack an attribute or a geometry.** Attributes are absent wherever the gazetteer has nothing to record: the Pacific Ocean, for instance, has no `country_name`. `geometry` can likewise be `None` — every GeoNames entry has coordinates, but a gazetteer you build yourself need not give all of its places a geometry.
+**A location can lack an attribute or a geometry.** An attribute is absent when the gazetteer has no value for it. For example, the Pacific Ocean has no `country_name`. `geometry` can also be `None`. Every GeoNames entry has coordinates. But a gazetteer that you build yourself does not need a geometry for each place.
 
 ``` python
 geometry = toponym.location.geometry
@@ -84,11 +84,11 @@ if geometry is not None:
     print(geometry.x, geometry.y)
 ```
 
-Which of these you see says something about your setup rather than about the library. A name that recurs in your corpus and never resolves usually means the gazetteer does not cover that kind of place, or that the resolver's threshold is too high for your material — see [modules](modules.md). It is also worth parsing whole paragraphs rather than isolated sentences, since the resolver uses the words around a name to choose between places that share it — see [Why Context Matters](../quickstart.md#why-context-matters).
+These cases tell you about your setup. They do not show a defect in the library. Assume that a name occurs many times in your corpus and never resolves. Then the gazetteer probably does not cover that kind of place, or the threshold of the resolver is too high for your material. Refer to [modules](modules.md). Also parse whole paragraphs and not single sentences. The resolver uses the words around a name to select between places that have the same name. Refer to [Why Context Matters](../quickstart.md#why-context-matters).
 
 ## Taking Results Elsewhere
 
-Everything above is ordinary Python data — strings, numbers, dictionaries, and Shapely geometries — so results go into whatever you already use by walking the structure once and keeping the fields you need:
+The results are ordinary Python data: strings, numbers, dictionaries, and Shapely geometries. To move them to another tool, walk the structure one time and keep the fields that you need:
 
 ``` python
 documents = geoparser.parse(texts)
@@ -112,13 +112,13 @@ for document in documents:
         )
 ```
 
-One row per toponym, as above, is the shape most tabular and spatial tools expect. Note that `parse()` mirrors its input, so a single string gives you one document rather than a list; wrap it before iterating, or pass a list in the first place.
+Most tabular tools and spatial tools expect one row for each toponym, as in the example. Note that `parse()` returns the same shape as its input. A single string gives one document and not a list. Put the string in a list before you iterate, or give a list to `parse()` at the start.
 
 ## Relating Results to Your Own Records
 
-Parsed documents are usually a means to an end: you had records — articles, interviews, files — and you want the geography attached to those.
+A parsed document is usually not the goal. You have records, such as articles, interviews, or files. You want to attach the geography to those records.
 
-With `Geoparser.parse()`, order is the link. A list of texts returns a list of documents in the same order:
+With `Geoparser.parse()`, the order links the results to the records. A list of texts returns a list of documents in the same order:
 
 ``` python
 documents = geoparser.parse([article["body"] for article in articles])
@@ -127,11 +127,11 @@ for article, document in zip(articles, documents):
     article["places"] = [t.location.identifier for t in document.toponyms if t.location]
 ```
 
-For anything larger, or anything you may want to revisit, use a `project <projects>` and keep the document identifiers it gives you. Those survive between sessions, where positional order does not.
+For a larger corpus, or for work that you want to do again, use a `project <projects>`. Keep the document identifiers that the project gives you. They last between sessions. The positional order does not.
 
 ## Keeping Results
 
-`Geoparser.parse()` discards its work once it returns. To keep it, pass `save=True`:
+`Geoparser.parse()` discards its work when it returns. To keep the work, set `save=True`:
 
 ``` python
 document = geoparser.parse("Berlin is the capital of Germany.", save=True)
@@ -141,4 +141,4 @@ document = geoparser.parse("Berlin is the capital of Germany.", save=True)
 Results saved under project name: a1b2c3d4
 ```
 
-The printed name is how you get back to those results, via `Project("a1b2c3d4")`. Since a randomly generated name is awkward to remember, prefer creating a project with a name you chose whenever you know in advance that you want to keep the output. See [projects](projects.md).
+Use the printed name to get the results again with `Project("a1b2c3d4")`. A random name is difficult to remember. If you know in advance that you want to keep the output, create a project with a name that you choose. Refer to [projects](projects.md).

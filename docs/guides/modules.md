@@ -1,22 +1,22 @@
 # Configuring Modules
 
-Modules are the interchangeable parts of a pipeline. This guide covers the two built-in ones, the parameters that matter when your results are disappointing, and how to write your own.
+Modules are the parts of a pipeline that you can replace. This guide describes the two built-in kinds of module. It also describes the parameters that matter when your results are poor, and how to write your own module.
 
 ## What a Module Is
 
-There are two kinds. A **recognizer** finds place names in text: it takes texts and returns character positions. A **resolver** links those names to places: it takes texts and positions and returns gazetteer entries. Each is written independently of the other, and a pipeline is one of each.
+There are two kinds of module. A **recognizer** finds place names in text. It takes texts and returns character positions. A **resolver** links those names to places. It takes texts and positions and returns gazetteer entries. The two kinds are independent of each other. A pipeline has one recognizer and one resolver.
 
-That is the whole interface, and it is deliberately small. A module receives text and returns predictions; everything else — storing results, avoiding duplicate work, keeping different runs apart — happens outside it. The practical consequence is that writing a module is a modest job: implement one method, and it works everywhere the built-in ones do. Full signatures for every module are in the [modules API](../api/modules.md) reference.
+The interface is small on purpose. A module receives text and returns predictions. Other parts of the library do the rest: they store results, they prevent duplicate work, and they keep different runs apart. Thus a module is easy to write. Implement one method, and the module works everywhere that the built-in modules work. The [modules API](../api/modules.md) reference gives the full signatures of all modules.
 
-One behavior follows from this and is worth knowing early. A module is identified by its class **together with its configuration**. `SpacyRecognizer()` and `SpacyRecognizer(model_name="en_core_web_trf")` are two different modules as far as the library is concerned, with separate results. That is what makes it safe to run a pipeline repeatedly without redoing work, and what makes comparing configurations possible — but it also means changing a parameter does not update your old results, it produces new ones alongside them.
+The library identifies a module by its class **and its configuration**. `SpacyRecognizer()` and `SpacyRecognizer(model_name="en_core_web_trf")` are two different modules. They have separate results. Because of this, you can run a pipeline again without repeated work, and you can compare configurations. But if you change a parameter, the library does not update your old results. It makes new results and keeps the old results.
 
 ## Built-in Recognizers
 
 ### GLiNER2Recognizer
 
-The `GLiNER2Recognizer` uses [GLiNER2.5](https://huggingface.co/fastino/gliner2.5-multi-v1), a zero-shot extractor: the entity types it looks for are given as ordinary words at call time rather than baked into the model. That makes it multilingual out of the box, and it makes the label list a parameter you can tune for your corpus instead of a fixed schema you have to live with.
+The `GLiNER2Recognizer` uses [GLiNER2.5](https://huggingface.co/fastino/gliner2.5-multi-v1). This is a zero-shot extractor. You give the entity types as ordinary words when you call it. The model does not contain a fixed set of types. Therefore the recognizer works with many languages immediately. You can also tune the label list for your corpus.
 
-To use it with default settings:
+Use it with the default settings:
 
 ``` python
 from geoparser.modules import GLiNER2Recognizer
@@ -24,7 +24,7 @@ from geoparser.modules import GLiNER2Recognizer
 recognizer = GLiNER2Recognizer()
 ```
 
-The default configuration uses the `fastino/gliner2.5-multi-v1` checkpoint and looks for `city`, `country` and `location`. Both are configurable:
+The default configuration uses the `fastino/gliner2.5-multi-v1` checkpoint. It looks for `city`, `country`, and `location`. You can change both settings:
 
 ``` python
 from geoparser.modules import GLiNER2Recognizer
@@ -34,17 +34,17 @@ recognizer = GLiNER2Recognizer(
 )
 ```
 
-Because the labels are matched zero-shot, naming what you actually want is usually more effective than reaching for a bigger model. If your corpus is about hiking routes, asking for `mountain` and `trail` will find things no fixed GPE/LOC/FAC schema exposes. The trade-off is that each extra label costs inference time, and overlapping labels are deduplicated: a span found under both `city` and `country` is one reference, not two.
+The recognizer matches the labels zero-shot. Therefore it is usually better to name the types that you need than to use a bigger model. For example, assume your corpus is about hiking routes. If you ask for `mountain` and `trail`, you find things that a fixed GPE/LOC/FAC schema does not show. But each extra label adds inference time. The recognizer also removes duplicates from overlapping labels. If a span matches `city` and `country`, it becomes one reference and not two.
 
-Spans from every label are merged into a single list ordered by position in the text, so the resolver sees the references in the order they are written.
+The recognizer merges the spans from all labels into one list. The list is in the order of the positions in the text. Thus the resolver gets the references in the order in which they occur.
 
-Texts longer than 10,000 characters use GLiNER2's long-document mode, which scans fixed word chunks. This keeps memory manageable for long documents and noisy OCR, where each character can produce several tokens. Shorter texts are processed whole. The same behavior is described on the [`GLiNER2Recognizer` API page](../api/modules.md).
+For texts that are longer than 10,000 characters, the recognizer uses the long-document mode of GLiNER2. This mode scans chunks of a fixed number of words. It keeps memory use low for long documents and for noisy OCR text, where each character can make several tokens. The recognizer processes shorter texts as one piece. The [`GLiNER2Recognizer` API page](../api/modules.md) describes the same behavior.
 
 ### SpacyRecognizer
 
-The `SpacyRecognizer` uses spaCy's named entity recognition capabilities to identify potential place names in text. By default, it recognizes entities labeled as geopolitical entities (GPE), locations (LOC), and facilities (FAC) as potential toponyms, though this can be customized.
+The `SpacyRecognizer` uses the named entity recognition of spaCy to find possible place names in text. By default, it accepts entities with the labels geopolitical entity (GPE), location (LOC), and facility (FAC) as toponyms. You can change this.
 
-To use the SpacyRecognizer with default settings:
+Use the SpacyRecognizer with the default settings:
 
 ``` python
 from geoparser.modules import SpacyRecognizer
@@ -52,7 +52,7 @@ from geoparser.modules import SpacyRecognizer
 recognizer = SpacyRecognizer()
 ```
 
-The default configuration uses the `en_core_web_sm` model and recognizes entities of types FAC, GPE, and LOC. You can customize both of these parameters:
+The default configuration uses the `en_core_web_sm` model and the entity types FAC, GPE, and LOC. You can change both parameters:
 
 ``` python
 from geoparser.modules import SpacyRecognizer
@@ -64,19 +64,19 @@ recognizer = SpacyRecognizer(
 )
 ```
 
-The `model_name` parameter accepts any spaCy model that includes a named entity recognizer. Larger models like `en_core_web_trf` provide higher accuracy but require more memory and processing time. For non-English texts, specify an appropriate spaCy model for that language.
+The `model_name` parameter accepts any spaCy model that has a named entity recognizer. Larger models, such as `en_core_web_trf`, are more accurate. But they need more memory and more processing time. For texts that are not in English, specify a spaCy model for that language.
 
-The `en_core_web_trf` pipeline requires the `spacy-curated-transformers` plugin. Install the pinned compatible line with `pip install "spacy-curated-transformers>=0.3.1,<1"`. The plugin has no Python 3.14 release yet; on that interpreter use a non-transformer model for the requested language, for example `en_core_web_lg` for English.
+The `en_core_web_trf` pipeline needs the `spacy-curated-transformers` plugin. Install the compatible pinned line with `pip install "spacy-curated-transformers>=0.3.1,<1"`. The plugin has no Python 3.14 release yet. On that interpreter, use a non-transformer model for the requested language, for example `en_core_web_lg` for English.
 
-The `entity_types` parameter allows you to filter which entity types are considered as toponyms. By default, the recognizer includes FAC (facilities like buildings and landmarks), GPE (geopolitical entities like countries and cities), and LOC (natural locations and regions). If your application only needs to identify country and city names, you might restrict this to just GPE.
+The `entity_types` parameter sets which entity types the recognizer accepts as toponyms. By default, it includes FAC (facilities, such as buildings and landmarks), GPE (geopolitical entities, such as countries and cities), and LOC (natural locations and regions). If your application needs only country names and city names, restrict the types to GPE.
 
 ## Built-in Resolvers
 
 ### PriorResolver
 
-`PriorResolver` uses the same MiniLM encoder, gazetteer search, and context windows as `SentenceTransformerResolver`. It adds a population score when ranking close candidates. A candidate's score is its context similarity plus `population_weight * log10(1 + population) / 10`; candidates without a usable population get no bonus. The default weight is `0.3`. The `min_similarity` threshold still checks the raw context similarity before ranking, so population cannot lift a weak match over the threshold.
+`PriorResolver` uses the same MiniLM encoder, the same gazetteer search, and the same context windows as `SentenceTransformerResolver`. It adds a population score when it ranks close candidates. The score of a candidate is its context similarity plus `population_weight * log10(1 + population) / 10`. A candidate without a usable population gets no bonus. The default weight is `0.3`. The `min_similarity` threshold checks the raw context similarity before the ranking. Thus the population cannot lift a weak match over the threshold.
 
-Inflection fallback is off by default. Set `inflection_fallback=True` to retry an exact miss after trimming one to three trailing characters from a single-word name. This can help with declined or inflected place names; it does not change phrase, partial, or fuzzy searches.
+The inflection fallback is off by default. Set `inflection_fallback=True` to try again after an exact miss. The resolver then removes one to three trailing characters from a single-word name. This can help with declined or inflected place names. It does not change phrase searches, partial searches, or fuzzy searches.
 
 ``` python
 from geoparser.modules import PriorResolver
@@ -87,15 +87,15 @@ resolver = PriorResolver(
 )
 ```
 
-See the [benchmark guide](benchmark.md) for the comparison and ablation results, and the [resolver API](../api/modules.md#resolvers) for all constructor arguments.
+Refer to the [benchmark guide](benchmark.md) for the comparison results and the ablation results. Refer to the [resolver API](../api/modules.md#resolvers) for all constructor arguments.
 
 ### JinaResolver
 
-The `JinaResolver` extends the `SentenceTransformerResolver` below and changes how a candidate is chosen. It keeps the same tiered gazetteer search and the same context windowing, and differs in two ways.
+The `JinaResolver` extends the `SentenceTransformerResolver` (see below). It changes how the resolver selects a candidate. It keeps the same tiered gazetteer search and the same context windows. It is different in two ways.
 
-First, it embeds with [jina-embeddings-v5-text-small](https://huggingface.co/jinaai/jina-embeddings-v5-text-small), which has **separate prompts for the two sides of a retrieval pair**. A reference's context is embedded as a query and a candidate's description as a document, which is what the model was trained for; embedding both under one prompt throws away most of the benefit.
+First, it makes embeddings with [jina-embeddings-v5-text-small](https://huggingface.co/jinaai/jina-embeddings-v5-text-small). This model has **separate prompts for the two sides of a retrieval pair**. The resolver embeds the context of a reference as a query. It embeds the description of a candidate as a document. This is how the developers trained the model. If you embed both sides with one prompt, you lose most of the benefit.
 
-Second, it adds a **reranking stage**. The embedding comparison is cheap but sees each side in isolation, so it is used only to shortlist. [jina-reranker-v3.5](https://huggingface.co/jinaai/jina-reranker-v3.5) — a cross encoder, which reads the context and the candidate description together — then picks the winner from that shortlist.
+Second, it adds a **reranking stage**. The embedding comparison is fast, but it looks at each side alone. Therefore the resolver uses it only to make a shortlist. Then [jina-reranker-v3.5](https://huggingface.co/jinaai/jina-reranker-v3.5) selects the winner from the shortlist. This model is a cross encoder. It reads the context and the candidate description together.
 
 ``` python
 from geoparser.modules import JinaResolver
@@ -103,7 +103,7 @@ from geoparser.modules import JinaResolver
 resolver = JinaResolver()
 ```
 
-The defaults are the two checkpoints named above, a shortlist of 20 candidates, the `geonames` gazetteer, a minimum similarity of 0.6 and up to 3 search tiers. The parameters specific to this resolver are:
+The defaults are the two checkpoints above, a shortlist of 20 candidates, the `geonames` gazetteer, a minimum similarity of 0.6, and a maximum of 3 search tiers. These parameters are specific to this resolver:
 
 ``` python
 from geoparser.modules import JinaResolver
@@ -114,13 +114,13 @@ resolver = JinaResolver(
 )
 ```
 
-`rerank_top_k` is the knob worth understanding. The cross encoder is far more expensive per candidate than the embedding comparison, so the shortlist is what keeps resolution affordable; widening it helps when the right candidate is being ranked outside the top 20 by embeddings alone, and costs proportionally more time. `min_similarity` still gates the embedding stage: a reference whose best candidate does not reach it is left unresolved and the reranker is never consulted.
+`rerank_top_k` is the parameter that you must understand. The cross encoder is much slower for each candidate than the embedding comparison. The shortlist keeps the resolution time acceptable. A wider shortlist helps when the embeddings rank the correct candidate outside the top 20. But it increases the time in proportion. `min_similarity` still applies to the embedding stage. If the best candidate of a reference does not reach it, the resolver leaves the reference unresolved. It does not use the reranker.
 
 ### SentenceTransformerResolver
 
-The `SentenceTransformerResolver` uses transformer-based language models to disambiguate place names by comparing contextual embeddings. It extracts the context surrounding each place name, retrieves candidate locations from the gazetteer, generates textual descriptions of these candidates, and selects the candidate whose description most closely matches the context based on embedding cosine similarity.
+The `SentenceTransformerResolver` uses transformer language models to disambiguate place names. It compares contextual embeddings. It takes the context around each place name and gets the candidate locations from the gazetteer. It makes a text description of each candidate. Then it selects the candidate whose description is closest to the context by embedding cosine similarity.
 
-To use the SentenceTransformerResolver with default settings:
+Use the SentenceTransformerResolver with the default settings:
 
 ``` python
 from geoparser.modules import SentenceTransformerResolver
@@ -128,7 +128,7 @@ from geoparser.modules import SentenceTransformerResolver
 resolver = SentenceTransformerResolver()
 ```
 
-The default configuration uses the `dguzh/geo-all-MiniLM-L6-v2` model with the `geonames` gazetteer, a minimum similarity threshold of 0.6, and expands through up to 3 tiers of increasingly broad search methods. You can customize any of these parameters:
+The default configuration uses the `dguzh/geo-all-MiniLM-L6-v2` model, the `geonames` gazetteer, and a minimum similarity threshold of 0.6. It expands through a maximum of 3 tiers of search methods that become wider each time. You can change all of these parameters:
 
 ``` python
 from geoparser.modules import SentenceTransformerResolver
@@ -142,15 +142,15 @@ resolver = SentenceTransformerResolver(
 )
 ```
 
-The `model_name` parameter specifies which SentenceTransformer model to use for generating embeddings. The library provides two pre-trained models fine-tuned for toponym disambiguation: `dguzh/geo-all-MiniLM-L6-v2` offers fast processing with good accuracy, while `dguzh/geo-all-distilroberta-v1` provides higher accuracy at the cost of speed and memory. These models were trained on English news articles and work best with English text and the GeoNames gazetteer. For other languages or domains, you should train a custom model as described in the [training](training.md) guide.
+The `model_name` parameter sets the SentenceTransformer model that makes the embeddings. The library has two pre-trained models, fine-tuned for toponym disambiguation. `dguzh/geo-all-MiniLM-L6-v2` is fast and has good accuracy. `dguzh/geo-all-distilroberta-v1` is more accurate but uses more time and memory. The developers trained these models on English news articles. They work best with English text and the GeoNames gazetteer. For other languages or domains, train a custom model. Refer to the [training](training.md) guide.
 
-The `gazetteer_name` parameter determines which geographic database to search. The specified gazetteer must be installed on your system. Each gazetteer has different coverage and attribute schemas, so make sure your application requirements match the gazetteer's capabilities.
+The `gazetteer_name` parameter sets the geographic database to search. The gazetteer must be installed on your system. Each gazetteer has different coverage and different attribute schemas. Make sure that the gazetteer satisfies the requirements of your application.
 
-The `min_similarity` threshold controls how confident the resolver must be before accepting a match. Higher thresholds reduce false positives but may leave more toponyms unresolved. Lower thresholds resolve more toponyms but may introduce incorrect matches. If no candidates meet this threshold, the toponym remains unresolved (preserving precision over recall).
+The `min_similarity` threshold sets how confident the resolver must be before it accepts a match. A higher threshold gives fewer false positives, but more toponyms stay unresolved. A lower threshold resolves more toponyms, but it can add incorrect matches. If no candidate reaches the threshold, the toponym stays unresolved. Thus the resolver prefers precision to recall.
 
-The `max_tiers` parameter controls how aggressively the resolver searches for candidates. The resolver uses an iterative strategy starting with exact string matching and progressively relaxing to phrase matching, partial matching, and fuzzy matching. For each search method, it ranks results by relevance and groups them into tiers. The `max_tiers` parameter determines how many of these tiers to include—higher values mean the resolver expands its search to include more potential candidates, which can help resolve difficult toponyms but increases processing time.
+The `max_tiers` parameter sets how widely the resolver searches for candidates. The resolver uses an iterative strategy. It starts with exact string matching. Then it uses phrase matching, partial matching, and fuzzy matching. For each search method, it ranks the results by relevance and puts them into tiers. `max_tiers` sets how many of these tiers the resolver includes. A higher value gives more possible candidates. This can help to resolve difficult toponyms, but it increases the processing time.
 
-The `attribute_map` parameter tells the resolver how to read the gazetteer's attributes. Before comparing a candidate place against the text, this resolver describes the candidate in words — "Paris (city) in Île-de-France, France" — and since every gazetteer names its attributes differently, it needs to be told which ones that sentence is built from. The resolver already knows the mapping for GeoNames and SwissNames3D, so it only has to be passed for a gazetteer of your own:
+The `attribute_map` parameter tells the resolver how to read the attributes of the gazetteer. Before the resolver compares a candidate with the text, it describes the candidate in words, for example "Paris (city) in Île-de-France, France". Each gazetteer uses different names for its attributes. Thus the resolver must know which attributes to use for the sentence. The resolver already knows the mapping for GeoNames and SwissNames3D. Give the parameter only for a gazetteer that you made yourself:
 
 ``` python
 from geoparser.modules import SentenceTransformerResolver
@@ -167,7 +167,7 @@ resolver = SentenceTransformerResolver(
 )
 ```
 
-The values are keys of your gazetteer's `data` dictionary, and which keys exist is decided when the gazetteer is configured (see [custom gazetteers](custom-gazetteers.md)). `name` and `type` are both required. The administrative levels are optional, with `level1` the outermost enclosing place and `level3` the innermost; supply only as many as your data supports. A gazetteer of ancient places, for example, may have nothing above the Roman province a place falls in:
+The values are keys of the `data` dictionary of your gazetteer. The configuration of the gazetteer sets which keys exist (refer to [custom gazetteers](custom-gazetteers.md)). `name` and `type` are required. The administrative levels are optional. `level1` is the outermost enclosing place and `level3` is the innermost. Give only as many levels as your data has. For example, a gazetteer of ancient places can have nothing above the Roman province of a place:
 
 ``` python
 resolver = SentenceTransformerResolver(
@@ -180,17 +180,17 @@ resolver = SentenceTransformerResolver(
 )
 ```
 
-That map describes a candidate as "Pompeii (settlement, urban area) in Italia". Keys that are missing from a feature's `data` are left out of its description rather than failing, so a mapping may name an attribute that only some of your features carry.
+This map describes a candidate as "Pompeii (settlement, urban area) in Italia". If a key is not in the `data` of a feature, the resolver omits it from the description and does not fail. Thus a mapping can name an attribute that only some of your features have.
 
-Bear in mind that the pre-trained models are fine-tuned on GeoNames-style descriptions. Against a gazetteer whose vocabulary is very different, expect to lower `min_similarity` and, for the best results, to fine-tune a resolver of your own on data annotated with that gazetteer's features — see [training](training.md).
+Note that the developers fine-tuned the pre-trained models on GeoNames-style descriptions. If the vocabulary of your gazetteer is very different, lower `min_similarity`. For the best results, fine-tune your own resolver on data that is annotated with the features of that gazetteer. Refer to [training](training.md).
 
-The SentenceTransformerResolver works best when place names have distinctive contexts that help disambiguate them. For example, "I visited the Eiffel Tower in Paris" provides strong contextual clues. Short texts with minimal context or lists of place names without surrounding text present more challenging scenarios where the resolver may struggle.
+The SentenceTransformerResolver works best when place names have distinctive contexts. For example, "I visited the Eiffel Tower in Paris" gives strong clues. Short texts with little context are more difficult. Lists of place names without surrounding text are also more difficult. The resolver can fail in these cases.
 
 ## Creating Custom Recognizers
 
-You can create custom recognizers by implementing the `Recognizer` interface. A recognizer is a class that inherits from `Recognizer` and implements a `predict()` method that takes a list of texts and returns predictions for each text.
+To make a custom recognizer, implement the `Recognizer` interface. A recognizer is a class that inherits from `Recognizer`. It implements a `predict()` method. The method takes a list of texts and returns the predictions for each text.
 
-The basic structure of a custom recognizer looks like this:
+This is the basic structure of a custom recognizer:
 
 ``` python
 import typing as t
@@ -213,11 +213,11 @@ class MyCustomRecognizer(Recognizer):
         pass
 ```
 
-The `NAME` class attribute provides a human-readable identifier for your recognizer. The `__init__` method should call the parent initializer with any configuration parameters as keyword arguments. These parameters are automatically stored in the module's configuration and used to generate its unique ID.
+The `NAME` class attribute gives a name that a person can read for your recognizer. The `__init__` method must call the parent initializer. Give the configuration parameters as keyword arguments. The library stores these parameters in the configuration of the module and uses them to make its unique ID.
 
-The `predict()` method receives a list of document texts and must return a list of the same length. For each document, return either a list of `(start, end)` tuples representing the character positions of identified place names, or `None` if your recognizer cannot process that particular document (for example, if it's in an unsupported language).
+The `predict()` method receives a list of document texts. It must return a list of the same length. For each document, return one of two values. Return a list of `(start, end)` tuples with the character positions of the place names that the recognizer found. Or return `None` if the recognizer cannot process that document, for example if the document is in an unsupported language.
 
-Here's a complete example of a simple regex-based recognizer:
+This is a complete example of a simple recognizer that uses regular expressions:
 
 ``` python
 import typing as t
@@ -261,7 +261,7 @@ class RegexRecognizer(Recognizer):
         return results
 ```
 
-You can use this custom recognizer just like the built-in ones:
+You can use this custom recognizer in the same way as the built-in recognizers:
 
 ``` python
 from geoparser import Project
@@ -279,13 +279,13 @@ project.create_documents(["I traveled from France to Germany."])
 project.run_recognizer(recognizer)
 ```
 
-When implementing custom recognizers, ensure that the `(start, end)` positions correspond to actual character offsets in the text and that they align with token or entity boundaries when possible. Overlapping references can be problematic for downstream processing, so consider removing or merging them in your implementation.
+When you implement a custom recognizer, make sure that the `(start, end)` positions are real character offsets in the text. When possible, align them with token boundaries or entity boundaries. Overlapping references can cause problems in later processing. Remove or merge them in your implementation.
 
 ## Creating Custom Resolvers
 
-Custom resolvers follow a similar pattern but implement the `Resolver` interface instead. A resolver takes texts and reference positions as input and returns resolved referents (gazetteer name and identifier pairs) for each reference.
+A custom resolver follows the same pattern, but it implements the `Resolver` interface. A resolver takes texts and reference positions as input. It returns the resolved referents (pairs of gazetteer name and identifier) for each reference.
 
-The basic structure of a custom resolver:
+This is the basic structure of a custom resolver:
 
 ``` python
 import typing as t
@@ -308,9 +308,9 @@ class MyCustomResolver(Resolver):
         pass
 ```
 
-The `predict()` method receives two lists: `texts` contains the document texts, and `references` contains the reference positions for each document. The method must return a nested list with the same structure as `references`, where each element is either a `(gazetteer_name, identifier)` tuple pointing to a feature in the gazetteer, or `None` if that reference could not be resolved.
+The `predict()` method receives two lists. `texts` has the document texts. `references` has the reference positions for each document. The method must return a nested list with the same structure as `references`. Each element is a `(gazetteer_name, identifier)` tuple that points to a feature in the gazetteer. If the resolver cannot resolve the reference, the element is `None`.
 
-Resolvers typically interact with gazetteers to find candidate locations. The library provides the `Gazetteer` class for this purpose:
+Resolvers usually use gazetteers to find candidate locations. The library has the `Gazetteer` class for this task:
 
 ``` python
 import typing as t
@@ -359,13 +359,13 @@ class PopulationResolver(Resolver):
         return results
 ```
 
-The `Gazetteer` class provides two main methods for retrieving candidates. The `search()` method takes a place name string and returns matching features using the specified search method (`"exact"`, `"phrase"`, `"partial"`, or `"fuzzy"`). The `find()` method looks up a feature by its identifier. See the `gazetteers` guide for more details on working with gazetteers.
+The `Gazetteer` class has two main methods to get candidates. The `search()` method takes a place name string. It returns the matching features for the search method that you specify (`"exact"`, `"phrase"`, `"partial"`, or `"fuzzy"`). The `find()` method looks up a feature by its identifier. Refer to the `gazetteers` guide for more information.
 
-When implementing custom resolvers, always handle the case where no candidates are found by returning `None` for that reference. Make sure the returned structure exactly matches the input `references` structure—each document should have the same number of results as it has references, and they should be in the same order.
+When you implement a custom resolver, always handle the case with no candidates. Return `None` for that reference. Make sure that the returned structure is exactly the same as the `references` structure. Each document must have the same number of results as references, in the same order.
 
 ## Making Modules Trainable
 
-If you want your custom modules to be trainable, implement a `fit()` method with the appropriate interface. For recognizers, the `fit()` method should accept texts and reference positions:
+To make a custom module trainable, implement a `fit()` method with the correct interface. For recognizers, the `fit()` method must accept texts and reference positions:
 
 ``` python
 def fit(
@@ -376,7 +376,7 @@ def fit(
     pass
 ```
 
-For resolvers, the `fit()` method should additionally accept referents:
+For resolvers, the `fit()` method must also accept referents:
 
 ``` python
 def fit(
@@ -391,4 +391,4 @@ def fit(
     pass
 ```
 
-The `fit()` method can accept additional keyword arguments for training parameters like learning rate, batch size, or number of epochs. Once implemented, your custom modules can be trained using the project-level training methods described in the [training](training.md) guide.
+The `fit()` method can accept more keyword arguments for training parameters, such as the learning rate, the batch size, or the number of epochs. After you implement the method, you can train your custom modules with the project-level training methods. Refer to the [training](training.md) guide.
