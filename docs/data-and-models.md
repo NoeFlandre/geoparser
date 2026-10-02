@@ -1,36 +1,21 @@
 # Data and models
 
-The source repository contains code, small deterministic fixtures, and public
-configuration examples. Large gazetteers and model checkpoints are runtime
-artifacts: they are downloaded explicitly, cached outside the repository, and
-never silently committed.
+The source repository contains code, small deterministic fixtures, and public configuration examples. Large gazetteers and model checkpoints are runtime artifacts. You download them explicitly. The library caches them outside the repository. Nobody commits them silently.
 
 ## Gazetteers
 
-Install a pre-configured gazetteer with the CLI, for example
-`geoparser install geonames`. Custom gazetteers are described in the
-[custom gazetteers guide](guides/custom-gazetteers.md). The resulting artifact
-is a self-contained SQLite file stored in the platform data directory.
+To install a pre-configured gazetteer, use the CLI. For example, use `geoparser install geonames`. The [custom gazetteers guide](guides/custom-gazetteers.md) describes custom gazetteers. The result is a self-contained SQLite file. The library stores it in the platform data directory.
 
 ## Model checkpoints
 
-The built-in modules fetch their declared checkpoints from their upstream model
-registries. The exact model and configuration are part of a module's identity,
-so changing either produces a separately identifiable result set. Model
-downloads are not required for unit tests; integration tests should use a
-fixture or an explicitly provisioned cache.
+The built-in modules get their declared checkpoints from the upstream model registries. The exact model and the configuration are part of the identity of a module. If you change one of them, you get a separately identifiable result set. The unit tests do not need model downloads. The integration tests must use a fixture or an explicitly provisioned cache.
 
 ## Hugging Face provenance
 
-Hugging Face is used as an upstream registry for model checkpoints and may be
-used for project-owned datasets or models when a release requires it. Any
-future publication must record the repository identifier, revision, license,
-schema, and generation command in the release documentation before upload.
-This repository currently has no project-owned artifact authorized for an
-automatic upload, so the quality gate does not publish data or model files.
+Hugging Face is an upstream registry for model checkpoints. The project can also use it for project-owned datasets or models when a release needs it. Before you upload, record these items in the release documentation: the repository identifier, the revision, the license, the schema, and the generation command.
+
+This repository has no project-owned artifact that is authorized for automatic upload. Therefore the quality gate does not publish data files or model files.
 
 ## Reproducibility
 
-Prefer locked dependencies, deterministic fixtures, explicit schemas, golden
-outputs, and seeded replay. Large external resources should be versioned by
-their upstream revision or checksum rather than copied into source control.
+Use locked dependencies, deterministic fixtures, explicit schemas, golden outputs, and seeded replay. Version large external resources by their upstream revision or checksum. Do not copy them into source control.
