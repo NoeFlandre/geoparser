@@ -1,12 +1,12 @@
 # Installation
 
-Setting up the Irchel Geoparser takes two steps: installing the Python package, and installing a gazetteer for it to resolve place names against. Both are covered here, and you need both before you can parse anything.
+To set up the Irchel Geoparser, do two steps. First, install the Python package. Then install a gazetteer. The resolver uses the gazetteer to resolve place names. This page describes both steps. You need both before you can parse a text.
 
-The package needs **Python 3.10 or newer** and about **3 GB of disk space**, most of which is PyTorch. A gazetteer needs considerably more, and how much depends on which one you choose.
+The package needs **Python 3.10 or newer** and about **3 GB of disk space**. PyTorch uses most of this space. A gazetteer needs much more space. The quantity depends on the gazetteer that you choose.
 
 ## Installing the Package
 
-We recommend installing into a virtual environment, so that the library and its dependencies cannot disturb anything else on your machine.
+We recommend that you install into a virtual environment. The library and its dependencies then cannot change anything else on your machine.
 
 === "macOS / Linux"
 
@@ -36,11 +36,11 @@ We recommend installing into a virtual environment, so that the library and its 
     pip install geoparser
     ```
 
-The install downloads roughly 3 GB and takes a few minutes. A quiet pause while pip resolves versions is normal.
+The installation downloads about 3 GB and takes a few minutes. While pip resolves the versions, a quiet pause is normal.
 
-Once the environment is activated your prompt starts with `(geoparser-env)`. The environment is active only in that terminal, so activate it again in any new one — that is the usual explanation for a `ModuleNotFoundError: No module named 'geoparser'` after a successful install. Run `deactivate` to leave it.
+When the environment is active, your prompt starts with `(geoparser-env)`. The environment is active in that terminal only. Activate it again in each new terminal. If you do not, you can get the error `ModuleNotFoundError: No module named 'geoparser'` after a successful installation. To leave the environment, run `deactivate`.
 
-To confirm the package is installed and reachable:
+To make sure that the package is installed and available, run this command:
 
 ``` bash
 geoparser list
@@ -50,65 +50,65 @@ geoparser list
 No gazetteers installed.
 ```
 
-That is expected at this point: the package is installed, but there is no gazetteer yet.
+This output is correct at this point. The package is installed, but there is no gazetteer yet.
 
 ## Installing a Gazetteer
 
-A geoparser answers two questions about a text: which words are place names, and which places those names refer to. The Irchel Geoparser answers the second by choosing from the entries of a **gazetteer** — a database of places with their names, coordinates, and attributes. Recognizing that "Springfield" is a place name takes only the text, but deciding *which* Springfield it is, and attaching coordinates to it, means picking from a set of candidate places.
+A geoparser answers two questions about a text. Which words are place names? Which places do these names refer to? The Irchel Geoparser answers the second question with a **gazetteer**. A gazetteer is a database of places with their names, coordinates, and attributes. The resolver selects from the entries of the gazetteer. To recognize that "Springfield" is a place name, you need only the text. To decide which Springfield it is, and to give it coordinates, you must select from a set of candidate places.
 
-So a gazetteer is a required part of the setup here. It is not the only conceivable design — some approaches predict coordinates directly from the text, without a set of candidates — but it is the design in this library, and nothing will resolve until you have installed one.
+Therefore a gazetteer is a required part of the setup. Some approaches predict coordinates directly from the text. They do not use a set of candidates. This library does not use this design. Nothing resolves until you install a gazetteer.
 
-Gazetteers are large, they come from third parties under their own licences, and which one you want depends on what you are studying, so none is included with the package. You install one yourself, once, with a single command.
+Gazetteers are large. They come from third parties and have their own licences. The best gazetteer depends on what you study. For these reasons, the package does not include a gazetteer. You install one yourself. You do this once with one command.
 
 ### Choosing One
 
-The library includes ready-made configurations for two gazetteers, so either can be installed without writing one. **GeoNames** is the one to install unless you have a specific reason not to: it is global, it covers all kinds of places, and it is what the library's default models are tuned for. **SwissNames3D** is worth choosing if your material is Swiss, because it describes that one country in far more detail than GeoNames does. You can install both and choose between them per resolver; they do not interfere with each other.
+The library has ready-made configurations for two gazetteers. You can install either of them without a configuration of your own. Install **GeoNames** unless you have a specific reason not to. It is global and it covers all types of places. The default models of the library are tuned for it. Choose **SwissNames3D** if your material is Swiss. It describes that one country in much more detail than GeoNames. You can install both. You choose between them for each resolver. They do not affect each other.
 
 === "GeoNames"
 
-    **The recommended choice.** A global gazetteer of over 13 million names, covering countries, administrative divisions, cities, towns, neighbourhoods, natural features such as mountains and rivers, and points of interest such as buildings and monuments. The library's default resolver models are fine-tuned against it, so it is what everything else in this documentation assumes.
+    **The recommended choice.** A global gazetteer with more than 13 million names. It covers countries, administrative divisions, cities, towns, and neighbourhoods. It also covers natural features, such as mountains and rivers, and points of interest, such as buildings and monuments. The default resolver models of the library are fine-tuned on it. This documentation assumes it everywhere.
 
     - **Website**: [geonames.org](https://www.geonames.org/)
     - **Licence**: CC BY 4.0
     - **Coverage**: Global, all place types
-    - **Disk space**: **30.7 GB free needed during install**; the installed file is about **10.2 GB**
-    - **Install time**: about **10–15 minutes**, depending on hardware and network
+    - **Disk space**: **30.7 GB of free space is necessary during the installation**. The installed file is about **10.2 GB**.
+    - **Installation time**: about **10 to 15 minutes**. The time depends on the hardware and the network.
 
     ```bash
     geoparser install geonames
     ```
 
-    Coverage varies by region — some parts of the world are described in far more detail than others.
+    The coverage is different in different regions. Some parts of the world have much more detail than others.
 
 === "SwissNames3D"
 
-    **For Swiss material.** The official Swiss placename register from Swisstopo, the Federal Office of Topography. Much finer-grained than GeoNames within Switzerland, with detailed feature classifications and full geometries — points, lines, and polygons — and each feature linked to its municipality, district, and canton.
+    **For Swiss material.** The official register of Swiss place names from Swisstopo, the Federal Office of Topography. In Switzerland, it is much more detailed than GeoNames. It has detailed feature classifications and full geometries (points, lines, and polygons). Each feature is linked to its municipality, district, and canton.
 
     - **Website**: [Swisstopo SwissNames3D](https://www.swisstopo.admin.ch/en/landscape-model-swissnames3d)
     - **Coverage**: Switzerland only
-    - **Disk space**: **3.5 GB free needed during install**; the installed file is about **0.7 GB**
-    - **Install time**: about **1–2 minutes**
+    - **Disk space**: **3.5 GB of free space is necessary during the installation**. The installed file is about **0.7 GB**.
+    - **Installation time**: about **1 to 2 minutes**
 
     ```bash
     geoparser install swissnames3d
     ```
 
-    Attribute names are in German (`NAME`, `OBJEKTART`, `KANTON_NAME`). Note that the default resolver models were trained on English text against GeoNames, so expect to lower `min_similarity` and, ideally, to fine-tune — see [training modules](guides/training.md).
+    The attribute names are in German (`NAME`, `OBJEKTART`, `KANTON_NAME`). The default resolver models trained on English text against GeoNames. Therefore, decrease `min_similarity`. If possible, fine-tune the model. Read [training modules](guides/training.md).
 
-If you work on a region, a period, or a domain that neither covers, you can build a gazetteer from your own data — see [custom gazetteers](guides/custom-gazetteers.md).
+If you work on a region, a period, or a domain that neither gazetteer covers, build a gazetteer from your own data. Read [custom gazetteers](guides/custom-gazetteers.md).
 
 ### Running the Install
 
-Taking GeoNames as the example:
+This example uses GeoNames:
 
 ``` bash
 geoparser install geonames
 ```
 
-The command downloads the source data, transforms it, and builds a single self-contained file. It reports three stages:
+The command downloads the source data and transforms it. It builds one self-contained file. It reports three stages:
 
 ``` text
-─────────────────────────────────── geonames ───────────────────────────────────
+─────────────────────────────────── geonames ────────────────────────────────────
 
 Prepared sources                          ━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:08:42
 Compiled features                         ━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:03:11
@@ -120,13 +120,13 @@ Features  13,041,196
 Names     19,483,772
 ```
 
-When the summary prints, the gazetteer is installed and ready to use.
+When the summary prints, the gazetteer is installed and ready.
 
-The build needs considerably more disk space than the finished file occupies, because the source data is staged before being compacted; free space is checked before the build starts, and the intermediate files are deleted when it finishes. It also needs about 4 GB of RAM, so closing other heavy applications helps. If a build fails, any previously installed gazetteer of the same name is left as it was, so it is safe to simply run the command again.
+The build needs much more disk space than the finished file. The command stages the source data before it makes the file smaller. Before the build starts, the command checks the free space. When the build ends, the command deletes the intermediate files. The build also needs about 4 GB of RAM. Close other heavy applications. If a build fails, the command leaves a previously installed gazetteer with the same name as it was. It is safe to run the command again.
 
-If the gazetteer is already installed, `install` says so and stops; pass `--force` to rebuild it anyway. `--keep-downloads` keeps the downloaded source files (under the data directory's `.downloads` folder) so that a later rebuild does not fetch them again. An unknown name exits with status 2 and lists the built-in gazetteers; a failed build prints one line and exits with status 1, and `--verbose` shows the full traceback.
+If the gazetteer is already installed, `install` tells you and stops. To rebuild it, add `--force`. The option `--keep-downloads` keeps the downloaded source files in the `.downloads` folder of the data directory. A later rebuild then does not download them again. An unknown name makes the command exit with status 2 and list the built-in gazetteers. A failed build prints one line and exits with status 1. Add `--verbose` to see the full traceback.
 
-Once a gazetteer is installed, `list` reports it with its size on disk:
+After you install a gazetteer, `list` shows it with its size on disk:
 
 ``` bash
 geoparser list
@@ -136,7 +136,7 @@ geoparser list
 geonames  (9700.7 MB)
 ```
 
-Sizes shift as the upstream data is updated, so treat that as indicative. To remove one you no longer need:
+The size changes when the upstream data changes. Use the size only as an indication. To remove a gazetteer that you no longer need, run this command:
 
 ``` bash
 geoparser uninstall geonames
@@ -147,11 +147,11 @@ Remove gazetteer 'geonames'? [y/N]: y
 Removed gazetteer 'geonames'.
 ```
 
-Pass `--yes` to skip the confirmation, for example in scripts.
+To skip the confirmation, for example in scripts, add `--yes`.
 
 ### Checking the Gazetteer
 
-To confirm the gazetteer is queryable before writing any pipeline code:
+Before you write pipeline code, make sure that you can query the gazetteer:
 
 ``` python
 from geoparser import Gazetteer
@@ -171,23 +171,23 @@ for feature in results[:3]:
   Paris | Armenia
 ```
 
-Both the number of results and the absence of the French capital from the top of the list are expected. Place names are ambiguous, and GeoNames records 122 distinct places called Paris; `search()` returns all of them in no particular order, since it has no notion of which is the most prominent. Choosing between candidates like these, using the context a name appeared in, is the job of a resolver — the subject of [concepts](concepts.md).
+The number of results is correct. It is also correct that the French capital is not at the top of the list. Place names are ambiguous. GeoNames has 122 different places with the name Paris. `search()` returns all of them in no specific order. It does not know which place is the most prominent. A resolver selects between candidates like these. It uses the context of the name. The [concepts](concepts.md) page describes this.
 
-The setup is now complete, and you can parse your first text in the [quickstart](quickstart.md). The remaining sections on this page are optional.
+The setup is now complete. Parse your first text in the [quickstart](quickstart.md). The other sections on this page are optional.
 
 ## Using a GPU
 
-Everything in this documentation works on a CPU. If you have an NVIDIA GPU, recognition and resolution run substantially faster on it, and the PyTorch build that `pip` selects on Linux and Windows is normally CUDA-enabled already. To check that your GPU is visible:
+Everything in this documentation works on a CPU. If you have an NVIDIA GPU, recognition and resolution run much faster on it. On Linux and Windows, the PyTorch build that `pip` selects normally has CUDA enabled. To make sure that your GPU is visible, run this command:
 
 ``` bash
 python -c "import torch; print(torch.cuda.is_available())"
 ```
 
-If that prints `False` and you do have a compatible card, reinstall PyTorch following the instructions for your CUDA version on the PyTorch [Get Started](https://pytorch.org/get-started/locally/) page. On Apple Silicon, PyTorch uses the Metal backend and no extra step is needed.
+If the command prints `False` and you have a compatible card, install PyTorch again. Follow the instructions for your CUDA version on the PyTorch [Get Started](https://pytorch.org/get-started/locally/) page. On Apple Silicon, PyTorch uses the Metal backend. No extra step is necessary.
 
 ## Working in Jupyter
 
-Install Jupyter into the same environment, otherwise the notebook runs against a different Python and will not find the library:
+Install Jupyter into the same environment. If you do not, the notebook runs with a different Python and does not find the library:
 
 ``` bash
 pip install jupyter
@@ -201,11 +201,11 @@ python -m ipykernel install --user --name geoparser-env --display-name "Python (
 jupyter lab
 ```
 
-Then choose the "Python (geoparser)" kernel. `import sys; print(sys.executable)` inside the notebook should print a path inside `geoparser-env`.
+Then select the "Python (geoparser)" kernel. In the notebook, `import sys; print(sys.executable)` must print a path inside `geoparser-env`.
 
 ## Where Data Is Stored
 
-Gazetteers and project data are kept outside your working directory, in your operating system's standard location for application data:
+The library keeps gazetteers and project data outside your working directory. It uses the standard location for application data of your operating system:
 
 | Platform    | Location                                       |
 |-------------|------------------------------------------------|
@@ -213,16 +213,16 @@ Gazetteers and project data are kept outside your working directory, in your ope
 | **macOS**   | `~/Library/Application Support/geoparser/`     |
 | **Linux**   | `~/.local/share/geoparser/`                    |
 
-Each gazetteer is one self-contained file under `gazetteers/`, and your projects, documents, and results live separately in `geoparser.db`. Because they are separate, reinstalling a gazetteer does not touch your projects, and deleting a project does not affect your gazetteers. A gazetteer can also be backed up or moved between machines by copying its file.
+Each gazetteer is one self-contained file under `gazetteers/`. Your projects, documents, and results are separate. They are in `geoparser.db`. Because they are separate, if you install a gazetteer again, your projects do not change. If you delete a project, your gazetteers do not change. To back up a gazetteer or to move it to another machine, copy its file.
 
-To store application data somewhere else, set `GEOPARSER_DATA_DIR` to the base directory before installing gazetteers or starting the application:
+To store application data in a different place, set `GEOPARSER_DATA_DIR` to the base directory. Do this before you install gazetteers or start the application:
 
 ```bash
 export GEOPARSER_DATA_DIR=/path/to/geoparser-data
 python -m geoparser install geonames
 ```
 
-Gazetteer artifacts are stored in `gazetteers/`, the project database in `geoparser.db`, and the annotator database in `annotator/annotator.db`, all beneath that directory. The variable is read when a database engine is first used, so set it before starting the process. `GEOPARSER_GAZETTEERS_DIR` can still override only the gazetteer directory.
+The library stores the gazetteer artifacts in `gazetteers/`. It stores the project database in `geoparser.db`. It stores the annotator database in `annotator/annotator.db`. All of them are in that directory. The library reads the variable when a database engine is first used. Set it before you start the process. `GEOPARSER_GAZETTEERS_DIR` can still override the gazetteer directory only.
 
 ## Upgrading
 
@@ -231,6 +231,6 @@ pip install --upgrade geoparser
 ```
 
 > [!WARNING]
-> The database format is not yet stable between releases. If you upgrade and your project database was written by an older version, the library will refuse to open it and tell you so. There is no automatic migration yet: you will need to delete `geoparser.db`, which loses stored projects and results. Export anything you want to keep first — see [working with results](guides/results.md).
+> The database format is not stable between releases. Your project database can be from an older version. In this case, the library refuses to open it and tells you. There is no automatic migration yet. You must delete `geoparser.db`. This deletes the stored projects and results. Export all data that you want to keep before you delete it. Read [working with results](guides/results.md).
 
-To remove everything, delete the environment folder, and the data directory above if you want the gazetteers and projects gone as well. Nothing is installed anywhere else.
+To remove everything, delete the environment folder. To remove the gazetteers and projects also, delete the data directory above. The library installs nothing in other places.

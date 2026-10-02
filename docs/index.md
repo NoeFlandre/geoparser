@@ -1,8 +1,8 @@
 # Irchel Geoparser
 
-The **Irchel Geoparser** finds place names in text and links them to places in a geographic database.
+The **Irchel Geoparser** finds place names in text. It links the names to places in a geographic database.
 
-Give it a sentence, a document, or a corpus, and it returns the place names it found, each one linked where possible to an entry in a **gazetteer** — a database of places. What that entry tells you depends on the gazetteer, but usually includes coordinates and attributes such as the kind of place it is and the administrative units it belongs to. That turns prose into data you can map, count, and join to anything else.
+Give it a sentence, a document, or a corpus. It returns the place names that it found. Where possible, it links each name to an entry in a **gazetteer**. A gazetteer is a database of places. The information in an entry depends on the gazetteer. It usually includes coordinates. It also includes attributes, such as the type of the place and the administrative units that contain it. Thus the library changes prose into data. You can map the data, count it, and join it to other data.
 
 ``` python
 from geoparser import Geoparser
@@ -31,34 +31,34 @@ Geneva → Geneva, Switzerland (46.20222, 6.14569)
 Basel → Basel, Switzerland (47.55839, 7.57327)
 ```
 
-Each name here has been tied to one specific entry in GeoNames, so besides the name and coordinates printed above you also have a stable identifier for the place, what kind of place it is, the administrative units it belongs to, and a geometry you can map, measure, or export.
+The library links each name to one specific entry in GeoNames. You get the name and the coordinates, as shown above. You also get a stable identifier for the place and the type of the place. You get the administrative units that contain the place. You also get a geometry. You can use the geometry to map, measure, or export the place.
 
-Start with [installation](installation.md), then parse your first text in the [quickstart](quickstart.md). The [demo](demo.md) maps every place mentioned in Jules Verne's *Around the World in Eighty Days*.
+First read the [installation](installation.md) page. Then parse your first text in the [quickstart](quickstart.md). The [demo](demo.md) maps every place in the book *Around the World in Eighty Days* by Jules Verne.
 
-See the [benchmark results](https://huggingface.co/datasets/NoeFlandre/geoparser-benchmark-results) for measured resolver performance across English and multilingual corpora.
+The [benchmark results](https://huggingface.co/datasets/NoeFlandre/geoparser-benchmark-results) show the measured resolver performance on English and multilingual corpora. The [glossary](glossary.md) defines the project terms.
 
 ## What It Does
 
-Geoparsing is conventionally split into two stages, and this library keeps them separate. A **recognizer** finds which words in a text are place names; a **resolver** then decides which place each name refers to, choosing from the entries of a gazetteer. That second step is the hard one — GeoNames records 122 places called Paris and 291 called Springfield — and it is why installing a gazetteer is part of setting the library up.
+Geoparsing has two stages. The library keeps the two stages separate. A **recognizer** finds the words in a text that are place names. A **resolver** then selects the place that each name refers to. The resolver selects the place from the entries of a gazetteer. The second stage is the difficult one. GeoNames has 122 places with the name Paris and 291 places with the name Springfield. For this reason, you must install a gazetteer to set up the library.
 
-You supply the recognizer, the resolver, and the gazetteer explicitly, and each can be exchanged for another. That is the library's central design decision, and most of what the library can do follows from it. A recognizer that finds place names with a statistical model can be replaced by one that takes spans you supply yourself; either module can be pointed at a different underlying model; either can be fine-tuned on your own annotated data for a particular language, period, or domain; and you can write a module of your own against a small interface. Results from several such pipelines can be kept side by side over the same corpus and compared.
+You supply the recognizer, the resolver, and the gazetteer. You can replace each of them. This is the central design decision of the library. Most of the features come from it. You can replace a recognizer that uses a statistical model with a recognizer that takes spans from you. You can point a module to a different model. You can fine-tune a module on your own annotated data for a language, a period, or a domain. You can also write your own module against a small interface. You can keep the results of several pipelines side by side for the same corpus and compare them.
 
-The two pre-configured gazetteers cover the modern world and Switzerland in detail, and other geographic data — a historical atlas, an excavation catalogue, a national register, your own field data — becomes a gazetteer through a YAML configuration file, with no code to write.
+The two pre-configured gazetteers cover the modern world and Switzerland in detail. Other geographic data can become a gazetteer with a YAML configuration file. Examples are a historical atlas, an excavation catalogue, a national register, or your own field data. You do not write code.
 
-[concepts](concepts.md) explains all of this in more depth, and without code.
+The [concepts](concepts.md) page explains these topics in more detail. It has no code.
 
 ## Project Status
 
-The library is under active development and its architecture is still evolving; while the version remains below 1.0, minor releases may make breaking changes. [ROADMAP.md](https://github.com/NoeFlandre/geoparser/blob/main/ROADMAP.md) describes the larger changes we intend to make.
+The library is in active development. The architecture can still change. While the version is below 1.0, a minor release can include breaking changes. [ROADMAP.md](https://github.com/NoeFlandre/geoparser/blob/main/ROADMAP.md) describes the larger changes that we plan.
 
 ## Contributing
 
-The Irchel Geoparser is open source. Questions, bug reports, and ideas are all welcome on the [issue tracker](https://github.com/NoeFlandre/geoparser/issues), and contributions are welcome too — see [CONTRIBUTING.md](https://github.com/NoeFlandre/geoparser/blob/main/CONTRIBUTING.md).
+The Irchel Geoparser is open source. We welcome questions, bug reports, and ideas on the [issue tracker](https://github.com/NoeFlandre/geoparser/issues). We also welcome contributions. Read [CONTRIBUTING.md](https://github.com/NoeFlandre/geoparser/blob/main/CONTRIBUTING.md).
 
 ## Acknowledgments
 
-The Irchel Geoparser originated as part of Diego Gomes' Master's thesis and was further developed with support from the [Department of Geography](https://www.geo.uzh.ch/) at the University of Zurich and the [Public Data Lab](https://publicdatalab.ch/) of the Digitalization Initiative of the Zurich Higher Education Institutions. We thank Prof. Dr. Ross Purves for the opportunity to continue this work as part of a research project.
+Diego Gomes started the Irchel Geoparser as part of his Master's thesis. The [Department of Geography](https://www.geo.uzh.ch/) at the University of Zurich and the [Public Data Lab](https://publicdatalab.ch/) of the Digitalization Initiative of the Zurich Higher Education Institutions supported the further development. We thank Prof. Dr. Ross Purves. He gave us the opportunity to continue this work in a research project.
 
 ## License
 
-The Irchel Geoparser is released under the [MIT License](https://github.com/NoeFlandre/geoparser/blob/main/LICENSE). It depends on a number of third-party libraries, listed in [pyproject.toml](https://github.com/NoeFlandre/geoparser/blob/main/pyproject.toml). Each is distributed separately under its own license, which pip installs alongside it.
+The Irchel Geoparser has the [MIT License](https://github.com/NoeFlandre/geoparser/blob/main/LICENSE). It uses a number of third-party libraries. [pyproject.toml](https://github.com/NoeFlandre/geoparser/blob/main/pyproject.toml) lists them. Each library has its own license. pip installs each library with its license.

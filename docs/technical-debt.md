@@ -1,43 +1,33 @@
 # Technical debt
 
-Known limitations are documented here instead of hidden behind quality
-metrics. Each item has a reason and a cleanup direction.
+This page lists the known limits. We do not hide them behind quality metrics. Each item has a reason and a cleanup direction.
 
 ## Database migration support
 
-The database schema is not yet stable across releases, and there is no
-automatic migration. Upgrading may require exporting results and recreating
-the local database. The intended cleanup path is a versioned migration layer
-with fixture-backed upgrade tests before the project reaches 1.0.
+The database schema is not stable between releases. There is no automatic migration. To upgrade, you can need to export the results and create the local database again.
+
+The cleanup path is a versioned migration layer. It will have upgrade tests that use fixtures. We will add it before the project reaches 1.0.
 
 ## Model and gazetteer availability
 
-Some integration paths require large third-party model checkpoints or
-gazetteers. They are intentionally not bundled with the package because of
-size, licensing, and update cadence. The cleanup path is a documented,
-versioned fixture/cache contract for CI and a small offline test artifact for
-each supported module family.
+Some integration paths need large third-party model checkpoints or gazetteers. The package does not include them. The reasons are size, licensing, and update frequency.
+
+The cleanup path is a documented and versioned fixture and cache contract for CI. We will also add a small offline test artifact for each supported module family.
 
 ## Annotator boundary
 
-The annotator is a standalone tool with its own database and an import/export
-boundary. It predates the current project architecture and may be replaced.
-The cleanup path is to stabilize the JSON interchange schema first, then
-decide whether the UI should be integrated or retired.
+The annotator is a standalone tool. It has its own database and an import and export boundary. It is older than the current project architecture. We can replace it.
+
+The cleanup path is to make the JSON interchange schema stable first. Then we decide if we integrate the user interface or remove it.
 
 ## Public API evolution
 
-The package remains below 1.0, so minor releases may contain breaking changes.
-The cleanup path is to treat the API reference and acceptance scenarios as the
-compatibility contract, then adopt explicit deprecation periods as the API
-settles.
+The package version is below 1.0. A minor release can include breaking changes.
+
+The cleanup path is to use the API reference and the acceptance scenarios as the compatibility contract. Then we will add explicit deprecation periods when the API is stable.
 
 ## Mutation coverage scope
 
-Mutation testing deliberately judges the unit-test surface. Gazetteer build
-mutants and the server-rendered annotator are covered by integration, end-to-end,
-or coverage gates instead because mutating them with full fixtures is currently
-too expensive. The cleanup path is to add small deterministic mutation fixtures
-for those boundaries, then widen the mutation selection without turning the
-quality gate into an unbounded run. The current scope and counts are tracked in
-[`MUTATION_TESTING.md`](https://github.com/NoeFlandre/geoparser/blob/main/MUTATION_TESTING.md).
+Mutation testing judges the unit-test surface only. Integration gates, end-to-end gates, or coverage gates cover the gazetteer build mutants and the server-rendered annotator. It is too expensive now to mutate them with full fixtures.
+
+The cleanup path is to add small deterministic mutation fixtures for those boundaries. Then we will widen the mutation selection. The quality gate must not become an unbounded run. [`MUTATION_TESTING.md`](https://github.com/NoeFlandre/geoparser/blob/main/MUTATION_TESTING.md) tracks the current scope and counts.
