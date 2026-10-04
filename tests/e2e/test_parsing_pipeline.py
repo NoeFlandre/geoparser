@@ -5,6 +5,8 @@ Tests complete end-to-end parsing workflows using real recognizers and resolvers
 Basic API functionality is covered in integration tests.
 """
 
+from types import SimpleNamespace
+
 import pytest
 
 from geoparser.geoparser import Geoparser
@@ -20,6 +22,77 @@ def _all_toponyms(documents):
 def _resolved_toponyms(documents):
     """Collect predicted toponyms that resolved to a gazetteer feature."""
     return [toponym for toponym in _all_toponyms(documents) if toponym.location]
+
+
+def _manual_gazetteer(name: str):
+    """Return a tiny gazetteer object for deterministic resolver fixtures."""
+    return SimpleNamespace(
+        find=lambda identifier: SimpleNamespace(
+            gazetteer_name=name, identifier=identifier
+        )
+    )
+
+
+def _tag_contract(documents):
+    """Shape parsed documents into their exact span and location results."""
+    toponyms = _all_toponyms(documents)
+    return {
+        "spans": tuple(
+            (toponym.start, toponym.end, toponym.text) for toponym in toponyms
+        ),
+        "locations": tuple(
+            None
+            if toponym.location is None
+            else (toponym.location.gazetteer_name, toponym.location.identifier)
+            for toponym in toponyms
+        ),
+    }
+
+
+def _run_manual_context_switching(monkeypatch):
+    """Run recognizers and one resolver in separate project tags."""
+    from geoparser.gazetteer import gazetteer as gazetteer_module
+    from geoparser.modules.recognizers.manual import ManualRecognizer
+    from geoparser.modules.resolvers.manual import ManualResolver
+    from geoparser.services import resolution as resolution_service_module
+
+    monkeypatch.setattr(gazetteer_module, "get_gazetteer", _manual_gazetteer)
+    monkeypatch.setattr(resolution_service_module, "Gazetteer", _manual_gazetteer)
+
+    project = Project("context_switching_test")
+    texts = ["Paris is a beautiful city in France."]
+    paris_span = (0, 5)
+
+    try:
+        project.create_documents(texts)
+        project.run_recognizer(
+            ManualRecognizer(
+                label="broad-fixture", texts=texts, references=[[paris_span]]
+            ),
+            tag="broad",
+        )
+        project.run_recognizer(
+            ManualRecognizer(
+                label="narrow-fixture", texts=texts, references=[[paris_span]]
+            ),
+            tag="narrow",
+        )
+        project.run_resolver(
+            ManualResolver(
+                label="broad-fixture",
+                texts=texts,
+                references=[[paris_span]],
+                referents=[[("manual-gazetteer", "fixture-feature-42")]],
+            ),
+            tag="broad",
+        )
+
+        return {
+            "broad": _tag_contract(project.get_documents(tag="broad")),
+            "narrow": _tag_contract(project.get_documents(tag="narrow")),
+        }
+    finally:
+        project.delete()
 
 
 @pytest.mark.e2e
@@ -180,78 +253,13 @@ class TestCompleteParsingPipeline:
 
     def test_end_to_end_with_context_switching(self, monkeypatch):
         """Keep exact spans and resolver results separate across tagged contexts."""
-        from types import SimpleNamespace
-
-        from geoparser.gazetteer import gazetteer as gazetteer_module
-        from geoparser.modules.recognizers.manual import ManualRecognizer
-        from geoparser.modules.resolvers.manual import ManualResolver
-        from geoparser.services import resolution as resolution_service_module
-
-        class ManualGazetteer:
-            def __init__(self, name: str) -> None:
-                self.name = name
-
-            def find(self, identifier: str) -> SimpleNamespace:
-                return SimpleNamespace(gazetteer_name=self.name, identifier=identifier)
-
-        monkeypatch.setattr(
-            gazetteer_module, "get_gazetteer", lambda name: ManualGazetteer(name)
-        )
-        monkeypatch.setattr(resolution_service_module, "Gazetteer", ManualGazetteer)
-
-        project = Project("context_switching_test")
-        texts = ["Paris is a beautiful city in France."]
-        paris_span = (0, 5)
-
-        try:
-            project.create_documents(texts)
-            project.run_recognizer(
-                ManualRecognizer(
-                    label="broad-fixture", texts=texts, references=[[paris_span]]
-                ),
-                tag="broad",
-            )
-            project.run_recognizer(
-                ManualRecognizer(
-                    label="narrow-fixture", texts=texts, references=[[paris_span]]
-                ),
-                tag="narrow",
-            )
-            project.run_resolver(
-                ManualResolver(
-                    label="broad-fixture",
-                    texts=texts,
-                    references=[[paris_span]],
-                    referents=[[("manual-gazetteer", "fixture-feature-42")]],
-                ),
-                tag="broad",
-            )
-
-            resolved_documents = project.get_documents(tag="broad")
-            unresolved_documents = project.get_documents(tag="narrow")
-
-            assert len(resolved_documents) == 1
-            assert len(unresolved_documents) == 1
-            (resolved,) = resolved_documents[0].toponyms
-            (unresolved,) = unresolved_documents[0].toponyms
-            assert (resolved.start, resolved.end, resolved.text) == (0, 5, "Paris")
-            resolved_location = resolved.location
-            assert resolved_location is not None
-            assert (
-                resolved_location.gazetteer_name,
-                resolved_location.identifier,
-            ) == (
-                "manual-gazetteer",
-                "fixture-feature-42",
-            )
-            assert (unresolved.start, unresolved.end, unresolved.text) == (
-                0,
-                5,
-                "Paris",
-            )
-            assert unresolved.location is None
-        finally:
-            project.delete()
+        assert _run_manual_context_switching(monkeypatch) == {
+            "broad": {
+                "spans": ((0, 5, "Paris"),),
+                "locations": (("manual-gazetteer", "fixture-feature-42"),),
+            },
+            "narrow": {"spans": ((0, 5, "Paris"),), "locations": (None,)},
+        }
 
     def test_batch_processing_with_real_models(
         self,
