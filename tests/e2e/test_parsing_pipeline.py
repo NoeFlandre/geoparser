@@ -178,45 +178,80 @@ class TestCompleteParsingPipeline:
         # Cleanup
         project.delete()
 
-    def test_end_to_end_with_context_switching(
-        self,
-        real_spacy_recognizer,
-        real_sentencetransformer_resolver,
-        andorra_gazetteer,
-    ):
-        """Test workflow that switches between different recognizer/resolver contexts."""
-        # Arrange
+    def test_end_to_end_with_context_switching(self, monkeypatch):
+        """Keep exact spans and resolver results separate across tagged contexts."""
+        from types import SimpleNamespace
+
+        from geoparser.gazetteer import gazetteer as gazetteer_module
+        from geoparser.modules.recognizers.manual import ManualRecognizer
+        from geoparser.modules.resolvers.manual import ManualResolver
+        from geoparser.services import resolution as resolution_service_module
+
+        class ManualGazetteer:
+            def __init__(self, name: str) -> None:
+                self.name = name
+
+            def find(self, identifier: str) -> SimpleNamespace:
+                return SimpleNamespace(gazetteer_name=self.name, identifier=identifier)
+
+        monkeypatch.setattr(
+            gazetteer_module, "get_gazetteer", lambda name: ManualGazetteer(name)
+        )
+        monkeypatch.setattr(resolution_service_module, "Gazetteer", ManualGazetteer)
+
         project = Project("context_switching_test")
         texts = ["Paris is a beautiful city in France."]
+        paris_span = (0, 5)
 
-        project.create_documents(texts)
+        try:
+            project.create_documents(texts)
+            project.run_recognizer(
+                ManualRecognizer(
+                    label="broad-fixture", texts=texts, references=[[paris_span]]
+                ),
+                tag="broad",
+            )
+            project.run_recognizer(
+                ManualRecognizer(
+                    label="narrow-fixture", texts=texts, references=[[paris_span]]
+                ),
+                tag="narrow",
+            )
+            project.run_resolver(
+                ManualResolver(
+                    label="broad-fixture",
+                    texts=texts,
+                    references=[[paris_span]],
+                    referents=[[("manual-gazetteer", "fixture-feature-42")]],
+                ),
+                tag="broad",
+            )
 
-        # Act - Run different recognizers with different entity configurations
-        recognizer1 = SpacyRecognizer(
-            model_name="en_core_web_sm", entity_types=["GPE", "LOC"]
-        )
-        recognizer2 = SpacyRecognizer(model_name="en_core_web_sm", entity_types=["GPE"])
+            resolved_documents = project.get_documents(tag="broad")
+            unresolved_documents = project.get_documents(tag="narrow")
 
-        project.run_recognizer(recognizer1, tag="broad")
-        project.run_recognizer(recognizer2, tag="narrow")
-
-        # Run resolver for broad recognizer configuration
-        project.run_resolver(real_sentencetransformer_resolver, tag="broad")
-
-        # Get documents with different contexts using tags
-        docs_rec1_resolved = project.get_documents(tag="broad")
-        docs_rec2_unresolved = project.get_documents(tag="narrow")
-
-        # Assert
-        assert len(docs_rec1_resolved) == 1
-        assert len(docs_rec2_unresolved) == 1
-
-        # Both recognizers should work
-        assert len(docs_rec1_resolved[0].toponyms) >= 0
-        assert len(docs_rec2_unresolved[0].toponyms) >= 0
-
-        # Cleanup
-        project.delete()
+            assert len(resolved_documents) == 1
+            assert len(unresolved_documents) == 1
+            (resolved,) = resolved_documents[0].toponyms
+            (unresolved,) = unresolved_documents[0].toponyms
+            assert (resolved.start, resolved.end, resolved.text) == (0, 5, "Paris")
+            resolved_location = resolved.location
+            assert resolved_location is not None
+            assert (
+                resolved_location.gazetteer_name,
+                resolved_location.identifier,
+            ) == (
+                "manual-gazetteer",
+                "fixture-feature-42",
+            )
+            assert (unresolved.start, unresolved.end, unresolved.text) == (
+                0,
+                5,
+                "Paris",
+            )
+            assert unresolved.location is None
+        finally:
+            project.delete()
 
     def test_batch_processing_with_real_models(
         self,
