@@ -136,11 +136,13 @@ def test_spacy_is_reported_only_for_english():
         _dataset(),
     )
 
-    assert result["evaluated_examples"] == 1
-    assert result["per_language"]["en"]["status"] == "evaluated"
-    assert result["per_language"]["fr"]["status"] == "not_evaluated_english_only"
-    assert result["per_language"]["fr"]["metrics"] is None
-    assert result["macro"]["f1"] == 1.0
+    assert (
+        result["evaluated_examples"],
+        result["per_language"]["en"]["status"],
+        result["per_language"]["fr"]["status"],
+        result["per_language"]["fr"]["metrics"],
+        result["macro"]["f1"],
+    ) == (1, "evaluated", "not_evaluated_english_only", None, 1.0)
 
 
 def test_spacy_cross_lingual_option_scores_all_languages_and_labels_transfer():
@@ -151,14 +153,14 @@ def test_spacy_cross_lingual_option_scores_all_languages_and_labels_transfer():
         spacy_cross_lingual_transfer=True,
     )
 
-    assert result["evaluated_examples"] == 2
-    assert result["per_language"]["en"]["documented_support"] == "documented"
-    assert result["per_language"]["fr"]["status"] == "evaluated"
     assert (
-        result["per_language"]["fr"]["documented_support"] == "cross_lingual_transfer"
-    )
-    assert result["per_language"]["fr"]["metrics"]["sentences"] == 1
-    assert "does not establish native multilingual support" in result["coverage_note"]
+        result["evaluated_examples"],
+        result["per_language"]["en"]["documented_support"],
+        result["per_language"]["fr"]["status"],
+        result["per_language"]["fr"]["documented_support"],
+        result["per_language"]["fr"]["metrics"]["sentences"],
+        "does not establish native multilingual support" in result["coverage_note"],
+    ) == (2, "documented", "evaluated", "cross_lingual_transfer", 1, True)
 
 
 def test_spacy_transfer_estimate_uses_all_languages():

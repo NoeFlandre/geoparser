@@ -306,6 +306,17 @@ def test_bounded_benchmark_record_disclaims_quality_comparison(monkeypatch, tmp_
     )
 
 
+def test_run_benchmark_requires_spacy_for_transfer_mode(tmp_path):
+    options = runner.BenchmarkRunOptions(
+        models_to_run=MODELS[1:], spacy_cross_lingual_transfer=True
+    )
+
+    with pytest.raises(ValueError, match="requires the spacy_en model"):
+        runner.run_benchmark(
+            _dataset(), cache_dir=tmp_path, thread_count=2, options=options
+        )
+
+
 def test_full_benchmark_record_marks_test_split_comparison(monkeypatch, tmp_path):
     _stub_benchmark_dependencies(monkeypatch)
     complete = runner.run_benchmark(
@@ -496,6 +507,43 @@ def test_cli_rejects_a_nonpositive_sample_limit(monkeypatch, tmp_path):
         sys,
         "argv",
         ["panx", "--limit-per-language", "0", "--cache-dir", str(tmp_path)],
+    )
+
+    with pytest.raises(SystemExit, match="2"):
+        cli.main()
+
+
+def test_cli_rejects_duplicate_model_selection(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "panx",
+            "--model",
+            "spacy_en",
+            "--model",
+            "spacy_en",
+            "--cache-dir",
+            str(tmp_path),
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="2"):
+        cli.main()
+
+
+def test_cli_requires_spacy_for_transfer_mode(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "panx",
+            "--model",
+            MODELS[1].key,
+            "--spacy-cross-lingual-transfer",
+            "--cache-dir",
+            str(tmp_path),
+        ],
     )
 
     with pytest.raises(SystemExit, match="2"):

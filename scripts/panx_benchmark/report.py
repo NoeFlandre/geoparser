@@ -137,16 +137,55 @@ def _model_coverage_lines(model: dict[str, Any]) -> list[str]:
     ]
 
 
-def _aggregate_lines(result: dict[str, Any]) -> list[str]:
-    """Render aggregate scores and full-matrix feasibility context."""
-    evaluation = result.get("evaluation", {})
+def _inference_scope(evaluation: dict[str, Any]) -> str:
+    """Name the selected model scope used for the inference estimate."""
     complete_model_matrix = evaluation.get("complete_model_matrix", True)
     selected_models = evaluation.get("selected_model_keys")
     if complete_model_matrix:
-        inference_scope = "the complete model matrix"
+        return "the complete model matrix"
+    names = ", ".join(f"`{key}`" for key in (selected_models or ()))
+    return f"the selected model subset ({names})"
+
+
+def _aggregate_model_lines(models: list[dict[str, Any]]) -> list[str]:
+    """Render the macro and micro score row for each selected model."""
+    lines = []
+    for model in models:
+        macro, micro = model["macro"], model["micro"]
+        lines.append(
+            f"| `{model['key']}` | {_number(macro['precision'])} | "
+            f"{_number(macro['recall'])} | {_number(macro['f1'])} | "
+            f"{_number(micro['precision'])} | {_number(micro['recall'])} | "
+            f"{_number(micro['f1'])} |"
+        )
+    return lines
+
+
+def _spacy_aggregate_note(
+    models: list[dict[str, Any]], evaluation: dict[str, Any]
+) -> list[str]:
+    """Caveat spaCy's English-only scope and optional transfer evaluation."""
+    if not any(model.get("key") == "spacy_en" for model in models):
+        return []
+    if evaluation.get("spacy_cross_lingual_transfer", False):
+        note = (
+            "The upstream spaCy checkpoint is English-only. Its scores "
+            "outside English are cross-lingual transfer results, not "
+            "evidence of native multilingual support."
+        )
     else:
-        names = ", ".join(f"`{key}`" for key in (selected_models or ()))
-        inference_scope = f"the selected model subset ({names})"
+        note = (
+            "The upstream spaCy model is scored on English only. Its "
+            "other available languages are explicitly marked as not "
+            "evaluated; it is not treated as a multilingual competitor."
+        )
+    return ["", note, ""]
+
+
+def _aggregate_lines(result: dict[str, Any]) -> list[str]:
+    """Render aggregate scores and full-matrix feasibility context."""
+    evaluation = result.get("evaluation", {})
+    inference_scope = _inference_scope(evaluation)
     lines = [
         "## Aggregate scores",
         "",
@@ -159,14 +198,7 @@ def _aggregate_lines(result: dict[str, Any]) -> list[str]:
         "| Recognizer | Macro P | Macro R | Macro F1 | Micro P | Micro R | Micro F1 |",
         "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
-    for model in result["models"]:
-        macro, micro = model["macro"], model["micro"]
-        lines.append(
-            f"| `{model['key']}` | {_number(macro['precision'])} | "
-            f"{_number(macro['recall'])} | {_number(macro['f1'])} | "
-            f"{_number(micro['precision'])} | {_number(micro['recall'])} | "
-            f"{_number(micro['f1'])} |"
-        )
+    lines.extend(_aggregate_model_lines(result["models"]))
     lines.extend(
         [
             "",
@@ -175,26 +207,7 @@ def _aggregate_lines(result: dict[str, Any]) -> list[str]:
             f"{result['full_matrix_estimate_note']}",
         ]
     )
-    if any(model.get("key") == "spacy_en" for model in result["models"]):
-        lines.extend([""])
-        if evaluation.get("spacy_cross_lingual_transfer", False):
-            lines.extend(
-                [
-                    "The upstream spaCy checkpoint is English-only. Its scores "
-                    "outside English are cross-lingual transfer results, not "
-                    "evidence of native multilingual support.",
-                    "",
-                ]
-            )
-        else:
-            lines.extend(
-                [
-                    "The upstream spaCy model is scored on English only. Its "
-                    "other available languages are explicitly marked as not "
-                    "evaluated; it is not treated as a multilingual competitor.",
-                    "",
-                ]
-            )
+    lines.extend(_spacy_aggregate_note(result["models"], evaluation))
     return lines
 
 
