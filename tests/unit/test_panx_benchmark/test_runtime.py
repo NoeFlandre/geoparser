@@ -208,6 +208,65 @@ def test_commit_id_marks_dirty_state_and_handles_git_failure(monkeypatch):
     assert runner._commit_id() == "unknown"
 
 
+def test_run_benchmark_keeps_explicit_commit_in_identity_and_report(
+    monkeypatch, tmp_path
+):
+    _stub_benchmark_dependencies(monkeypatch)
+    monkeypatch.setattr(
+        runner,
+        "_commit_id",
+        lambda: pytest.fail("an explicit repository commit should bypass probing"),
+    )
+    checkpoint_calls = []
+
+    def checkpoints(directory, identity):
+        checkpoint_calls.append((directory, identity))
+        return SimpleNamespace(snapshot_id="snapshot", directory=directory)
+
+    monkeypatch.setattr(runner, "ModelLanguageCheckpoints", checkpoints)
+
+    result = runner.run_benchmark(
+        _dataset(),
+        cache_dir=tmp_path / "cache",
+        thread_count=1,
+        models_to_run=(),
+        checkpoint_dir=tmp_path / "checkpoints",
+        repository_commit="explicit-commit",
+    )
+
+    assert result["repository_commit"] == "explicit-commit"
+    assert checkpoint_calls[0][0] == tmp_path / "checkpoints"
+    assert checkpoint_calls[0][1]["repository_commit"] == "explicit-commit"
+
+
+@pytest.mark.parametrize("commit", ["unknown", "abc123-dirty"])
+def test_cli_rejects_unidentifiable_commit_before_side_effects(
+    monkeypatch, tmp_path, commit
+):
+    cache_dir = tmp_path / "cache"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["panx", "--cache-dir", str(cache_dir)],
+    )
+    monkeypatch.setattr(cli, "_commit_id", lambda: commit)
+    monkeypatch.setattr(
+        cli,
+        "configure_cpu",
+        lambda: pytest.fail("CPU configuration must follow commit validation"),
+    )
+    monkeypatch.setattr(
+        cli,
+        "load_test_examples",
+        lambda *_args, **_kwargs: pytest.fail("data loading must follow validation"),
+    )
+
+    with pytest.raises(ValueError, match="requires a clean, identifiable"):
+        cli.main()
+
+    assert not cache_dir.exists()
+
+
 def _stub_benchmark_dependencies(monkeypatch):
     loaded = object()
     monkeypatch.setattr(runner, "load_model", lambda *_: loaded)

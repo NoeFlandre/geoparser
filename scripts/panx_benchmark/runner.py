@@ -13,6 +13,7 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
+from scripts import git_provenance
 from scripts.panx_benchmark.checkpoint import (
     ModelLanguageCheckpoints,
     require_clean_commit,
@@ -452,24 +453,7 @@ def _elapsed_full_matrix_seconds(models: list[dict[str, Any]]) -> float | None:
 
 def _commit_id() -> str:
     """Return the exact source commit, with dirty state called out."""
-    import subprocess
-
-    try:
-        commit = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
-        dirty = subprocess.run(
-            ["git", "status", "--porcelain"],
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
-        return "unknown"
-    return f"{commit}-dirty" if dirty else commit
+    return git_provenance.commit_id(short=False, cwd=None)
 
 
 def _evaluation_scope_metadata(limit: int | None) -> dict[str, str | bool]:

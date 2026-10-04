@@ -9,10 +9,11 @@ produced it is gone by the time anyone asks.
 from __future__ import annotations
 
 import platform
-import subprocess
 import typing as t
 from datetime import datetime, timezone
 from pathlib import Path
+
+from scripts import git_provenance
 
 
 def source_commit(root: Path) -> str:
@@ -25,24 +26,7 @@ def source_commit(root: Path) -> str:
     Returns:
         The short commit hash, suffixed ``-dirty`` when the tree has changes
     """
-    try:
-        commit = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-        dirty = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
-        return "unknown"
-    return f"{commit}-dirty" if dirty else commit
+    return git_provenance.commit_id(short=True, cwd=root)
 
 
 def environment(job_id: str | None = None) -> dict[str, t.Any]:
