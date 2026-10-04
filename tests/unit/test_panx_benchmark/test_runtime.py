@@ -229,7 +229,7 @@ def test_run_benchmark_keeps_explicit_commit_in_identity_and_report(
         _dataset(),
         cache_dir=tmp_path / "cache",
         thread_count=1,
-        models_to_run=(),
+        options=runner.BenchmarkRunOptions(models_to_run=()),
         checkpoint_dir=tmp_path / "checkpoints",
         repository_commit="explicit-commit",
     )
