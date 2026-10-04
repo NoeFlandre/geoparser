@@ -14,7 +14,7 @@ from scripts.benchmark import provenance
 def test_source_commit_marks_dirty_trees(monkeypatch, tmp_path, status, expected):
     outputs = iter(["abc123\n", f"{status}\n"])
     monkeypatch.setattr(
-        provenance.subprocess,
+        provenance.git_provenance.subprocess,
         "run",
         lambda *args, **kwargs: SimpleNamespace(stdout=next(outputs)),
     )
@@ -28,7 +28,9 @@ def test_source_commit_marks_dirty_trees(monkeypatch, tmp_path, status, expected
 def test_source_commit_returns_unknown_when_git_cannot_report_state(
     monkeypatch, tmp_path, error
 ):
-    monkeypatch.setattr(provenance.subprocess, "run", Mock(side_effect=error))
+    monkeypatch.setattr(
+        provenance.git_provenance.subprocess, "run", Mock(side_effect=error)
+    )
 
     assert provenance.source_commit(tmp_path) == "unknown"
 
