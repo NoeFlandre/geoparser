@@ -273,7 +273,7 @@ def _stub_benchmark_dependencies(monkeypatch):
     monkeypatch.setattr(
         runner,
         "evaluate_model",
-        lambda *_: {"full_matrix_estimated_inference_seconds": 4.0},
+        lambda *_args, **_kwargs: {"full_matrix_estimated_inference_seconds": 4.0},
     )
     monkeypatch.setattr(runner, "_commit_id", lambda: "abc123")
     monkeypatch.setattr(runner, "hardware_facts", lambda threads: {"threads": threads})
@@ -290,7 +290,10 @@ def _stub_benchmark_dependencies(monkeypatch):
 def test_bounded_benchmark_record_disclaims_quality_comparison(monkeypatch, tmp_path):
     _stub_benchmark_dependencies(monkeypatch)
     bounded = runner.run_benchmark(
-        _dataset(), cache_dir=tmp_path, thread_count=2, models_to_run=MODELS[:1]
+        _dataset(),
+        cache_dir=tmp_path,
+        thread_count=2,
+        options=runner.BenchmarkRunOptions(models_to_run=MODELS[:1]),
     )
 
     assert (bounded["evaluation_kind"], bounded["full_quality_comparison"]) == (
@@ -306,7 +309,10 @@ def test_bounded_benchmark_record_disclaims_quality_comparison(monkeypatch, tmp_
 def test_full_benchmark_record_marks_test_split_comparison(monkeypatch, tmp_path):
     _stub_benchmark_dependencies(monkeypatch)
     complete = runner.run_benchmark(
-        _dataset(None), cache_dir=tmp_path, thread_count=2, models_to_run=()
+        _dataset(None),
+        cache_dir=tmp_path,
+        thread_count=2,
+        options=runner.BenchmarkRunOptions(models_to_run=()),
     )
 
     assert (complete["evaluation_kind"], complete["full_quality_comparison"]) == (
@@ -425,7 +431,64 @@ def test_cli_main_runs_with_a_bounded_sample_and_writes_reports(monkeypatch, tmp
         bool(calls[0][1]["language_list"]["language_codes"]),
         benchmark_calls[0]["checkpoint_dir"],
         benchmark_calls[0]["repository_commit"],
-    ) == (0, report_dir, str(cache_dir.resolve()), True, checkpoint_dir, "abc123")
+        benchmark_calls[0]["options"].models_to_run,
+        benchmark_calls[0]["options"].spacy_cross_lingual_transfer,
+    ) == (
+        0,
+        report_dir,
+        str(cache_dir.resolve()),
+        True,
+        checkpoint_dir,
+        "abc123",
+        MODELS,
+        False,
+    )
+
+
+def test_cli_can_select_only_spacy_and_enable_transfer_mode(monkeypatch, tmp_path):
+    cache_dir = tmp_path / "cache"
+    checkpoint_dir = tmp_path / "checkpoints"
+    report_dir = tmp_path / "report"
+    dataset = _dataset(2)
+    result = {"evaluation_kind": "bounded_feasibility_sample"}
+    benchmark_calls = []
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "panx",
+            "--model",
+            "spacy_en",
+            "--spacy-cross-lingual-transfer",
+            "--limit-per-language",
+            "2",
+            "--cache-dir",
+            str(cache_dir),
+            "--checkpoint-dir",
+            str(checkpoint_dir),
+            "--output-dir",
+            str(report_dir),
+        ],
+    )
+    monkeypatch.setattr(cli, "_commit_id", lambda: "abc123")
+    monkeypatch.setattr(cli, "configure_cpu", lambda: 2)
+    monkeypatch.setattr(cli, "load_test_examples", lambda *_args, **_kwargs: dataset)
+    monkeypatch.setattr(
+        cli,
+        "run_benchmark",
+        lambda *_args, **kwargs: benchmark_calls.append(kwargs) or result,
+    )
+    monkeypatch.setattr(
+        cli,
+        "write_reports",
+        lambda output, _value: (output / "report.json", output / "report.md"),
+    )
+
+    status = cli.main()
+
+    assert status == 0
+    assert benchmark_calls[0]["options"].models_to_run == (MODELS[0],)
+    assert benchmark_calls[0]["options"].spacy_cross_lingual_transfer is True
 
 
 def test_cli_rejects_a_nonpositive_sample_limit(monkeypatch, tmp_path):

@@ -139,6 +139,14 @@ def _model_coverage_lines(model: dict[str, Any]) -> list[str]:
 
 def _aggregate_lines(result: dict[str, Any]) -> list[str]:
     """Render aggregate scores and full-matrix feasibility context."""
+    evaluation = result.get("evaluation", {})
+    complete_model_matrix = evaluation.get("complete_model_matrix", True)
+    selected_models = evaluation.get("selected_model_keys")
+    if complete_model_matrix:
+        inference_scope = "the complete model matrix"
+    else:
+        names = ", ".join(f"`{key}`" for key in (selected_models or ()))
+        inference_scope = f"the selected model subset ({names})"
     lines = [
         "## Aggregate scores",
         "",
@@ -162,16 +170,31 @@ def _aggregate_lines(result: dict[str, Any]) -> list[str]:
     lines.extend(
         [
             "",
-            f"Estimated total CPU inference for the complete matrix: "
+            f"Estimated total CPU inference for {inference_scope}: "
             f"{_number(result['estimated_full_matrix_inference_seconds'])}s. "
             f"{result['full_matrix_estimate_note']}",
-            "",
-            "The upstream spaCy model is scored on English only. Its other 81 "
-            "available languages are explicitly marked as not evaluated; it is "
-            "not treated as a multilingual competitor.",
-            "",
         ]
     )
+    if any(model.get("key") == "spacy_en" for model in result["models"]):
+        lines.extend([""])
+        if evaluation.get("spacy_cross_lingual_transfer", False):
+            lines.extend(
+                [
+                    "The upstream spaCy checkpoint is English-only. Its scores "
+                    "outside English are cross-lingual transfer results, not "
+                    "evidence of native multilingual support.",
+                    "",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "The upstream spaCy model is scored on English only. Its "
+                    "other available languages are explicitly marked as not "
+                    "evaluated; it is not treated as a multilingual competitor.",
+                    "",
+                ]
+            )
     return lines
 
 

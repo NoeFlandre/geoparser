@@ -10,6 +10,7 @@ import platform
 import random
 import time
 from collections.abc import Iterator, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +38,14 @@ from scripts.panx_benchmark.data import (
 )
 from scripts.panx_benchmark.metrics import Counts, macro_scores
 from scripts.panx_benchmark.models import BatchPredictor, LoadedModel, load_model
+
+
+@dataclass(frozen=True, slots=True)
+class BenchmarkRunOptions:
+    """Local model-selection and spaCy language-scope options."""
+
+    models_to_run: tuple[ModelSpec, ...] = MODELS
+    spacy_cross_lingual_transfer: bool = False
 
 
 def configure_cpu(seed: int = SEED) -> int:
@@ -155,10 +164,19 @@ def _first_warmup_language(
     return None
 
 
-def _support_status(spec: ModelSpec, language: str) -> str:
+def _support_status(
+    spec: ModelSpec,
+    language: str,
+    *,
+    spacy_cross_lingual_transfer: bool = False,
+) -> str:
     """Describe documented support separately from transfer evaluation."""
     if spec.key == "spacy_en":
-        return "documented" if language == "en" else "not_evaluated_english_only"
+        if language == "en":
+            return "documented"
+        if spacy_cross_lingual_transfer:
+            return "cross_lingual_transfer"
+        return "not_evaluated_english_only"
     if spec.documented_languages is None:
         return "evaluated_multilingual_claim"
     if language in spec.documented_languages:
@@ -237,6 +255,8 @@ def _checkpoint_identity(
     models: Sequence[ModelSpec],
     repository_commit: str,
     hardware: dict[str, Any],
+    *,
+    spacy_cross_lingual_transfer: bool = False,
 ) -> dict[str, Any]:
     """Describe every code, data, model and runtime input that shapes scores."""
     manifest = split_manifest()
@@ -263,6 +283,7 @@ def _checkpoint_identity(
             "gliner_threshold": GLINER_THRESHOLD,
             "device": "cpu",
             "span_policy": "exact half-open Python character offsets",
+            "spacy_cross_lingual_transfer": spacy_cross_lingual_transfer,
         },
         "models": [
             {
@@ -284,9 +305,15 @@ def _language_result(
     language: str,
     examples: tuple[Example, ...],
     source_example_count: int,
+    *,
+    spacy_cross_lingual_transfer: bool = False,
 ) -> dict[str, Any]:
     """Score one language or record why it was deliberately not evaluated."""
-    support = _support_status(spec, language)
+    support = _support_status(
+        spec,
+        language,
+        spacy_cross_lingual_transfer=spacy_cross_lingual_transfer,
+    )
     if support == "not_evaluated_english_only":
         return {
             "status": support,
@@ -310,6 +337,8 @@ def _language_results(
     predictor: BatchPredictor,
     dataset: LoadedDataset,
     checkpoints: ModelLanguageCheckpoints | None = None,
+    *,
+    spacy_cross_lingual_transfer: bool = False,
 ) -> dict[str, dict[str, Any]]:
     """Build the per-language records for one recognizer."""
     results = {}
@@ -327,7 +356,14 @@ def _language_results(
             else None
         )
         if result is None:
-            result = _language_result(spec, predictor, language, examples, source_count)
+            result = _language_result(
+                spec,
+                predictor,
+                language,
+                examples,
+                source_count,
+                spacy_cross_lingual_transfer=spacy_cross_lingual_transfer,
+            )
             if checkpoints is not None:
                 checkpoints.save_language(
                     spec.key,
@@ -362,6 +398,8 @@ def _steady_inference_summary(
     dataset: LoadedDataset,
     per_language: dict[str, dict[str, Any]],
     elapsed_seconds: float,
+    *,
+    spacy_cross_lingual_transfer: bool = False,
 ) -> dict[str, float | int | None]:
     """Summarize measured throughput and a linear full-matrix estimate."""
     evaluated_examples = _evaluated_example_count(per_language)
@@ -370,7 +408,7 @@ def _steady_inference_summary(
     )
     full_matrix_examples = (
         dataset.source_counts.get("en", 0)
-        if spec.key == "spacy_en"
+        if spec.key == "spacy_en" and not spacy_cross_lingual_transfer
         else sum(dataset.source_counts.values())
     )
     full_matrix_seconds = (
@@ -388,6 +426,8 @@ def evaluate_model(
     loaded: LoadedModel,
     dataset: LoadedDataset,
     checkpoints: ModelLanguageCheckpoints | None = None,
+    *,
+    spacy_cross_lingual_transfer: bool = False,
 ) -> dict[str, Any]:
     """Evaluate one recognizer and separate startup, warmup and steady timing."""
     predictor = loaded.predictor
@@ -397,7 +437,13 @@ def evaluate_model(
         spec.documented_languages,
         spec.batch_size,
     )
-    per_language = _language_results(spec, predictor, dataset, checkpoints)
+    per_language = _language_results(
+        spec,
+        predictor,
+        dataset,
+        checkpoints,
+        spacy_cross_lingual_transfer=spacy_cross_lingual_transfer,
+    )
     inference_seconds = sum(
         float(row["metrics"]["elapsed_seconds"])
         for row in per_language.values()
@@ -405,14 +451,24 @@ def evaluate_model(
     )
     evaluated = _metric_rows(per_language)
     inference_summary = _steady_inference_summary(
-        spec, dataset, per_language, inference_seconds
+        spec,
+        dataset,
+        per_language,
+        inference_seconds,
+        spacy_cross_lingual_transfer=spacy_cross_lingual_transfer,
     )
+    coverage_note = spec.coverage_note
+    if spec.key == "spacy_en" and spacy_cross_lingual_transfer:
+        coverage_note += (
+            " This run also evaluates non-English languages as cross-lingual "
+            "transfer; it does not establish native multilingual support."
+        )
     return {
         "key": spec.key,
         "model_id": spec.model_id,
         "revision": spec.revision,
         "model_card_url": spec.model_card_url,
-        "coverage_note": spec.coverage_note,
+        "coverage_note": coverage_note,
         "documented_languages": list(spec.documented_languages or ()),
         "training_data_note": spec.training_data_note,
         "training_overlap_note": spec.overlap_note,
@@ -482,17 +538,33 @@ def run_benchmark(
     *,
     cache_dir: Path,
     thread_count: int,
-    models_to_run: Sequence[ModelSpec] = MODELS,
+    options: BenchmarkRunOptions | None = None,
     checkpoint_dir: Path | None = None,
     repository_commit: str | None = None,
 ) -> dict[str, Any]:
-    """Run and report the three fixed model comparisons without training."""
+    """Run selected pinned models on the fixed task without training."""
+    options = options or BenchmarkRunOptions()
+    models_to_run = options.models_to_run
+    spacy_cross_lingual_transfer = options.spacy_cross_lingual_transfer
+    if spacy_cross_lingual_transfer and not any(
+        spec.key == "spacy_en" for spec in models_to_run
+    ):
+        message = (
+            "spaCy cross-lingual transfer requires the spacy_en model to be selected"
+        )
+        raise ValueError(message)
     started_at = time.time()
     repository_commit = require_clean_commit(repository_commit or _commit_id())
     hardware = hardware_facts(thread_count)
     checkpoints = ModelLanguageCheckpoints(
         checkpoint_dir or cache_dir / "benchmark-checkpoints",
-        _checkpoint_identity(dataset, models_to_run, repository_commit, hardware),
+        _checkpoint_identity(
+            dataset,
+            models_to_run,
+            repository_commit,
+            hardware,
+            spacy_cross_lingual_transfer=spacy_cross_lingual_transfer,
+        ),
     )
     models: list[dict[str, Any]] = []
     for spec in models_to_run:
@@ -503,6 +575,7 @@ def run_benchmark(
                 loaded,
                 dataset,
                 checkpoints,
+                spacy_cross_lingual_transfer=spacy_cross_lingual_transfer,
             )
         )
         del loaded
@@ -537,11 +610,15 @@ def run_benchmark(
             "batch_sizes_by_model": {
                 spec.key: spec.batch_size for spec in models_to_run
             },
+            "selected_model_keys": [spec.key for spec in models_to_run],
+            "complete_model_matrix": {spec.key for spec in models_to_run}
+            == {spec.key for spec in MODELS},
             "seed": SEED,
             "span_policy": "exact half-open Python character offsets",
             "gold_text_reconstruction": "WikiANN tokens joined by one ASCII space",
             "zero_division": 0,
             "training_or_finetuning": False,
+            "spacy_cross_lingual_transfer": spacy_cross_lingual_transfer,
         },
         "models": models,
         "estimated_full_matrix_inference_seconds": _elapsed_full_matrix_seconds(models),

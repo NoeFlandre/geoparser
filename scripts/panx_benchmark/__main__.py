@@ -2,6 +2,7 @@
 
 python -m scripts.panx_benchmark --limit-per-language 8
 python -m scripts.panx_benchmark --output-dir benchmark-evidence/panx/full
+python -m scripts.panx_benchmark --model spacy_en --spacy-cross-lingual-transfer
 """
 
 from __future__ import annotations
@@ -21,7 +22,12 @@ from scripts.panx_benchmark.data import (
     read_json,
 )
 from scripts.panx_benchmark.report import write_reports
-from scripts.panx_benchmark.runner import _commit_id, configure_cpu, run_benchmark
+from scripts.panx_benchmark.runner import (
+    BenchmarkRunOptions,
+    _commit_id,
+    configure_cpu,
+    run_benchmark,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -59,6 +65,24 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Local report directory; defaults to a unique timestamped evidence path",
     )
+    parser.add_argument(
+        "--model",
+        dest="model_keys",
+        action="append",
+        choices=tuple(spec.key for spec in MODELS),
+        help=(
+            "Run only the selected model key; may be repeated. By default all "
+            "three pinned models run."
+        ),
+    )
+    parser.add_argument(
+        "--spacy-cross-lingual-transfer",
+        action="store_true",
+        help=(
+            "Evaluate the pinned English spaCy model on every eligible language "
+            "as cross-lingual transfer, not native multilingual support."
+        ),
+    )
     return parser
 
 
@@ -80,9 +104,20 @@ def _resource_facts(cache_dir: Path) -> dict[str, int | str]:
 
 def main() -> int:
     """Load test data, run the fixed CPU matrix and save local reports."""
-    arguments = build_parser().parse_args()
+    parser = build_parser()
+    arguments = parser.parse_args()
     if arguments.limit_per_language is not None and arguments.limit_per_language < 1:
-        build_parser().error("--limit-per-language must be positive")
+        parser.error("--limit-per-language must be positive")
+    selected_keys = arguments.model_keys or [spec.key for spec in MODELS]
+    if len(set(selected_keys)) != len(selected_keys):
+        parser.error("--model keys must not be repeated")
+    selected_models = tuple(spec for spec in MODELS if spec.key in set(selected_keys))
+    if arguments.spacy_cross_lingual_transfer and not any(
+        spec.key == "spacy_en" for spec in selected_models
+    ):
+        parser.error(
+            "--spacy-cross-lingual-transfer requires --model spacy_en or the default model set"
+        )
     repository_commit = require_clean_commit(_commit_id())
     arguments.cache_dir.mkdir(parents=True, exist_ok=True)
     resources = _resource_facts(arguments.cache_dir)
@@ -95,7 +130,10 @@ def main() -> int:
         dataset,
         cache_dir=arguments.cache_dir,
         thread_count=thread_count,
-        models_to_run=MODELS,
+        options=BenchmarkRunOptions(
+            models_to_run=selected_models,
+            spacy_cross_lingual_transfer=arguments.spacy_cross_lingual_transfer,
+        ),
         checkpoint_dir=(
             arguments.checkpoint_dir or arguments.cache_dir / "benchmark-checkpoints"
         ),
