@@ -116,6 +116,10 @@ class TestScore:
     [
         (None, (None, None)),
         (SimpleNamespace(data=None), (None, None)),
+        (SimpleNamespace(), (None, None)),
+        (SimpleNamespace(data={}), (None, None)),
+        (SimpleNamespace(data={"latitude": 1}), (None, None)),
+        (SimpleNamespace(data={"latitude": 1, "longitude": 2}), (1.0, 2.0)),
         (
             SimpleNamespace(data={"latitude": "47.3769", "longitude": "8.5417"}),
             (47.3769, 8.5417),

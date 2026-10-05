@@ -98,12 +98,9 @@ Identity = tuple[str | None, int, int]
 
 def _location_coordinates(location: t.Any) -> tuple[float | None, float | None]:
     """Return a resolved location's coordinates, when it has usable ones."""
-    if location is None:
-        return None, None
-    data = getattr(location, "data", None) or {}
     try:
-        return float(data["latitude"]), float(data["longitude"])
-    except (KeyError, TypeError, ValueError):
+        return float(location.data["latitude"]), float(location.data["longitude"])
+    except (AttributeError, KeyError, TypeError, ValueError):
         return None, None
 
 
