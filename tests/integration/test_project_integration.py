@@ -4,6 +4,8 @@ Integration tests for geoparser/project/project.py
 Tests Project API with real database.
 """
 
+import uuid
+
 import pytest
 
 from geoparser.modules.recognizers.manual import ManualRecognizer
@@ -21,9 +23,8 @@ class TestProjectIntegration:
         project = Project("integration_test_project")
 
         # Assert
-        assert project is not None
         assert project.name == "integration_test_project"
-        assert project.id is not None
+        assert isinstance(project.id, uuid.UUID)
 
         # Cleanup
         project.delete()
@@ -71,7 +72,7 @@ class TestProjectIntegration:
         document_ids = project.create_documents(texts)
 
         # Assert - IDs come back in input order and select documents in any order
-        assert len(document_ids) == 3
+        assert len(set(document_ids)) == len(document_ids) == 3
 
         documents = project.get_documents(ids=document_ids)
         assert [document.text for document in documents] == texts
@@ -157,7 +158,12 @@ class TestProjectIntegration:
         documents = project.get_documents()
         assert len(documents) == 1
         assert len(documents[0].toponyms) == 1
-        assert documents[0].toponyms[0].location is not None
+        location = documents[0].toponyms[0].location
+        assert location is not None  # narrows the type for the check below
+        assert (location.gazetteer_name, location.identifier) == (
+            "andorranames",
+            "3041563",
+        )
 
         # Cleanup
         project.delete()
@@ -225,9 +231,13 @@ class TestProjectIntegration:
         docs_tag2 = project.get_documents(tag="tag2")
 
         # Assert
-        # Both should have locations, but potentially different ones
-        assert docs_tag1[0].toponyms[0].location is not None
-        assert docs_tag2[0].toponyms[0].location is not None
+        # Each tag keeps the referent its own resolver chose
+        location1 = docs_tag1[0].toponyms[0].location
+        location2 = docs_tag2[0].toponyms[0].location
+        assert location1 is not None  # narrows the type for the check below
+        assert location2 is not None  # narrows the type for the check below
+        assert location1.identifier == "3041563"
+        assert location2.identifier == "3041565"
 
         # Cleanup
         project.delete()
