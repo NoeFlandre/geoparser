@@ -974,14 +974,17 @@ class TestSentenceTransformerResolverHelperMethods:
         )
 
         resolver = SentenceTransformerResolver()
-        candidate = SimpleNamespace(id=1)
-        resolver._generate_description = Mock(return_value="Paris (city)")
+        candidate = SimpleNamespace(id=1, data={"name": "Paris"})
 
-        first = resolver._candidate_description(cast(Any, candidate))
-        second = resolver._candidate_description(cast(Any, candidate))
+        with patch(
+            "geoparser.modules.resolvers.sentencetransformer.describe_feature",
+            return_value="Paris (city)",
+        ) as describe:
+            first = resolver._candidate_description(cast(Any, candidate))
+            second = resolver._candidate_description(cast(Any, candidate))
 
         assert first == second == "Paris (city)"
-        resolver._generate_description.assert_called_once_with(candidate)
+        describe.assert_called_once_with(candidate.data, resolver.attribute_map)
 
     @patch("geoparser.modules.resolvers.sentencetransformer.load_spacy_model")
     @patch(
@@ -989,10 +992,10 @@ class TestSentenceTransformerResolverHelperMethods:
     )
     @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
     @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_generate_description_geonames(
+    def test_candidate_description_geonames(
         self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
     ):
-        """Test that _generate_description creates proper descriptions for geonames."""
+        """Test that _candidate_description creates proper descriptions for geonames."""
         # Arrange
         from geoparser.modules.resolvers.sentencetransformer import (
             SentenceTransformerResolver,
@@ -1009,7 +1012,7 @@ class TestSentenceTransformerResolverHelperMethods:
         }
 
         # Act
-        description = resolver._generate_description(mock_candidate)
+        description = resolver._candidate_description(mock_candidate)
 
         # Assert
         assert "Paris" in description
@@ -1040,10 +1043,10 @@ class TestSentenceTransformerResolverHelperMethods:
     )
     @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
     @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_generate_description_handles_missing_attributes(
+    def test_candidate_description_handles_missing_attributes(
         self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
     ):
-        """Test that _generate_description handles missing attributes gracefully."""
+        """Test that _candidate_description handles missing attributes gracefully."""
         # Arrange
         from geoparser.modules.resolvers.sentencetransformer import (
             SentenceTransformerResolver,
@@ -1058,7 +1061,7 @@ class TestSentenceTransformerResolverHelperMethods:
         }
 
         # Act
-        description = resolver._generate_description(mock_candidate)
+        description = resolver._candidate_description(mock_candidate)
 
         # Assert
         assert "Paris" in description
@@ -1070,10 +1073,10 @@ class TestSentenceTransformerResolverHelperMethods:
     )
     @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
     @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_generate_description_includes_all_admin_levels(
+    def test_candidate_description_includes_all_admin_levels(
         self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
     ):
-        """Test that _generate_description includes all available admin levels."""
+        """Test that _candidate_description includes all available admin levels."""
         # Arrange
         from geoparser.modules.resolvers.sentencetransformer import (
             SentenceTransformerResolver,
@@ -1091,7 +1094,7 @@ class TestSentenceTransformerResolverHelperMethods:
         }
 
         # Act
-        description = resolver._generate_description(mock_candidate)
+        description = resolver._candidate_description(mock_candidate)
 
         # Assert
         assert description == "Paris (city) in Paris, Île-de-France, France"
@@ -1102,10 +1105,10 @@ class TestSentenceTransformerResolverHelperMethods:
     )
     @patch("geoparser.modules.resolvers.sentencetransformer.SentenceTransformer")
     @patch("geoparser.modules.resolvers.sentencetransformer.Gazetteer")
-    def test_generate_description_uses_custom_attribute_map(
+    def test_candidate_description_uses_custom_attribute_map(
         self, mock_gazetteer, mock_transformer, mock_tokenizer, mock_spacy_load
     ):
-        """Test that _generate_description uses custom attribute_map."""
+        """Test that _candidate_description uses custom attribute_map."""
         # Arrange
         from geoparser.modules.resolvers.sentencetransformer import (
             SentenceTransformerResolver,
@@ -1131,7 +1134,7 @@ class TestSentenceTransformerResolverHelperMethods:
         }
 
         # Act
-        description = resolver._generate_description(mock_candidate)
+        description = resolver._candidate_description(mock_candidate)
 
         # Assert - Should use custom attribute names
         assert "Paris" in description

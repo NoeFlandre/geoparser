@@ -399,10 +399,12 @@ class TestEncodeArguments:
         """
         # Arrange
         candidate = _feature(1, "A", "Paris")
-        resolver._generate_description = Mock(return_value="Paris (city)")
 
         # Act
-        resolver._embed_candidates([[[candidate]]], [[None]])
+        with patch.object(
+            resolver, "_candidate_description", return_value="Paris (city)"
+        ):
+            resolver._embed_candidates([[[candidate]]], [[None]])
 
         # Assert
         assert resolver.transformer.encode.call_args.kwargs["prompt_name"] == "document"

@@ -10,7 +10,7 @@ from geoparser._logging import get_logger
 from geoparser.gazetteer.description import (
     GAZETTEER_ATTRIBUTE_MAP as SHARED_ATTRIBUTE_MAP,
 )
-from geoparser.gazetteer.description import admin_levels, describe_feature
+from geoparser.gazetteer.description import describe_feature
 from geoparser.gazetteer.gazetteer import Gazetteer, normalize_name
 from geoparser.modules._spacy import load_spacy_model
 from geoparser.modules.resolvers import Resolver
@@ -725,7 +725,8 @@ class SentenceTransformerResolver(
 
     def _best_referent(
         self,
-        context: str,  # noqa: ARG002 - hook signature shared with PriorResolver
+        _context: str,
+        /,
         candidate_list: list["Feature"],
         min_similarity: float,
         similarities: list[float],
@@ -734,7 +735,7 @@ class SentenceTransformerResolver(
         Pick the candidate most similar to a reference's context.
 
         Args:
-            context: The reference's context string
+            _context: Unused; the hook signature is shared with subclasses
             candidate_list: Candidates to rank
             min_similarity: Similarity a candidate must reach to be accepted
             similarities: Each candidate's precomputed similarity
@@ -744,38 +745,35 @@ class SentenceTransformerResolver(
             candidate is not similar enough
         """
         best_idx = max(range(len(similarities)), key=lambda j: similarities[j])
-        if similarities[best_idx] < min_similarity:
+        return self._accept(best_idx, candidate_list, min_similarity, similarities)
+
+    def _accept(
+        self,
+        best_index: int,
+        candidate_list: list["Feature"],
+        min_similarity: float,
+        similarities: list[float],
+    ) -> tuple[str, str] | None:
+        """
+        Return the chosen candidate, unless its similarity is too low.
+
+        Args:
+            best_index: Index of the chosen candidate
+            candidate_list: Candidates that were ranked
+            min_similarity: Similarity the chosen candidate must reach
+            similarities: Each candidate's precomputed similarity
+
+        Returns:
+            A (gazetteer_name, identifier) pair, or None below the threshold
+        """
+        if similarities[best_index] < min_similarity:
             return None
-        return self.gazetteer_name, candidate_list[best_idx].identifier
-
-    def _admin_levels(self, location_data: dict) -> list[str]:
-        """
-        Administrative place names for a candidate, most specific first.
-
-        Args:
-            location_data: The candidate's gazetteer attributes
-
-        Returns:
-            The non-empty administrative names, in level3..level1 order
-        """
-        return admin_levels(location_data, self.attribute_map)
-
-    def _generate_description(self, candidate: "Feature") -> str:
-        """
-        Generate a textual description for a single candidate location.
-
-        Args:
-            candidate: Feature object
-
-        Returns:
-            Location description string
-        """
-        return describe_feature(candidate.data, self.attribute_map)
+        return self.gazetteer_name, candidate_list[best_index].identifier
 
     def _candidate_description(self, candidate: "Feature") -> str:
         """Return a cached textual description for one gazetteer feature."""
         if candidate.id not in self.candidate_descriptions:
-            self.candidate_descriptions[candidate.id] = self._generate_description(
-                candidate
+            self.candidate_descriptions[candidate.id] = describe_feature(
+                candidate.data, self.attribute_map
             )
         return self.candidate_descriptions[candidate.id]
