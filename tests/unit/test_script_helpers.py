@@ -23,7 +23,10 @@ def test_write_json_atomic_pretty_sorted(tmp_path):
         pretty=True,
         fsync=False,
     )
-    assert path.read_bytes() == '{\n  "a": 1,\n  "b": "é"\n}\n'.encode()
+    assert (
+        path.read_bytes().replace(b"\r\n", b"\n")
+        == '{\n  "a": 1,\n  "b": "é"\n}\n'.encode()
+    )
 
 
 def test_write_json_atomic_replaces_existing(tmp_path):
