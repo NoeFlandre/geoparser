@@ -38,8 +38,8 @@ class TestAndorraBuild:
         """The Andorra fixture produces a meaningful number of rows."""
         artifact = GazetteerArtifact(artifact_path("andorranames"))
 
-        assert artifact.count_features() > 100
-        assert artifact.count_names() > artifact.count_features()
+        assert artifact.count_features() == 3268
+        assert artifact.count_names() == 4894
 
     def test_identifiers_are_unique(self, andorra_gazetteer):
         """Every feature has a unique identifier."""
@@ -67,9 +67,9 @@ class TestAndorraBuild:
         gazetteer = Gazetteer("andorranames")
 
         feature = gazetteer.find("3041563")  # Andorra la Vella
-        assert feature is not None
+        assert feature is not None  # narrows the type for the check below
 
-        assert feature.data["shape_fid"] is not None
+        assert feature.data["shape_fid"] == 0
 
     def test_uninstall_removes_artifact(
         self, andorra_config_path, tmp_path, monkeypatch
