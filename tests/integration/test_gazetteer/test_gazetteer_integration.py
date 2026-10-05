@@ -11,6 +11,11 @@ from geoparser.gazetteer.feature import Feature
 from geoparser.gazetteer.gazetteer import Gazetteer
 
 
+def _by_identifier(results, identifier):
+    """Pick one feature out of an unordered result list."""
+    return next(f for f in results if f.identifier == identifier)
+
+
 @pytest.mark.integration
 class TestGazetteerIntegration:
     """Integration tests for Gazetteer with real Andorra data."""
@@ -21,10 +26,22 @@ class TestGazetteerIntegration:
 
         assert gazetteer.gazetteer_name == "andorranames"
 
+    def test_exact_search_finds_the_expected_features(self, andorra_gazetteer):
+        """
+        Exact search returns exactly the expected features.
+
+        It has no defined order, so identifiers are compared sorted.
+        """
+        gazetteer = Gazetteer("andorranames")
+
+        results = gazetteer.search("Andorra la Vella", method="exact")
+
+        assert sorted(f.identifier for f in results) == ["3041563", "3041566"]
+        assert _by_identifier(results, "3041566").data["name"] == "Andorra la Vella"
+
     @pytest.mark.parametrize(
         ("query", "method", "expected_identifiers", "top_name"),
         [
-            ("Andorra la Vella", "exact", ["3041563", "3041566"], "Andorra la Vella"),
             ("Escaldes", "phrase", ["3040051"], "les Escaldes"),
             ("Andorra", "partial", ["3041563", "3041565"], "Andorra la Vella"),
             ("Andorra la Vela", "partial", ["3041563"], "Andorra la Vella"),
@@ -33,26 +50,16 @@ class TestGazetteerIntegration:
             ("Escaldez", "fuzzy", ["3040051"], "les Escaldes"),
         ],
     )
-    def test_search_methods_find_the_expected_features(
+    def test_scored_search_methods_find_the_expected_features(
         self, andorra_gazetteer, query, method, expected_identifiers, top_name
     ):
-        """
-        Each search method returns exactly the expected features.
-
-        Exact search has no defined order, so it is compared as a set. The
-        scored methods order by score then identifier, so theirs is exact.
-        """
+        """Scored methods order by score then identifier, so order is exact."""
         gazetteer = Gazetteer("andorranames")
 
         results = gazetteer.search(query, method=method)
 
-        identifiers = [f.identifier for f in results]
-        if method == "exact":
-            assert sorted(identifiers) == sorted(expected_identifiers)
-            assert top_name in {f.data["name"] for f in results}
-        else:
-            assert identifiers == expected_identifiers
-            assert results[0].data["name"] == top_name
+        assert [f.identifier for f in results] == expected_identifiers
+        assert results[0].data["name"] == top_name
 
     def test_search_respects_limit_parameter(self, andorra_gazetteer):
         """Test that search respects the limit parameter."""
@@ -127,7 +134,7 @@ class TestGazetteerIntegration:
 
         results = gazetteer.search("Andorra la Vella", method="exact")
 
-        feature = next(f for f in results if f.identifier == "3041563")
+        feature = _by_identifier(results, "3041563")
         assert isinstance(feature.geometry, BaseGeometry)
         assert feature.geometry.wkt == "POINT (1.52109 42.50779)"
         assert feature.crs == "EPSG:4326"
@@ -138,7 +145,7 @@ class TestGazetteerIntegration:
 
         results = gazetteer.search("Andorra la Vella", method="exact")
 
-        feature = next(f for f in results if f.identifier == "3041563")
+        feature = _by_identifier(results, "3041563")
         assert "Andorra la Vella" in feature.names
         assert "Andorre-la-Vieille" in feature.names
 
