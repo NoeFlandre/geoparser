@@ -76,7 +76,8 @@ class PriorResolver(SentenceTransformerResolver):
 
     def _best_referent(
         self,
-        context: str,  # noqa: ARG002 - hook signature shared with the parent
+        _context: str,
+        /,
         candidate_list: list[Feature],
         min_similarity: float,
         similarities: list[float],
@@ -88,6 +89,4 @@ class PriorResolver(SentenceTransformerResolver):
             self.population_weight,
         )
         best = max(range(len(scores)), key=lambda index: scores[index])
-        if similarities[best] < min_similarity:
-            return None
-        return self.gazetteer_name, candidate_list[best].identifier
+        return self._accept(best, candidate_list, min_similarity, similarities)

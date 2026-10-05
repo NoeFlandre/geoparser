@@ -46,8 +46,14 @@ class TestPrepareTrainingData:
         """Repeated training toponyms share their search and description work."""
         candidate = _candidate("1")
         resolver.gazetteer.search = Mock(return_value=[candidate])
-        resolver._generate_description = Mock(return_value="desc[1]")
-        with patch.object(resolver, "_extract_context", return_value="ctx"):
+        describe = Mock(return_value="desc[1]")
+        with (
+            patch.object(resolver, "_extract_context", return_value="ctx"),
+            patch(
+                "geoparser.modules.resolvers.sentencetransformer.describe_feature",
+                describe,
+            ),
+        ):
             resolver._prepare_training_data(
                 ["Paris Paris"],
                 [[(0, 5), (6, 11)]],
@@ -57,7 +63,7 @@ class TestPrepareTrainingData:
         resolver.gazetteer.search.assert_called_once_with(
             "Paris", "exact", limit=10000, tiers=1
         )
-        resolver._generate_description.assert_called_once_with(candidate)
+        describe.assert_called_once_with(candidate.data, resolver.attribute_map)
 
     @staticmethod
     def _prepare(resolver, texts, references, referents, candidates):
@@ -71,7 +77,7 @@ class TestPrepareTrainingData:
             ),
             patch.object(
                 resolver,
-                "_generate_description",
+                "_candidate_description",
                 side_effect=lambda c: f"desc[{c.identifier}]",
             ),
         ):
@@ -127,7 +133,7 @@ class TestPrepareTrainingData:
         resolver.gazetteer.search = Mock(return_value=[])
         with (
             patch.object(resolver, "_extract_context", return_value="ctx"),
-            patch.object(resolver, "_generate_description", return_value="desc"),
+            patch.object(resolver, "_candidate_description", return_value="desc"),
         ):
             # Act
             resolver._prepare_training_data(
