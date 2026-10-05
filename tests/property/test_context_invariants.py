@@ -45,6 +45,21 @@ def documents_with_target(draw):
     return sentences, draw(st.integers(min_value=0, max_value=len(sentences) - 1))
 
 
+def _reference_window_indices(
+    costs: list[int], target: int, budget: int
+) -> tuple[int, int]:
+    """Model one preceding-then-following round from the public contract."""
+    first = last = target
+    while True:
+        previous = (first, last)
+        if first > 0 and sum(costs[first - 1 : last + 1]) <= budget:
+            first -= 1
+        if last + 1 < len(costs) and sum(costs[first : last + 2]) <= budget:
+            last += 1
+        if (first, last) == previous:
+            return first, last
+
+
 @pytest.mark.property
 @given(documents_with_target(), BUDGETS)
 def test_the_window_always_contains_the_target_sentence(document, budget):
@@ -115,14 +130,51 @@ def test_neither_neighbour_of_the_window_would_have_fitted(document, budget):
 
 @pytest.mark.property
 @given(documents_with_target(), BUDGETS)
-def test_a_bigger_budget_never_gives_a_smaller_window(document, budget):
-    """Growing the budget cannot cost the caller context."""
+def test_window_matches_the_documented_greedy_reference(document, budget):
+    """The result follows the preceding-then-following contract."""
     sentences, target = document
 
-    smaller = expand_window(sentences, target, budget)
-    larger = expand_window(sentences, target, budget + 1)
+    first, last = _reference_window_indices(
+        [sentence.cost for sentence in sentences], target, budget
+    )
+    window = expand_window(sentences, target, budget)
 
-    assert len(larger) >= len(smaller)
+    assert window == sentences[first : last + 1]
+
+
+@pytest.mark.property
+@pytest.mark.parametrize(
+    (
+        "costs",
+        "target",
+        "smaller_budget",
+        "larger_budget",
+        "smaller_indices",
+        "larger_indices",
+    ),
+    [
+        (
+            [0, 0, 0, 0, 0, 0, 1, 0, 0, 2],
+            8,
+            1,
+            2,
+            tuple(range(9)),
+            (7, 8, 9),
+        ),
+        ([1, 1, 1, 1, 3], 3, 4, 5, (0, 1, 2, 3), (2, 3, 4)),
+    ],
+)
+def test_greedy_expansion_can_return_fewer_sentences_at_a_larger_budget(
+    costs, target, smaller_budget, larger_budget, smaller_indices, larger_indices
+):
+    """Pin examples where more budget changes the greedy selection order."""
+    sentences = _document(costs)
+    smaller = expand_window(sentences, target, smaller_budget)
+    larger = expand_window(sentences, target, larger_budget)
+
+    assert tuple(sentences.index(sentence) for sentence in smaller) == smaller_indices
+    assert tuple(sentences.index(sentence) for sentence in larger) == larger_indices
+    assert len(larger) < len(smaller)
 
 
 @pytest.mark.property
