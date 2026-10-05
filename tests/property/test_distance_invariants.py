@@ -59,6 +59,11 @@ def annotations(points: list[tuple[float, float]]) -> list[Annotation]:
     return [annotation_at(index, point) for index, point in enumerate(points)]
 
 
+def _error_range_rounding_tolerance(errors: list[float]) -> float:
+    """Allow one ULP per value for floating-point accumulation and division."""
+    return len(errors) * math.ulp(max(errors))
+
+
 @given(first=coordinate)
 def test_haversine_returns_zero_for_identical_coordinates(
     first: tuple[float, float],
@@ -137,8 +142,31 @@ def test_mean_and_median_stay_within_observed_error_range(
     mean = mean_error_km(expected, predicted)
     median = median_error_km(expected, predicted)
 
-    assert min(errors) <= mean <= max(errors)
-    assert min(errors) <= median <= max(errors)
+    # The mean sums up to eight values before dividing. Keep the allowance to
+    # one ULP per observed value at the scale of the largest distance.
+    rounding_tolerance = _error_range_rounding_tolerance(errors)
+    lower_bound = min(errors) - rounding_tolerance
+    upper_bound = max(errors) + rounding_tolerance
+
+    assert lower_bound <= mean <= upper_bound
+    assert lower_bound <= median <= upper_bound
+
+
+def test_mean_and_median_range_keeps_repeated_large_error_regression() -> None:
+    """Repeated equal distances expose rounding above their exact maximum."""
+    expected = annotations([(3.0, 0.0)] * 3)
+    predicted = annotations([(21.0, 156.0)] * 3)
+    errors = resolution_errors_km(expected, predicted)
+
+    mean = mean_error_km(expected, predicted)
+    median = median_error_km(expected, predicted)
+
+    rounding_tolerance = _error_range_rounding_tolerance(errors)
+    lower_bound = min(errors) - rounding_tolerance
+    upper_bound = max(errors) + rounding_tolerance
+
+    assert lower_bound <= mean <= upper_bound
+    assert lower_bound <= median <= upper_bound
 
 
 def _permuted_points(
