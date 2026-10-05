@@ -56,17 +56,6 @@ def gold_annotations(documents: Sequence[Document]) -> list[t.Any]:
     ]
 
 
-def _coordinates(location: t.Any) -> tuple[float | None, float | None]:
-    """Return a resolved location's coordinates, when it has usable ones."""
-    if location is None:
-        return None, None
-    data = getattr(location, "data", None) or {}
-    try:
-        return float(data["latitude"]), float(data["longitude"])
-    except (KeyError, TypeError, ValueError):
-        return None, None
-
-
 def predictions_by_document(
     project: t.Any, document_ids: Sequence[t.Any], documents: Sequence[Document]
 ) -> dict[str, list[dict[str, t.Any]]]:
@@ -84,27 +73,18 @@ def predictions_by_document(
     Returns:
         Corpus document identifier to serialized annotations
     """
-    from geoparser.evaluation import Annotation
+    from geoparser.evaluation import toponym_annotation
 
     predictions: dict[str, list[dict[str, t.Any]]] = {}
     for document, parsed in zip(
         documents, project.get_documents(list(document_ids)), strict=True
     ):
-        annotations = []
-        for toponym in parsed.toponyms:
-            latitude, longitude = _coordinates(toponym.location)
-            annotations.append(
-                report.serialize(
-                    Annotation(
-                        toponym.start,
-                        toponym.end,
-                        getattr(toponym.location, "identifier", None),
-                        document.identifier,
-                        latitude,
-                        longitude,
-                    )
-                )
+        annotations = [
+            report.serialize(
+                toponym_annotation(toponym, document.identifier, with_coordinates=True)
             )
+            for toponym in parsed.toponyms
+        ]
         predictions[document.identifier] = annotations
     return predictions
 

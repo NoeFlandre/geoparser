@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from scripts._io import write_json_atomic
+
 
 def require_clean_commit(commit: str) -> str:
     """Reject benchmark provenance that cannot identify an immutable tree."""
@@ -18,16 +20,6 @@ def require_clean_commit(commit: str) -> str:
 
 def _canonical_json(value: dict[str, Any]) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-
-
-def _atomic_json(path: Path, value: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.tmp")
-    temporary.write_text(
-        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    temporary.replace(path)
 
 
 class ModelLanguageCheckpoints:
@@ -52,7 +44,7 @@ class ModelLanguageCheckpoints:
             message = "Checkpoint directory has data but no run snapshot manifest"
             raise ValueError(message)
         else:
-            _atomic_json(manifest_path, self.manifest)
+            write_json_atomic(manifest_path, self.manifest, pretty=True, fsync=False)
 
     def _language_path(self, model_key: str, language: str) -> Path:
         return self.directory / "languages" / model_key / f"{language}.json"
@@ -109,4 +101,6 @@ class ModelLanguageCheckpoints:
             model_key, model_id, model_revision, language, source_example_count
         )
         record["result"] = result
-        _atomic_json(self._language_path(model_key, language), record)
+        write_json_atomic(
+            self._language_path(model_key, language), record, pretty=True, fsync=False
+        )
