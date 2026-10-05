@@ -45,19 +45,35 @@ def documents_with_target(draw):
     return sentences, draw(st.integers(min_value=0, max_value=len(sentences) - 1))
 
 
+def _reference_take_preceding(
+    costs: list[int], first: int, last: int, budget: int
+) -> int:
+    """Return the preceding index if adding that slice fits the budget."""
+    if first > 0 and sum(costs[first - 1 : last + 1]) <= budget:
+        return first - 1
+    return first
+
+
+def _reference_take_following(
+    costs: list[int], first: int, last: int, budget: int
+) -> int:
+    """Return the following index if adding that slice fits the budget."""
+    if last + 1 < len(costs) and sum(costs[first : last + 2]) <= budget:
+        return last + 1
+    return last
+
+
 def _reference_window_indices(
     costs: list[int], target: int, budget: int
 ) -> tuple[int, int]:
     """Model one preceding-then-following round from the public contract."""
     first = last = target
-    while True:
-        previous = (first, last)
-        if first > 0 and sum(costs[first - 1 : last + 1]) <= budget:
-            first -= 1
-        if last + 1 < len(costs) and sum(costs[first : last + 2]) <= budget:
-            last += 1
-        if (first, last) == previous:
-            return first, last
+    previous = None
+    while previous != (first, last):
+        previous = first, last
+        first = _reference_take_preceding(costs, first, last, budget)
+        last = _reference_take_following(costs, first, last, budget)
+    return first, last
 
 
 @pytest.mark.property
