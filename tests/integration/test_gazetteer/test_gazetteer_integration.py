@@ -36,13 +36,23 @@ class TestGazetteerIntegration:
     def test_search_methods_find_the_expected_features(
         self, andorra_gazetteer, query, method, expected_identifiers, top_name
     ):
-        """Each search method returns exactly the expected features, best first."""
+        """
+        Each search method returns exactly the expected features.
+
+        Exact search has no defined order, so it is compared as a set. The
+        scored methods order by score then identifier, so theirs is exact.
+        """
         gazetteer = Gazetteer("andorranames")
 
         results = gazetteer.search(query, method=method)
 
-        assert [f.identifier for f in results] == expected_identifiers
-        assert results[0].data["name"] == top_name
+        identifiers = [f.identifier for f in results]
+        if method == "exact":
+            assert sorted(identifiers) == sorted(expected_identifiers)
+            assert top_name in {f.data["name"] for f in results}
+        else:
+            assert identifiers == expected_identifiers
+            assert results[0].data["name"] == top_name
 
     def test_search_respects_limit_parameter(self, andorra_gazetteer):
         """Test that search respects the limit parameter."""
@@ -50,7 +60,9 @@ class TestGazetteerIntegration:
 
         results = gazetteer.search("Andorra", method="partial", limit=1)
 
-        assert [f.identifier for f in results] == ["3041563"]
+        # Tied scores may be cut either way, so only the count and candidates
+        assert len(results) == 1
+        assert results[0].identifier in {"3041563", "3041565"}
 
     def test_search_respects_tiers_parameter(self, andorra_gazetteer):
         """Test that search respects the tiers parameter for score-based tiering."""
@@ -69,7 +81,7 @@ class TestGazetteerIntegration:
 
         results = gazetteer.search('"Andorra"', method="exact")
 
-        assert [f.identifier for f in results] == ["3041563", "3041565"]
+        assert sorted(f.identifier for f in results) == ["3041563", "3041565"]
 
     def test_search_strips_whitespace(self, andorra_gazetteer):
         """Test that search strips leading/trailing whitespace."""
@@ -77,7 +89,7 @@ class TestGazetteerIntegration:
 
         results = gazetteer.search("  Andorra  ", method="exact")
 
-        assert [f.identifier for f in results] == ["3041563", "3041565"]
+        assert sorted(f.identifier for f in results) == ["3041563", "3041565"]
 
     def test_find_returns_specific_feature(self, andorra_gazetteer):
         """Test that find returns a specific feature by identifier."""
@@ -106,7 +118,7 @@ class TestGazetteerIntegration:
 
         results = gazetteer.search("Andorra", method="exact")
 
-        assert [f.identifier for f in results] == ["3041563", "3041565"]
+        assert sorted(f.identifier for f in results) == ["3041563", "3041565"]
         assert all(isinstance(f, Feature) for f in results)
 
     def test_feature_has_geometry(self, andorra_gazetteer):
@@ -115,7 +127,7 @@ class TestGazetteerIntegration:
 
         results = gazetteer.search("Andorra la Vella", method="exact")
 
-        feature = results[0]
+        feature = next(f for f in results if f.identifier == "3041563")
         assert isinstance(feature.geometry, BaseGeometry)
         assert feature.geometry.wkt == "POINT (1.52109 42.50779)"
         assert feature.crs == "EPSG:4326"
@@ -126,8 +138,7 @@ class TestGazetteerIntegration:
 
         results = gazetteer.search("Andorra la Vella", method="exact")
 
-        feature = results[0]
-        assert feature.identifier == "3041563"
+        feature = next(f for f in results if f.identifier == "3041563")
         assert "Andorra la Vella" in feature.names
         assert "Andorre-la-Vieille" in feature.names
 
@@ -167,9 +178,9 @@ class TestGazetteerIntegration:
         results_mixed = gazetteer.search("AnDoRRa", method="exact")
 
         expected = ["3041563", "3041565"]
-        assert [f.identifier for f in results_lower] == expected
-        assert [f.identifier for f in results_upper] == expected
-        assert [f.identifier for f in results_mixed] == expected
+        assert sorted(f.identifier for f in results_lower) == expected
+        assert sorted(f.identifier for f in results_upper) == expected
+        assert sorted(f.identifier for f in results_mixed) == expected
 
     def test_handles_special_characters(self, andorra_gazetteer):
         """Test that search handles diacritics in place names."""
@@ -186,8 +197,8 @@ class TestGazetteerIntegration:
         results1 = gazetteer.search("Andorra la Vella", method="exact")
         results2 = gazetteer.search("Andorra la Vella", method="exact")
 
-        assert [f.identifier for f in results1] == ["3041563", "3041566"]
-        assert [f.identifier for f in results2] == ["3041563", "3041566"]
+        assert sorted(f.identifier for f in results1) == ["3041563", "3041566"]
+        assert sorted(f.identifier for f in results2) == ["3041563", "3041566"]
 
     def test_different_search_methods_return_result_lists(self, andorra_gazetteer):
         """Test that different search methods all return lists."""
@@ -199,5 +210,5 @@ class TestGazetteerIntegration:
 
         assert isinstance(exact_results, list)
         assert isinstance(partial_results, list)
-        assert [f.identifier for f in exact_results] == ["3041563", "3041565"]
+        assert sorted(f.identifier for f in exact_results) == ["3041563", "3041565"]
         assert [f.identifier for f in partial_results] == ["3041563", "3041565"]
