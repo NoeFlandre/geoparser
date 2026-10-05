@@ -362,16 +362,9 @@ def _configure_runtime(output_dir: Path, hf_home: Path | None, offline: bool) ->
 
 def _document_annotations(document: Document) -> list[Annotation]:
     """Extract recognized spans and resolver IDs from a parsed document."""
-    from geoparser.evaluation import Annotation
+    from geoparser.evaluation import toponym_annotation
 
-    return [
-        Annotation(
-            reference.start,
-            reference.end,
-            reference.location.identifier if reference.location is not None else None,
-        )
-        for reference in document.toponyms
-    ]
+    return [toponym_annotation(reference) for reference in document.toponyms]
 
 
 def collect_predictions(

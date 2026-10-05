@@ -11,6 +11,7 @@ from unittest.mock import Mock, call
 
 import pytest
 
+from geoparser.evaluation import _location_coordinates
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import runner
 from scripts.benchmark.checkpoint import Checkpoint, RunIdentity
@@ -124,7 +125,7 @@ class TestScore:
     ],
 )
 def test_coordinates_require_two_usable_values(location, expected):
-    assert runner._coordinates(location) == expected
+    assert _location_coordinates(location) == expected
 
 
 def test_predictions_are_keyed_by_corpus_id_and_keep_unresolved_spans():
