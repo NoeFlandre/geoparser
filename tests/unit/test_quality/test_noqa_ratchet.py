@@ -3,13 +3,17 @@
 import re
 from pathlib import Path
 
+import pytest
+
 _HERE = Path(__file__).resolve().parents[3]
 # The mutation runner executes the suite from a ``mutants/`` copy whose
 # sources are instrumented: each function is duplicated per mutant and its
 # body moved, so counting there would not match the real code. Count the
 # untouched originals one level up instead.
 ROOT = _HERE.parent if _HERE.name == "mutants" else _HERE
-SUPPRESSION = re.compile(r"#\s*noqa\b", re.IGNORECASE)
+# Line-level ``# noqa`` and the file-level ``# ruff: noqa`` / ``# flake8: noqa``
+# forms, in any letter case and with or without spaces after the ``#``.
+SUPPRESSION = re.compile(r"#\s*(?:(?:ruff|flake8)\s*:\s*)?noqa\b", re.IGNORECASE)
 
 # Lower this when a suppression is removed. Raising it needs a reason in
 # review: prefer fixing the code or one per-file-ignores entry in pyproject.toml.
@@ -38,10 +42,29 @@ def test_ratchet_is_tight() -> None:
     assert _inline_noqa_count() == MAX_INLINE_NOQA
 
 
-def test_suppressions_are_counted_in_any_letter_case(tmp_path: Path) -> None:
+SUPPRESSION_FORMS = [
+    "import a  # noqa: F401",
+    "import a  # NOQA: F401",
+    "import a  # NoQa",
+    "import a  #noqa",
+    "import a  # noqa:F401",
+    "import a  # noqa: F401, E402",
+    "import a  # type: ignore  # noqa: F401",
+    "# ruff: noqa: F401",
+    "# RUFF:NOQA",
+    "# flake8: noqa: F401",
+    "#flake8:noqa",
+]
+
+
+@pytest.mark.parametrize("line", SUPPRESSION_FORMS)
+def test_every_suppression_form_is_counted(line: str, tmp_path: Path) -> None:
     source = tmp_path / "sample.py"
-    source.write_text(
-        "import a  # noqa: F401\nimport b  # NOQA: F401\nimport c  # NoQa\nx = 1\n",
-        encoding="utf-8",
-    )
-    assert _file_count(source) == 3
+    source.write_text(f"{line}\nx = 1\n", encoding="utf-8")
+    assert _file_count(source) == 1
+
+
+def test_code_without_a_suppression_is_not_counted(tmp_path: Path) -> None:
+    source = tmp_path / "sample.py"
+    source.write_text("x = 1  # a note\n", encoding="utf-8")
+    assert _file_count(source) == 0
