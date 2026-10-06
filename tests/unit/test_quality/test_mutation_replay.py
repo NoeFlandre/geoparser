@@ -10,8 +10,8 @@ from typing import Any
 import pytest
 
 from scripts import mutation_replay
+from tests.conftest import PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ALLOWLIST = PROJECT_ROOT / "scripts" / "mutation_replay_allowlist.json"
 CURRENT_SHA = "f0f07a630fda3be4b758d27690bd12a2c280897c"
 

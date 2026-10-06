@@ -11,8 +11,7 @@ from scripts.check_architecture import (
     find_cycles,
     find_impure_modules,
 )
-
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+from tests.conftest import PROJECT_ROOT
 
 # mutmut runs the suite from a rewritten copy of the tree under ``mutants/``,
 # where every function has been expanded into numbered variants and the

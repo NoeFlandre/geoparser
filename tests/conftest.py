@@ -36,6 +36,8 @@ hypothesis_settings.register_profile(
 )
 hypothesis_settings.load_profile(os.getenv("HYPOTHESIS_PROFILE", "dev"))
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 _TRAINING_OUTPUT_NAMES = frozenset(
     {
         "initial_model",

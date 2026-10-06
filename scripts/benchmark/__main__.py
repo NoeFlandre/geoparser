@@ -23,10 +23,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from scripts._io import PROJECT_ROOT
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import corpora, corpus, pipelines, provenance, report, runner
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+REPOSITORY_ROOT = PROJECT_ROOT
 
 
 @dataclass(frozen=True)
