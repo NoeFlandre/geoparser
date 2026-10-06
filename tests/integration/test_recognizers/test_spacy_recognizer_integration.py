@@ -117,7 +117,7 @@ class TestSpacyRecognizerIntegration:
         # Assert
         assert len(results) == 1
         # Should find GPE entities
-        assert len(results[0]) > 0
+        assert results[0]
 
     def test_deterministic_id_generation(self):
         """Test that same configuration produces same ID."""
