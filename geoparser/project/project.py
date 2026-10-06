@@ -388,7 +388,7 @@ class Project:
         self,
         path: str,
         tag: str,
-        create_documents: bool = False,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
+        create_documents: bool = False,
     ) -> None:
         """
         Load annotations from an annotator JSON file and register them in the project.
