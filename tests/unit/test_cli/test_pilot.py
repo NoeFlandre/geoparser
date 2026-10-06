@@ -19,7 +19,7 @@ def test_runtime_configuration_routes_application_artifacts(
 ) -> None:
     output_dir = tmp_path / "output"
 
-    pilot._configure_runtime(output_dir, None, False)
+    pilot._configure_runtime(output_dir, None, offline=False)
 
     assert (
         pilot.os.environ["DATABASE_URL"] == f"sqlite:///{output_dir / 'pilot.sqlite'}"
@@ -35,7 +35,7 @@ def test_runtime_configuration_uses_requested_hub_cache(
 ) -> None:
     hf_home = tmp_path / "hub"
 
-    pilot._configure_runtime(tmp_path / "output", hf_home, False)
+    pilot._configure_runtime(tmp_path / "output", hf_home, offline=False)
 
     assert pilot.os.environ["HF_HOME"] == str(hf_home)
 
@@ -44,7 +44,7 @@ def test_runtime_configuration_uses_requested_hub_cache(
 def test_runtime_configuration_sets_offline_switches(
     clean_pilot_runtime, tmp_path: Path, offline: bool, expected: str | None
 ) -> None:
-    pilot._configure_runtime(tmp_path / "output", None, offline)
+    pilot._configure_runtime(tmp_path / "output", None, offline=offline)
 
     assert pilot.os.environ.get("HF_HUB_OFFLINE") == expected
     assert pilot.os.environ.get("TRANSFORMERS_OFFLINE") == expected

@@ -233,6 +233,15 @@ ignore = [
 # flag is the API, not a design smell.
 # Boolean parameters there are --flag options, not positional arguments.
 "geoparser/cli/**" = ["PLR0913", "PLR0917", "FBT001", "FBT002"]
+# Public boolean options that callers may pass positionally: making them
+# keyword-only would break existing call sites, so they are kept as is.
+"geoparser/annotator/db/crud/document.py" = ["FBT001", "FBT002"]
+"geoparser/annotator/db/crud/session.py" = ["FBT001", "FBT002"]
+"geoparser/annotator/server.py" = ["FBT001", "FBT002"]
+"geoparser/gazetteer/build/builder.py" = ["FBT001", "FBT002"]
+"geoparser/gazetteer/build/progress.py" = ["FBT001", "FBT002"]
+"geoparser/geoparser/geoparser.py" = ["FBT001", "FBT002"]
+"geoparser/project/project.py" = ["FBT001", "FBT002"]
 # The demo notebook reports its progress to the reader.
 "demo/**" = ["T20"]
 
