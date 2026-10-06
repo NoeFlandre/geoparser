@@ -116,9 +116,8 @@ class TestSpacyRecognizerIntegration:
 
         # Assert
         assert len(results) == 1
-        assert results[0] is not None
         # Should find GPE entities
-        assert len(results[0]) > 0
+        assert results[0]
 
     def test_deterministic_id_generation(self):
         """Test that same configuration produces same ID."""
@@ -206,7 +205,9 @@ class TestSpacyRecognizerIntegration:
         # Assert - Model should be saved
         assert output_path.exists()
         # Check that model files were created
-        assert len(list(output_path.iterdir())) > 0
+        assert {"meta.json", "config.cfg"} <= {
+            path.name for path in output_path.iterdir()
+        }
 
     def test_fit_raises_error_with_no_training_data(
         self, real_spacy_recognizer, tmp_path

@@ -39,7 +39,6 @@ class TestSentenceTransformerResolverIntegration:
         )
 
         # Assert
-        assert resolver is not None
         assert resolver.model_name == "dguzh/geo-all-MiniLM-L6-v2"
         assert resolver.gazetteer_name == "andorranames"
 
@@ -74,7 +73,6 @@ class TestSentenceTransformerResolverIntegration:
         # Assert
         assert tuple(map(len, results)) == (1,)
         prediction = results[0][0]
-        assert prediction is not None
         gazetteer_name, identifier = prediction
         assert (gazetteer_name, identifier is not None) == ("andorranames", True)
 
@@ -441,7 +439,9 @@ class TestSentenceTransformerResolverIntegration:
         # Assert - Model should be saved
         assert output_path.exists()
         # Check that model files were created
-        assert len(list(output_path.iterdir())) > 0
+        assert {"modules.json", "config_sentence_transformers.json"} <= {
+            path.name for path in output_path.iterdir()
+        }
 
     def test_fit_raises_error_with_no_training_data(
         self,

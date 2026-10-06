@@ -69,8 +69,12 @@ class TestEndToEndTrainingWorkflow:
         # Assert - Phase 3: Verify models were created
         assert recognizer_output.exists()
         assert resolver_output.exists()
-        assert len(list(recognizer_output.iterdir())) > 0
-        assert len(list(resolver_output.iterdir())) > 0
+        assert {"meta.json", "config.cfg"} <= {
+            path.name for path in recognizer_output.iterdir()
+        }
+        assert {"modules.json", "config_sentence_transformers.json"} <= {
+            path.name for path in resolver_output.iterdir()
+        }
 
         # Cleanup
         project.delete()
