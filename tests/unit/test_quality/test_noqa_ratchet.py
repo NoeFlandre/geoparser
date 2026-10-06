@@ -1,10 +1,14 @@
 """Inline lint suppressions may only go down, never up."""
 
-import ast
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
+_HERE = Path(__file__).resolve().parents[3]
+# The mutation runner executes the suite from a ``mutants/`` copy whose
+# sources are instrumented: each function is duplicated per mutant and its
+# body moved, so counting there would not match the real code. Count the
+# untouched originals one level up instead.
+ROOT = _HERE.parent if _HERE.name == "mutants" else _HERE
 SUPPRESSION = re.compile(r"#\s*noqa\b", re.IGNORECASE)
 
 # Lower this when a suppression is removed. Raising it needs a reason in
@@ -12,30 +16,9 @@ SUPPRESSION = re.compile(r"#\s*noqa\b", re.IGNORECASE)
 MAX_INLINE_NOQA = 44
 
 
-def _generated_lines(tree: ast.AST) -> set[int]:
-    """
-    Lines inside functions the mutation runner generated.
-
-    It copies every function once per mutant (``..__mutmut_N``) and keeps one
-    more copy of the original (``..__mutmut_orig``), comments included. The
-    public function stays in place, so skipping the copies counts each real
-    suppression once, in the real tree and in the mutation runner's copy.
-    """
-    lines: set[int] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and "__mutmut_" in node.name:
-            lines.update(range(node.lineno, (node.end_lineno or node.lineno) + 1))
-    return lines
-
-
 def _file_count(path: Path) -> int:
     text = path.read_text(encoding="utf-8")
-    generated = _generated_lines(ast.parse(text))
-    return sum(
-        1
-        for number, line in enumerate(text.splitlines(), start=1)
-        if number not in generated and SUPPRESSION.search(line)
-    )
+    return len(SUPPRESSION.findall(text))
 
 
 def _inline_noqa_count() -> int:
