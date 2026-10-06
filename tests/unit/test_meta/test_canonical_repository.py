@@ -24,7 +24,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-ROOT = Path(__file__).resolve().parents[3]
+from tests.conftest import PROJECT_ROOT
+
+ROOT = PROJECT_ROOT
 
 CANONICAL_SLUG = "NoeFlandre/geoparser"
 CANONICAL_URL = f"https://github.com/{CANONICAL_SLUG}"

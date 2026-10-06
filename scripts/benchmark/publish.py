@@ -25,13 +25,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from scripts._io import PROJECT_ROOT
 from scripts.benchmark.chart import render_bar_chart
 from scripts.benchmark.corpora import CORPORA
 from scripts.benchmark.pipelines import HYBRID, PRIOR_SETTINGS
 from scripts.benchmark.report import _number
 
 DEFAULT_REPO_ID = "NoeFlandre/geoparser-benchmark-results"
-EVIDENCE_DIR = Path(__file__).resolve().parents[2] / "benchmark-evidence"
+EVIDENCE_DIR = PROJECT_ROOT / "benchmark-evidence"
 LICENSE = "other"
 LICENSE_NAME = "Mixed corpus terms; see the dataset card"
 HIPE_DATA_URL = "https://github.com/hipe-eval/HIPE-2022-data"

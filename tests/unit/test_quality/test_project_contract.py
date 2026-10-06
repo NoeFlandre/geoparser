@@ -10,6 +10,7 @@ import yaml
 import yaml.constructor
 import yaml.resolver
 
+from tests.conftest import PROJECT_ROOT
 from tests.unit import test_docs as docs_guard
 from tests.unit.test_quality.mkdocs_navigation import markdown_paths
 
@@ -17,8 +18,6 @@ try:
     import tomllib  # ty: ignore[unresolved-import]
 except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10 CI.
     import tomli as tomllib
-
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _bash_executable() -> str:
