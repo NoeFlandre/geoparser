@@ -95,5 +95,4 @@ def test_closes_even_when_rollback_fails(monkeypatch, session_lifecycle):
     assert raised.value is rollback_error
     assert raised.value.__context__ is error
     assert session_lifecycle == [("close", True)]
-    assert not session.in_transaction()
-    assert len(session.identity_map) == 0
+    assert (session.in_transaction(), len(session.identity_map)) == (False, 0)
