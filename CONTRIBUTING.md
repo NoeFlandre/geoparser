@@ -53,7 +53,7 @@ The tests are in `tests/`. They have this structure:
 - `tests/integration/` tests real components together (models, DB, gazetteers).
 - `tests/e2e/` has full pipeline tests.
 
-The markers `unit`, `integration`, and `e2e` are declared under `[tool.pytest.ini_options]` in `pyproject.toml`. This is the single source of the pytest configuration.
+The markers are declared under `[tool.pytest.ini_options]` in `pyproject.toml`, the single source of the pytest configuration: `unit`, `integration`, `e2e`, `property`, `acceptance`, `architecture`, and `benchmark`. A test in `tests/unit/`, `tests/integration/`, `tests/e2e/`, `tests/property/`, or `tests/acceptance/` receives the marker named after its directory automatically, so `pytest -m <marker>` selects every test in that directory. `architecture` and `benchmark` are declared explicitly on the tests that use them.
 
 Hypothesis uses the registered profiles `dev`, `ci`, and `nightly`. Local runs use `dev` by default. Set `HYPOTHESIS_PROFILE=ci` for deterministic examples of CI size. Set `HYPOTHESIS_PROFILE=nightly` for the larger randomized run. The workflows select `ci` for pull requests. They select `nightly` for the scheduled quality run.
 
