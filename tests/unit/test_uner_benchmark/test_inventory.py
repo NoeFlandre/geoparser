@@ -1,15 +1,18 @@
 """Test source pins and split isolation without remote data."""
 
 import hashlib
+import json
 
 import pytest
 from pydantic import ValidationError
 
 from scripts.uner_benchmark.inventory import (
+    MANIFEST_PATH,
     Dataset,
     File,
     inventory_summary,
     load_local,
+    read_manifest,
 )
 
 PAYLOAD = b"# sent_id = one\n# text = Paris\n1\tParis\tB-LOC\t-\t-\n"
@@ -75,6 +78,19 @@ def test_load_rejects_malformed_tail_after_verified_prefix(tmp_path):
 
     with pytest.raises(ValueError, match="five tab-separated columns"):
         load_local(spec, "test", tmp_path)
+
+
+@pytest.mark.parametrize("count_field", ["repository_count", "split_file_count"])
+def test_read_manifest_rejects_declared_inventory_count_mismatch(
+    tmp_path, count_field
+):
+    source = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    source[count_field] += 1
+    path = tmp_path / "sources.json"
+    path.write_text(json.dumps(source), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=f"inventory {count_field} does not match"):
+        read_manifest(path)
 
 
 def test_checksum_mismatch_rejected_before_parsing(tmp_path):
