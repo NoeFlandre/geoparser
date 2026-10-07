@@ -359,10 +359,13 @@ def test_explicit_noncompletion_remains_visible(status):
 def test_end_to_end_requires_pinned_gazetteer_and_separate_count_type():
     payload = completed_payload()
     payload["protocol"]["task"] = "end_to_end"
+    for config in payload["configurations"]:
+        config["thresholds"]["min_similarity"] = 0.0
     with pytest.raises(ValidationError, match="gazetteer"):
         parse(payload)
     for config in payload["configurations"]:
         config["gazetteer"] = copy.deepcopy(config["models"][0])
+        config["thresholds"]["min_similarity"] = 0.0
     payload["results"][0]["status"] = "planned"
     measured = payload["results"][0]
     counts, units = measured.pop("scores"), measured.pop("units")
@@ -430,6 +433,7 @@ def test_resolution_pairs_cannot_change_eligible_denominators():
     payload["results"] = payload["results"][:1]
     payload["protocol"]["task"] = "gold_span_resolution"
     payload["configurations"][0]["gazetteer"] = payload["protocol"]["dataset"]
+    payload["configurations"][0]["thresholds"] = {"min_similarity": 0.0}
     count = {
         "task": "gold_span_resolution",
         "gold_spans": 3,
@@ -560,3 +564,72 @@ def test_failed_resolution_cannot_return_even_an_incorrect_valid_prediction():
         Unit.model_validate(
             {"example_id": "ranking-failed", "failed": True, "scores": scores}
         )
+
+
+@pytest.mark.parametrize(
+    "task,thresholds",
+    [
+        ("recognition", {}),
+        ("gold_span_resolution", {}),
+        ("gold_span_resolution", {"recognition": 0.5}),
+        ("gold_span_resolution", {"min_similarity": None}),
+        ("end_to_end", {"recognition": 0.5}),
+        ("end_to_end", {"min_similarity": 0.0}),
+    ],
+)
+def test_task_specific_thresholds_cannot_be_omitted(task, thresholds):
+    payload = experiment_payload()
+    payload["protocol"]["task"] = task
+    for config in payload["configurations"]:
+        config["gazetteer"] = config["models"][0]
+        config["thresholds"] = thresholds
+    with pytest.raises(ValidationError, match="threshold"):
+        parse(payload)
+
+
+def test_recognition_without_a_cutoff_requires_explicit_null():
+    payload = experiment_payload()
+    for config in payload["configurations"]:
+        config["thresholds"] = {"recognition": None}
+    assert parse(payload).configurations[0].thresholds == {"recognition": None}
+
+
+@pytest.mark.parametrize("resamples", [1, 999])
+def test_protocol_requires_at_least_one_thousand_bootstrap_resamples(resamples):
+    payload = experiment_payload()
+    payload["protocol"]["bootstrap_resamples"] = resamples
+    with pytest.raises(ValidationError, match="bootstrap_resamples"):
+        parse(payload)
+
+
+def test_cpu_measurements_cannot_report_device_allocation():
+    payload = completed_payload()
+    payload["results"][0]["measurements"]["peak_device_bytes"] = 1
+    with pytest.raises(ValidationError, match="CPU"):
+        parse(payload)
+
+
+def test_resolution_zero_and_constructor_default_have_distinct_provenance():
+    payload = experiment_payload()
+    payload["protocol"]["task"] = "gold_span_resolution"
+    for config in payload["configurations"]:
+        config["gazetteer"] = config["models"][0]
+        config["thresholds"] = {"min_similarity": 0.0}
+    zero = parse(payload)
+    payload["configurations"][0]["thresholds"]["min_similarity"] = 0.6
+    default = parse(payload)
+    assert zero.provenance_digest(zero.configurations[0]) != default.provenance_digest(
+        default.configurations[0]
+    )
+
+
+def test_gpu_measurements_can_report_device_allocation():
+    payload = completed_payload()
+    run = parse(payload)
+    run.protocol.hardware.device = "cuda"
+    payload["protocol"]["hardware"]["device"] = "cuda"
+    payload["results"][0]["provenance_sha256"] = run.provenance_digest(
+        run.configurations[0]
+    )
+    payload["results"][0]["measurements"]["peak_device_bytes"] = 1024
+    assert parse(payload).results[0].measurements.peak_device_bytes == 1024

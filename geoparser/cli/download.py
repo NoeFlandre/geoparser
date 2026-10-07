@@ -1,7 +1,16 @@
+import typing as t
+
 import typer
 
 
-def download_cli(config: str):
+def download_cli(
+    config: t.Annotated[
+        str,
+        typer.Argument(
+            help="Gazetteer name (e.g. geonames) or path to a custom YAML config."
+        ),
+    ],
+) -> None:
     """
     [Deprecated] This command has been renamed to ``install``.
 

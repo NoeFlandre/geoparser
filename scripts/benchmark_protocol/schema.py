@@ -85,7 +85,7 @@ class Protocol(Contract):
     invalid_output_policy: Literal["count_as_false_positive_and_retain"]
     uncertainty: Literal["paired_document_bootstrap_95_percent"]
     bootstrap_seed: Count
-    bootstrap_resamples: Positive
+    bootstrap_resamples: Annotated[int, Field(ge=1000)]
 
     @model_validator(mode="after")
     def selection_policy(self) -> Protocol:
@@ -118,7 +118,7 @@ class Configuration(Contract):
     sample_sha256: Sha256
     models: Annotated[list[Artifact], Field(min_length=1)]
     label_mapping: Annotated[dict[Text, Literal["LOC", "ignore"]], Field(min_length=1)]
-    thresholds: dict[Text, float]
+    thresholds: dict[Text, float | None]
     batch_size: Positive
     seed: Count
     language_support: Literal[
@@ -366,6 +366,7 @@ class Experiment(Contract):
             cell = (config.pipeline, config.language, config.source_config, config.seed)
             require(cell not in cells, "duplicate pipeline/source/seed inventory cell")
             cells.add(cell)
+            self._validate_thresholds(config)
             source = (config.language, config.source_config)
             identity = (config.examples, config.gold_spans, config.sample_sha256)
             require(
@@ -375,6 +376,19 @@ class Experiment(Contract):
             require(
                 self.protocol.task == "recognition" or config.gazetteer is not None,
                 "resolution and end-to-end require a pinned gazetteer",
+            )
+
+    def _validate_thresholds(self, config: Configuration) -> None:
+        """Require explicit cutoffs and distinguish absent recognition cutoffs."""
+        if self.protocol.task != "gold_span_resolution":
+            require(
+                "recognition" in config.thresholds,
+                "recognition threshold is required; use null only when no cutoff applies",
+            )
+        if self.protocol.task != "recognition":
+            require(
+                config.thresholds.get("min_similarity") is not None,
+                "resolution threshold min_similarity must be explicit and numeric",
             )
 
     def provenance_digest(self, config: Configuration) -> str:
@@ -404,6 +418,11 @@ class Experiment(Contract):
             result.evaluated_examples + result.failed_examples == config.examples,
             "complete result must account for every source example",
         )
+        if self.protocol.hardware.device == "cpu" and result.measurements is not None:
+            require(
+                result.measurements.peak_device_bytes == 0,
+                "CPU runs must report zero device-memory bytes",
+            )
         scores = result.completed_scores()
         require(scores.task == self.protocol.task, "result task differs from protocol")
         require(
