@@ -633,3 +633,23 @@ def test_gpu_measurements_can_report_device_allocation():
     )
     payload["results"][0]["measurements"]["peak_device_bytes"] = 1024
     assert parse(payload).results[0].measurements.peak_device_bytes == 1024
+
+
+@pytest.mark.parametrize("device", ["CPU", "cpu:0", " Cpu:12 "])
+def test_cpu_aliases_have_canonical_provenance(device):
+    payload = completed_payload()
+    payload["protocol"]["hardware"]["device"] = device
+    run = parse(payload)
+    assert run.protocol.hardware.device == "cpu"
+    assert run.results[0].provenance_sha256 == run.provenance_digest(
+        run.configurations[0]
+    )
+
+
+@pytest.mark.parametrize("device", ["CPU", "cpu:0", " Cpu:12 "])
+def test_cpu_aliases_cannot_bypass_the_memory_rule(device):
+    payload = completed_payload()
+    payload["protocol"]["hardware"]["device"] = device
+    payload["results"][0]["measurements"]["peak_device_bytes"] = 1024
+    with pytest.raises(ValidationError, match="CPU"):
+        parse(payload)

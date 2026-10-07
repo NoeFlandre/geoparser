@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import defaultdict
 from typing import Annotated, Literal
 
@@ -64,6 +65,14 @@ class Hardware(Contract):
     device: Text
     threads: Positive
     runtime_versions: Annotated[dict[Text, Text], Field(min_length=1)]
+
+    @field_validator("device")
+    @classmethod
+    def canonical_cpu_device(cls, value: str) -> str:
+        """Use one CPU identity for case variants and indexed CPU devices."""
+        if re.fullmatch(r"cpu(?::[0-9]+)?", value.strip(), flags=re.IGNORECASE):
+            return "cpu"
+        return value
 
 
 class Protocol(Contract):
