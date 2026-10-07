@@ -303,6 +303,34 @@ class TestBaseRepositoryDelete:
 class TestBaseRepositoryCreateManyFailure:
     """A failed batch leaves the session usable."""
 
+    def test_caller_owned_session_can_recover_from_a_partial_batch(self, test_engine):
+        from sqlalchemy.exc import IntegrityError
+        from sqlmodel import select
+
+        from geoparser.db.models import Project
+
+        with Session(test_engine) as session:
+            ProjectRepository.create_many(session, [ProjectCreate(name="committed")])
+            duplicate_id = uuid.uuid4()
+            with pytest.raises(IntegrityError):
+                ProjectRepository.create_many(
+                    session,
+                    [
+                        Project(id=duplicate_id, name="partial"),
+                        Project(id=duplicate_id, name="duplicate"),
+                    ],
+                )
+
+            assert not session.in_transaction()
+            assert session.exec(select(Project.name)).all() == ["committed"]
+            ProjectRepository.create_many(session, [ProjectCreate(name="retry")])
+
+        with Session(test_engine) as session:
+            assert session.exec(select(Project.name).order_by(Project.name)).all() == [
+                "committed",
+                "retry",
+            ]
+
     def test_rolls_back_and_reraises_when_the_commit_fails(self):
         """A commit error is not swallowed, and the transaction is undone."""
         from unittest.mock import Mock

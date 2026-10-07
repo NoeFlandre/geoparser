@@ -57,25 +57,19 @@ class ResolutionService:
             return
 
         with get_session() as session:
-            try:
-                texts, reference_boundaries, reference_objects = (
-                    self._collect_unprocessed(session, documents, resolver_id)
-                )
+            texts, reference_boundaries, reference_objects = self._collect_unprocessed(
+                session, documents, resolver_id
+            )
 
-                # Only call predict if there are documents with unprocessed references
-                if not texts:
-                    return
+            if not texts:
+                return
 
-                predicted_referents = self.resolver.predict(texts, reference_boundaries)
+            predicted_referents = self.resolver.predict(texts, reference_boundaries)
 
-                # Validate and stage every row before one atomic commit.
-                self._record_referent_prediction_groups(
-                    session, reference_objects, predicted_referents, resolver_id
-                )
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
+            self._record_referent_prediction_groups(
+                session, reference_objects, predicted_referents, resolver_id
+            )
+            session.commit()
 
     def _collect_unprocessed(
         self,
