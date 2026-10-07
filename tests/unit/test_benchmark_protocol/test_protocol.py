@@ -94,6 +94,44 @@ def test_accepts_explicit_planned_inventory():
     assert run.protocol.schema_version == "1.0"
 
 
+@pytest.mark.parametrize("status", ["planned", "unsupported"])
+@pytest.mark.parametrize("field", ["provenance_sha256", "raw_predictions", "units"])
+def test_unevaluated_results_reject_execution_evidence(status, field):
+    payload = experiment_payload()
+    outcome = payload["results"][0]
+    outcome.update(status=status, reason="Not evaluated")
+    outcome[field] = copy.deepcopy(completed_payload()["results"][0][field])
+    with pytest.raises(ValidationError, match="unevaluated"):
+        parse(payload)
+
+
+@pytest.mark.parametrize("status", ["planned", "unsupported"])
+def test_unevaluated_results_accept_only_empty_execution_evidence(status):
+    payload = experiment_payload()
+    payload["results"][0].update(status=status, reason="Not evaluated", units=[])
+    outcome = parse(payload).results[0]
+    assert outcome.provenance_sha256 is None
+    assert outcome.raw_predictions is None
+    assert outcome.units == []
+
+
+def test_failed_results_can_retain_partial_execution_evidence():
+    payload = completed_payload()
+    payload["results"][0].update(
+        status="failed",
+        reason="Execution interrupted",
+        scores=None,
+        measurements=None,
+        failed_examples=0,
+        units=payload["results"][0]["units"][:1],
+    )
+    outcome = parse(payload).results[0]
+    assert outcome.provenance_sha256 is not None
+    assert outcome.raw_predictions is not None
+    assert outcome.evaluated_examples + outcome.failed_examples == 1
+    assert len(outcome.units) == 1
+
+
 @pytest.mark.parametrize(
     "field,value",
     [
@@ -329,6 +367,8 @@ def test_pairs_must_use_identical_document_ids_and_gold_counts():
     outcome.update(
         key="other-model",
         status="planned",
+        provenance_sha256=None,
+        raw_predictions=None,
         scores=None,
         measurements=None,
         units=[],
@@ -370,8 +410,14 @@ def test_end_to_end_requires_pinned_gazetteer_and_separate_count_type():
     measured = payload["results"][0]
     counts, units = measured.pop("scores"), measured.pop("units")
     measurements = measured.pop("measurements")
+    raw_predictions = measured.pop("raw_predictions")
     measured.update(
-        scores=None, measurements=None, evaluated_examples=0, failed_examples=0
+        provenance_sha256=None,
+        raw_predictions=None,
+        scores=None,
+        measurements=None,
+        evaluated_examples=0,
+        failed_examples=0,
     )
     run = parse(payload)
     counts["task"] = "end_to_end"
@@ -382,6 +428,7 @@ def test_end_to_end_requires_pinned_gazetteer_and_separate_count_type():
         scores=counts,
         units=units,
         measurements=measurements,
+        raw_predictions=raw_predictions,
         evaluated_examples=1,
         failed_examples=1,
         provenance_sha256=run.provenance_digest(run.configurations[0]),
@@ -484,6 +531,8 @@ def test_resolution_pairs_cannot_change_eligible_denominators():
     result = payload["results"][0]
     result.update(
         status="planned",
+        provenance_sha256=None,
+        raw_predictions=None,
         scores=None,
         units=[],
         measurements=None,
@@ -505,6 +554,7 @@ def test_resolution_pairs_cannot_change_eligible_denominators():
             evaluated_examples=1,
             failed_examples=1,
             measurements=completed_payload()["results"][0]["measurements"],
+            raw_predictions=completed_payload()["results"][0]["raw_predictions"],
             provenance_sha256=run.provenance_digest(run.configurations[index]),
         )
     other["scores"]["coordinate_eligible"] = 2

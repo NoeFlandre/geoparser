@@ -317,11 +317,21 @@ class Result(Contract):
                 self.reason is not None, "failed/unsupported result requires a reason"
             )
         if self.status in {"planned", "unsupported"}:
-            require(
-                self.evaluated_examples + self.failed_examples == 0,
-                "unevaluated result cannot claim example counts",
-            )
+            self._unevaluated_payload()
         return self
+
+    def _unevaluated_payload(self) -> None:
+        """Keep execution evidence out of planned and unsupported inventory rows."""
+        require(
+            self.evaluated_examples + self.failed_examples == 0,
+            "unevaluated result cannot claim example counts",
+        )
+        require(
+            self.provenance_sha256 is None
+            and self.raw_predictions is None
+            and not self.units,
+            "unevaluated result cannot supply provenance, raw predictions or unit scores",
+        )
 
     def _measurement_presence(self) -> None:
         """Require all measurement components only for completed outcomes."""
