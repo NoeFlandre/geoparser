@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -93,6 +94,38 @@ def test_otter_source_review_and_manifest_are_content_pinned(artifact):
     plan = json.loads((ROOT / "docs/examples/otter-recognition-arms.json").read_text())
     assert (
         hashlib.sha256((ROOT / plan[artifact]).read_bytes()).hexdigest()
+        == plan[artifact + "_sha256"]
+    )
+
+
+@pytest.mark.parametrize("artifact", ["source_manifest", "source_review"])
+def test_otter_source_pins_survive_autocrlf_checkout(artifact, tmp_path):
+    """Exercise Windows-style checkout conversion without changing Git settings."""
+    plan = json.loads((ROOT / "docs/examples/otter-recognition-arms.json").read_text())
+    source = tmp_path / "source"
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    for original in (ROOT / plan[artifact], *ROOT.glob(".gitattributes")):
+        target = source / original.relative_to(ROOT)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(original.read_bytes())
+    (source / "unrelated.txt").write_bytes(b"Unpinned text.\n")
+    commands = (
+        ("init",),
+        ("-c", "core.autocrlf=false", "add", "."),
+        (
+            "-c",
+            "core.autocrlf=true",
+            "checkout-index",
+            "--all",
+            f"--prefix={checkout.as_posix()}/",
+        ),
+    )
+    for command in commands:
+        subprocess.run(["git", *command], cwd=source, capture_output=True, check=True)
+    assert (checkout / "unrelated.txt").read_bytes() == b"Unpinned text.\r\n"
+    assert (
+        hashlib.sha256((checkout / plan[artifact]).read_bytes()).hexdigest()
         == plan[artifact + "_sha256"]
     )
 
