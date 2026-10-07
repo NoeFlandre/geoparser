@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from rich.text import Text
 from typer.testing import CliRunner
 
 from geoparser.cli.app import app
@@ -229,18 +230,21 @@ class TestUninstallConfirmation:
         ["parse", "--gazetteer", r"..\notes"],
     ],
 )
+@pytest.mark.parametrize("columns", ["60", "78", "120"])
 def test_invalid_gazetteer_name_is_a_clean_usage_error(
-    arguments, tmp_path, monkeypatch
+    arguments, columns, tmp_path, monkeypatch
 ):
     directory = tmp_path / "gazetteers"
     directory.mkdir()
     outside = tmp_path / "notes.db"
     outside.write_bytes(b"private notes")
     monkeypatch.setenv("GEOPARSER_GAZETTEERS_DIR", str(directory))
+    monkeypatch.setenv("COLUMNS", columns)
 
     result = runner.invoke(app, arguments, input="")
 
+    message = " ".join(Text.from_ansi(result.stderr).plain.replace("│", " ").split())
     assert result.exit_code == 2
-    assert "must contain only" in result.stderr
+    assert "must contain only" in message
     assert "Traceback" not in result.output
     assert outside.read_bytes() == b"private notes"
