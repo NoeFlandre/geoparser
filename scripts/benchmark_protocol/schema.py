@@ -136,6 +136,13 @@ class Configuration(Contract):
     parameters: dict[Text, JsonValue] = Field(default_factory=dict)
     custom_code: list[ReviewedCode] = Field(default_factory=list)
 
+    @field_validator("custom_code")
+    @classmethod
+    def canonical_custom_code(cls, value: list[ReviewedCode]) -> list[ReviewedCode]:
+        """Treat reviewed code as an unordered inventory, including in provenance."""
+        entries = {entry.model_dump_json(): entry for entry in value}
+        return [entries[key] for key in sorted(entries)]
+
     @field_validator("parameters")
     @classmethod
     def finite_parameters(cls, value: dict[str, JsonValue]) -> dict[str, JsonValue]:
@@ -472,16 +479,17 @@ class Experiment(Contract):
         require(totals == expected, "unit counts do not sum to result counts")
 
     def _validate_pipeline_inventory(self) -> None:
-        """Keep model identity stable and require explicit unsupported cells."""
+        """Keep model and reviewed code pins stable; retain unsupported cells."""
         groups: dict[tuple[str, int], set[tuple[str, str]]] = defaultdict(set)
-        identities: dict[str, list[Artifact]] = {}
+        identities: dict[str, tuple[list[Artifact], list[ReviewedCode]]] = {}
         for config in self.configurations:
             groups[(config.pipeline, config.seed)].add(
                 (config.language, config.source_config)
             )
+            identity = (config.models, config.custom_code)
             require(
-                identities.setdefault(config.pipeline, config.models) == config.models,
-                "pipeline mixes model identities or revisions",
+                identities.setdefault(config.pipeline, identity) == identity,
+                "pipeline mixes model or reviewed custom-code identities",
             )
         sources = set().union(*groups.values())
         require(

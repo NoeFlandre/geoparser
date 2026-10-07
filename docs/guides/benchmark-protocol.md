@@ -21,7 +21,7 @@ Each manifest contains one dataset snapshot, annotation quality, task, split, se
 
 Mark annotation quality as `human_gold` or `silver`. Mark model language support as `documented`, `transfer`, `unspecified`, or `out_of_language_control`. Mark training overlap as `known`, `unknown`, or `verified_absent`, and cite the audit or pinned model-card evidence in `provenance_note`. Absence of a training-data disclosure means unknown overlap. A multilingual marketing claim is not a verified language list.
 
-Record adapter-specific tokenizer, prompt, and decoding settings in `parameters`. They enter the provenance digest. Use `custom_code` to pair each custom-code artifact with its retained review artifact. Review and pin that exact code before executing it. A schema-valid plan does not authorize execution, downloads, training, publication, or a paid service.
+Record adapter-specific tokenizer, prompt, and decoding settings in `parameters`. They enter the provenance digest. Use `custom_code` to pair each custom-code artifact with its retained review artifact. All configurations of a pipeline must use the same model and reviewed custom-code artifacts. The custom-code inventory is unordered; its order and identical duplicate entries do not change provenance. Review and pin that exact code before executing it. A schema-valid plan does not authorize execution, downloads, training, publication, or a paid service.
 
 ## Select on development data
 

@@ -410,6 +410,7 @@ def test_model_specific_parameters_and_reviewed_custom_code_are_pinned():
             "review": {"identifier": "review.txt", "revision": "1", "sha256": "8" * 64},
         }
     ]
+    payload["configurations"][1]["custom_code"] = copy.deepcopy(config["custom_code"])
     updated = parse(payload)
     assert original.provenance_digest(
         original.configurations[0]
@@ -683,3 +684,47 @@ def test_complete_results_require_positive_process_rss():
     payload["results"][0]["measurements"]["peak_rss_bytes"] = 0
     with pytest.raises(ValidationError, match="peak_rss_bytes"):
         parse(payload)
+
+
+@pytest.mark.parametrize("changed_pin", ["code", "review"])
+def test_one_pipeline_cannot_mix_reviewed_custom_code(changed_pin):
+    payload = experiment_payload()
+    implementation = {
+        "code": {"identifier": "adapter.py", "revision": "a" * 40, "sha256": "b" * 64},
+        "review": {"identifier": "review.txt", "revision": "1", "sha256": "c" * 64},
+    }
+    for config in payload["configurations"]:
+        config["custom_code"] = [copy.deepcopy(implementation)]
+    assert len(parse(payload).configurations) == 2
+    payload["configurations"][1]["custom_code"][0][changed_pin]["sha256"] = "d" * 64
+    with pytest.raises(ValidationError, match="pipeline"):
+        parse(payload)
+
+
+def test_reviewed_custom_code_inventory_order_does_not_split_a_pipeline():
+    payload = experiment_payload()
+    first = {
+        "code": {"identifier": "first.py", "revision": "a" * 40, "sha256": "a" * 64},
+        "review": {
+            "identifier": "first-review.txt",
+            "revision": "1",
+            "sha256": "b" * 64,
+        },
+    }
+    second = {
+        "code": {"identifier": "second.py", "revision": "c" * 40, "sha256": "c" * 64},
+        "review": {
+            "identifier": "second-review.txt",
+            "revision": "1",
+            "sha256": "d" * 64,
+        },
+    }
+    payload["configurations"][0]["custom_code"] = [first, second]
+    payload["configurations"][1]["custom_code"] = [second, first]
+    original = parse(payload)
+    assert len(original.configurations) == 2
+    payload["configurations"][0]["custom_code"] = [second, first, first]
+    reordered = parse(payload)
+    assert original.provenance_digest(
+        original.configurations[0]
+    ) == reordered.provenance_digest(reordered.configurations[0])
