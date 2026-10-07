@@ -145,6 +145,15 @@ class TestGazetteerNameBoundary:
         with pytest.raises(ValueError, match="must contain only"):
             artifact_path(name)
 
+    def test_invalid_name_error_identifies_name_and_allowed_characters(self):
+        with pytest.raises(ValueError) as error:
+            artifact_path("../notes")
+
+        assert str(error.value) == (
+            "Gazetteer name '../notes' must contain only letters, digits, "
+            "underscores and hyphens"
+        )
+
     @pytest.mark.parametrize(
         "name", ["geonames", "swissnames3d", "AZaz09_-", "0", "_", "-"]
     )
