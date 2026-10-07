@@ -58,6 +58,27 @@ def test_load_checks_pin_preserves_ids_and_records_sha256(tmp_path):
     assert (loaded.corpus.sentence_count, loaded.path) == (1, path)
 
 
+def test_load_rejects_malformed_tail_after_verified_prefix(tmp_path):
+    payload = PAYLOAD + (
+        b"\n# sent_id = broken\n# text = London\n1\tLondon\tB-LOC\n"
+    )
+    spec = dataset(
+        splits={
+            "test": {
+                "path": "en_fixture-ud-test.iob2",
+                # Independently verified with git hash-object --stdin.
+                "git_blob_sha1": "5a466fe3eca74da7a46cae20a5d46b5a9d9c4bb1",
+            }
+        }
+    )
+    path = tmp_path / spec.repository / "en_fixture-ud-test.iob2"
+    path.parent.mkdir()
+    path.write_bytes(payload)
+
+    with pytest.raises(ValueError, match="five tab-separated columns"):
+        load_local(spec, "test", tmp_path)
+
+
 def test_checksum_mismatch_rejected_before_parsing(tmp_path):
     spec = dataset()
     path = tmp_path / spec.repository / "en_fixture-ud-test.iob2"
