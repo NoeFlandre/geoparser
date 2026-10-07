@@ -216,3 +216,31 @@ class TestUninstallConfirmation:
         assert result.exit_code == 0, result.output
         assert "Remove gazetteer" not in result.output
         assert not installed.exists()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["uninstall", "../notes"],
+        ["uninstall", "../notes", "--yes"],
+        ["uninstall", r"..\notes", "--yes"],
+        ["parse", "--gazetteer", "../notes"],
+        ["parse", "--gazetteer", r"..\notes"],
+    ],
+)
+def test_invalid_gazetteer_name_is_a_clean_usage_error(
+    arguments, tmp_path, monkeypatch
+):
+    directory = tmp_path / "gazetteers"
+    directory.mkdir()
+    outside = tmp_path / "notes.db"
+    outside.write_bytes(b"private notes")
+    monkeypatch.setenv("GEOPARSER_GAZETTEERS_DIR", str(directory))
+
+    result = runner.invoke(app, arguments, input="")
+
+    assert result.exit_code == 2
+    assert "must contain only" in result.stderr
+    assert "Traceback" not in result.output
+    assert outside.read_bytes() == b"private notes"
