@@ -255,6 +255,23 @@ class Unit(Contract):
     failed: bool
     scores: Scores
 
+    @model_validator(mode="after")
+    def failure_policy(self) -> Unit:
+        """A failed prediction can retain invalid outputs, but no valid prediction."""
+        if not self.failed:
+            return self
+        if isinstance(self.scores, SpanCounts):
+            require(
+                self.scores.predicted_spans == self.scores.invalid_outputs,
+                "failed unit cannot retain valid span predictions",
+            )
+        else:
+            require(
+                self.scores.resolved == 0,
+                "failed unit cannot retain resolved predictions",
+            )
+        return self
+
 
 class Result(Contract):
     """One explicit inventory outcome; a planned row is never a measured zero."""

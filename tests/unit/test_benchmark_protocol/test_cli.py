@@ -14,10 +14,12 @@ def test_dry_run_validates_and_prints_full_inventory(tmp_path, capsys):
     before = sorted(tmp_path.iterdir())
     assert cli.main(["--dry-run", str(manifest)]) == 0
     result = json.loads(capsys.readouterr().out)
-    assert result["configuration_count"] == 2
-    assert result["status_counts"] == {"planned": 2}
-    assert result["included_languages"] == ["en", "fr"]
-    assert len(result["missing_target_languages"]) == 83
+    assert (
+        result["configuration_count"],
+        result["status_counts"],
+        result["included_languages"],
+        len(result["missing_target_languages"]),
+    ) == (2, {"planned": 2}, ["en", "fr"], 83)
     assert sorted(tmp_path.iterdir()) == before
 
 

@@ -56,13 +56,19 @@ def test_aggregate_reports_partial_inventory_without_silent_zeros():
     run = parse(completed_payload())
     report = aggregate(run)
     model = report["pipelines"]["fixture"]["0"]
-    assert model["languages"] == ["en"]
-    assert model["macro"] == {"precision": 2 / 3, "recall": 2 / 3, "f1": 2 / 3}
-    assert model["micro"] == model["macro"]
-    assert model["complete"] is False
-    assert report["status_counts"] == {"complete": 1, "planned": 1}
-    assert model["per_language"]["en"]["counts"]["gold_spans"] == 3
-    assert model["uncertainty"]["method"] == "paired_document_bootstrap_95_percent"
+    assert (model["languages"], model["complete"], report["status_counts"]) == (
+        ["en"],
+        False,
+        {"complete": 1, "planned": 1},
+    )
+    assert (model["macro"], model["micro"]) == (
+        {"precision": 2 / 3, "recall": 2 / 3, "f1": 2 / 3},
+        {"precision": 2 / 3, "recall": 2 / 3, "f1": 2 / 3},
+    )
+    assert (
+        model["per_language"]["en"]["counts"]["gold_spans"],
+        model["uncertainty"]["method"],
+    ) == (3, "paired_document_bootstrap_95_percent")
 
 
 @pytest.mark.parametrize(
@@ -129,17 +135,22 @@ def test_macro_weights_languages_equally_and_micro_pools_counts():
     )
     report = aggregate(parse(payload))["pipelines"]["fixture"]["0"]
     assert report["complete"] is True
-    assert report["macro"] == {"precision": 1 / 3, "recall": 1 / 3, "f1": 1 / 3}
-    assert report["micro"] == {"precision": 2 / 3, "recall": 1 / 6, "f1": 4 / 15}
+    assert (report["macro"], report["micro"]) == (
+        {"precision": 1 / 3, "recall": 1 / 3, "f1": 1 / 3},
+        {"precision": 2 / 3, "recall": 1 / 6, "f1": 4 / 15},
+    )
     assert report["per_language"]["fr"]["counts"]["gold_spans"] == 9
 
 
 def test_unevaluated_inventory_has_no_fabricated_metrics():
     from tests.unit.test_benchmark_protocol.test_protocol import experiment_payload
 
-    assert aggregate(parse(experiment_payload()))["pipelines"] == {
-        "fixture": {"0": {"complete": False, "languages": []}}
-    }
+    model = aggregate(parse(experiment_payload()))["pipelines"]["fixture"]["0"]
+    assert (model["complete"], model["languages"]) == (False, [])
+    assert [
+        (row["key"], row["status"], row["contributes_to_metrics"])
+        for row in model["inventory"]
+    ] == [("en", "planned", False), ("fr", "planned", False)]
 
 
 def test_paired_intervals_ignore_configuration_and_unit_order():
@@ -155,3 +166,65 @@ def test_paired_intervals_ignore_configuration_and_unit_order():
 def test_bootstrap_rejects_missing_units_or_resamples(units, resamples):
     with pytest.raises(ValueError):
         bootstrap(units, seed=0, resamples=resamples)
+
+
+def disjoint_sources_payload():
+    """Two same-language pipelines finish different source slices."""
+    import copy
+
+    payload = completed_payload()
+    template_config = payload["configurations"][0]
+    template_result = payload["results"][1]
+    measured = payload["results"][0]
+    payload["configurations"], payload["results"] = [], []
+    for pipeline, source in [
+        ("a", "easy"),
+        ("a", "hard"),
+        ("b", "easy"),
+        ("b", "hard"),
+    ]:
+        config = copy.deepcopy(template_config)
+        config.update(
+            key=f"{pipeline}/{source}", pipeline=pipeline, source_config=source
+        )
+        payload["configurations"].append(config)
+        result = copy.deepcopy(template_result)
+        result.update(
+            key=config["key"], status="failed", reason="Fixture inference failed"
+        )
+        payload["results"].append(result)
+    run = parse(payload)
+    for index in [0, 3]:
+        key = payload["results"][index]["key"]
+        payload["results"][index] = dict(
+            measured,
+            key=key,
+            provenance_sha256=run.provenance_digest(run.configurations[index]),
+        )
+    return payload
+
+
+def test_same_language_different_source_membership_stays_visible():
+    report = aggregate(parse(disjoint_sources_payload()))["pipelines"]
+    assert [
+        (row["key"], row["source_config"], row["contributes_to_metrics"], row["reason"])
+        for row in report["a"]["0"]["inventory"]
+    ] == [
+        ("a/easy", "easy", True, None),
+        ("a/hard", "hard", False, "Fixture inference failed"),
+    ]
+    assert [
+        (row["key"], row["contributes_to_metrics"])
+        for row in report["b"]["0"]["inventory"]
+    ] == [("b/easy", False), ("b/hard", True)]
+
+
+def test_bootstrap_rejects_mixed_tasks_before_a_lucky_single_draw():
+    from scripts.benchmark_protocol.schema import EndToEndCounts
+
+    recognition = parse(completed_payload()).results[0].scores
+    end_to_end = EndToEndCounts.model_validate(
+        dict(recognition.model_dump(), task="end_to_end")
+    )
+    with pytest.raises(ValueError, match="different tasks"):
+        bootstrap([recognition, end_to_end], seed=0, resamples=1)

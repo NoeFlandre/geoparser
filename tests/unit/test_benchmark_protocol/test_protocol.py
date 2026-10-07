@@ -506,3 +506,57 @@ def test_resolution_pairs_cannot_change_eligible_denominators():
     other["units"][0]["scores"]["coordinate_eligible"] = 1
     with pytest.raises(ValidationError, match="paired"):
         parse(payload)
+
+
+def test_failed_units_cannot_contribute_successful_predictions():
+    payload = completed_payload()
+    payload["results"][0]["units"][0]["failed"] = True
+    payload["results"][0].update(evaluated_examples=0, failed_examples=2)
+    with pytest.raises(ValidationError, match="failed"):
+        parse(payload)
+
+
+@pytest.mark.parametrize("task", ["recognition", "end_to_end"])
+def test_failed_span_units_retain_invalid_output_penalties(task):
+    from scripts.benchmark_protocol.schema import Unit
+
+    unit = Unit.model_validate(
+        {
+            "example_id": "invalid",
+            "failed": True,
+            "scores": {
+                "task": task,
+                "gold_spans": 1,
+                "predicted_spans": 1,
+                "true_positive": 0,
+                "false_positive": 1,
+                "false_negative": 1,
+                "invalid_outputs": 1,
+            },
+        }
+    )
+    assert unit.scores.invalid_outputs == 1
+
+
+def test_failed_resolution_cannot_return_even_an_incorrect_valid_prediction():
+    from scripts.benchmark_protocol.schema import Unit
+
+    scores = {
+        "task": "gold_span_resolution",
+        "gold_spans": 1,
+        "resolved": 1,
+        "abstained": 0,
+        "invalid_outputs": 0,
+        "exact_id_eligible": 1,
+        "exact_id_correct": 0,
+        "coordinate_eligible": 1,
+        "within_1km": 0,
+        "within_10km": 0,
+        "within_50km": 0,
+        "candidate_eligible": 1,
+        "candidate_found": 1,
+    }
+    with pytest.raises(ValidationError, match="failed"):
+        Unit.model_validate(
+            {"example_id": "ranking-failed", "failed": True, "scores": scores}
+        )

@@ -67,6 +67,7 @@ def bootstrap(
     """Resample whole examples with replacement; zero denominators score zero."""
     require(resamples > 0, "bootstrap resamples must be positive")
     require(bool(units), "bootstrap needs document units")
+    _sum_counts(units)
     rng = random.Random(seed)  # noqa: S311 - seeded statistical resampling
     samples: dict[str, list[float]] = defaultdict(list)
     for _ in range(resamples):
@@ -82,11 +83,13 @@ def inventory_summary(experiment: Experiment) -> dict:
     from scripts.panx_benchmark.data import target_languages
 
     languages = sorted({config.language for config in experiment.configurations})
+    rows = {result.key: result for result in experiment.results}
     return {
         "schema_version": experiment.protocol.schema_version,
         "task": experiment.protocol.task,
         "status_counts": dict(Counter(result.status for result in experiment.results)),
         "configuration_count": len(experiment.configurations),
+        "inventory": _inventory_rows(experiment.configurations, rows),
         "included_languages": languages,
         "missing_target_languages": sorted(set(target_languages()) - set(languages)),
         "configuration_digests": {
@@ -116,14 +119,16 @@ def _pipeline_summary(
 ) -> dict:
     """Calculate only completed cells without hiding incomplete membership."""
     completed = [config for config in configs if rows[config.key].status == "complete"]
+    inventory = _inventory_rows(configs, rows)
     if not completed:
-        return {"complete": False, "languages": []}
+        return {"complete": False, "languages": [], "inventory": inventory}
     units = {
         (config.language, config.source_config): _ordered_units(rows[config.key])
         for config in completed
     }
     summary = _group_summary(experiment, units)
     summary["complete"] = len(completed) == len(configs)
+    summary["inventory"] = inventory
     return summary
 
 
@@ -225,3 +230,32 @@ def json_seed(seed: int, key: tuple[str, str]) -> str:
     import json
 
     return json.dumps([seed, *key], separators=(",", ":"))
+
+
+def _inventory_row(config: Configuration, result: Result) -> dict:
+    """Keep each source's status, failure reason, and score membership visible."""
+    return {
+        "key": config.key,
+        "pipeline": config.pipeline,
+        "seed": config.seed,
+        "language": config.language,
+        "source_config": config.source_config,
+        "sample_sha256": config.sample_sha256,
+        "examples": config.examples,
+        "gold_spans": config.gold_spans,
+        "status": result.status,
+        "reason": result.reason,
+        "evaluated_examples": result.evaluated_examples,
+        "failed_examples": result.failed_examples,
+        "contributes_to_metrics": result.status == "complete",
+    }
+
+
+def _inventory_rows(
+    configs: list[Configuration], rows: dict[str, Result]
+) -> list[dict]:
+    """Return all declared cells, including unsupported and failed configurations."""
+    return [
+        _inventory_row(config, rows[config.key])
+        for config in sorted(configs, key=lambda item: item.key)
+    ]
