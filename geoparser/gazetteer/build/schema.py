@@ -36,9 +36,10 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from geoparser.gazetteer.artifact import validate_gazetteer_name
+
 # Source names are used as identifiers (staging table names, join aliases), so
 # they are restricted to a safe character set.
-_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 _IDENTIFIER_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 DEFAULT_CRS = "EPSG:4326"
@@ -352,13 +353,7 @@ class GazetteerConfig(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, value: str) -> str:
-        if not _NAME_PATTERN.match(value):
-            msg = (
-                f"Gazetteer name '{value}' must contain only letters, digits, "
-                "underscores and hyphens"
-            )
-            raise ValueError(msg)
-        return value
+        return validate_gazetteer_name(value)
 
     @field_validator("disk")
     @classmethod
