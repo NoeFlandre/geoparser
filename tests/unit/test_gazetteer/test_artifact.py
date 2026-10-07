@@ -117,3 +117,83 @@ class TestGazetteerArtifactCounts:
             assert artifact.count_names() == 4
         finally:
             artifact.close()
+
+
+@pytest.mark.unit
+class TestGazetteerNameBoundary:
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "",
+            ".",
+            "..",
+            "../../notes",
+            r"..\..\notes",
+            "/tmp/notes",
+            r"C:\notes",
+            "C:notes",
+            r"\\server\share\notes",
+            "nested/name",
+            r"nested\name",
+            "name\n",
+            "two words",
+            "café",
+            "name\x00",
+        ],
+    )
+    def test_rejects_names_outside_the_supported_grammar(self, name):
+        with pytest.raises(ValueError, match="must contain only"):
+            artifact_path(name)
+
+    def test_invalid_name_error_identifies_name_and_allowed_characters(self):
+        with pytest.raises(ValueError) as error:
+            artifact_path("../notes")
+
+        assert str(error.value) == (
+            "Gazetteer name '../notes' must contain only letters, digits, "
+            "underscores and hyphens"
+        )
+
+    @pytest.mark.parametrize(
+        "name", ["geonames", "swissnames3d", "AZaz09_-", "0", "_", "-"]
+    )
+    def test_preserves_valid_names(self, name, tmp_path, monkeypatch):
+        monkeypatch.setenv("GEOPARSER_GAZETTEERS_DIR", str(tmp_path))
+
+        assert artifact_path(name) == tmp_path / f"{name}.db"
+
+    @pytest.mark.parametrize("absolute", [False, True])
+    def test_uninstall_keeps_outside_files(self, absolute, tmp_path, monkeypatch):
+        from geoparser.gazetteer.build.builder import uninstall
+
+        directory = tmp_path / "gazetteers"
+        directory.mkdir()
+        outside = tmp_path / "notes.db"
+        outside.write_bytes(b"private notes")
+        monkeypatch.setenv("GEOPARSER_GAZETTEERS_DIR", str(directory))
+        name = str(outside.with_suffix("")) if absolute else "../notes"
+
+        with pytest.raises(ValueError, match="must contain only"):
+            uninstall(name)
+
+        assert outside.read_bytes() == b"private notes"
+
+    def test_gazetteer_rejects_outside_artifacts(self, tmp_path, monkeypatch):
+        from geoparser.gazetteer import Gazetteer
+
+        directory = tmp_path / "gazetteers"
+        directory.mkdir()
+        (tmp_path / "notes.db").write_bytes(b"private notes")
+        monkeypatch.setenv("GEOPARSER_GAZETTEERS_DIR", str(directory))
+
+        with pytest.raises(ValueError, match="must contain only"):
+            Gazetteer("../notes")
+
+
+@pytest.mark.unit
+def test_list_artifacts_ignores_invalid_gazetteer_names(tmp_path, monkeypatch):
+    monkeypatch.setenv("GEOPARSER_GAZETTEERS_DIR", str(tmp_path))
+    for filename in ["valid-1.db", "bad.name.db", "two words.db", ".db"]:
+        (tmp_path / filename).write_bytes(b"artifact")
+
+    assert artifact_module.list_artifacts() == ["valid-1"]
