@@ -11,6 +11,8 @@ from pathlib import Path
 
 import typer
 
+from geoparser.cli._validation import gazetteer_name
+
 if t.TYPE_CHECKING:
     from geoparser.db.models import Document
     from geoparser.modules.recognizers import Recognizer
@@ -283,7 +285,10 @@ def parse_cli(
         ),
     ] = None,
     gazetteer: t.Annotated[
-        str, typer.Option(help="Installed gazetteer to resolve against.")
+        str,
+        typer.Option(
+            help="Installed gazetteer to resolve against.", callback=gazetteer_name
+        ),
     ] = "geonames",
     recognizer: t.Annotated[
         RecognizerChoice, typer.Option(help="Recognizer that finds toponyms.")

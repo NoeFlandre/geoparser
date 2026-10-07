@@ -30,6 +30,10 @@ This file records all notable changes to GeoParser. The project follows
 
 ### Security
 
+- Validate gazetteer names before constructing artifact paths. Reject path
+  separators and invalid names in the CLI and Python API. Uninstall cannot
+  remove an artifact outside the gazetteers directory through its name.
+
 - Update the locked JupyterLab development dependency to 4.6.4. This fixes
   CVE-2026-102830, CVE-2026-102831, and CVE-2026-102904.
 - Update the locked Notebook demo dependency to 7.6.3. This fixes
