@@ -1,7 +1,7 @@
 from geoparser.cli import app
 
 
-def main():
+def main() -> None:
     app()
 
 

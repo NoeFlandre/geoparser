@@ -15,6 +15,7 @@ from geoparser.cli._validation import gazetteer_name
 
 if t.TYPE_CHECKING:
     from geoparser.db.models import Document
+    from geoparser.gazetteer.feature import Feature
     from geoparser.modules.recognizers import Recognizer
     from geoparser.modules.resolvers import Resolver
 
@@ -116,7 +117,7 @@ def _read_inputs(inputs: list[str]) -> list[tuple[str, str]]:
     return documents
 
 
-def _wgs84_geometry(feature: t.Any) -> dict[str, t.Any] | None:
+def _wgs84_geometry(feature: Feature) -> dict[str, t.Any] | None:
     """
     Return a feature's geometry as a GeoJSON geometry in WGS 84.
 

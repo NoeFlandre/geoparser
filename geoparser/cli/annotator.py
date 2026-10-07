@@ -18,7 +18,7 @@ def annotator_cli(
     reload: t.Annotated[
         bool, typer.Option(help="Restart the server when source files change.")
     ] = False,
-):
+) -> None:
     """Launch the Irchel Geoparser Annotator web application."""
     # Keep application imports lazy so CLI help does not import the web stack.
     from geoparser.annotator.server import run
