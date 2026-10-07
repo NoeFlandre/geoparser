@@ -1397,3 +1397,13 @@ def test_closed_pr_edits_do_not_repeat_validation(filename: str, job: str) -> No
         Loader=yaml.BaseLoader,
     )
     assert "github.event.pull_request.state == 'open'" in workflow["jobs"][job]["if"]
+
+
+def test_package_ships_the_pep561_typed_marker() -> None:
+    assert (PROJECT_ROOT / "geoparser" / "py.typed").is_file()
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as pyproject_file:
+        project = tomllib.load(pyproject_file)
+
+    assert "Typing :: Typed" in project["project"]["classifiers"]
+    wheel = project["tool"]["hatch"]["build"]["targets"]["wheel"]
+    assert "geoparser/py.typed" in wheel["include"]
