@@ -67,6 +67,7 @@ nav:
       - Annotating Data: guides/annotating.md
       - Training Modules: guides/training.md
       - Benchmarking: guides/benchmark.md
+      - Public Benchmark Protocol: guides/benchmark-protocol.md
       - Offline Model Pilot: guides/model-pilot.md
   - API Reference:
       - Geoparser: api/geoparser.md
