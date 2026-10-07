@@ -1,0 +1,16 @@
+
+==================================== ERRORS ====================================
+_________ ERROR collecting tests/unit/test_db/test_uuid_inspection.py __________
+ImportError while importing test module '/workspace/scratch/b1e74eb24eea/geoparser-173/tests/unit/test_db/test_uuid_inspection.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/test_db/test_uuid_inspection.py:12: in <module>
+    from geoparser.db.uuid_inspection import inspect_sqlite_uuid_storage, main
+E   ModuleNotFoundError: No module named 'geoparser.db.uuid_inspection'
+=========================== short test summary info ============================
+ERROR tests/unit/test_db/test_uuid_inspection.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.18s

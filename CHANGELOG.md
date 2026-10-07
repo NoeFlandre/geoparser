@@ -8,6 +8,11 @@ This file records all notable changes to GeoParser. The project follows
 
 ### Fixed
 
+- Preserve numeric-looking UUIDs in all six project database foreign-key
+  columns on new SQLite databases. Use the same backend-neutral UUID type as
+  the primary keys. Existing tables need separate inspection and an explicit
+  migration. See [the migration guide](docs/guides/sqlite-uuid-migration.md).
+
 - Give each benchmark database session an independent connection to a
   temporary SQLite file. This matches the transaction isolation of production.
   Sessions no longer share one in-memory connection.

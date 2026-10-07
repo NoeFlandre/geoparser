@@ -64,6 +64,7 @@ nav:
       - Gazetteers: guides/gazetteers.md
       - Custom Gazetteers: guides/custom-gazetteers.md
       - Managing Projects: guides/projects.md
+      - Inspecting legacy SQLite UUIDs: guides/sqlite-uuid-migration.md
       - Annotating Data: guides/annotating.md
       - Training Modules: guides/training.md
       - Benchmarking: guides/benchmark.md

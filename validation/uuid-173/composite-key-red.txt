@@ -1,0 +1,26 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____ test_composite_foreign_key_is_not_a_supported_single_uuid_relationship ____
+
+tmp_path = PosixPath('/workspace/scratch/b1e74eb24eea/geoparser-173/.work/uuid-inspection/pytest-composite-red/test_composite_foreign_key_is_0')
+
+    def test_composite_foreign_key_is_not_a_supported_single_uuid_relationship(tmp_path):
+        ddl = LEGACY_DDL.replace(
+            "name TEXT NOT NULL);", "name TEXT NOT NULL, UNIQUE(id, name));", 1
+        ).replace(
+            "project_id UUID NOT NULL REFERENCES project(id) ON DELETE CASCADE",
+            "project_id UUID NOT NULL, FOREIGN KEY(project_id, text) REFERENCES project(id, name) ON DELETE CASCADE",
+            1,
+        )
+        path = make_database(tmp_path, ddl)
+
+        report = inspect_sqlite_uuid_storage(path)
+
+>       assert report.blocked
+E       AssertionError: assert False
+E        +  where False = UuidInspection(snapshot_path='/workspace/scratch/b1e74eb24eea/geoparser-173/.work/uuid-inspection/pytest-composite-red...on=True)), schema_issues=(), foreign_key_violations=(), foreign_key_error=None, requires_migration=True, blocked=False).blocked
+
+tests/unit/test_db/test_uuid_inspection.py:516: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/test_db/test_uuid_inspection.py::test_composite_foreign_key_is_not_a_supported_single_uuid_relationship
+1 failed, 48 deselected in 0.27s

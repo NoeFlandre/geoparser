@@ -231,6 +231,6 @@ pip install --upgrade geoparser
 ```
 
 > [!WARNING]
-> The database format is not stable between releases. Your project database can be from an older version. In this case, the library refuses to open it and tells you. There is no automatic migration yet. You must delete `geoparser.db`. This deletes the stored projects and results. Export all data that you want to keep before you delete it. Read [working with results](guides/results.md).
+> The database format is not stable between releases. The library rejects some older layouts at startup. There is no automatic migration. Keep a backup before you change a database. Export the results that you need. Read [working with results](guides/results.md). Existing SQLite UUID columns need a separate check. See [inspecting legacy SQLite UUIDs](guides/sqlite-uuid-migration.md) for read-only inspection and a data-preserving migration plan. Updating the package does not repair those columns.
 
 To remove everything, delete the environment folder. To remove the gazetteers and projects also, delete the data directory above. The library installs nothing in other places.
