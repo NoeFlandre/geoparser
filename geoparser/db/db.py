@@ -260,8 +260,9 @@ def get_session() -> Iterator[Session]:
     """
     Get a database session using context manager pattern.
 
-    This is the preferred way to get a database session. The session
-    is automatically closed when the context exits.
+    Callers commit explicitly. If the context exits with an error or
+    interruption, the session rolls back before re-raising it. The session
+    always closes when the context exits.
 
     Yields:
         SQLModel Session for database operations
@@ -270,6 +271,9 @@ def get_session() -> Iterator[Session]:
     session = Session(get_engine(), expire_on_commit=False)
     try:
         yield session
+    except BaseException:
+        session.rollback()
+        raise
     finally:
         session.close()
 

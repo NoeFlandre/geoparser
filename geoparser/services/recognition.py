@@ -55,19 +55,12 @@ class RecognitionService:
             return
 
         with get_session() as session:
-            try:
-                # Filter out documents that have already been processed by this recognizer
-                unprocessed_documents = self._filter_unprocessed_documents(
-                    session, documents, recognizer_id
-                )
-                if unprocessed_documents:
-                    self._predict_and_record(
-                        session, unprocessed_documents, recognizer_id
-                    )
-                    session.commit()
-            except Exception:
-                session.rollback()
-                raise
+            unprocessed_documents = self._filter_unprocessed_documents(
+                session, documents, recognizer_id
+            )
+            if unprocessed_documents:
+                self._predict_and_record(session, unprocessed_documents, recognizer_id)
+                session.commit()
 
     def _predict_and_record(
         self,
