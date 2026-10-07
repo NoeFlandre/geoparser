@@ -22,6 +22,12 @@ from scripts.panx_benchmark.data import target_languages
 Text = Annotated[str, Field(min_length=1, pattern=r"\S")]
 Sha256 = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
 Commit = Annotated[str, Field(pattern=r"^[a-f0-9]{40}$")]
+Revision = Annotated[
+    str,
+    Field(
+        pattern=r"^(?:[a-f0-9]{40}|[a-f0-9]{64}|v?[0-9]+(?:\.[0-9]+)*(?:(?:a|b|rc)[0-9]+)?(?:[-+][0-9A-Za-z.-]+)?)$"
+    ),
+]
 Count = Annotated[int, Field(ge=0)]
 Positive = Annotated[int, Field(gt=0)]
 Measurement = Annotated[float, Field(ge=0)]
@@ -44,17 +50,8 @@ class Artifact(Contract):
     """An immutable input or retained output, without opening its location."""
 
     identifier: Text
-    revision: Text
+    revision: Revision
     sha256: Sha256
-
-    @model_validator(mode="after")
-    def pinned_revision(self) -> Artifact:
-        """Reject common movable refs even when a content digest is supplied."""
-        require(
-            self.revision not in {"main", "master", "latest", "HEAD"},
-            "Artifact revision must be pinned",
-        )
-        return self
 
 
 class Hardware(Contract):
@@ -225,6 +222,14 @@ class ResolutionCounts(Contract):
             self.candidate_found <= self.candidate_eligible <= self.gold_spans,
             "candidate recall denominator is inconsistent",
         )
+        require(
+            self.candidate_eligible == self.exact_id_eligible,
+            "candidate and exact-ID eligibility must use the same canonical gold IDs",
+        )
+        require(
+            self.exact_id_correct <= self.candidate_found,
+            "exact-ID successes cannot exceed retrieved candidate hits",
+        )
         return self
 
 
@@ -253,7 +258,7 @@ class Measurements(Contract):
     warmup_seconds: Measurement
     steady_seconds: Measurement
     warmup_examples: Count
-    peak_rss_bytes: Count
+    peak_rss_bytes: Positive
     peak_device_bytes: Count
 
 

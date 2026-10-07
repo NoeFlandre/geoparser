@@ -228,3 +228,31 @@ def test_bootstrap_rejects_mixed_tasks_before_a_lucky_single_draw():
     )
     with pytest.raises(ValueError, match="different tasks"):
         bootstrap([recognition, end_to_end], seed=0, resamples=1)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"exact_id_correct": 2, "candidate_found": 1},
+        {"exact_id_eligible": 3, "candidate_eligible": 2},
+    ],
+)
+def test_resolution_id_metrics_share_eligibility_and_candidate_hits(changes):
+    payload = {
+        "task": "gold_span_resolution",
+        "gold_spans": 3,
+        "resolved": 2,
+        "abstained": 1,
+        "invalid_outputs": 0,
+        "exact_id_eligible": 3,
+        "exact_id_correct": 1,
+        "coordinate_eligible": 3,
+        "within_1km": 1,
+        "within_10km": 1,
+        "within_50km": 1,
+        "candidate_eligible": 3,
+        "candidate_found": 2,
+    }
+    payload.update(changes)
+    with pytest.raises(ValueError):
+        ResolutionCounts.model_validate(payload)

@@ -653,3 +653,33 @@ def test_cpu_aliases_cannot_bypass_the_memory_rule(device):
     payload["results"][0]["measurements"]["peak_device_bytes"] = 1024
     with pytest.raises(ValidationError, match="CPU"):
         parse(payload)
+
+
+@pytest.mark.parametrize(
+    "revision",
+    ["Main", " main ", "refs/heads/main", "develop", "latest", "refs/heads/feature"],
+)
+def test_artifact_revisions_require_hashes_or_numbered_releases(revision):
+    from scripts.benchmark_protocol.schema import Artifact
+
+    with pytest.raises(ValidationError, match="revision"):
+        Artifact(identifier="fixture", revision=revision, sha256="a" * 64)
+
+
+@pytest.mark.parametrize(
+    "revision", ["a" * 40, "b" * 64, "3.8.0", "v1.2.3", "1", "1.2.3rc1"]
+)
+def test_artifact_accepts_explicit_immutable_revision_forms(revision):
+    from scripts.benchmark_protocol.schema import Artifact
+
+    assert (
+        Artifact(identifier="fixture", revision=revision, sha256="a" * 64).revision
+        == revision
+    )
+
+
+def test_complete_results_require_positive_process_rss():
+    payload = completed_payload()
+    payload["results"][0]["measurements"]["peak_rss_bytes"] = 0
+    with pytest.raises(ValidationError, match="peak_rss_bytes"):
+        parse(payload)
