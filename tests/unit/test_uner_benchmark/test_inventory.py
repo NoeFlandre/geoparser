@@ -59,9 +59,7 @@ def test_load_checks_pin_preserves_ids_and_records_sha256(tmp_path):
 
 
 def test_load_rejects_malformed_tail_after_verified_prefix(tmp_path):
-    payload = PAYLOAD + (
-        b"\n# sent_id = broken\n# text = London\n1\tLondon\tB-LOC\n"
-    )
+    payload = PAYLOAD + (b"\n# sent_id = broken\n# text = London\n1\tLondon\tB-LOC\n")
     spec = dataset(
         splits={
             "test": {
