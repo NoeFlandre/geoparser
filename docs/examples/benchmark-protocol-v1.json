@@ -26,7 +26,7 @@
     "timing_policy": "separate_fetch_load_warmup_steady",
     "memory_policy": "process_peak_rss_and_device_peak_bytes",
     "invalid_output_policy": "count_as_false_positive_and_retain",
-    "uncertainty": "paired_document_bootstrap_95_percent",
+    "uncertainty": "marginal_stratified_document_bootstrap_95_percent",
     "bootstrap_seed": 42,
     "bootstrap_resamples": 1000
   },

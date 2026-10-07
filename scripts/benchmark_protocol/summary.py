@@ -133,7 +133,7 @@ def _pipeline_summary(
 
 
 def _ordered_units(result: Result) -> list[Scores]:
-    """Sort by stable example ID before generating paired resamples."""
+    """Sort by stable example ID before generating aligned resamples."""
     ordered = sorted(result.units, key=lambda unit: unit.example_id)
     return [unit.scores for unit in ordered]
 
@@ -155,7 +155,7 @@ def _macro(rows: dict[str, Scores]) -> dict[str, float]:
 def _group_summary(
     experiment: Experiment, units: dict[tuple[str, str], list[Scores]]
 ) -> dict:
-    """Report point estimates and stratified paired-document confidence intervals."""
+    """Report point estimates and marginal stratified-document intervals."""
     counts = _language_counts(units)
     return {
         "languages": sorted(counts),
@@ -172,7 +172,7 @@ def _group_summary(
 def _group_intervals(
     experiment: Experiment, units: dict[tuple[str, str], list[Scores]]
 ) -> dict:
-    """Use a stable RNG per source so matching pipeline comparisons stay paired."""
+    """Share source draws across pipelines, retaining only marginal intervals."""
     protocol = experiment.protocol
     generators = {key: _generator(protocol.bootstrap_seed, key) for key in units}
     samples: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))

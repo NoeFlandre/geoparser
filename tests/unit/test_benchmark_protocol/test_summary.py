@@ -68,7 +68,7 @@ def test_aggregate_reports_partial_inventory_without_silent_zeros():
     assert (
         model["per_language"]["en"]["counts"]["gold_spans"],
         model["uncertainty"]["method"],
-    ) == (3, "paired_document_bootstrap_95_percent")
+    ) == (3, "marginal_stratified_document_bootstrap_95_percent")
 
 
 @pytest.mark.parametrize(
@@ -153,13 +153,40 @@ def test_unevaluated_inventory_has_no_fabricated_metrics():
     ] == [("en", "planned", False), ("fr", "planned", False)]
 
 
-def test_paired_intervals_ignore_configuration_and_unit_order():
+def test_marginal_intervals_ignore_configuration_and_unit_order():
     payload = completed_payload()
     first = aggregate(parse(payload))["pipelines"]
     payload["configurations"].reverse()
     payload["results"].reverse()
     payload["results"][1]["units"].reverse()
     assert aggregate(parse(payload))["pipelines"] == first
+
+
+def test_identical_pipelines_retain_marginal_not_difference_intervals():
+    import copy
+
+    from scripts.benchmark_protocol.schema import Configuration
+
+    payload = completed_payload()
+    payload["configurations"] = payload["configurations"][:1]
+    payload["results"] = payload["results"][:1]
+    original = parse(payload)
+    config = copy.deepcopy(payload["configurations"][0])
+    config.update(key="other", pipeline="other")
+    result = copy.deepcopy(payload["results"][0])
+    result.update(
+        key="other",
+        provenance_sha256=original.provenance_digest(
+            Configuration.model_validate(config)
+        ),
+    )
+    payload["configurations"].append(config)
+    payload["results"].append(result)
+    pipelines = aggregate(parse(payload))["pipelines"]
+    uncertainty = pipelines["fixture"]["0"]["uncertainty"]
+    assert uncertainty == pipelines["other"]["0"]["uncertainty"]
+    assert uncertainty["method"] == "marginal_stratified_document_bootstrap_95_percent"
+    assert uncertainty["intervals"]["micro"]["f1"] == [0.0, 0.8]
 
 
 @pytest.mark.parametrize("units,resamples", [([], 10), ([], 0)])

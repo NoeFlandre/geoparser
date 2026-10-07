@@ -37,7 +37,7 @@ def experiment_payload():
         "timing_policy": "separate_fetch_load_warmup_steady",
         "memory_policy": "process_peak_rss_and_device_peak_bytes",
         "invalid_output_policy": "count_as_false_positive_and_retain",
-        "uncertainty": "paired_document_bootstrap_95_percent",
+        "uncertainty": "marginal_stratified_document_bootstrap_95_percent",
         "bootstrap_seed": 42,
         "bootstrap_resamples": 1000,
     }
@@ -141,6 +141,7 @@ def test_failed_results_can_retain_partial_execution_evidence():
         ("split", "train"),
         ("bootstrap_seed", True),
         ("bootstrap_resamples", 0),
+        ("uncertainty", "paired_document_bootstrap_95_percent"),
     ],
 )
 def test_rejects_invalid_protocol(field, value):

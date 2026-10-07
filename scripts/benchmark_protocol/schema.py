@@ -89,7 +89,7 @@ class Protocol(Contract):
     timing_policy: Literal["separate_fetch_load_warmup_steady"]
     memory_policy: Literal["process_peak_rss_and_device_peak_bytes"]
     invalid_output_policy: Literal["count_as_false_positive_and_retain"]
-    uncertainty: Literal["paired_document_bootstrap_95_percent"]
+    uncertainty: Literal["marginal_stratified_document_bootstrap_95_percent"]
     bootstrap_seed: Count
     bootstrap_resamples: Annotated[int, Field(ge=1000)]
 
@@ -270,7 +270,7 @@ class Measurements(Contract):
 
 
 class Unit(Contract):
-    """One document or sentence, including failed examples, for paired bootstrap."""
+    """One document or sentence, including failures, for aligned resampling."""
 
     example_id: Text
     failed: bool
@@ -508,7 +508,7 @@ class Experiment(Contract):
         )
 
     def _validate_pairing(self, configurations: dict[str, Configuration]) -> None:
-        """Bind paired bootstrap samples to identical example IDs and gold counts."""
+        """Bind compared source samples to identical example IDs and gold counts."""
         observed: dict[tuple[str, str], dict[str, tuple[int, ...]]] = {}
         for result in self.results:
             if result.status == "complete":
