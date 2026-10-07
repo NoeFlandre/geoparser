@@ -171,6 +171,24 @@ def read_manifest(path: Path = MANIFEST_PATH) -> tuple[Dataset, ...]:
         raise ValueError(message)
     specs = tuple(Dataset.model_validate(dataset) for dataset in source["datasets"])
     validate_configurations(specs)
+    if "repository_count" in source:
+        repository_count = len({spec.repository for spec in specs})
+        if repository_count != source["repository_count"]:
+            message = (
+                "UNER source inventory repository_count does not match its "
+                f"datasets: declared {source['repository_count']}, "
+                f"found {repository_count}"
+            )
+            raise ValueError(message)
+    if "split_file_count" in source:
+        split_file_count = sum(len(spec.splits) for spec in specs)
+        if split_file_count != source["split_file_count"]:
+            message = (
+                "UNER source inventory split_file_count does not match its "
+                f"datasets: declared {source['split_file_count']}, "
+                f"found {split_file_count}"
+            )
+            raise ValueError(message)
     if len(specs) != source["expected_configuration_count"]:
         message = "UNER source inventory count does not match its declared scope"
         raise ValueError(message)

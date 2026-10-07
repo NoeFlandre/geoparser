@@ -81,9 +81,7 @@ def test_load_rejects_malformed_tail_after_verified_prefix(tmp_path):
 
 
 @pytest.mark.parametrize("count_field", ["repository_count", "split_file_count"])
-def test_read_manifest_rejects_declared_inventory_count_mismatch(
-    tmp_path, count_field
-):
+def test_read_manifest_rejects_declared_inventory_count_mismatch(tmp_path, count_field):
     source = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     source[count_field] += 1
     path = tmp_path / "sources.json"
