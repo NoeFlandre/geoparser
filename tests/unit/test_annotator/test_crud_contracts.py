@@ -9,6 +9,7 @@ from unittest.mock import Mock
 import pytest
 from fastapi import UploadFile
 from shapely.geometry import Point
+from sqlalchemy import event
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
@@ -240,6 +241,49 @@ def test_progress_counts_annotated_toponyms_per_document(db):
     assert progress[0]["progress_percentage"] == pytest.approx(200 / 3)
     assert progress[1]["progress_percentage"] == 100
     assert progress[2]["progress_percentage"] == 0
+
+
+@pytest.mark.unit
+def test_progress_query_count_does_not_grow_with_documents(db):
+    """Progress is read in one query, however many documents the session has."""
+
+    def count_statements(session_id):
+        statements: list[str] = []
+
+        def record(conn, cursor, statement, parameters, context, executemany):
+            statements.append(statement)
+
+        db.expire_all()
+        event.listen(db.get_bind(), "before_cursor_execute", record)
+        try:
+            progress = list(DocumentRepository.get_progress(db, session_id=session_id))
+        finally:
+            event.remove(db.get_bind(), "before_cursor_execute", record)
+        return len(statements), progress
+
+    small = _session(
+        db,
+        texts=("Paris", "Bern"),
+        toponyms={
+            0: [AnnotatorToponymCreate(text="Paris", start=0, end=5, loc_id="1")]
+        },
+    )
+    large = _session(
+        db,
+        texts=tuple(f"Rome {index}" for index in range(12)),
+        toponyms={
+            index: [AnnotatorToponymCreate(text="Rome", start=0, end=4)]
+            for index in range(12)
+        },
+    )
+
+    small_queries, _ = count_statements(small.id)
+    large_queries, progress = count_statements(large.id)
+
+    assert large_queries == small_queries
+    assert len(progress) == 12
+    assert {p["total_toponyms"] for p in progress} == {1}
+    assert {p["annotated_toponyms"] for p in progress} == {0}
 
 
 @pytest.mark.unit
