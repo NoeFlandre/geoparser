@@ -2,10 +2,6 @@ import typing as t
 
 from geoparser.modules.resolvers import Resolver
 
-if t.TYPE_CHECKING:
-    pass
-
-
 _IndexedValue = t.TypeVar("_IndexedValue", bound=t.Hashable)
 
 
