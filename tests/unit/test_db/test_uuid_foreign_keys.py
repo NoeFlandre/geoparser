@@ -54,10 +54,12 @@ class TestUuidForeignKeyRoundTrip:
 
         reference = test_session.get(Reference, identifier)
         assert reference is not None
-        assert reference.id == identifier
-        assert reference.document_id == identifier
-        assert reference.document.id == identifier
-        assert reference.document.project_id == identifier
+        assert (
+            reference.id,
+            reference.document_id,
+            reference.document.id,
+            reference.document.project_id,
+        ) == (identifier,) * 4
 
     @pytest.mark.parametrize(
         "identifier",
