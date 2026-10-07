@@ -118,7 +118,7 @@ def test_quality_test_dependencies_are_declared() -> None:
         if isinstance(dependency, str)
     }
     assert {"hypothesis", "pytest-bdd"} <= dependency_names
-    assert "toml" in dependency_names
+    assert "toml" not in dependency_names
 
 
 def test_python310_declares_the_tomli_fallback() -> None:
@@ -205,10 +205,12 @@ def test_mkdocs_navigation_links_to_existing_pages() -> None:
         assert (PROJECT_ROOT / "docs" / relative_path).is_file(), relative_path
 
 
-def test_pyproject_is_compatible_with_mutmut_legacy_toml_parser() -> None:
-    import toml
+def test_pyproject_parses_with_the_stdlib_parser_and_keeps_mutmut_config() -> None:
+    project = tomllib.loads(
+        (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )
 
-    toml.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert "mutmut" in project["tool"]
 
 
 def test_dockerfile_is_present() -> None:
@@ -1101,7 +1103,7 @@ def test_deptry_ignores_only_documented_tool_dependencies() -> None:
         "mutmut",
         "plotly",
         "radon",
-        "toml",
+        "tomli",
     }
 
 

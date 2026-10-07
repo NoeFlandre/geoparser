@@ -85,7 +85,6 @@ lint = [
     "ruff==0.16.6",
     "ty==0.0.78",
     "pre-commit>=4.3.0,<5",
-    "toml>=0.10.2,<1",
     # radon + coverage are what scripts/crap.py needs to combine complexity
     # with coverage; coverage also backs the combined report in CI.
     "radon>=6.0.1,<7",
@@ -93,7 +92,6 @@ lint = [
     "deptry>=0.23.1,<0.24",
 ]
 test = [
-    "toml>=0.10.2,<1",
     "pytest>=8.4.2,<10",
     "pytest-cov>=7.0.0,<8",
     "pytest-benchmark>=5,<6",
@@ -163,8 +161,8 @@ DEP002 = [
 ]
 # DEP004: dev-only imports outside the package: scripts/crap.py (coverage,
 # radon), scripts/benchmark/publish.py (huggingface_hub),
-# scripts/changed_mutation_patterns.py (mutmut, toml) and the demo notebook
-# (plotly).
+# scripts/changed_mutation_patterns.py (mutmut, and tomli on Python 3.10) and
+# the demo notebook (plotly).
 # None of them ship in the wheel.
 DEP004 = [
     "coverage",
@@ -172,7 +170,7 @@ DEP004 = [
     "mutmut",
     "plotly",
     "radon",
-    "toml",
+    "tomli",
 ]
 
 [tool.ruff]
