@@ -132,6 +132,81 @@ def test_failed_results_can_retain_partial_execution_evidence():
     assert len(outcome.units) == 1
 
 
+def failed_result_payload():
+    payload = completed_payload()
+    payload["results"][0].update(
+        status="failed",
+        reason="Execution interrupted",
+        scores=None,
+        measurements=None,
+    )
+    return payload
+
+
+def test_failed_partial_units_must_match_protocol_task():
+    payload = failed_result_payload()
+    payload["results"][0]["units"][0]["scores"]["task"] = "end_to_end"
+
+    with pytest.raises(ValidationError, match="unit task"):
+        parse(payload)
+
+
+def test_failed_partial_units_reject_duplicate_example_ids():
+    payload = failed_result_payload()
+    payload["results"][0]["units"][1]["example_id"] = "first"
+
+    with pytest.raises(ValidationError, match="unit IDs"):
+        parse(payload)
+
+
+def test_failed_partial_unit_count_must_match_reported_example_counts():
+    payload = failed_result_payload()
+    outcome = payload["results"][0]
+    outcome["units"] = outcome["units"][:1]
+    outcome["evaluated_examples"] = 2
+    outcome["failed_examples"] = 0
+
+    with pytest.raises(ValidationError, match="unit count"):
+        parse(payload)
+
+
+def test_failed_partial_unit_failures_must_match_reported_failures():
+    payload = failed_result_payload()
+    outcome = payload["results"][0]
+    outcome["evaluated_examples"] = 2
+    outcome["failed_examples"] = 0
+
+    with pytest.raises(ValidationError, match="unit failure count"):
+        parse(payload)
+
+
+def test_failed_partial_units_cannot_exceed_source_examples():
+    payload = failed_result_payload()
+    third = copy.deepcopy(payload["results"][0]["units"][0])
+    third["example_id"] = "third"
+    third["scores"].update(
+        gold_spans=0,
+        predicted_spans=0,
+        true_positive=0,
+        false_positive=0,
+        false_negative=0,
+        invalid_outputs=0,
+    )
+    payload["results"][0]["units"].append(third)
+
+    with pytest.raises(ValidationError, match="unit inventory"):
+        parse(payload)
+
+
+def test_failed_partial_units_cannot_exceed_source_gold_spans():
+    payload = failed_result_payload()
+    first = payload["results"][0]["units"][0]["scores"]
+    first.update(gold_spans=3, false_negative=1)
+
+    with pytest.raises(ValidationError, match="gold span"):
+        parse(payload)
+
+
 @pytest.mark.parametrize(
     "field,value",
     [

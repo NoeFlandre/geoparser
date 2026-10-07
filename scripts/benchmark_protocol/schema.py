@@ -440,6 +440,8 @@ class Experiment(Contract):
             "example count exceeds source denominator",
         )
         if result.status != "complete":
+            if result.status == "failed":
+                self._validate_partial_units(config, result)
             return
         require(
             result.provenance_sha256 == self.provenance_digest(config),
@@ -461,6 +463,31 @@ class Experiment(Contract):
             "result gold span denominator changed",
         )
         self._validate_units(config, result)
+
+    def _validate_partial_units(self, config: Configuration, result: Result) -> None:
+        """Keep failed-result evidence aligned with its retained source units."""
+        ids = [unit.example_id for unit in result.units]
+        require(
+            len(result.units) <= config.examples,
+            "unit inventory exceeds source example denominator",
+        )
+        require(len(ids) == len(set(ids)), "unit IDs must be unique")
+        require(
+            all(unit.scores.task == self.protocol.task for unit in result.units),
+            "unit task differs from protocol",
+        )
+        require(
+            len(result.units) == result.evaluated_examples + result.failed_examples,
+            "unit count differs from reported processed examples",
+        )
+        require(
+            sum(unit.failed for unit in result.units) == result.failed_examples,
+            "unit failure count differs from reported failures",
+        )
+        require(
+            sum(unit.scores.gold_spans for unit in result.units) <= config.gold_spans,
+            "unit gold span total exceeds source denominator",
+        )
 
     def _validate_units(self, config: Configuration, result: Result) -> None:
         """Retain one count record per source unit, including failed predictions."""
