@@ -52,8 +52,8 @@ Earlier, before the 3.14 fixes, the same command showed `9 errors` from the miss
 
 | Result | Check | Output | Status |
 |---|---|---|---|
-| 17 | Every function added or changed | all score 5 or lower (`_is_parser_call` 5.00; `build_parser` 1.00 in both scripts; `main` 4.00 and 2.00) | STALE: measured before the final one-assertion edit. Complexity is unchanged by that edit. |
-| 18 | Whole-tree unit-only run | 320 existing functions at or above threshold; none in changed code | STALE; reflects unit-only coverage. CI uses combined coverage, which was NOT reproduced. |
+| 17 | Every function added or changed | all score 5 or lower (`_is_parser_call` 5.00; `build_parser` 1.00 in both scripts; `main` 4.00 and 2.00) | STALE: measured before the module-mode token change (36ac09b) and the startswith restore (72fb776). Not re-measured after either. |
+| 18 | Whole-tree unit-only run | 320 existing functions at or above threshold; none in changed code | STALE: same earlier tree as row 17. Reflects unit-only coverage. CI uses combined coverage, which was NOT reproduced. |
 
 ## F. Failures seen during the work (all resolved)
 
