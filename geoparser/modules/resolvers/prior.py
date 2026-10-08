@@ -16,6 +16,7 @@ from geoparser.modules.resolvers.ranking import combined_scores, inflection_vari
 from geoparser.modules.resolvers.sentencetransformer import SentenceTransformerResolver
 
 if t.TYPE_CHECKING:
+    from geoparser.gazetteer.artifact import SearchMethod
     from geoparser.gazetteer.feature import Feature
 
 
@@ -54,7 +55,7 @@ class PriorResolver(SentenceTransformerResolver):
         self.inflection_fallback = inflection_fallback
 
     def _search_candidates(
-        self, name: str, method: str, tiers: int, limit: int = 10000
+        self, name: str, method: SearchMethod, tiers: int, limit: int = 10000
     ) -> tuple[Feature, ...]:
         """Search as the parent does, retrying an exact miss with trimmed names."""
         search = super()._search_candidates
@@ -70,7 +71,7 @@ class PriorResolver(SentenceTransformerResolver):
             found,
         )
 
-    def _falls_back(self, method: str) -> bool:
+    def _falls_back(self, method: SearchMethod) -> bool:
         """Whether a miss by this search method is retried with trimmed names."""
         return self.inflection_fallback and method == "exact"
 
