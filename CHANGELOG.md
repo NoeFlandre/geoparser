@@ -8,6 +8,10 @@ This file records all notable changes to GeoParser. The project follows
 
 ### Fixed
 
+- Show a clear deprecation notice in `geoparser download --help`. It names the
+  replacement `install` command and states that `download` does not download
+  anything. The command still exits with status 1.
+
 - Store project database foreign keys to UUID primary keys as text, as the
   keys themselves are. A numeric-looking UUID such as
   `12345678-1234-4234-8234-123456789012` no longer breaks its foreign-key match
