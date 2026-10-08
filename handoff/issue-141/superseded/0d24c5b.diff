@@ -1,0 +1,49 @@
+diff --git a/tests/unit/test_cli/test_script_conventions.py b/tests/unit/test_cli/test_script_conventions.py
+index 88e7c00..abb1561 100644
+--- a/tests/unit/test_cli/test_script_conventions.py
++++ b/tests/unit/test_cli/test_script_conventions.py
+@@ -12,6 +12,7 @@ import sys
+ from collections.abc import Iterator
+ from contextlib import contextmanager
+ from pathlib import Path
++from types import ModuleType
+ 
+ import pytest
+ 
+@@ -173,7 +174,7 @@ def test_changelog_help_describes_the_tag_and_changelog_options(
+     assert result.stdout.startswith(
+         "usage: changelog.py [-h] [--changelog CHANGELOG] tag\n"
+     )
+-    assert "Extract the curated changelog section for a release tag." in (result.stdout)
++    assert "Extract the curated changelog section for a release tag." in result.stdout
+     assert "release tag, for example 0.6.0 or 0.6.0rc1" in result.stdout
+     assert "--changelog CHANGELOG" in result.stdout
+     assert result.stderr == ""
+@@ -333,6 +334,9 @@ _SIDE_EFFECT_EVENTS = frozenset(
+         "os.utime",
+     }
+ )
++# The audit hook is process-wide and cannot be removed once installed. It does
++# nothing unless a _filesystem_events() block is active, so it is inert for the
++# rest of the suite.
+ _active_watchers: list[list[str]] = []
+ 
+ 
+@@ -373,7 +377,7 @@ def _filesystem_events() -> Iterator[list[str]]:
+     ],
+ )
+ def test_build_parser_parses_the_documented_defaults_without_filesystem_access(
+-    module, argv: list[str], expected: dict[str, object]
++    module: ModuleType, argv: list[str], expected: dict[str, object]
+ ) -> None:
+     with _filesystem_events() as events:
+         args = module.build_parser().parse_args(argv)
+@@ -383,5 +387,7 @@ def test_build_parser_parses_the_documented_defaults_without_filesystem_access(
+ 
+ 
+ @pytest.mark.parametrize("module", [changelog, check_architecture])
+-def test_build_parser_keeps_the_module_docstring_as_its_description(module) -> None:
++def test_build_parser_keeps_the_module_docstring_as_its_description(
++    module: ModuleType,
++) -> None:
+     assert module.build_parser().description == module.__doc__

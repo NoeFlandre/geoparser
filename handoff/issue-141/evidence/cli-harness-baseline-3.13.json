@@ -1,0 +1,254 @@
+[
+  {
+    "case": "changelog:help_long:file",
+    "returncode": 0,
+    "stdout": "usage: changelog.py [-h] [--changelog CHANGELOG] tag\n\nExtract the curated changelog section for a release tag.\n\npositional arguments:\n  tag                   release tag, for example 0.6.0 or 0.6.0rc1\n\noptions:\n  -h, --help            show this help message and exit\n  --changelog CHANGELOG\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:help_long:module",
+    "returncode": 0,
+    "stdout": "usage: changelog.py [-h] [--changelog CHANGELOG] tag\n\nExtract the curated changelog section for a release tag.\n\npositional arguments:\n  tag                   release tag, for example 0.6.0 or 0.6.0rc1\n\noptions:\n  -h, --help            show this help message and exit\n  --changelog CHANGELOG\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:help_short:file",
+    "returncode": 0,
+    "stdout": "usage: changelog.py [-h] [--changelog CHANGELOG] tag\n\nExtract the curated changelog section for a release tag.\n\npositional arguments:\n  tag                   release tag, for example 0.6.0 or 0.6.0rc1\n\noptions:\n  -h, --help            show this help message and exit\n  --changelog CHANGELOG\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:no_args:file",
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "usage: changelog.py [-h] [--changelog CHANGELOG] tag\nchangelog.py: error: the following arguments are required: tag\n"
+  },
+  {
+    "case": "changelog:no_args:module",
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "usage: changelog.py [-h] [--changelog CHANGELOG] tag\nchangelog.py: error: the following arguments are required: tag\n"
+  },
+  {
+    "case": "changelog:ok:file",
+    "returncode": 0,
+    "stdout": "Shipped.\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:ok:module",
+    "returncode": 0,
+    "stdout": "Shipped.\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:ok_relative:file",
+    "returncode": 0,
+    "stdout": "Shipped.\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:ok_rc:file",
+    "returncode": 0,
+    "stdout": "### Added\n- Note.\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:ok_order:file",
+    "returncode": 0,
+    "stdout": "Shipped.\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:ok_equals:file",
+    "returncode": 0,
+    "stdout": "Shipped.\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:ok_dashdash:file",
+    "returncode": 0,
+    "stdout": "Shipped.\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:ok_unicode:file",
+    "returncode": 0,
+    "stdout": "Texte é ✓\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:ok_default_path:file",
+    "returncode": 0,
+    "stdout": "Default file.\n",
+    "stderr": ""
+  },
+  {
+    "case": "changelog:default_path_absent:file",
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "[Errno 2] No such file or directory: 'CHANGELOG.md'\n"
+  },
+  {
+    "case": "changelog:missing_section:file",
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "No changelog section for 9.9.9\n"
+  },
+  {
+    "case": "changelog:missing_section:module",
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "No changelog section for 9.9.9\n"
+  },
+  {
+    "case": "changelog:empty_section:file",
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "Changelog section for 1.0.0 is empty\n"
+  },
+  {
+    "case": "changelog:missing_file:file",
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "[Errno 2] No such file or directory: '<FX>/fx/absent.md'\n"
+  },
+  {
+    "case": "changelog:missing_value:file",
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "usage: changelog.py [-h] [--changelog CHANGELOG] tag\nchangelog.py: error: argument --changelog: expected one argument\n"
+  },
+  {
+    "case": "changelog:unknown_option:file",
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "usage: changelog.py [-h] [--changelog CHANGELOG] tag\nchangelog.py: error: unrecognized arguments: --bogus\n"
+  },
+  {
+    "case": "changelog:extra_positional:file",
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "usage: changelog.py [-h] [--changelog CHANGELOG] tag\nchangelog.py: error: unrecognized arguments: 2.0.0\n"
+  },
+  {
+    "case": "changelog:empty_tag:file",
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "No changelog section for \n"
+  },
+  {
+    "case": "check_architecture:help_long:file",
+    "returncode": 0,
+    "stdout": "usage: check_architecture.py [-h] [--package PACKAGE]\n\nCheck import cycles and dependency boundaries in the package.\n\noptions:\n  -h, --help         show this help message and exit\n  --package PACKAGE\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:help_long:module",
+    "returncode": 0,
+    "stdout": "usage: check_architecture.py [-h] [--package PACKAGE]\n\nCheck import cycles and dependency boundaries in the package.\n\noptions:\n  -h, --help         show this help message and exit\n  --package PACKAGE\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:no_args_default_package:file",
+    "returncode": 0,
+    "stdout": "Architecture checks passed for geoparser (3 modules).\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:no_args_default_absent:file",
+    "returncode": 0,
+    "stdout": "Architecture checks passed for geoparser (0 modules).\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:ok:file",
+    "returncode": 0,
+    "stdout": "Architecture checks passed for geoparser (3 modules).\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:ok:module",
+    "returncode": 0,
+    "stdout": "Architecture checks passed for geoparser (3 modules).\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:ok_relative:file",
+    "returncode": 0,
+    "stdout": "Architecture checks passed for geoparser (3 modules).\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:cycle:file",
+    "returncode": 1,
+    "stdout": "Import cycles:\n  geoparser.a -> geoparser.b -> geoparser.a\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:cycle:module",
+    "returncode": 1,
+    "stdout": "Import cycles:\n  geoparser.a -> geoparser.b -> geoparser.a\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:forbidden:file",
+    "returncode": 1,
+    "stdout": "Forbidden dependency edges:\n  geoparser.db -> geoparser.modules\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:impure_external:file",
+    "returncode": 1,
+    "stdout": "Pure modules with a forbidden dependency:\n  geoparser.evaluation -> torch\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:impure_internal:file",
+    "returncode": 1,
+    "stdout": "Pure modules with a forbidden dependency:\n  geoparser.evaluation -> geoparser\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:everything:file",
+    "returncode": 1,
+    "stdout": "Import cycles:\n  geoparser.a -> geoparser.b -> geoparser.a\nForbidden dependency edges:\n  geoparser.db -> geoparser.modules\nPure modules with a forbidden dependency:\n  geoparser.evaluation -> torch\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:type_checking_only:file",
+    "returncode": 0,
+    "stdout": "Architecture checks passed for geoparser (3 modules).\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:absent_package:file",
+    "returncode": 0,
+    "stdout": "Architecture checks passed for absent (0 modules).\n",
+    "stderr": ""
+  },
+  {
+    "case": "check_architecture:missing_value:file",
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "usage: check_architecture.py [-h] [--package PACKAGE]\ncheck_architecture.py: error: argument --package: expected one argument\n"
+  },
+  {
+    "case": "check_architecture:unknown_option:file",
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "usage: check_architecture.py [-h] [--package PACKAGE]\ncheck_architecture.py: error: unrecognized arguments: --bogus\n"
+  },
+  {
+    "case": "check_architecture:stray_positional:file",
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "usage: check_architecture.py [-h] [--package PACKAGE]\ncheck_architecture.py: error: unrecognized arguments: stray\n"
+  },
+  {
+    "case": "check_architecture:last_package_wins:file",
+    "returncode": 1,
+    "stdout": "Import cycles:\n  geoparser.a -> geoparser.b -> geoparser.a\n",
+    "stderr": ""
+  }
+]

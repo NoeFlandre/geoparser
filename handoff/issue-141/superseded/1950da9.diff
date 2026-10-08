@@ -1,0 +1,316 @@
+diff --git a/tests/unit/test_cli/test_script_conventions.py b/tests/unit/test_cli/test_script_conventions.py
+new file mode 100644
+index 0000000..6111f98
+--- /dev/null
++++ b/tests/unit/test_cli/test_script_conventions.py
+@@ -0,0 +1,310 @@
++"""Characterise the command-line behaviour of the release and architecture scripts.
++
++These tests pin observable behaviour (exit codes, stdout, stderr, help text and
++both invocation styles) so that restructuring how each script builds its
++argument parser cannot change what a caller sees.
++"""
++
++from __future__ import annotations
++
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++from scripts import changelog, check_architecture
++from tests.conftest import PROJECT_ROOT
++
++pytestmark = pytest.mark.unit
++
++CHANGELOG_SCRIPT = PROJECT_ROOT / "scripts" / "changelog.py"
++ARCHITECTURE_SCRIPT = PROJECT_ROOT / "scripts" / "check_architecture.py"
++CHANGELOG_TEXT = "# Changelog\n\n## [1.0.0]\n\nShipped.\n\n## [0.9.0]\n\n   \n"
++
++
++def _run_script(
++    script: Path, args: list[str], cwd: Path
++) -> subprocess.CompletedProcess[str]:
++    """Run a script by its path, the way the release workflow and gauntlet do."""
++    return subprocess.run(
++        [sys.executable, str(script), *args],
++        capture_output=True,
++        check=False,
++        cwd=cwd,
++        text=True,
++    )
++
++
++def _run_module(module: str, args: list[str]) -> subprocess.CompletedProcess[str]:
++    """Run a script as ``python -m`` from the repository root."""
++    return subprocess.run(
++        [sys.executable, "-m", module, *args],
++        capture_output=True,
++        check=False,
++        cwd=PROJECT_ROOT,
++        text=True,
++    )
++
++
++def _write_package(root: Path, modules: dict[str, str]) -> Path:
++    """Create a tiny package named ``geoparser`` with the given modules."""
++    package = root / "geoparser"
++    package.mkdir(parents=True, exist_ok=True)
++    (package / "__init__.py").write_text("", encoding="utf-8")
++    for name, source in modules.items():
++        path = package / f"{name.replace('.', '/')}.py"
++        path.parent.mkdir(parents=True, exist_ok=True)
++        path.write_text(source, encoding="utf-8")
++    return package
++
++
++@pytest.fixture
++def changelog_file(tmp_path: Path) -> Path:
++    path = tmp_path / "CHANGELOG.md"
++    path.write_text(CHANGELOG_TEXT, encoding="utf-8")
++    return path
++
++
++# --- scripts/changelog.py ---------------------------------------------------
++
++
++def test_changelog_runs_directly_from_outside_the_repository(
++    tmp_path: Path, changelog_file: Path
++) -> None:
++    result = _run_script(
++        CHANGELOG_SCRIPT,
++        ["1.0.0rc1", "--changelog", str(changelog_file)],
++        cwd=tmp_path,
++    )
++
++    assert (result.returncode, result.stdout, result.stderr) == (0, "Shipped.\n", "")
++
++
++def test_changelog_runs_as_a_module_from_the_repository_root(
++    changelog_file: Path,
++) -> None:
++    result = _run_module(
++        "scripts.changelog", ["1.0.0", "--changelog", str(changelog_file)]
++    )
++
++    assert (result.returncode, result.stdout, result.stderr) == (0, "Shipped.\n", "")
++
++
++def test_changelog_prints_the_stable_section_for_a_release_candidate(
++    capsys: pytest.CaptureFixture[str], changelog_file: Path
++) -> None:
++    exit_code = changelog.main(["1.0.0rc3", "--changelog", str(changelog_file)])
++
++    assert exit_code == 0
++    assert capsys.readouterr() == ("Shipped.\n", "")
++
++
++def test_changelog_reports_a_missing_section_on_stderr_only(
++    capsys: pytest.CaptureFixture[str], changelog_file: Path
++) -> None:
++    exit_code = changelog.main(["2.0.0", "--changelog", str(changelog_file)])
++
++    assert exit_code == 1
++    assert capsys.readouterr() == ("", "No changelog section for 2.0.0\n")
++
++
++def test_changelog_reports_an_empty_section_on_stderr_only(
++    capsys: pytest.CaptureFixture[str], changelog_file: Path
++) -> None:
++    exit_code = changelog.main(["0.9.0", "--changelog", str(changelog_file)])
++
++    assert exit_code == 1
++    assert capsys.readouterr() == ("", "Changelog section for 0.9.0 is empty\n")
++
++
++def test_changelog_reports_an_unreadable_file_on_stderr_only(
++    capsys: pytest.CaptureFixture[str], tmp_path: Path
++) -> None:
++    missing = tmp_path / "absent.md"
++
++    exit_code = changelog.main(["1.0.0", "--changelog", str(missing)])
++
++    assert exit_code == 1
++    assert capsys.readouterr() == (
++        "",
++        f"[Errno 2] No such file or directory: {str(missing)!r}\n",
++    )
++
++
++def test_changelog_defaults_to_changelog_md_in_the_working_directory(
++    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
++) -> None:
++    monkeypatch.chdir(tmp_path)
++
++    assert changelog.main(["1.0.0"]) == 1
++    assert capsys.readouterr().err == (
++        "[Errno 2] No such file or directory: 'CHANGELOG.md'\n"
++    )
++
++    (tmp_path / "CHANGELOG.md").write_text(CHANGELOG_TEXT, encoding="utf-8")
++
++    assert changelog.main(["1.0.0"]) == 0
++    assert capsys.readouterr().out == "Shipped.\n"
++
++
++def test_changelog_requires_a_tag_and_rejects_unknown_flags(
++    capsys: pytest.CaptureFixture[str],
++) -> None:
++    with pytest.raises(SystemExit) as missing_tag:
++        changelog.main([])
++    assert missing_tag.value.code == 2
++    assert "the following arguments are required: tag" in capsys.readouterr().err
++
++    with pytest.raises(SystemExit) as unknown_flag:
++        changelog.main(["1.0.0", "--bogus"])
++    assert unknown_flag.value.code == 2
++    assert "unrecognized arguments: --bogus" in capsys.readouterr().err
++
++
++def test_changelog_help_describes_the_tag_and_changelog_options(
++    tmp_path: Path,
++) -> None:
++    result = _run_script(CHANGELOG_SCRIPT, ["--help"], cwd=tmp_path)
++
++    assert result.returncode == 0
++    assert result.stdout.startswith(
++        "usage: changelog.py [-h] [--changelog CHANGELOG] tag\n"
++    )
++    assert "Extract the curated changelog section for a release tag." in (result.stdout)
++    assert "release tag, for example 0.6.0 or 0.6.0rc1" in result.stdout
++    assert "--changelog CHANGELOG" in result.stdout
++    assert result.stderr == ""
++
++
++# --- scripts/check_architecture.py ------------------------------------------
++
++
++def test_architecture_runs_directly_from_outside_the_repository(
++    tmp_path: Path,
++) -> None:
++    package = _write_package(tmp_path, {"db": "VALUE = 1\n"})
++
++    result = _run_script(ARCHITECTURE_SCRIPT, ["--package", str(package)], cwd=tmp_path)
++
++    assert (result.returncode, result.stdout, result.stderr) == (
++        0,
++        "Architecture checks passed for geoparser (2 modules).\n",
++        "",
++    )
++
++
++def test_architecture_runs_as_a_module_from_the_repository_root(
++    tmp_path: Path,
++) -> None:
++    package = _write_package(tmp_path, {"db": "VALUE = 1\n"})
++
++    result = _run_module("scripts.check_architecture", ["--package", str(package)])
++
++    assert result.returncode == 0
++    assert result.stdout == "Architecture checks passed for geoparser (2 modules).\n"
++
++
++def test_architecture_checks_the_package_in_the_working_directory_by_default(
++    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
++) -> None:
++    _write_package(tmp_path, {"db": "VALUE = 1\n"})
++    monkeypatch.chdir(tmp_path)
++
++    assert check_architecture.main([]) == 0
++    assert capsys.readouterr() == (
++        "Architecture checks passed for geoparser (2 modules).\n",
++        "",
++    )
++
++
++def test_architecture_reports_forbidden_edges_and_exits_one(
++    tmp_path: Path, capsys: pytest.CaptureFixture[str]
++) -> None:
++    package = _write_package(
++        tmp_path,
++        {
++            "db": "from geoparser.context import Thing\n",
++            "context": "Thing = 1\n",
++        },
++    )
++
++    exit_code = check_architecture.main(["--package", str(package)])
++
++    assert exit_code == 1
++    assert capsys.readouterr() == (
++        "Forbidden dependency edges:\n  geoparser.db -> geoparser.context\n",
++        "",
++    )
++
++
++def test_architecture_reports_import_cycles_and_exits_one(
++    tmp_path: Path, capsys: pytest.CaptureFixture[str]
++) -> None:
++    package = _write_package(
++        tmp_path,
++        {"a": "import geoparser.b\n", "b": "import geoparser.a\n"},
++    )
++
++    exit_code = check_architecture.main(["--package", str(package)])
++
++    assert exit_code == 1
++    assert capsys.readouterr() == (
++        "Import cycles:\n  geoparser.a -> geoparser.b -> geoparser.a\n",
++        "",
++    )
++
++
++def test_architecture_reports_impure_pure_modules_and_exits_one(
++    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
++) -> None:
++    package = _write_package(tmp_path, {"pure": "import torch\n"})
++    monkeypatch.setattr(check_architecture, "PURE_MODULES", {"geoparser.pure"})
++
++    exit_code = check_architecture.main(["--package", str(package)])
++
++    assert exit_code == 1
++    assert capsys.readouterr() == (
++        "Pure modules with a forbidden dependency:\n  geoparser.pure -> torch\n",
++        "",
++    )
++
++
++def test_architecture_scans_a_missing_path_as_an_empty_package(
++    tmp_path: Path, capsys: pytest.CaptureFixture[str]
++) -> None:
++    """Pins current behaviour: a path that does not exist passes with zero modules.
++
++    Changing this is a deliberate behaviour change and should update this test
++    in the same commit.
++    """
++    missing = tmp_path / "geoparser"
++
++    exit_code = check_architecture.main(["--package", str(missing)])
++
++    assert exit_code == 0
++    assert capsys.readouterr().out == (
++        "Architecture checks passed for geoparser (0 modules).\n"
++    )
++
++
++def test_architecture_rejects_unknown_flags(capsys: pytest.CaptureFixture[str]) -> None:
++    with pytest.raises(SystemExit) as unknown_flag:
++        check_architecture.main(["--bogus"])
++
++    assert unknown_flag.value.code == 2
++    assert "unrecognized arguments: --bogus" in capsys.readouterr().err
++
++
++def test_architecture_help_describes_the_package_option(tmp_path: Path) -> None:
++    result = _run_script(ARCHITECTURE_SCRIPT, ["--help"], cwd=tmp_path)
++
++    assert result.returncode == 0
++    assert result.stdout.startswith(
++        "usage: check_architecture.py [-h] [--package PACKAGE]\n"
++    )
++    assert (
++        "Check import cycles and dependency boundaries in the package." in result.stdout
++    )
++    assert "--package PACKAGE" in result.stdout
++    assert result.stderr == ""

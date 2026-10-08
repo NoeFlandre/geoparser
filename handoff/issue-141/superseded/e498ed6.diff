@@ -1,0 +1,139 @@
+diff --git a/scripts/changelog.py b/scripts/changelog.py
+index d7f878d..9fb5c11 100644
+--- a/scripts/changelog.py
++++ b/scripts/changelog.py
+@@ -59,11 +59,16 @@ def _nonempty_notes(
+     return notes
+ 
+ 
+-def main(argv: list[str] | None = None) -> int:
++def build_parser() -> argparse.ArgumentParser:
++    """Describe the command line; building it reads and writes nothing."""
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("tag", help="release tag, for example 0.6.0 or 0.6.0rc1")
+     parser.add_argument("--changelog", type=Path, default=Path("CHANGELOG.md"))
+-    args = parser.parse_args(argv)
++    return parser
++
++
++def main(argv: list[str] | None = None) -> int:
++    args = build_parser().parse_args(argv)
+ 
+     try:
+         changelog = args.changelog.read_text(encoding="utf-8")
+diff --git a/scripts/check_architecture.py b/scripts/check_architecture.py
+index 4c760fa..1977f70 100644
+--- a/scripts/check_architecture.py
++++ b/scripts/check_architecture.py
+@@ -370,11 +370,16 @@ def _print_modules(title: str, modules: list[tuple[str, str]]) -> None:
+             print(f"  {module} -> {target}")
+ 
+ 
+-def main(argv: list[str] | None = None) -> int:
+-    """Check the package and return non-zero when its architecture is invalid."""
++def build_parser() -> argparse.ArgumentParser:
++    """Describe the command line; building it reads and writes nothing."""
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--package", type=Path, default=Path("geoparser"))
+-    args = parser.parse_args(argv)
++    return parser
++
++
++def main(argv: list[str] | None = None) -> int:
++    """Check the package and return non-zero when its architecture is invalid."""
++    args = build_parser().parse_args(argv)
+ 
+     package_root = args.package.resolve()
+     package_name = package_root.name
+diff --git a/tests/unit/test_cli/test_script_conventions.py b/tests/unit/test_cli/test_script_conventions.py
+index 6111f98..88e7c00 100644
+--- a/tests/unit/test_cli/test_script_conventions.py
++++ b/tests/unit/test_cli/test_script_conventions.py
+@@ -9,6 +9,8 @@ from __future__ import annotations
+ 
+ import subprocess
+ import sys
++from collections.abc import Iterator
++from contextlib import contextmanager
+ from pathlib import Path
+ 
+ import pytest
+@@ -308,3 +310,78 @@ def test_architecture_help_describes_the_package_option(tmp_path: Path) -> None:
+     )
+     assert "--package PACKAGE" in result.stdout
+     assert result.stderr == ""
++
++
++# --- build_parser() ---------------------------------------------------------
++
++# Audit events that mean the process read, wrote, created, listed or moved a
++# file or directory. Stat-only lookups such as Path.exists() change nothing on
++# disk and are deliberately not counted.
++_SIDE_EFFECT_EVENTS = frozenset(
++    {
++        "open",
++        "os.chdir",
++        "os.chmod",
++        "os.link",
++        "os.listdir",
++        "os.mkdir",
++        "os.remove",
++        "os.rename",
++        "os.rmdir",
++        "os.scandir",
++        "os.symlink",
++        "os.utime",
++    }
++)
++_active_watchers: list[list[str]] = []
++
++
++def _note_filesystem_event(event: str, args: tuple[object, ...]) -> None:
++    if _active_watchers and event in _SIDE_EFFECT_EVENTS:
++        _active_watchers[-1].append(f"{event} {args!r}")
++
++
++sys.addaudithook(_note_filesystem_event)
++
++
++@contextmanager
++def _filesystem_events() -> Iterator[list[str]]:
++    """Collect every filesystem side effect raised while the block runs."""
++    events: list[str] = []
++    _active_watchers.append(events)
++    try:
++        yield events
++    finally:
++        _active_watchers.pop()
++
++
++@pytest.mark.parametrize(
++    ("module", "argv", "expected"),
++    [
++        (changelog, ["1.0.0"], {"tag": "1.0.0", "changelog": Path("CHANGELOG.md")}),
++        (
++            changelog,
++            ["1.0.0rc1", "--changelog", "notes/CHANGELOG.md"],
++            {"tag": "1.0.0rc1", "changelog": Path("notes/CHANGELOG.md")},
++        ),
++        (check_architecture, [], {"package": Path("geoparser")}),
++        (
++            check_architecture,
++            ["--package", "src/geoparser"],
++            {"package": Path("src/geoparser")},
++        ),
++    ],
++)
++def test_build_parser_parses_the_documented_defaults_without_filesystem_access(
++    module, argv: list[str], expected: dict[str, object]
++) -> None:
++    with _filesystem_events() as events:
++        args = module.build_parser().parse_args(argv)
++
++    assert events == []
++    assert vars(args) == expected
++
++
++@pytest.mark.parametrize("module", [changelog, check_architecture])
++def test_build_parser_keeps_the_module_docstring_as_its_description(module) -> None:
++    assert module.build_parser().description == module.__doc__
