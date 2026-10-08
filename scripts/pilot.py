@@ -399,6 +399,64 @@ def combine_timings_ms(
     ]
 
 
+class _RecognitionTimings:
+    """Record one real recognition duration per input document, by text.
+
+    Mixed in ahead of ``GLiNER2Recognizer``. The recognizer is handed the
+    documents in whatever order the project read them back, so the text rather
+    than the position is what relates a duration to its pilot case.
+    """
+
+    def __init__(self) -> None:
+        self.document_timings_ms: dict[str, float] = {}
+        super().__init__()
+
+    def _document_references(self, text: str) -> list[tuple[int, int]]:
+        started = time.perf_counter()
+        try:
+            return super()._document_references(text)  # ty: ignore[unresolved-attribute]
+        finally:
+            elapsed_ms = (time.perf_counter() - started) * 1000
+            self.document_timings_ms[text] = (
+                self.document_timings_ms.get(text, 0.0) + elapsed_ms
+            )
+
+
+class _ResolutionTimings:
+    """Record per-document resolution-decision durations in a batch.
+
+    Mixed in ahead of ``JinaResolver``.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.document_timings_ms: dict[str, float] = {}
+        self._timing_texts: list[str] = []
+        self._evaluation_index = 0
+        super().__init__(*args, **kwargs)
+
+    def predict(
+        self, texts: list[str], references: list[list[tuple[int, int]]]
+    ) -> list[list[tuple[str, str] | None]]:
+        self.document_timings_ms = dict.fromkeys(texts, 0.0)
+        self._timing_texts = texts
+        return super().predict(texts, references)  # ty: ignore[unresolved-attribute]
+
+    def _evaluate_candidates(self, *args: Any, **kwargs: Any) -> None:
+        self._evaluation_index = 0
+        super()._evaluate_candidates(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+
+    def _evaluate_document(self, *args: Any, **kwargs: Any) -> None:
+        index = self._evaluation_index
+        self._evaluation_index += 1
+        started = time.perf_counter()
+        try:
+            super()._evaluate_document(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+        finally:
+            if index < len(self._timing_texts):
+                text = self._timing_texts[index]
+                self.document_timings_ms[text] += (time.perf_counter() - started) * 1000
+
+
 def run_pilot(
     *,
     config_path: Path,
@@ -420,60 +478,11 @@ def run_pilot(
     torch_threads = min(8, os.cpu_count() or 1)
     torch.set_num_threads(torch_threads)
 
-    class TimedGLiNER2Recognizer(GLiNER2Recognizer):
-        """Record one real recognition duration per input document, by text.
+    class TimedGLiNER2Recognizer(_RecognitionTimings, GLiNER2Recognizer):
+        """The GLiNER2 recognizer, with one duration recorded per document."""
 
-        The recognizer is handed the documents in whatever order the project
-        read them back, so the text rather than the position is what relates a
-        duration to its pilot case.
-        """
-
-        def __init__(self) -> None:
-            self.document_timings_ms: dict[str, float] = {}
-            super().__init__()
-
-        def _document_references(self, text: str) -> list[tuple[int, int]]:
-            started = time.perf_counter()
-            try:
-                return super()._document_references(text)
-            finally:
-                elapsed_ms = (time.perf_counter() - started) * 1000
-                self.document_timings_ms[text] = (
-                    self.document_timings_ms.get(text, 0.0) + elapsed_ms
-                )
-
-    class TimedJinaResolver(JinaResolver):
-        """Record per-document resolution-decision durations in a batch."""
-
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            self.document_timings_ms: dict[str, float] = {}
-            self._timing_texts: list[str] = []
-            self._evaluation_index = 0
-            super().__init__(*args, **kwargs)
-
-        def predict(
-            self, texts: list[str], references: list[list[tuple[int, int]]]
-        ) -> list[list[tuple[str, str] | None]]:
-            self.document_timings_ms = dict.fromkeys(texts, 0.0)
-            self._timing_texts = texts
-            return super().predict(texts, references)
-
-        def _evaluate_candidates(self, *args: Any, **kwargs: Any) -> None:
-            self._evaluation_index = 0
-            super()._evaluate_candidates(*args, **kwargs)
-
-        def _evaluate_document(self, *args: Any, **kwargs: Any) -> None:
-            index = self._evaluation_index
-            self._evaluation_index += 1
-            started = time.perf_counter()
-            try:
-                super()._evaluate_document(*args, **kwargs)
-            finally:
-                if index < len(self._timing_texts):
-                    text = self._timing_texts[index]
-                    self.document_timings_ms[text] += (
-                        time.perf_counter() - started
-                    ) * 1000
+    class TimedJinaResolver(_ResolutionTimings, JinaResolver):
+        """The Jina resolver, with per-document resolution durations recorded."""
 
     artifact_path = GazetteerBuilder().build(config_path)
     texts = [case.text for case in PILOT_CASES]
