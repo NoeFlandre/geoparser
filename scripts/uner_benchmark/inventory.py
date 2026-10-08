@@ -158,8 +158,8 @@ def load_local(spec: Dataset, split: Split, cache_dir: Path) -> LoadedCorpus:
     return LoadedCorpus(path, hashlib.sha256(payload).hexdigest(), corpus)
 
 
-def read_manifest(path: Path = MANIFEST_PATH) -> tuple[Dataset, ...]:
-    """Read the checked-in source inventory without consulting mutable remotes."""
+def _read_manifest_source(path: Path) -> dict[str, Any]:
+    """Read and validate the local manifest header."""
     source = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(source, dict):
         message = "UNER source inventory must be a JSON object"
@@ -169,29 +169,40 @@ def read_manifest(path: Path = MANIFEST_PATH) -> tuple[Dataset, ...]:
             "UNER source inventory is incomplete; finish the release audit before use"
         )
         raise ValueError(message)
-    specs = tuple(Dataset.model_validate(dataset) for dataset in source["datasets"])
-    validate_configurations(specs)
-    if "repository_count" in source:
-        repository_count = len({spec.repository for spec in specs})
-        if repository_count != source["repository_count"]:
-            message = (
-                "UNER source inventory repository_count does not match its "
-                f"datasets: declared {source['repository_count']}, "
-                f"found {repository_count}"
-            )
-            raise ValueError(message)
-    if "split_file_count" in source:
-        split_file_count = sum(len(spec.splits) for spec in specs)
-        if split_file_count != source["split_file_count"]:
-            message = (
-                "UNER source inventory split_file_count does not match its "
-                f"datasets: declared {source['split_file_count']}, "
-                f"found {split_file_count}"
-            )
-            raise ValueError(message)
+    return source
+
+
+def _validate_declared_count(source: dict[str, Any], field: str, actual: int) -> None:
+    """Check a declared inventory count when the manifest provides one."""
+    if field in source and actual != source[field]:
+        message = (
+            f"UNER source inventory {field} does not match its datasets: "
+            f"declared {source[field]}, found {actual}"
+        )
+        raise ValueError(message)
+
+
+def _validate_manifest_counts(
+    source: dict[str, Any], specs: tuple[Dataset, ...]
+) -> None:
+    """Check the declared configuration and source-file inventory totals."""
+    _validate_declared_count(
+        source, "repository_count", len({spec.repository for spec in specs})
+    )
+    _validate_declared_count(
+        source, "split_file_count", sum(len(spec.splits) for spec in specs)
+    )
     if len(specs) != source["expected_configuration_count"]:
         message = "UNER source inventory count does not match its declared scope"
         raise ValueError(message)
+
+
+def read_manifest(path: Path = MANIFEST_PATH) -> tuple[Dataset, ...]:
+    """Read the checked-in source inventory without consulting mutable remotes."""
+    source = _read_manifest_source(path)
+    specs = tuple(Dataset.model_validate(dataset) for dataset in source["datasets"])
+    validate_configurations(specs)
+    _validate_manifest_counts(source, specs)
     return specs
 
 
