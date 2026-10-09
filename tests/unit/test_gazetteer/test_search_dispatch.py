@@ -7,10 +7,12 @@ changing a default, still returns plausible results while quietly searching
 for something other than what was asked.
 """
 
+import typing as t
 from unittest.mock import Mock
 
 import pytest
 
+from geoparser.gazetteer.artifact import SearchMethod
 from geoparser.gazetteer.gazetteer import Gazetteer
 
 
@@ -89,7 +91,8 @@ class TestSearchDispatch:
         """A misspelled method is reported rather than silently ignored."""
         # Act & Assert
         with pytest.raises(ValueError, match="soundslike"):
-            gazetteer.search("Paris", method="soundslike")
+            # The cast passes a string the Literal rejects, as a caller could at runtime.
+            gazetteer.search("Paris", method=t.cast(SearchMethod, "soundslike"))
 
     def test_returns_what_the_artifact_returned(self, gazetteer):
         """Results are passed straight through."""
