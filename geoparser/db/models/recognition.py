@@ -1,7 +1,7 @@
 import typing as t
 import uuid
 
-from sqlalchemy import UUID, Column, ForeignKey, String
+from sqlalchemy import Column, ForeignKey, String, Uuid
 from sqlmodel import Field, Relationship, SQLModel
 
 if t.TYPE_CHECKING:
@@ -24,7 +24,7 @@ class Recognition(RecognitionBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     document_id: uuid.UUID = Field(
         sa_column=Column(
-            UUID,
+            Uuid,
             ForeignKey("document.id", ondelete="CASCADE"),
             nullable=False,
             index=True,
