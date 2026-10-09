@@ -7,6 +7,8 @@ import os
 import typing as t
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 
 def write_json_atomic(
     path: Path, value: t.Any, *, pretty: bool = False, fsync: bool = True

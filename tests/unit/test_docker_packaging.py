@@ -10,7 +10,9 @@ from urllib.parse import unquote, urlsplit
 import pytest
 import yaml
 
-ROOT = Path(__file__).resolve().parents[2]
+from tests.conftest import PROJECT_ROOT
+
+ROOT = PROJECT_ROOT
 
 
 def _links(page: Path) -> list[Path]:

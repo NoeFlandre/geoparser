@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+from tests.conftest import PROJECT_ROOT
 
 
 def test_release_candidate_extracts_stable_release_notes(tmp_path: Path) -> None:

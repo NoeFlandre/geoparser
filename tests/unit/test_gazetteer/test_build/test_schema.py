@@ -75,10 +75,11 @@ class TestGazetteerConfigValidation:
         assert len(config.sources) == 1
         assert len(config.features) == 1
 
-    def test_rejects_invalid_gazetteer_name(self):
+    @pytest.mark.parametrize("name", ["../bad", r"..\bad", "bad name", "name\n", ""])
+    def test_rejects_invalid_gazetteer_name(self, name):
         """Gazetteer names are restricted to a safe character set."""
         with pytest.raises(ValidationError, match="must contain only"):
-            GazetteerConfig.model_validate(minimal_config(name="bad name!"))
+            GazetteerConfig.model_validate(minimal_config(name=name))
 
     def test_accepts_positive_disk(self):
         """A positive disk budget (bytes of free space) is kept as-is."""

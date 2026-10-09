@@ -40,6 +40,11 @@ from geoparser import Gazetteer
 gazetteer = Gazetteer("geonames")
 ```
 
+Gazetteer names must contain only ASCII letters, digits, underscores, and
+hyphens. Names cannot be empty or contain path separators. Invalid names raise
+`ValueError` in the Python API. The `parse` and `uninstall` commands report
+invalid names with exit code 2.
+
 The name must be the name of an installed gazetteer. If it is not, the call raises a `ValueError` that names the command to install the gazetteer.
 
 ### Searching by name

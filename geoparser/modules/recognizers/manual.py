@@ -1,9 +1,4 @@
-import typing as t
-
 from geoparser.modules.recognizers import Recognizer
-
-if t.TYPE_CHECKING:
-    pass
 
 
 class ManualRecognizer(Recognizer):
