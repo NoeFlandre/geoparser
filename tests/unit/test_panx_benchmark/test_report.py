@@ -1,6 +1,7 @@
 import json
 
 from scripts.panx_benchmark.report import (
+    _aggregate_lines,
     _language_rows,
     _model_summary,
     render_markdown,
@@ -53,6 +54,31 @@ def test_feasibility_markdown_names_missing_target_languages():
     markdown = render_markdown(_feasibility_result())
 
     assert "`ha`" in markdown
+
+
+def test_spacy_transfer_report_does_not_claim_native_multilingual_support():
+    lines = _aggregate_lines(
+        {
+            "evaluation": {
+                "selected_model_keys": ["spacy_en"],
+                "complete_model_matrix": False,
+                "spacy_cross_lingual_transfer": True,
+            },
+            "models": [
+                {
+                    "key": "spacy_en",
+                    "macro": {"precision": 0.0, "recall": 0.0, "f1": 0.0},
+                    "micro": {"precision": 0.0, "recall": 0.0, "f1": 0.0},
+                }
+            ],
+            "estimated_full_matrix_inference_seconds": 7.0,
+            "full_matrix_estimate_note": "Measured on all test languages.",
+        }
+    )
+
+    assert any("selected model subset (`spacy_en`)" in line for line in lines)
+    assert any("cross-lingual transfer results" in line for line in lines)
+    assert any("not evidence of native multilingual support" in line for line in lines)
 
 
 def test_feasibility_report_round_trips_both_local_files(tmp_path):
