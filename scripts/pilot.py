@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from geoparser.db.models import Document
     from geoparser.evaluation import Annotation
+    from geoparser.modules import GLiNER2Recognizer, JinaResolver
 
 Report = dict[str, Any]
 
@@ -399,7 +400,17 @@ def combine_timings_ms(
     ]
 
 
-class _RecognitionTimings:
+if TYPE_CHECKING:
+    # The mixins sit ahead of these classes in the MRO, so the type checker
+    # needs them as the bases that super() resolves against. At runtime the
+    # mixins stay plain classes; the real pipeline class comes later in the MRO.
+    _RecognizerBase = GLiNER2Recognizer
+    _ResolverBase = JinaResolver
+else:
+    _RecognizerBase = _ResolverBase = object
+
+
+class _RecognitionTimings(_RecognizerBase):
     """Record one real recognition duration per input document, by text.
 
     Mixed in ahead of ``GLiNER2Recognizer``. The recognizer is handed the
@@ -414,7 +425,7 @@ class _RecognitionTimings:
     def _document_references(self, text: str) -> list[tuple[int, int]]:
         started = time.perf_counter()
         try:
-            return super()._document_references(text)  # ty: ignore[unresolved-attribute]
+            return super()._document_references(text)
         finally:
             elapsed_ms = (time.perf_counter() - started) * 1000
             self.document_timings_ms[text] = (
@@ -422,7 +433,7 @@ class _RecognitionTimings:
             )
 
 
-class _ResolutionTimings:
+class _ResolutionTimings(_ResolverBase):
     """Record per-document resolution-decision durations in a batch.
 
     Mixed in ahead of ``JinaResolver``.
@@ -439,18 +450,18 @@ class _ResolutionTimings:
     ) -> list[list[tuple[str, str] | None]]:
         self.document_timings_ms = dict.fromkeys(texts, 0.0)
         self._timing_texts = texts
-        return super().predict(texts, references)  # ty: ignore[unresolved-attribute]
+        return super().predict(texts, references)
 
     def _evaluate_candidates(self, *args: Any, **kwargs: Any) -> None:
         self._evaluation_index = 0
-        super()._evaluate_candidates(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+        super()._evaluate_candidates(*args, **kwargs)
 
     def _evaluate_document(self, *args: Any, **kwargs: Any) -> None:
         index = self._evaluation_index
         self._evaluation_index += 1
         started = time.perf_counter()
         try:
-            super()._evaluate_document(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+            super()._evaluate_document(*args, **kwargs)
         finally:
             if index < len(self._timing_texts):
                 text = self._timing_texts[index]
@@ -467,9 +478,11 @@ def run_pilot(
     """Build the real gazetteer, parse all fixed cases, and persist evidence."""
     _configure_runtime(output_dir, hf_home, offline=offline)
 
-    # These imports stay inside run_pilot so that importing scripts.pilot does
-    # not load torch or the geoparser pipeline. They resolve at call time, which
-    # also lets the characterisation tests substitute fake modules via sys.modules.
+    # These imports stay inside run_pilot, after _configure_runtime has set the
+    # Hugging Face environment. huggingface_hub reads HF_HOME, HF_HUB_OFFLINE and
+    # TRANSFORMERS_OFFLINE once, at import time, so importing it earlier would
+    # ignore --hf-home and --offline. Resolving at call time also lets the
+    # characterisation tests substitute fake modules via sys.modules.
     import torch
 
     from geoparser.gazetteer.build import GazetteerBuilder
