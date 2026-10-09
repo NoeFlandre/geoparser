@@ -1,0 +1,87 @@
+"""Dry-run the pinned inventory or validate one local split file. No downloads."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from collections import Counter
+from collections.abc import Sequence
+from pathlib import Path
+
+from scripts.multiconer_benchmark.conll import parse_conll
+from scripts.multiconer_benchmark.manifest import (
+    DEFAULT_MANIFEST_PATH,
+    intersection_languages,
+    inventory_report,
+    load_manifest,
+)
+
+
+def _parse_local(path: Path, language: str | None):
+    """Read one UTF-8 file, expecting the given dataset language."""
+    if language not in intersection_languages(load_manifest()):
+        message = f"{language!r} is not a dataset language in the intersection"
+        raise ValueError(message)
+    return parse_conll(path.read_text(encoding="utf-8"), expected_domain=language)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Print the pinned inventory, or validate one local file and report it."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    operation = parser.add_mutually_exclusive_group(required=True)
+    operation.add_argument(
+        "--manifest",
+        nargs="?",
+        const=DEFAULT_MANIFEST_PATH,
+        type=Path,
+        metavar="PATH",
+        help="print the pinned inventory",
+    )
+    operation.add_argument(
+        "--validate-conll",
+        type=Path,
+        metavar="FILE",
+        help="parse one local split file and count invalid records",
+    )
+    parser.add_argument("--language", help="dataset language code for --validate-conll")
+    arguments = parser.parse_args(argv)
+    if arguments.manifest is not None:
+        return _print_manifest(arguments.manifest)
+    return _validate_file(arguments.validate_conll, arguments.language)
+
+
+def _print_manifest(path: Path) -> int:
+    """Print the inventory for a pinned manifest, or fail with the reason."""
+    try:
+        manifest = load_manifest(path)
+    except (OSError, UnicodeError, ValueError, KeyError) as error:
+        print(f"Invalid MultiCoNER manifest: {error}", file=sys.stderr)
+        return 2
+    print(json.dumps(inventory_report(manifest), indent=2, ensure_ascii=False))
+    return 0
+
+
+def _validate_file(path: Path, language: str | None) -> int:
+    """Parse a local file and print its record counts; invalid records fail."""
+    try:
+        parsed = _parse_local(path, language)
+    except (OSError, UnicodeError, ValueError) as error:
+        print(f"Invalid MultiCoNER file: {error}", file=sys.stderr)
+        return 2
+    reasons = Counter(item.reason.split(":")[0] for item in parsed.invalid)
+    report = {
+        "file": path.name,
+        "language": language,
+        "records": parsed.record_count,
+        "valid": len(parsed.sentences),
+        "invalid": len(parsed.invalid),
+        "invalid_reasons": dict(sorted(reasons.items())),
+        "location_spans": sum(len(s.location_spans()) for s in parsed.sentences),
+    }
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 2 if parsed.invalid else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
