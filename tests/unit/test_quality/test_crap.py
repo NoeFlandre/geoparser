@@ -1,9 +1,9 @@
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
 import pytest
-import toml
 import yaml
 from coverage import Coverage
 
@@ -16,6 +16,11 @@ from scripts.crap import (
     main,
     score_file,
 )
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 
 def _run_gate(score: Score, data_file: Path, monkeypatch) -> int:
@@ -50,7 +55,7 @@ def test_ci_uses_the_same_exclusive_crap_limit_as_the_gate() -> None:
 
 
 def test_coverage_collects_every_crap_source_tree() -> None:
-    configuration = toml.loads(
+    configuration = tomllib.loads(
         (Path(__file__).resolve().parents[3] / "pyproject.toml").read_text(
             encoding="utf-8"
         )
