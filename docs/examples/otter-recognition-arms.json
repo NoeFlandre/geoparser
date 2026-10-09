@@ -1,0 +1,150 @@
+{
+  "format": "otter-recognition-arm-plan-v1",
+  "status": "planned",
+  "adapter": "geoparser.modules.recognizers.otter.OtterRecognizer",
+  "benchmark_interface": "predict_batch",
+  "label_mapping": {
+    "city": "LOC",
+    "country": "LOC",
+    "location": "LOC"
+  },
+  "long_text_policy": "reject_before_prediction",
+  "invalid_output_policy": "retain_raw_and_fail_document; benchmark counts invalid output as false positive",
+  "provenance_kind": "caller-supplied; verify actual snapshot bytes before benchmark",
+  "source_manifest": "docs/examples/otter-source-manifest.json",
+  "source_review": "docs/guides/otter-source-review.md",
+  "source_manifest_sha256": "2d6e72bacb2e933cd27d0f5bd7ef53ebac3be0eebcbbe6cfbf36f22014ba2d78",
+  "source_review_sha256": "458e5cae6d0ce62b0d7a7fdb91a7617b1092463ce62a14471d86974552fcab75",
+  "dependency_lock_sha256": "ce9376f2738165c66291a8b0e3a212fb081497b88175f6a9f690703b8ea43432",
+  "public_data": {
+    "identifier": "unimelb-nlp/wikiann",
+    "revision": "f0a3be6dc5564c0cc4150bb660144800a1f539d4",
+    "development_split": "validation",
+    "held_out_split": "test",
+    "languages_source": "scripts/panx_benchmark/target_languages.json",
+    "selection_status": "not_materialized",
+    "sample_identity_policy": "same original texts and source indices for every arm and baseline"
+  },
+  "threshold_selection": {
+    "stage": "development_only",
+    "candidates": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7
+    ],
+    "objective": "equal-language macro exact-span F1",
+    "tie_break": "highest threshold",
+    "freeze_before_held_out": true
+  },
+  "arms": [
+    {
+      "key": "otter_cross_mmbert",
+      "model": {
+        "identifier": "whoisjones/otter-cross-mmbert",
+        "revision": "8729188e4f5fc7948d0e9dfd7d7e6d36c2e7270d",
+        "sha256": "8987080bfc3e6672a75fb19ffe904d39e79ad804eabfda8247a62c347fb024b2"
+      },
+      "expected_architecture": "cross_encoder",
+      "expected_max_seq_length": 1024,
+      "expected_max_span_length": 30,
+      "source": "whoisjones/otter-cross-mmbert@8729188e4f5fc7948d0e9dfd7d7e6d36c2e7270d",
+      "threshold": 0.5,
+      "threshold_origin": "upstream calibration; development screening starting point",
+      "batch_size": 8,
+      "entity_types": [
+        "city",
+        "country",
+        "location"
+      ],
+      "language_support": "unspecified",
+      "training_overlap": "unknown",
+      "label_embedding_cache": "none"
+    },
+    {
+      "key": "otter_bi_mmbert",
+      "model": {
+        "identifier": "whoisjones/otter-bi-mmbert",
+        "revision": "53e10a09bc71a2e45980a7a257233a28305a5777",
+        "sha256": "05c4f718fb9e5871d66b8eb68fc40e17d0d8611c5b8e6252e371662bc0f78c91"
+      },
+      "expected_architecture": "bi_encoder",
+      "expected_max_seq_length": 1024,
+      "expected_max_span_length": 30,
+      "source": "whoisjones/otter-bi-mmbert@53e10a09bc71a2e45980a7a257233a28305a5777",
+      "threshold": 0.2,
+      "threshold_origin": "upstream calibration; development screening starting point",
+      "batch_size": 8,
+      "entity_types": [
+        "city",
+        "country",
+        "location"
+      ],
+      "language_support": "unspecified",
+      "training_overlap": "unknown",
+      "label_embedding_cache": "none"
+    }
+  ],
+  "baselines": {
+    "registry": "scripts.panx_benchmark.constants.MODELS",
+    "keys": [
+      "gliner2_multi",
+      "xlmr_ner_hrl"
+    ],
+    "change_existing_defaults": false
+  },
+  "measurements": [
+    "per-language exact-span precision/recall/F1",
+    "paired document bootstrap interval",
+    "fetch_seconds",
+    "load_seconds",
+    "warmup_seconds",
+    "inference_seconds",
+    "examples_per_second",
+    "process_peak_rss_bytes",
+    "device_peak_bytes",
+    "invalid_outputs",
+    "failed_examples",
+    "unsupported_examples"
+  ],
+  "required_before_run": [
+    "authorized execution environment and resource check",
+    "verify all local source/config/tokenizer/weight hashes",
+    "create a protocol v1 manifest after dataset selection and hardware are known",
+    "pin the executing code revision and dependency lock",
+    "retain raw per-document outputs and reasons, including failed and unsupported inputs",
+    "record one seed and every source slice for each model arm",
+    "keep custom-code execution offline with prepared tokenizers"
+  ],
+  "execution": {
+    "weights_downloaded": false,
+    "custom_code_executed": false,
+    "inference_run": false,
+    "results": null
+  },
+  "initial_smoke_plan": {
+    "stage": "before_public_development_screening",
+    "inputs": "at most 12 short synthetic texts; no owner data",
+    "maximum_input_tokens": 128,
+    "batch_sizes": [
+      1,
+      2
+    ],
+    "model_concurrency": 1,
+    "cpu_threads": 1,
+    "provisional_host_ram_bytes": 17179869184,
+    "provisional_free_disk_bytes": 8589934592,
+    "resource_status": "planning target; verify availability and measured peak before expansion",
+    "stop_conditions": [
+      "any source/config/tokenizer/weight hash mismatch",
+      "any attempted network fallback",
+      "model crash or invalid output",
+      "batch-size-dependent spans",
+      "memory pressure"
+    ],
+    "success_scope": "adapter compatibility only; not a recognition-quality result"
+  }
+}
