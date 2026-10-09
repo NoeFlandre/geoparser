@@ -1,0 +1,1570 @@
+{
+  "schema_version": 1,
+  "retrieved_on": "2026-10-09",
+  "dataset": {
+    "name": "MasakhaNER 2.0",
+    "paper_arxiv": "2210.12391",
+    "annotation_paper_arxiv": "2103.11811",
+    "huggingface_dataset_id": "masakhane/masakhaner2",
+    "huggingface_revision": "60512e89e68841b6b5ed1be59caf97b169f0d27a",
+    "huggingface_loader_files": [
+      "README.md",
+      "masakhaner2.py"
+    ],
+    "github_repository": "masakhane-io/masakhane-ner",
+    "github_commit": "ba5843cd08aa491d5f96a5e809e71eb9ec461391",
+    "github_commit_date": "2025-10-15T20:37:20Z",
+    "data_root": "MasakhaNER2.0/data",
+    "data_source_note": "The Hugging Face loader downloads each split from the raw GitHub main branch, not from a pinned commit. The git blob ids below pin the content of each file at the recorded GitHub commit.",
+    "split_files": {
+      "train": "train.txt",
+      "validation": "dev.txt",
+      "test": "test.txt"
+    },
+    "split_name_map": {
+      "train": "train",
+      "dev": "validation",
+      "test": "test"
+    },
+    "readme_github_path": "MasakhaNER2.0/README.md",
+    "readme_github_git_blob_sha": "853e39231fa6656fdf218fb9bcee5cd9ddda0558",
+    "readme_github_size_bytes": 8459
+  },
+  "licenses": [
+    {
+      "source": "Hugging Face dataset metadata (license tag)",
+      "value": "afl-3.0"
+    },
+    {
+      "source": "Hugging Face dataset card, Licensing Information",
+      "value": "CC 4.0 Non-Commercial"
+    },
+    {
+      "source": "GitHub MasakhaNER2.0/README.md",
+      "value": "CC-BY-4.0-NC"
+    },
+    {
+      "source": "GitHub repository LICENSE (code)",
+      "value": "Apache 2.0 for the code derived from Hugging Face transformers"
+    }
+  ],
+  "license_status": "conflicting: the dataset license is not resolved",
+  "annotation_provenance": {
+    "creators": "expert-generated (Hugging Face card); annotated by Masakhane language coordinators",
+    "process_reference": "arXiv:2103.11811",
+    "guideline_path": "MasakhaNER Annotation Guideline.pdf",
+    "guideline_git_blob_sha": "3bdcb9914b5e18cbeb07fcd6b146c3b43ea0ac5f",
+    "source_text_note": "News text from the source newspapers. The upstream card says the word tokenization pipeline is unavailable.",
+    "guideline_size_bytes": 84660
+  },
+  "provenance": {
+    "method": "Metadata only: Hugging Face dataset API, the Hugging Face README and loader files at the pinned revision, the GitHub README and git tree at the pinned commit. No data file was downloaded.",
+    "commands": [
+      "gh api repos/masakhane-io/masakhane-ner/commits/main",
+      "gh api 'repos/masakhane-io/masakhane-ner/git/trees/<commit>?recursive=1'",
+      "curl https://huggingface.co/api/datasets/masakhane/masakhaner2"
+    ],
+    "unverified": [
+      "Example counts are taken from the README tables; they were not checked against the split files, which were not downloaded.",
+      "The Hugging Face loader fetches data from the raw GitHub main branch, so a later main commit can change the files. Check each file against its git blob id before use.",
+      "The Hugging Face dataset commit pins the loader script and README only; the data files are pinned by GitHub blob id."
+    ]
+  },
+  "summary": {
+    "canonical_target_languages": 85,
+    "covered_targets": 5,
+    "missing_targets": 80,
+    "covered_codes": [
+      "ha",
+      "ig",
+      "xh",
+      "yo",
+      "zu"
+    ],
+    "missing_codes": [
+      "af",
+      "am",
+      "ar",
+      "az",
+      "be",
+      "bg",
+      "bn",
+      "ca",
+      "ceb",
+      "cs",
+      "cy",
+      "da",
+      "de",
+      "el",
+      "en",
+      "eo",
+      "es",
+      "et",
+      "eu",
+      "fa",
+      "fi",
+      "fr",
+      "fy",
+      "ga",
+      "gd",
+      "gl",
+      "gu",
+      "he",
+      "hi",
+      "hu",
+      "hy",
+      "id",
+      "is",
+      "it",
+      "ja",
+      "jv",
+      "ka",
+      "kk",
+      "km",
+      "kn",
+      "ko",
+      "ku",
+      "ky",
+      "la",
+      "lt",
+      "lv",
+      "mg",
+      "mk",
+      "ml",
+      "mn",
+      "mr",
+      "ms",
+      "mt",
+      "my",
+      "ne",
+      "nl",
+      "no",
+      "pa",
+      "pl",
+      "ps",
+      "pt",
+      "ro",
+      "ru",
+      "si",
+      "sk",
+      "sl",
+      "sq",
+      "sr",
+      "sv",
+      "ta",
+      "te",
+      "tg",
+      "th",
+      "tr",
+      "uk",
+      "ur",
+      "uz",
+      "vi",
+      "yi",
+      "zh"
+    ],
+    "masakhaner_configurations": 20,
+    "included_configurations": [
+      "hau",
+      "ibo",
+      "xho",
+      "yor",
+      "zul"
+    ],
+    "excluded_configurations": [
+      {
+        "config": "bam",
+        "iso639_3": "bam",
+        "iso639_1": "bm",
+        "name": "Bambara",
+        "reason": "its ISO 639-1 code is not in the 85-language target list"
+      },
+      {
+        "config": "bbj",
+        "iso639_3": "bbj",
+        "iso639_1": null,
+        "name": "Ghomala",
+        "reason": "no ISO 639-1 code, so it cannot match the target list"
+      },
+      {
+        "config": "ewe",
+        "iso639_3": "ewe",
+        "iso639_1": "ee",
+        "name": "Ewe",
+        "reason": "its ISO 639-1 code is not in the 85-language target list"
+      },
+      {
+        "config": "fon",
+        "iso639_3": "fon",
+        "iso639_1": null,
+        "name": "Fon",
+        "reason": "no ISO 639-1 code, so it cannot match the target list"
+      },
+      {
+        "config": "kin",
+        "iso639_3": "kin",
+        "iso639_1": "rw",
+        "name": "Kinyarwanda",
+        "reason": "its ISO 639-1 code is not in the 85-language target list"
+      },
+      {
+        "config": "lug",
+        "iso639_3": "lug",
+        "iso639_1": "lg",
+        "name": "Luganda",
+        "reason": "its ISO 639-1 code is not in the 85-language target list"
+      },
+      {
+        "config": "luo",
+        "iso639_3": "luo",
+        "iso639_1": null,
+        "name": "Dholuo",
+        "reason": "no ISO 639-1 code, so it cannot match the target list"
+      },
+      {
+        "config": "mos",
+        "iso639_3": "mos",
+        "iso639_1": null,
+        "name": "Mossi",
+        "reason": "no ISO 639-1 code, so it cannot match the target list"
+      },
+      {
+        "config": "nya",
+        "iso639_3": "nya",
+        "iso639_1": "ny",
+        "name": "Chichewa",
+        "reason": "its ISO 639-1 code is not in the 85-language target list"
+      },
+      {
+        "config": "pcm",
+        "iso639_3": "pcm",
+        "iso639_1": null,
+        "name": "Nigerian Pidgin",
+        "reason": "no ISO 639-1 code, so it cannot match the target list"
+      },
+      {
+        "config": "sna",
+        "iso639_3": "sna",
+        "iso639_1": "sn",
+        "name": "chiShona",
+        "reason": "its ISO 639-1 code is not in the 85-language target list"
+      },
+      {
+        "config": "swa",
+        "iso639_3": "swa",
+        "iso639_1": "sw",
+        "name": "Kiswahili",
+        "reason": "its ISO 639-1 code is not in the 85-language target list"
+      },
+      {
+        "config": "tsn",
+        "iso639_3": "tsn",
+        "iso639_1": "tn",
+        "name": "Setswana",
+        "reason": "its ISO 639-1 code is not in the 85-language target list"
+      },
+      {
+        "config": "twi",
+        "iso639_3": "twi",
+        "iso639_1": "tw",
+        "name": "Akan/Twi",
+        "reason": "its ISO 639-1 code is not in the 85-language target list"
+      },
+      {
+        "config": "wol",
+        "iso639_3": "wol",
+        "iso639_1": "wo",
+        "name": "Wolof",
+        "reason": "its ISO 639-1 code is not in the 85-language target list"
+      }
+    ],
+    "wikiann_missing_targets": [
+      "ha",
+      "xh",
+      "zu"
+    ],
+    "wikiann_gaps_filled": [
+      "ha",
+      "xh",
+      "zu"
+    ],
+    "examples_by_split": {
+      "train": 31793,
+      "validation": 4542,
+      "test": 9081
+    }
+  },
+  "target_rows": [
+    {
+      "code": "af",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "am",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ar",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "az",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "be",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "bg",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "bn",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ca",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ceb",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "cs",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "cy",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "da",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "de",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "el",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "en",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "eo",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "es",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "et",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "eu",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "fa",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "fi",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "fr",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "fy",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ga",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "gd",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "gl",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "gu",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ha",
+      "status": "covered",
+      "masakhaner_config": "hau",
+      "wikiann_test_missing": true,
+      "fills_wikiann_gap": true,
+      "readme_counts": {
+        "train": 5716,
+        "validation": 816,
+        "test": 1633
+      }
+    },
+    {
+      "code": "he",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "hi",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "hu",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "hy",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "id",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ig",
+      "status": "covered",
+      "masakhaner_config": "ibo",
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": {
+        "train": 7634,
+        "validation": 1090,
+        "test": 2181
+      }
+    },
+    {
+      "code": "is",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "it",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ja",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "jv",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ka",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "kk",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "km",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "kn",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ko",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ku",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ky",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "la",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "lt",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "lv",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "mg",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "mk",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ml",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "mn",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "mr",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ms",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "mt",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "my",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ne",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "nl",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "no",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "pa",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "pl",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ps",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "pt",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ro",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ru",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "si",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "sk",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "sl",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "sq",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "sr",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "sv",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ta",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "te",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "tg",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "th",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "tr",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "uk",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "ur",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "uz",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "vi",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "xh",
+      "status": "covered",
+      "masakhaner_config": "xho",
+      "wikiann_test_missing": true,
+      "fills_wikiann_gap": true,
+      "readme_counts": {
+        "train": 5718,
+        "validation": 817,
+        "test": 1633
+      }
+    },
+    {
+      "code": "yi",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "yo",
+      "status": "covered",
+      "masakhaner_config": "yor",
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": {
+        "train": 6877,
+        "validation": 983,
+        "test": 1964
+      }
+    },
+    {
+      "code": "zh",
+      "status": "missing",
+      "masakhaner_config": null,
+      "wikiann_test_missing": false,
+      "fills_wikiann_gap": false,
+      "readme_counts": null
+    },
+    {
+      "code": "zu",
+      "status": "covered",
+      "masakhaner_config": "zul",
+      "wikiann_test_missing": true,
+      "fills_wikiann_gap": true,
+      "readme_counts": {
+        "train": 5848,
+        "validation": 836,
+        "test": 1670
+      }
+    }
+  ],
+  "configurations": [
+    {
+      "config": "bam",
+      "iso639_3": "bam",
+      "iso639_1": "bm",
+      "name": "Bambara",
+      "readme_counts": {
+        "train": 4463,
+        "validation": 638,
+        "test": 1274
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/bam/train.txt",
+          "git_blob_sha": "6ee6aa152a05bc84bc96e115d73c291ec55d34e9",
+          "size_bytes": 820418
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/bam/dev.txt",
+          "git_blob_sha": "d1e7271c602d94c16ddc097c85fd0a68353a3e59",
+          "size_bytes": 128608
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/bam/test.txt",
+          "git_blob_sha": "c3474fbcc2d2f7484b2f02a66bdff441d7c61138",
+          "size_bytes": 248299
+        }
+      }
+    },
+    {
+      "config": "bbj",
+      "iso639_3": "bbj",
+      "iso639_1": null,
+      "name": "Ghomala",
+      "readme_counts": {
+        "train": 3384,
+        "validation": 483,
+        "test": 966
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/bbj/train.txt",
+          "git_blob_sha": "1956dddb234cbc977d5784ae2de593f2f953d13d",
+          "size_bytes": 420073
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/bbj/dev.txt",
+          "git_blob_sha": "b36177a922bc75ef53b333945bf623720efa474f",
+          "size_bytes": 64866
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/bbj/test.txt",
+          "git_blob_sha": "daa3888f56ed3b4322bb9405eaaf1a2a632b346a",
+          "size_bytes": 133742
+        }
+      }
+    },
+    {
+      "config": "ewe",
+      "iso639_3": "ewe",
+      "iso639_1": "ee",
+      "name": "Ewe",
+      "readme_counts": {
+        "train": 3505,
+        "validation": 501,
+        "test": 1001
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/ewe/train.txt",
+          "git_blob_sha": "02ce4714c9a89f646facaaccaba166092f27ceda",
+          "size_bytes": 479840
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/ewe/dev.txt",
+          "git_blob_sha": "cd2b3ee447cb98b32a73d6828b84186b2811d6c5",
+          "size_bytes": 77759
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/ewe/test.txt",
+          "git_blob_sha": "00b48419329e7485d05f1064ca2a63d5690067c8",
+          "size_bytes": 166637
+        }
+      }
+    },
+    {
+      "config": "fon",
+      "iso639_3": "fon",
+      "iso639_1": null,
+      "name": "Fon",
+      "readme_counts": {
+        "train": 4343,
+        "validation": 621,
+        "test": 1240
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/fon/train.txt",
+          "git_blob_sha": "e78ad5959205703a3b574cda7be8c4328475aa31",
+          "size_bytes": 935788
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/fon/dev.txt",
+          "git_blob_sha": "c76280197f4d062b1ff72d37f5be32db0ab871d1",
+          "size_bytes": 134341
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/fon/test.txt",
+          "git_blob_sha": "fbc739de7761f2a5983318649466718944340254",
+          "size_bytes": 284375
+        }
+      }
+    },
+    {
+      "config": "hau",
+      "iso639_3": "hau",
+      "iso639_1": "ha",
+      "name": "Hausa",
+      "readme_counts": {
+        "train": 5716,
+        "validation": 816,
+        "test": 1633
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/hau/train.txt",
+          "git_blob_sha": "bbcfb2014704ab73679c09fb4105886a98130d8e",
+          "size_bytes": 1203831
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/hau/dev.txt",
+          "git_blob_sha": "1358351517da87cb0d5f673807129c5a379e0c98",
+          "size_bytes": 163878
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/hau/test.txt",
+          "git_blob_sha": "85e294f04d2b400bef400c99a04cce5988e98f3f",
+          "size_bytes": 358507
+        }
+      }
+    },
+    {
+      "config": "ibo",
+      "iso639_3": "ibo",
+      "iso639_1": "ig",
+      "name": "Igbo",
+      "readme_counts": {
+        "train": 7634,
+        "validation": 1090,
+        "test": 2181
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/ibo/train.txt",
+          "git_blob_sha": "4a8a6f1997041baff25c181535b73aebc509b062",
+          "size_bytes": 1900151
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/ibo/dev.txt",
+          "git_blob_sha": "9c360301e780e1aaba44d22e90a44a2707523bab",
+          "size_bytes": 264840
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/ibo/test.txt",
+          "git_blob_sha": "8fe6f0ce9932e8f44e2d66f039fe4f3e9b8615ac",
+          "size_bytes": 584373
+        }
+      }
+    },
+    {
+      "config": "kin",
+      "iso639_3": "kin",
+      "iso639_1": "rw",
+      "name": "Kinyarwanda",
+      "readme_counts": {
+        "train": 7825,
+        "validation": 1118,
+        "test": 2235
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/kin/train.txt",
+          "git_blob_sha": "e40e3634d9dafe88860fd34b03847bb074082342",
+          "size_bytes": 1549294
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/kin/dev.txt",
+          "git_blob_sha": "cd3a87be5a5d16f31a45a9590bd8ee56c7cefe2f",
+          "size_bytes": 203462
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/kin/test.txt",
+          "git_blob_sha": "84b5a9969b0ff9d434407e07dc7bb6c64c4da581",
+          "size_bytes": 476109
+        }
+      }
+    },
+    {
+      "config": "lug",
+      "iso639_3": "lug",
+      "iso639_1": "lg",
+      "name": "Luganda",
+      "readme_counts": {
+        "train": 4942,
+        "validation": 706,
+        "test": 1412
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/lug/train.txt",
+          "git_blob_sha": "61bce0fdd0511b046c68a06fd7ccc14ad24d2da8",
+          "size_bytes": 821977
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/lug/dev.txt",
+          "git_blob_sha": "cd3c2050dc6cd9efcd0cc94cf3382df8b612c545",
+          "size_bytes": 115602
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/lug/test.txt",
+          "git_blob_sha": "e79dd8732af140e7c796be240181af65a933f205",
+          "size_bytes": 221155
+        }
+      }
+    },
+    {
+      "config": "luo",
+      "iso639_3": "luo",
+      "iso639_1": null,
+      "name": "Dholuo",
+      "readme_counts": {
+        "train": 5161,
+        "validation": 737,
+        "test": 1474
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/luo/train.txt",
+          "git_blob_sha": "def82d6352928739143aa201499bc915479ea259",
+          "size_bytes": 1244221
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/luo/dev.txt",
+          "git_blob_sha": "5351a833439bb66fea113d1cf8e7b513fb96f9c4",
+          "size_bytes": 169442
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/luo/test.txt",
+          "git_blob_sha": "43b28228028c2ca7aa6185b3179ef5e711ce7c8e",
+          "size_bytes": 332889
+        }
+      }
+    },
+    {
+      "config": "mos",
+      "iso639_3": "mos",
+      "iso639_1": null,
+      "name": "Mossi",
+      "readme_counts": {
+        "train": 4532,
+        "validation": 648,
+        "test": 1613
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/mos/train.txt",
+          "git_blob_sha": "b8f388558ed885976a8d450e23ae7674488b1ad0",
+          "size_bytes": 910893
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/mos/dev.txt",
+          "git_blob_sha": "feb64ec0b424e17899f5155c8b55238bae154872",
+          "size_bytes": 122291
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/mos/test.txt",
+          "git_blob_sha": "1d029c769c8ea8e6cb6b1ce616014fd71bb24223",
+          "size_bytes": 202965
+        }
+      }
+    },
+    {
+      "config": "nya",
+      "iso639_3": "nya",
+      "iso639_1": "ny",
+      "name": "Chichewa",
+      "readme_counts": {
+        "train": 5646,
+        "validation": 806,
+        "test": 1294
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/nya/train.txt",
+          "git_blob_sha": "3efb1407838130ecf1b75e741610ebe3fe4b5c99",
+          "size_bytes": 1699657
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/nya/dev.txt",
+          "git_blob_sha": "b2b0a07659bc02fb3b967dc06ad3f30bd7b57a6a",
+          "size_bytes": 233433
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/nya/test.txt",
+          "git_blob_sha": "5d918d988415c622d5641c5f85e709b94d4a8101",
+          "size_bytes": 473764
+        }
+      }
+    },
+    {
+      "config": "pcm",
+      "iso639_3": "pcm",
+      "iso639_1": null,
+      "name": "Nigerian Pidgin",
+      "readme_counts": {
+        "train": 6250,
+        "validation": 893,
+        "test": 1785
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/pcm/train.txt",
+          "git_blob_sha": "dae02597e341413ccfac557961da86310d7731c4",
+          "size_bytes": 1070528
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/pcm/dev.txt",
+          "git_blob_sha": "aa1345c3599cc0805d62e832e68736fe8b38b705",
+          "size_bytes": 164394
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/pcm/test.txt",
+          "git_blob_sha": "7c6f2652f52d6b79cb5764e2fa7c253f5fae2801",
+          "size_bytes": 310715
+        }
+      }
+    },
+    {
+      "config": "sna",
+      "iso639_3": "sna",
+      "iso639_1": "sn",
+      "name": "chiShona",
+      "readme_counts": {
+        "train": 6207,
+        "validation": 887,
+        "test": 1773
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/sna/train.txt",
+          "git_blob_sha": "25c1fe5399f8a0b2780439f46e3016ec0f61faf4",
+          "size_bytes": 1400993
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/sna/dev.txt",
+          "git_blob_sha": "60f5ccc4e0936a9ef33af317b3a432197ca17724",
+          "size_bytes": 206472
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/sna/test.txt",
+          "git_blob_sha": "49b9c042957b488fc06f67d197dfc47be40a4680",
+          "size_bytes": 392698
+        }
+      }
+    },
+    {
+      "config": "swa",
+      "iso639_3": "swa",
+      "iso639_1": "sw",
+      "name": "Kiswahili",
+      "readme_counts": {
+        "train": 6593,
+        "validation": 942,
+        "test": 1883
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/swa/train.txt",
+          "git_blob_sha": "7a07d1c8e2dd2ca30d8df00a5c934f3ceb58fcbc",
+          "size_bytes": 1520115
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/swa/dev.txt",
+          "git_blob_sha": "0d8c3e39aac2dad5a3867f6e686c854dedb5ea99",
+          "size_bytes": 217848
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/swa/test.txt",
+          "git_blob_sha": "743c3ececd5b3eb0c1d3f0bbce085bc4c4844cb6",
+          "size_bytes": 442859
+        }
+      }
+    },
+    {
+      "config": "tsn",
+      "iso639_3": "tsn",
+      "iso639_1": "tn",
+      "name": "Setswana",
+      "readme_counts": {
+        "train": 3289,
+        "validation": 499,
+        "test": 996
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/tsn/train.txt",
+          "git_blob_sha": "70ceb07518990a2416abb73141d16a33993e2c32",
+          "size_bytes": 742017
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/tsn/dev.txt",
+          "git_blob_sha": "f826fc0a3fa49028a88793ac8ae36b793c719ed1",
+          "size_bytes": 107420
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/tsn/test.txt",
+          "git_blob_sha": "c6ddcb5eb36c95b6a65de0c5b072c1f3b3a65fff",
+          "size_bytes": 203068
+        }
+      }
+    },
+    {
+      "config": "twi",
+      "iso639_3": "twi",
+      "iso639_1": "tw",
+      "name": "Akan/Twi",
+      "readme_counts": {
+        "train": 4240,
+        "validation": 605,
+        "test": 1211
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/twi/train.txt",
+          "git_blob_sha": "d5545f5841a09d314c1b339b94ea61da810b87a3",
+          "size_bytes": 836743
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/twi/dev.txt",
+          "git_blob_sha": "9b971bc12cccc4cde6a1e0be66111ef80c5aa54c",
+          "size_bytes": 108256
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/twi/test.txt",
+          "git_blob_sha": "befedcc53d5e1c2bb27541f38a12046af879b4ea",
+          "size_bytes": 209859
+        }
+      }
+    },
+    {
+      "config": "wol",
+      "iso639_3": "wol",
+      "iso639_1": "wo",
+      "name": "Wolof",
+      "readme_counts": {
+        "train": 4593,
+        "validation": 656,
+        "test": 1312
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/wol/train.txt",
+          "git_blob_sha": "c5ee8a8df444a580c40e8a1f98e75b576771f36f",
+          "size_bytes": 877824
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/wol/dev.txt",
+          "git_blob_sha": "38186122990a9937fabffc33e74318794e6942cc",
+          "size_bytes": 137597
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/wol/test.txt",
+          "git_blob_sha": "e3e4256153cf666fa942a54e458605012dd58949",
+          "size_bytes": 269040
+        }
+      }
+    },
+    {
+      "config": "xho",
+      "iso639_3": "xho",
+      "iso639_1": "xh",
+      "name": "isiXhosa",
+      "readme_counts": {
+        "train": 5718,
+        "validation": 817,
+        "test": 1633
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/xho/train.txt",
+          "git_blob_sha": "53ccb68c84e18cd8cf72effba96fbd9dcf9acd04",
+          "size_bytes": 860030
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/xho/dev.txt",
+          "git_blob_sha": "0b34c203ef42d1dfefa3fa3714e8390492834387",
+          "size_bytes": 146615
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/xho/test.txt",
+          "git_blob_sha": "8516670f33b9eebd5f06b877d46ff96684419f52",
+          "size_bytes": 269063
+        }
+      }
+    },
+    {
+      "config": "yor",
+      "iso639_3": "yor",
+      "iso639_1": "yo",
+      "name": "Yoruba",
+      "readme_counts": {
+        "train": 6877,
+        "validation": 983,
+        "test": 1964
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/yor/train.txt",
+          "git_blob_sha": "13e45910e6ec31afc65f8cb815506a84b66acbc7",
+          "size_bytes": 1770270
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/yor/dev.txt",
+          "git_blob_sha": "59559d73e90f9e11de412d969860638ad37ff8ee",
+          "size_bytes": 220135
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/yor/test.txt",
+          "git_blob_sha": "e5738f2176c1097bd0deb3dbe634e7ab6b51fd57",
+          "size_bytes": 445732
+        }
+      }
+    },
+    {
+      "config": "zul",
+      "iso639_3": "zul",
+      "iso639_1": "zu",
+      "name": "isiZulu",
+      "readme_counts": {
+        "train": 5848,
+        "validation": 836,
+        "test": 1670
+      },
+      "files": {
+        "train": {
+          "path": "MasakhaNER2.0/data/zul/train.txt",
+          "git_blob_sha": "e6513f45ae47626675a6dc61b26c942d47097c7d",
+          "size_bytes": 885990
+        },
+        "validation": {
+          "path": "MasakhaNER2.0/data/zul/dev.txt",
+          "git_blob_sha": "16c4df1e9383ded6b98e84256244c333b46968ef",
+          "size_bytes": 130933
+        },
+        "test": {
+          "path": "MasakhaNER2.0/data/zul/test.txt",
+          "git_blob_sha": "b52703c463c098350ab8d4d07c45a7cefea8efe0",
+          "size_bytes": 262595
+        }
+      }
+    }
+  ],
+  "caveats": [
+    "Spans are character offsets in the tokens joined by single spaces. The upstream tokenization pipeline is not documented, so these spans are not offsets in the original article text.",
+    "Only LOC is scored as a location. PER, ORG and DATE tags are parsed but not scored.",
+    "NER annotations carry no coordinates. A coordinate-resolution claim needs a separate resolver run against a gazetteer.",
+    "The dataset license is conflicting. Resolve it before any publication or commercial use.",
+    "Training overlap is not assessed. The upstream repository ships baseline result files for several encoders, so any evaluated checkpoint must be checked against its own model card before its scores are reported.",
+    "The example counts are README claims. The split files were not downloaded, so the counts are not checked against their contents.",
+    "The Hugging Face loader reads the raw GitHub main branch. Check each file against its pinned git blob id before use."
+  ]
+}
