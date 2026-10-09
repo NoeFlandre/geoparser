@@ -4,8 +4,11 @@ Unit tests for geoparser/gazetteer/gazetteer.py
 Tests the Gazetteer query interface against small hand-crafted artifacts.
 """
 
+import typing as t
+
 import pytest
 
+from geoparser.gazetteer.artifact import SearchMethod
 from geoparser.gazetteer.feature import Feature
 from geoparser.gazetteer.gazetteer import Gazetteer, normalize_name
 
@@ -122,7 +125,7 @@ class TestGazetteerSearch:
         make_artifact()
 
         with pytest.raises(ValueError, match="Unknown search method: invalid"):
-            Gazetteer("testgaz").search("Paris", method="invalid")
+            Gazetteer("testgaz").search("Paris", method=t.cast(SearchMethod, "invalid"))
 
     def test_search_returns_feature_objects(self, make_artifact):
         """Search results are Feature objects with attribute access."""
