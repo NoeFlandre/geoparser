@@ -96,6 +96,45 @@ class Annotation:
 Identity = tuple[str | None, int, int]
 
 
+def _location_coordinates(location: t.Any) -> tuple[float | None, float | None]:
+    """Return a resolved location's coordinates, when it has usable ones."""
+    try:
+        return float(location.data["latitude"]), float(location.data["longitude"])
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return None, None
+
+
+def toponym_annotation(
+    toponym: t.Any,
+    document_id: str | None = None,
+    *,
+    with_coordinates: bool = False,
+) -> Annotation:
+    """
+    Convert a parsed toponym into an evaluation annotation.
+
+    Args:
+        toponym: A parsed toponym with ``start``, ``end`` and ``location``
+        document_id: The document the span belongs to, if comparing corpus-wide
+        with_coordinates: Also carry the resolved location's coordinates
+
+    Returns:
+        The annotation, with the resolved identifier or ``None``
+    """
+    location = toponym.location
+    latitude, longitude = (
+        _location_coordinates(location) if with_coordinates else (None, None)
+    )
+    return Annotation(
+        toponym.start,
+        toponym.end,
+        location.identifier if location is not None else None,
+        document_id,
+        latitude,
+        longitude,
+    )
+
+
 def _unique_spans(annotations: Sequence[Annotation]) -> set[Identity]:
     """Return distinct spans, ignoring any resolution identifiers."""
     return {annotation.identity for annotation in annotations}

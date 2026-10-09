@@ -114,7 +114,7 @@ class GazetteerBuilder:
     # count stays proportional to the memory limit on small machines.
     _MB_PER_THREAD = 1024
 
-    def build(self, config_path: str | Path, keep_downloads: bool = False) -> Path:  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
+    def build(self, config_path: str | Path, keep_downloads: bool = False) -> Path:
         """
         Build and install a gazetteer from a configuration file.
 

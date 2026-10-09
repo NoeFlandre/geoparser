@@ -1,11 +1,11 @@
 import json
-from pathlib import Path
 
 import yaml
 
+from tests.conftest import PROJECT_ROOT
 from tests.unit.test_quality.mkdocs_navigation import markdown_paths
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = PROJECT_ROOT
 EXPECTED_CHECKS = (
     ("tests-passed", ".github/workflows/test.yml", "tests-passed"),
     ("ruff", ".github/workflows/lint.yml", "ruff"),

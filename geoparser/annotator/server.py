@@ -10,10 +10,10 @@ from geoparser.annotator.db.db import create_db_and_tables
 
 
 def run(
-    use_reloader: bool = False,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
+    use_reloader: bool = False,
     host: str = "127.0.0.1",
     port: int = 5000,
-    open_browser: bool = True,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
+    open_browser: bool = True,
 ) -> None:  # pragma: no cover
     """
     Initialize the annotator database and start Uvicorn.

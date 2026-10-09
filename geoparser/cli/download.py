@@ -1,17 +1,21 @@
+import typing as t
+
 import typer
 
 
-def download_cli(config: str):
+def download_cli(
+    config: t.Annotated[
+        str,
+        typer.Argument(
+            help="Gazetteer name (e.g. geonames) or path to a custom YAML config."
+        ),
+    ],
+) -> None:
     """
-    [Deprecated] This command has been renamed to ``install``.
+    [Deprecated] This command was renamed to install. It does not download
+    anything. It prints the matching install command and exits with status 1.
 
-    Use ``install`` instead::
-
-        geoparser install geonames
-
-    Args:
-        config: Either a gazetteer name (e.g., 'geonames', 'swissnames3d') or
-                a path to a custom YAML configuration file.
+    For example, run: geoparser install geonames
     """
     typer.secho(
         f"Use 'install' instead:\n  geoparser install {config}",

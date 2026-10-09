@@ -1,7 +1,7 @@
 import typing as t
 import uuid
 
-from sqlalchemy import UUID, Column, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, String, UniqueConstraint, Uuid
 from sqlmodel import Field, Relationship, SQLModel
 
 if t.TYPE_CHECKING:
@@ -31,7 +31,7 @@ class Context(ContextBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     project_id: uuid.UUID = Field(
         sa_column=Column(
-            UUID, ForeignKey("project.id", ondelete="CASCADE"), nullable=False
+            Uuid, ForeignKey("project.id", ondelete="CASCADE"), nullable=False
         )
     )
     recognizer_id: str | None = Field(

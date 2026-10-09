@@ -5,6 +5,8 @@ from pathlib import Path
 
 import typer
 
+from geoparser.cli._validation import gazetteer_name
+
 
 def _get_builtin_gazetteers() -> dict[str, Path]:
     """
@@ -162,7 +164,12 @@ def list_cli(
 
 
 def uninstall_cli(
-    name: t.Annotated[str, typer.Argument(help="Name of the gazetteer to remove.")],
+    name: t.Annotated[
+        str,
+        typer.Argument(
+            help="Name of the gazetteer to remove.", callback=gazetteer_name
+        ),
+    ],
     yes: t.Annotated[
         bool, typer.Option("--yes", "-y", help="Remove without asking first.")
     ] = False,

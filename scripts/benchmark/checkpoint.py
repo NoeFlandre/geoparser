@@ -19,10 +19,11 @@ shorter, wrong run.
 from __future__ import annotations
 
 import json
-import os
 import typing as t
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+
+from scripts._io import write_json_atomic
 
 SCHEMA_VERSION = 1
 
@@ -130,12 +131,7 @@ def save(path: Path, checkpoint: Checkpoint) -> None:
         "resolution": checkpoint.resolution,
         "elapsed_seconds": checkpoint.elapsed_seconds,
     }
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    with temporary.open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle)
-        handle.flush()
-        os.fsync(handle.fileno())
-    temporary.replace(path)
+    write_json_atomic(path, payload)
 
 
 def load(path: Path, identity: RunIdentity) -> tuple[Checkpoint, list[str]]:

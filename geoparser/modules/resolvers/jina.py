@@ -162,6 +162,7 @@ class JinaResolver(SentenceTransformerResolver):
     def _best_referent(
         self,
         context: str,
+        /,
         candidate_list: list["Feature"],
         min_similarity: float,
         similarities: list[float],

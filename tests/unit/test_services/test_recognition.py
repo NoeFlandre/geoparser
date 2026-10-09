@@ -284,8 +284,8 @@ class TestRecognitionFailures:
         document_factory,
         recognizer_factory,
     ):
-        from contextlib import nullcontext
 
+        from sqlalchemy.orm import Session
         from sqlalchemy.sql.dml import Insert
         from sqlmodel import select
 
@@ -299,23 +299,19 @@ class TestRecognitionFailures:
         )
         mock_spacy_recognizer.predict.return_value = [[(0, 5), (6, 12)]]
         service = RecognitionService(mock_spacy_recognizer)
-        original_execute = test_session.execute
+        original_execute = Session.execute
         insert_count = 0
 
-        def fail_second_insert(statement, *args, **kwargs):
+        def fail_second_insert(session, statement, *args, **kwargs):
             nonlocal insert_count
             if isinstance(statement, Insert):
                 insert_count += 1
                 if insert_count == 2:
                     raise RuntimeError("recognition marker insert failed")
-            return original_execute(statement, *args, **kwargs)
+            return original_execute(session, statement, *args, **kwargs)
 
         with (
-            patch(
-                "geoparser.services.recognition.get_session",
-                return_value=nullcontext(test_session),
-            ),
-            patch.object(test_session, "execute", side_effect=fail_second_insert),
+            patch.object(Session, "execute", new=fail_second_insert),
             pytest.raises(RuntimeError, match="recognition marker insert failed"),
         ):
             service.predict([document])

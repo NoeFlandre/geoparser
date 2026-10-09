@@ -8,6 +8,16 @@ This file records all notable changes to GeoParser. The project follows
 
 ### Fixed
 
+- Show a clear deprecation notice in `geoparser download --help`. It names the
+  replacement `install` command and states that `download` does not download
+  anything. The command still exits with status 1.
+
+- Store project database foreign keys to UUID primary keys as text, as the
+  keys themselves are. A numeric-looking UUID such as
+  `12345678-1234-4234-8234-123456789012` no longer breaks its foreign-key match
+  on SQLite. This applies to new databases only. Existing database files keep
+  their column types until a separate migration is approved.
+
 - Give each benchmark database session an independent connection to a
   temporary SQLite file. This matches the transaction isolation of production.
   Sessions no longer share one in-memory connection.
@@ -29,6 +39,10 @@ This file records all notable changes to GeoParser. The project follows
   evidence.
 
 ### Security
+
+- Validate gazetteer names before constructing artifact paths. Reject path
+  separators and invalid names in the CLI and Python API. Uninstall cannot
+  remove an artifact outside the gazetteers directory through its name.
 
 - Update the locked JupyterLab development dependency to 4.6.4. This fixes
   CVE-2026-102830, CVE-2026-102831, and CVE-2026-102904.

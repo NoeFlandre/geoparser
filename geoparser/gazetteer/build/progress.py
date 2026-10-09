@@ -385,7 +385,7 @@ class _Item:
             self._total = 100
         self._progress.update(self._task_id, completed=percent)
 
-    def close(self, success: bool = True) -> None:  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
+    def close(self, success: bool = True) -> None:
         """
         Finish this item and remove its bar.
 

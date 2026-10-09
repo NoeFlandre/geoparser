@@ -347,7 +347,9 @@ def write_report(report: Report, output_dir: Path) -> tuple[Path, Path]:
     return json_path, markdown_path
 
 
-def _configure_runtime(output_dir: Path, hf_home: Path | None, offline: bool) -> None:  # noqa: FBT001 - positional bool kept for API compatibility; make keyword-only in the next major release
+def _configure_runtime(
+    output_dir: Path, hf_home: Path | None, *, offline: bool
+) -> None:
     """Route the pilot database and gazetteer artifact to the output volume."""
     output_dir.mkdir(parents=True, exist_ok=True)
     database_path = output_dir / "pilot.sqlite"
@@ -362,16 +364,9 @@ def _configure_runtime(output_dir: Path, hf_home: Path | None, offline: bool) ->
 
 def _document_annotations(document: Document) -> list[Annotation]:
     """Extract recognized spans and resolver IDs from a parsed document."""
-    from geoparser.evaluation import Annotation
+    from geoparser.evaluation import toponym_annotation
 
-    return [
-        Annotation(
-            reference.start,
-            reference.end,
-            reference.location.identifier if reference.location is not None else None,
-        )
-        for reference in document.toponyms
-    ]
+    return [toponym_annotation(reference) for reference in document.toponyms]
 
 
 def collect_predictions(
@@ -412,7 +407,7 @@ def run_pilot(
     offline: bool = False,
 ) -> tuple[Path, Path]:
     """Build the real gazetteer, parse all fixed cases, and persist evidence."""
-    _configure_runtime(output_dir, hf_home, offline)
+    _configure_runtime(output_dir, hf_home, offline=offline)
 
     # These imports intentionally happen after runtime paths are configured:
     # geoparser.db.db creates its engine at import time.

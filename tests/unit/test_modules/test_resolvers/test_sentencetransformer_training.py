@@ -410,7 +410,7 @@ class TestTrainingMixinFit:
         with (
             patch.object(resolver, "_extract_context", return_value="Context"),
             patch.object(
-                resolver, "_generate_description", return_value="Paris (city)"
+                resolver, "_candidate_description", return_value="Paris (city)"
             ) as mock_generate,
         ):
             texts = ["Paris is beautiful."]
@@ -423,7 +423,7 @@ class TestTrainingMixinFit:
             )
 
             # Assert
-            # _generate_description should have been called
+            # _candidate_description should have been called
             mock_generate.assert_called()
             # All sentence2 entries should be the generated description
             assert all(s2 == "Paris (city)" for s2 in training_data["sentence2"])

@@ -67,7 +67,7 @@ class SessionRepository(BaseRepository[AnnotatorSession]):
         cls,
         db: DBSession,
         json_str: str,
-        keep_id: bool = False,  # noqa: FBT001, FBT002 - positional bool kept for API compatibility; make keyword-only in the next major release
+        keep_id: bool = False,
     ) -> AnnotatorSession:
         try:
             content = cls._parse_json_content(json_str)
