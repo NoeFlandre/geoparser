@@ -162,7 +162,8 @@ def test_marginal_intervals_ignore_configuration_and_unit_order():
     assert aggregate(parse(payload))["pipelines"] == first
 
 
-def test_identical_pipelines_retain_marginal_not_difference_intervals():
+def identical_pipelines_payload():
+    """Two pipelines with byte-identical counts on the same source sample."""
     import copy
 
     from scripts.benchmark_protocol.schema import Configuration
@@ -182,11 +183,24 @@ def test_identical_pipelines_retain_marginal_not_difference_intervals():
     )
     payload["configurations"].append(config)
     payload["results"].append(result)
-    pipelines = aggregate(parse(payload))["pipelines"]
+    return payload
+
+
+def test_identical_pipelines_retain_marginal_not_difference_intervals():
+    pipelines = aggregate(parse(identical_pipelines_payload()))["pipelines"]
     uncertainty = pipelines["fixture"]["0"]["uncertainty"]
     assert uncertainty == pipelines["other"]["0"]["uncertainty"]
     assert uncertainty["method"] == "marginal_stratified_document_bootstrap_95_percent"
     assert uncertainty["intervals"]["micro"]["f1"] == [0.0, 0.8]
+
+
+def test_identical_pipelines_have_zero_paired_difference_interval():
+    report = aggregate(parse(identical_pipelines_payload()))
+    paired = report["paired_differences"]["fixture - other"]["0"]
+    assert paired["method"] == "paired_stratified_document_bootstrap_95_percent"
+    assert paired["intervals"]["micro"]["f1"] == [0.0, 0.0]
+    marginal = report["pipelines"]["fixture"]["0"]["uncertainty"]
+    assert marginal["intervals"]["micro"]["f1"] == [0.0, 0.8]
 
 
 @pytest.mark.parametrize("units,resamples", [([], 10), ([], 0)])
