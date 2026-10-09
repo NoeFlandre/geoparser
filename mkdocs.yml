@@ -68,6 +68,7 @@ nav:
       - Training Modules: guides/training.md
       - Benchmarking: guides/benchmark.md
       - Public Benchmark Protocol: guides/benchmark-protocol.md
+      - DaMuEL Evaluation Plan: guides/damuel-evaluation-plan.md
       - Offline Model Pilot: guides/model-pilot.md
       - Otter Recognition: guides/otter-recognition.md
       - Otter Source Review: guides/otter-source-review.md
