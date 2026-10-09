@@ -6,6 +6,15 @@ This file records all notable changes to GeoParser. The project follows
 
 ## [Unreleased]
 
+### Added
+
+- Add a pinned roster of native-language spaCy 3.8.0 baselines for the 85
+  target codes. It routes 23 codes to their official NER pipelines and records
+  the other 62 as unsupported. An unsupported code is never routed to the
+  English pipeline. Label harmonization to `LOC` is explicit per language, and
+  the English cross-language control is reported separately as transfer. No
+  pipeline has been downloaded or run yet, and the wheel hashes are not pinned.
+
 ### Fixed
 
 - Show a clear deprecation notice in `geoparser download --help`. It names the
