@@ -1,0 +1,117 @@
+{
+  "protocol": {
+    "schema_version": "1.0",
+    "task": "recognition",
+    "code_revision": "cccccccccccccccccccccccccccccccccccccccc",
+    "dependency_lock_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "dataset": {
+      "identifier": "synthetic-public-fixture",
+      "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "annotation_quality": "human_gold",
+    "split": "development",
+    "stage": "screening",
+    "threshold_selection": "development",
+    "selection_sha256": null,
+    "hardware": {
+      "platform": "fixture-linux",
+      "processor": "fixture-cpu",
+      "device": "cpu",
+      "threads": 1,
+      "runtime_versions": {
+        "python": "3.12"
+      }
+    },
+    "timing_policy": "separate_fetch_load_warmup_steady",
+    "memory_policy": "process_peak_rss_and_device_peak_bytes",
+    "invalid_output_policy": "count_as_false_positive_and_retain",
+    "uncertainty": "marginal_stratified_document_bootstrap_95_percent",
+    "bootstrap_seed": 42,
+    "bootstrap_resamples": 1000
+  },
+  "configurations": [
+    {
+      "key": "en",
+      "pipeline": "fixture",
+      "language": "en",
+      "source_config": "en",
+      "examples": 2,
+      "gold_spans": 3,
+      "sample_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "models": [
+        {
+          "identifier": "synthetic-public-fixture",
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      ],
+      "label_mapping": {
+        "GPE": "LOC",
+        "LOC": "LOC"
+      },
+      "thresholds": {
+        "recognition": 0.5
+      },
+      "batch_size": 1,
+      "seed": 0,
+      "language_support": "documented",
+      "training_overlap": "unknown",
+      "provenance_note": "Synthetic fixture, no training claim.",
+      "gazetteer": null
+    },
+    {
+      "key": "fr",
+      "pipeline": "fixture",
+      "language": "fr",
+      "source_config": "fr",
+      "examples": 8,
+      "gold_spans": 9,
+      "sample_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "models": [
+        {
+          "identifier": "synthetic-public-fixture",
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      ],
+      "label_mapping": {
+        "GPE": "LOC",
+        "LOC": "LOC"
+      },
+      "thresholds": {
+        "recognition": 0.5
+      },
+      "batch_size": 1,
+      "seed": 0,
+      "language_support": "documented",
+      "training_overlap": "unknown",
+      "provenance_note": "Synthetic fixture, no training claim.",
+      "gazetteer": null
+    }
+  ],
+  "results": [
+    {
+      "key": "en",
+      "status": "planned",
+      "reason": null,
+      "provenance_sha256": null,
+      "measurements": null,
+      "scores": null,
+      "raw_predictions": null,
+      "evaluated_examples": 0,
+      "failed_examples": 0
+    },
+    {
+      "key": "fr",
+      "status": "planned",
+      "reason": null,
+      "provenance_sha256": null,
+      "measurements": null,
+      "scores": null,
+      "raw_predictions": null,
+      "evaluated_examples": 0,
+      "failed_examples": 0
+    }
+  ]
+}
