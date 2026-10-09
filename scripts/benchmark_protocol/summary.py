@@ -7,6 +7,8 @@ import random
 from collections import Counter, defaultdict
 from statistics import fmean
 
+import numpy as np
+
 from scripts.benchmark_protocol.schema import (
     Configuration,
     Experiment,
@@ -169,18 +171,39 @@ def _group_summary(
     }
 
 
+class _Stratum:
+    """Count matrix for one source, so each bootstrap draw is one vector product."""
+
+    def __init__(self, rows: list[Scores]) -> None:
+        self.template = rows[0]
+        self.fields = [name for name in type(rows[0]).model_fields if name != "task"]
+        self.matrix = np.array(
+            [[getattr(row, name) for name in self.fields] for row in rows],
+            dtype=np.int64,
+        )
+
+    def draw(self, generator: np.random.Generator) -> Scores:
+        """Resample whole documents with replacement and pool their counts."""
+        size = len(self.matrix)
+        chosen = np.bincount(generator.integers(0, size, size=size), minlength=size)
+        totals = chosen @ self.matrix
+        payload = self.template.model_dump()
+        payload.update(
+            {name: int(total) for name, total in zip(self.fields, totals, strict=True)}
+        )
+        return type(self.template).model_validate(payload)
+
+
 def _group_intervals(
     experiment: Experiment, units: dict[tuple[str, str], list[Scores]]
 ) -> dict:
     """Share source draws across pipelines, retaining only marginal intervals."""
     protocol = experiment.protocol
+    strata = {key: _Stratum(rows) for key, rows in units.items()}
     generators = {key: _generator(protocol.bootstrap_seed, key) for key in units}
     samples: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     for _ in range(protocol.bootstrap_resamples):
-        sampled = {
-            key: generators[key].choices(rows, k=len(rows))
-            for key, rows in units.items()
-        }
+        sampled = {key: [strata[key].draw(generators[key])] for key in units}
         _append_sample(samples, _sample_metrics(sampled))
     return {
         "method": protocol.uncertainty,
@@ -190,10 +213,10 @@ def _group_intervals(
     }
 
 
-def _generator(seed: int, key: tuple[str, str]) -> random.Random:
+def _generator(seed: int, key: tuple[str, str]) -> np.random.Generator:
     """Create a reproducible non-security random generator for one source."""
     digest = hashlib.sha256(json_seed(seed, key).encode()).digest()
-    return random.Random(digest)  # noqa: S311 - statistical bootstrap, not cryptography
+    return np.random.default_rng(int.from_bytes(digest[:16], "big"))
 
 
 def _sample_metrics(
