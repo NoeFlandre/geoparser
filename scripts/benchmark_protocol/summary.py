@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import random
 from collections import Counter, defaultdict
+from itertools import combinations
 from statistics import fmean
 
 import numpy as np
@@ -110,28 +111,33 @@ def aggregate(experiment: Experiment) -> dict:
     for config in experiment.configurations:
         groups[(config.pipeline, config.seed)].append(config)
     pipelines: dict = defaultdict(dict)
+    draws: dict[tuple[str, int], tuple[tuple[tuple[str, str], ...], list]] = {}
     for (pipeline, seed), configs in sorted(groups.items()):
-        pipelines[pipeline][str(seed)] = _pipeline_summary(experiment, configs, rows)
+        summary, paired_input = _pipeline_summary(experiment, configs, rows)
+        pipelines[pipeline][str(seed)] = summary
+        if paired_input is not None:
+            draws[(pipeline, seed)] = paired_input
     report["pipelines"] = dict(pipelines)
+    report["paired_differences"] = _paired_differences(experiment, draws)
     return report
 
 
 def _pipeline_summary(
     experiment: Experiment, configs: list[Configuration], rows: dict[str, Result]
-) -> dict:
+) -> tuple[dict, tuple[tuple[tuple[str, str], ...], list] | None]:
     """Calculate only completed cells without hiding incomplete membership."""
     completed = [config for config in configs if rows[config.key].status == "complete"]
     inventory = _inventory_rows(configs, rows)
     if not completed:
-        return {"complete": False, "languages": [], "inventory": inventory}
+        return {"complete": False, "languages": [], "inventory": inventory}, None
     units = {
         (config.language, config.source_config): _ordered_units(rows[config.key])
         for config in completed
     }
-    summary = _group_summary(experiment, units)
+    summary, draws = _group_summary(experiment, units)
     summary["complete"] = len(completed) == len(configs)
     summary["inventory"] = inventory
-    return summary
+    return summary, (tuple(sorted(units)), draws)
 
 
 def _ordered_units(result: Result) -> list[Scores]:
@@ -156,10 +162,11 @@ def _macro(rows: dict[str, Scores]) -> dict[str, float]:
 
 def _group_summary(
     experiment: Experiment, units: dict[tuple[str, str], list[Scores]]
-) -> dict:
+) -> tuple[dict, list[dict[str, dict[str, float]]]]:
     """Report point estimates and marginal stratified-document intervals."""
     counts = _language_counts(units)
-    return {
+    draws = _bootstrap_draws(experiment, units)
+    summary = {
         "languages": sorted(counts),
         "per_language": {
             language: {"counts": row.model_dump(), "metrics": metrics(row)}
@@ -167,8 +174,9 @@ def _group_summary(
         },
         "macro": _macro(counts),
         "micro": metrics(_sum_counts(list(counts.values()))),
-        "uncertainty": _group_intervals(experiment, units),
+        "uncertainty": _group_intervals(experiment, draws),
     }
+    return summary, draws
 
 
 class _Stratum:
@@ -194,23 +202,74 @@ class _Stratum:
         return type(self.template).model_validate(payload)
 
 
-def _group_intervals(
+def _bootstrap_draws(
     experiment: Experiment, units: dict[tuple[str, str], list[Scores]]
-) -> dict:
-    """Share source draws across pipelines, retaining only marginal intervals."""
+) -> list[dict[str, dict[str, float]]]:
+    """Resample every source once per draw and keep each draw's metrics."""
     protocol = experiment.protocol
     strata = {key: _Stratum(rows) for key, rows in units.items()}
     generators = {key: _generator(protocol.bootstrap_seed, key) for key in units}
+    return [
+        _sample_metrics({key: [strata[key].draw(generators[key])] for key in units})
+        for _ in range(protocol.bootstrap_resamples)
+    ]
+
+
+def _group_intervals(
+    experiment: Experiment, draws: list[dict[str, dict[str, float]]]
+) -> dict:
+    """Report marginal intervals from one pipeline's bootstrap draws."""
+    protocol = experiment.protocol
     samples: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
-    for _ in range(protocol.bootstrap_resamples):
-        sampled = {key: [strata[key].draw(generators[key])] for key in units}
-        _append_sample(samples, _sample_metrics(sampled))
+    for draw in draws:
+        _append_sample(samples, draw)
     return {
         "method": protocol.uncertainty,
         "seed": protocol.bootstrap_seed,
         "resamples": protocol.bootstrap_resamples,
         "intervals": _sample_intervals(samples),
     }
+
+
+PAIRED_METHOD = "paired_stratified_document_bootstrap_95_percent"
+
+
+def _paired_differences(
+    experiment: Experiment,
+    draws: dict[tuple[str, int], tuple[tuple[tuple[str, str], ...], list]],
+) -> dict:
+    """Report A - B intervals from per-draw differences on shared source draws."""
+    protocol = experiment.protocol
+    report: dict[str, dict[str, dict]] = defaultdict(dict)
+    for ((first, seed), (keys, first_draws)), (
+        (second, other_seed),
+        (other_keys, second_draws),
+    ) in combinations(sorted(draws.items()), 2):
+        if seed != other_seed or keys != other_keys:
+            continue
+        report[f"{first} - {second}"][str(seed)] = {
+            "method": PAIRED_METHOD,
+            "seed": protocol.bootstrap_seed,
+            "resamples": protocol.bootstrap_resamples,
+            "intervals": _paired_intervals(first_draws, second_draws),
+        }
+    return dict(report)
+
+
+def _paired_intervals(
+    first: list[dict[str, dict[str, float]]], second: list[dict[str, dict[str, float]]]
+) -> dict:
+    """Take percentiles of per-draw metric differences, not of each pipeline."""
+    samples: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    for before, after in zip(first, second, strict=True):
+        differences = {
+            group: {
+                metric: value - after[group][metric] for metric, value in scores.items()
+            }
+            for group, scores in before.items()
+        }
+        _append_sample(samples, differences)
+    return _sample_intervals(samples)
 
 
 def _generator(seed: int, key: tuple[str, str]) -> np.random.Generator:
