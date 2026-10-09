@@ -220,13 +220,18 @@ def _fake_modules(world: FakeWorld) -> dict[str, ModuleType]:
             ]
             results = resolver.predict(texts, references)
             for doc_id, doc_results in zip(ids, results, strict=True):
-                self._toponyms[doc_id] = [
-                    (s, e, result[1] if result is not None else None)
-                    for (s, e, _), result in zip(
-                        self._toponyms[doc_id], doc_results, strict=True
-                    )
-                ]
+                self._attach_resolutions(doc_id, doc_results)
             world.events.append(("run_resolver", "end"))
+
+        def _attach_resolutions(
+            self, doc_id: str, doc_results: list[tuple[str, str] | None]
+        ) -> None:
+            self._toponyms[doc_id] = [
+                (s, e, result[1] if result is not None else None)
+                for (s, e, _), result in zip(
+                    self._toponyms[doc_id], doc_results, strict=True
+                )
+            ]
 
         def get_documents(self, doc_ids: list[str]) -> list[SimpleNamespace]:
             world.events.append(("get_documents", tuple(doc_ids)))
@@ -378,16 +383,28 @@ def test_timer_boundaries_and_model_order_are_characterised(
     assert world.events == EXPECTED_EVENTS
 
 
-def test_reported_values_and_documents_are_characterised(
+def _run_and_read_report(tmp_path: Path) -> tuple[Path, Path, dict[str, Any]]:
+    json_path, markdown_path = _run(tmp_path)
+    report = json.loads(json_path.read_text(encoding="utf-8"))
+    return json_path, markdown_path, report
+
+
+def test_report_files_and_schema_are_characterised(
     world: FakeWorld, tmp_path: Path
 ) -> None:
-    json_path, markdown_path = _run(tmp_path)
+    json_path, markdown_path, report = _run_and_read_report(tmp_path)
 
     assert json_path == tmp_path / "out" / "pilot-report.json"
     assert markdown_path == tmp_path / "out" / "pilot-report.md"
-    report = json.loads(json_path.read_text(encoding="utf-8"))
 
     assert report["schema_version"] == 1
+
+
+def test_report_models_and_configuration_are_characterised(
+    world: FakeWorld, tmp_path: Path
+) -> None:
+    _, _, report = _run_and_read_report(tmp_path)
+
     assert report["models"] == {
         "recognizer": "fake-gliner",
         "resolver_embedding": "fake-embedding",
@@ -415,6 +432,11 @@ def test_reported_values_and_documents_are_characterised(
         ),
         "gold_cases": 3,
     }
+
+
+def test_document_reports_are_characterised(world: FakeWorld, tmp_path: Path) -> None:
+    _, _, report = _run_and_read_report(tmp_path)
+
     assert report["documents"] == [
         {
             "id": "first",
@@ -463,10 +485,21 @@ def test_reported_values_and_documents_are_characterised(
             "elapsed_ms": 7.0,
         },
     ]
+
+
+def test_aggregate_counts_are_characterised(world: FakeWorld, tmp_path: Path) -> None:
+    _, _, report = _run_and_read_report(tmp_path)
+
     aggregate = report["aggregate"]
     assert aggregate["document_count"] == 3
     assert aggregate["gold_annotation_count"] == 2
     assert aggregate["predicted_annotation_count"] == 3
+
+
+def test_aggregate_metrics_are_characterised(world: FakeWorld, tmp_path: Path) -> None:
+    _, _, report = _run_and_read_report(tmp_path)
+
+    aggregate = report["aggregate"]
     assert aggregate["recognition"]["precision"] == pytest.approx(2 / 3)
     assert aggregate["recognition"]["recall"] == 1.0
     assert aggregate["recognition"]["f1"] == pytest.approx(0.8)

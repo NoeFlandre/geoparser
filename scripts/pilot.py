@@ -467,8 +467,9 @@ def run_pilot(
     """Build the real gazetteer, parse all fixed cases, and persist evidence."""
     _configure_runtime(output_dir, hf_home, offline=offline)
 
-    # These imports intentionally happen after runtime paths are configured:
-    # geoparser.db.db creates its engine at import time.
+    # These imports stay inside run_pilot so that importing scripts.pilot does
+    # not load torch or the geoparser pipeline. They resolve at call time, which
+    # also lets the characterisation tests substitute fake modules via sys.modules.
     import torch
 
     from geoparser.gazetteer.build import GazetteerBuilder
