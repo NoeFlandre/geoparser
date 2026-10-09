@@ -15,6 +15,10 @@ resolvers map those spans to gazetteer identifiers.
 
 ::: geoparser.modules.recognizers.spacy.SpacyRecognizer
 
+::: geoparser.modules.recognizers.otter.OtterRecognizer
+
+::: geoparser.modules.recognizers.otter.PredictionOutputError
+
 ## Resolvers
 
 ::: geoparser.modules.resolvers.jina.JinaResolver
