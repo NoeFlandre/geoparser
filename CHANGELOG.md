@@ -8,6 +8,12 @@ This file records all notable changes to GeoParser. The project follows
 
 ### Fixed
 
+- Store project database foreign keys to UUID primary keys as text, as the
+  keys themselves are. A numeric-looking UUID such as
+  `12345678-1234-4234-8234-123456789012` no longer breaks its foreign-key match
+  on SQLite. This applies to new databases only. Existing database files keep
+  their column types until a separate migration is approved.
+
 - Give each benchmark database session an independent connection to a
   temporary SQLite file. This matches the transaction isolation of production.
   Sessions no longer share one in-memory connection.

@@ -2,7 +2,7 @@ import typing as t
 import uuid
 
 from pydantic import AfterValidator
-from sqlalchemy import UUID, Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, Uuid
 from sqlmodel import Field, Relationship, SQLModel
 
 from geoparser.db.models.validators import normalize_newlines
@@ -33,7 +33,7 @@ class Document(DocumentBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     project_id: uuid.UUID = Field(
         sa_column=Column(
-            UUID,
+            Uuid,
             ForeignKey("project.id", ondelete="CASCADE"),
             nullable=False,
             index=True,
