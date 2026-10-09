@@ -99,11 +99,12 @@ def test_native_labels_map_to_loc_or_are_dropped(roster, code, label, expected):
     assert roster.pipelines[code].harmonized_label(label) == expected
 
 
-def test_no_sha256_or_downloads_are_claimed(roster):
-    assert roster.verification["wheels_downloaded"] is False
-    assert roster.verification["sha256_verified"] is False
-    for pipeline in roster.pipelines.values():
-        assert pipeline.sha256 is None
+def test_native_wheel_digests_come_from_a_verified_download(roster):
+    assert roster.verification["wheels_downloaded"] is True
+    assert roster.verification["sha256_verified"] is True
+    native = [pipeline for pipeline in roster.pipelines.values() if pipeline.sha256]
+    assert len(native) == 23
+    assert all(len(pipeline.sha256) == 64 for pipeline in native)
 
 
 def test_japanese_pipeline_records_its_tokenizer_requirements(roster):
