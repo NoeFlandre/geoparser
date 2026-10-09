@@ -134,6 +134,11 @@ def test_toponym_annotation_propagates_span_validation():
         toponym_annotation(SimpleNamespace(start=True, end=4, location=None))
 
 
+def test_toponym_annotation_requires_a_location_attribute():
+    with pytest.raises(AttributeError):
+        toponym_annotation(SimpleNamespace(start=1, end=4))
+
+
 @pytest.mark.parametrize(
     ("location", "expected"),
     [
@@ -181,6 +186,9 @@ def test_recognition_metrics_pin_values_and_empty_conventions():
     assert recognition_recall(expected, predicted) == 2 / 3
     assert recognition_f1(expected, predicted) == 2 / 3
     assert recognition_f1([], []) == 1.0
+
+
+def test_recognition_metrics_pin_one_sided_empty_conventions():
     assert recognition_f1([Annotation(0, 3)], []) == 0.0
     assert recognition_f1([], [Annotation(0, 3)]) == 0.0
     assert recognition_precision([Annotation(0, 3)], []) == 1.0
@@ -308,15 +316,27 @@ def test_mean_and_median_error_default_to_zero_when_nothing_is_compared():
 
 def test_area_under_error_curve_pins_default_and_custom_normalisation():
     gold = _four_gold_spans()
-    perfect = [
-        Annotation(i * 10, i * 10 + 3, latitude=0.0, longitude=0.0) for i in range(4)
-    ]
     assert area_under_error_curve([], []) == 0.0
-    assert area_under_error_curve(gold, perfect) == 0.0
+    assert area_under_error_curve(gold, _four_gold_spans()) == 0.0
     assert area_under_error_curve(gold, []) == 1.0
     assert area_under_error_curve(gold, [], unresolved_error_km=50000.0) == 1.0
+
+
+def test_area_under_error_curve_pins_custom_unresolved_penalty():
+    gold = _four_gold_spans()
     assert area_under_error_curve(gold, [], unresolved_error_km=100.0) == pytest.approx(
         0.4659156273686207, rel=1e-12
+    )
+
+
+def test_area_under_error_curve_default_path_keeps_legacy_rounding():
+    gold = [Annotation(0, 3, "g:1", latitude=0.0, longitude=0.0)]
+    # About a tenth of a millimetre away. At this size log(1 + error) and
+    # log1p(error) differ in their low digits, so the default path must keep
+    # the legacy formula rather than the unified one.
+    predicted = [Annotation(0, 3, "g:1", latitude=1e-9, longitude=0.0)]
+    assert area_under_error_curve(gold, predicted) == pytest.approx(
+        1.1225605595281188e-08, rel=1e-12
     )
 
 
@@ -325,6 +345,9 @@ def test_haversine_pins_known_distances_and_accepts_integers():
     assert haversine_km(0, 0, 0, 90) == pytest.approx(EARTH_QUARTER_KM, rel=1e-12)
     assert haversine_km(0, 0, 0, 180) == pytest.approx(EARTH_HALF_KM, rel=1e-12)
     assert haversine_km(90, 0, -90, 0) == pytest.approx(EARTH_HALF_KM, rel=1e-12)
+
+
+def test_haversine_is_symmetric_in_its_endpoints():
     assert haversine_km(0, 0, 0, 90) == pytest.approx(haversine_km(0, 90, 0, 0))
 
 

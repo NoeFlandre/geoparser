@@ -2,7 +2,8 @@
 
 import math
 import typing as t
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping as _Mapping
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 
@@ -105,7 +106,7 @@ class _ResolvedLocation(t.Protocol):
     # Record values are JSON, so their type is left open here: the coordinate
     # conversion in _location_coordinates is what checks them at runtime.
     @property
-    def data(self) -> Mapping[str, t.Any]: ...
+    def data(self) -> _Mapping[str, t.Any]: ...
 
 
 class _ParsedToponym(t.Protocol):
@@ -125,10 +126,10 @@ def _location_coordinates(
     location: _ResolvedLocation | None,
 ) -> tuple[float | None, float | None]:
     """Return a resolved location's coordinates, when it has usable ones."""
+    if location is None:
+        return None, None
     try:
-        # A None location fails this attribute access and is handled below.
-        data = location.data  # ty: ignore[unresolved-attribute]
-        return float(data["latitude"]), float(data["longitude"])
+        return float(location.data["latitude"]), float(location.data["longitude"])
     except (AttributeError, KeyError, TypeError, ValueError):
         return None, None
 
