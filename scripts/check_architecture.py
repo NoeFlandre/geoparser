@@ -370,11 +370,16 @@ def _print_modules(title: str, modules: list[tuple[str, str]]) -> None:
             print(f"  {module} -> {target}")
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Check the package and return non-zero when its architecture is invalid."""
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the command line; building it reads and writes nothing."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--package", type=Path, default=Path("geoparser"))
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Check the package and return non-zero when its architecture is invalid."""
+    args = build_parser().parse_args(argv)
 
     package_root = args.package.resolve()
     package_name = package_root.name

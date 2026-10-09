@@ -65,16 +65,28 @@ def cleanup_training_outputs(tmp_path: Path) -> Iterator[None]:
     _cleanup_training_outputs(tmp_path)
 
 
-def pytest_configure(config):
-    """
-    Configure pytest with custom settings.
+# Test directories whose items receive a marker named after the directory. Marker
+# selection (for example `pytest -m property`) then covers every test in them.
+# Markers are registered only in pyproject.toml.
+_DIRECTORY_MARKERS = ("unit", "integration", "e2e", "property", "acceptance")
+_TESTS_ROOT = Path(__file__).resolve().parent
 
-    Args:
-        config: Pytest config object
-    """
-    # Add custom markers (already defined in pytest.ini, but can be extended here)
-    config.addinivalue_line("markers", "unit: Fast unit tests with mocked dependencies")
-    config.addinivalue_line(
-        "markers", "integration: Integration tests with real dependencies"
-    )
-    config.addinivalue_line("markers", "e2e: End-to-end pipeline tests")
+
+def directory_marker_for(path: Path) -> str | None:
+    """Return the directory marker for a test file, or None outside those directories."""
+    resolved = path.resolve()
+    if not resolved.is_relative_to(_TESTS_ROOT):
+        return None
+    top = resolved.relative_to(_TESTS_ROOT).parts[0]
+    return top if top in _DIRECTORY_MARKERS else None
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Mark each test by its directory unless it already has a directory marker."""
+    for item in items:
+        marker = directory_marker_for(Path(item.path))
+        if marker is None:
+            continue
+        if any(item.get_closest_marker(name) for name in _DIRECTORY_MARKERS):
+            continue
+        item.add_marker(marker)

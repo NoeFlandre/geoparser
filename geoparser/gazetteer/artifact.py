@@ -17,6 +17,7 @@ read-only runtime access layer (used by the Gazetteer class).
 from __future__ import annotations
 
 import os
+import re
 import sqlite3
 import threading
 import typing as t
@@ -31,9 +32,15 @@ from geoparser.paths import geoparser_data_dir
 SCHEMA_VERSION = "1"
 
 ARTIFACT_SUFFIX = ".db"
+_NAME_PATTERN = re.compile(r"[a-zA-Z0-9_-]+")
 
 # Default maximum number of candidates a gazetteer search considers.
 DEFAULT_SEARCH_LIMIT = 10_000
+
+# The single source of the search method names. The strings are public: callers
+# pass them to Gazetteer.search.
+SearchMethod = t.Literal["exact", "phrase", "partial", "fuzzy"]
+SEARCH_METHODS: t.Final[tuple[SearchMethod, ...]] = t.get_args(SearchMethod)
 
 # Per-name BM25 match query shared by phrase and partial search; only the
 # MATCH expression differs between them.
@@ -112,6 +119,17 @@ def gazetteers_dir() -> Path:
     return geoparser_data_dir() / "gazetteers"
 
 
+def validate_gazetteer_name(name: str) -> str:
+    """Return an unchanged artifact name, or raise ValueError if it is unsafe."""
+    if not _NAME_PATTERN.fullmatch(name):
+        msg = (
+            f"Gazetteer name '{name}' must contain only letters, digits, "
+            "underscores and hyphens"
+        )
+        raise ValueError(msg)
+    return name
+
+
 def artifact_path(gazetteer_name: str) -> Path:
     """
     Return the artifact path for a gazetteer name.
@@ -121,8 +139,13 @@ def artifact_path(gazetteer_name: str) -> Path:
 
     Returns:
         Path where the gazetteer's artifact is (or will be) installed
+
+    Raises:
+        ValueError: If the name contains characters outside letters, digits,
+            underscores and hyphens, or is empty
     """
-    return gazetteers_dir() / f"{gazetteer_name}{ARTIFACT_SUFFIX}"
+    name = validate_gazetteer_name(gazetteer_name)
+    return gazetteers_dir() / f"{name}{ARTIFACT_SUFFIX}"
 
 
 def list_artifacts() -> list[str]:
@@ -136,7 +159,9 @@ def list_artifacts() -> list[str]:
     if not directory.exists():
         return []
     return sorted(
-        path.stem for path in directory.glob(f"*{ARTIFACT_SUFFIX}") if path.is_file()
+        path.stem
+        for path in directory.glob(f"*{ARTIFACT_SUFFIX}")
+        if path.is_file() and _NAME_PATTERN.fullmatch(path.stem)
     )
 
 
