@@ -237,17 +237,14 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
         toponym_loc = col(AnnotatorToponym.loc_id)
         document_id = col(AnnotatorDocument.id)
         document_index = col(AnnotatorDocument.doc_index)
+        # Without an else, non-annotated rows are NULL and SUM skips them.
         annotated = case(
             (and_(toponym_id.is_not(None), toponym_loc.is_distinct_from("")), 1),
-            else_=0,
         )
         rows = db.exec(
             select(AnnotatorDocument, func.count(toponym_id), func.sum(annotated))
             .select_from(AnnotatorDocument)
-            .outerjoin(
-                AnnotatorToponym,
-                col(AnnotatorToponym.document_id) == document_id,
-            )
+            .outerjoin(AnnotatorDocument.toponyms)  # ty: ignore[invalid-argument-type]
             .where(*filter_args)
             .group_by(document_id)
             .order_by(document_index)
