@@ -441,7 +441,7 @@ class Experiment(Contract):
         )
         if result.status != "complete":
             if result.status == "failed":
-                self._validate_partial_units(config, result)
+                self._validate_partial_evidence(config, result)
             return
         require(
             result.provenance_sha256 == self.provenance_digest(config),
@@ -463,6 +463,20 @@ class Experiment(Contract):
             "result gold span denominator changed",
         )
         self._validate_units(config, result)
+
+    def _validate_partial_evidence(self, config: Configuration, result: Result) -> None:
+        """Bind retained failed-run evidence to the frozen configuration."""
+        if result.provenance_sha256 is not None:
+            require(
+                result.provenance_sha256 == self.provenance_digest(config),
+                "mixed provenance: failed evidence differs from frozen configuration",
+            )
+        retained = bool(result.units) or result.raw_predictions is not None
+        require(
+            not retained or result.provenance_sha256 is not None,
+            "retained failed-run evidence requires the configuration provenance digest",
+        )
+        self._validate_partial_units(config, result)
 
     def _validate_partial_units(self, config: Configuration, result: Result) -> None:
         """Keep failed-result evidence aligned with its retained source units."""

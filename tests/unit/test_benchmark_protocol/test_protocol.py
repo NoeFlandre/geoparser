@@ -207,6 +207,43 @@ def test_failed_partial_units_cannot_exceed_source_gold_spans():
         parse(payload)
 
 
+@pytest.mark.parametrize("provenance", [None, "f" * 64])
+def test_failed_partial_evidence_must_bind_configuration_provenance(provenance):
+    payload = failed_result_payload()
+    payload["results"][0]["provenance_sha256"] = provenance
+
+    with pytest.raises(ValidationError, match="provenance"):
+        parse(payload)
+
+
+def test_failed_raw_predictions_must_bind_configuration_provenance():
+    payload = failed_result_payload()
+    outcome = payload["results"][0]
+    outcome.update(
+        units=[],
+        provenance_sha256=None,
+        evaluated_examples=0,
+        failed_examples=0,
+    )
+
+    with pytest.raises(ValidationError, match="provenance"):
+        parse(payload)
+
+
+def test_failed_result_without_retained_evidence_needs_no_provenance():
+    payload = failed_result_payload()
+    outcome = payload["results"][0]
+    outcome.update(
+        units=[],
+        raw_predictions=None,
+        provenance_sha256=None,
+        evaluated_examples=0,
+        failed_examples=0,
+    )
+
+    assert parse(payload).results[0].units == []
+
+
 @pytest.mark.parametrize(
     "field,value",
     [
