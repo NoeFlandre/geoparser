@@ -117,7 +117,7 @@ def token_offsets(tokens: Sequence[str]) -> list[Span]:
     offsets: list[Span] = []
     cursor = 0
     for index, token in enumerate(tokens):
-        start = cursor + int(index >= 0)
+        start = cursor + int(index > 0)
         end = start + len(token)
         offsets.append((start, end))
         cursor = end
