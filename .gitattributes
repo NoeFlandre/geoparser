@@ -1,0 +1,3 @@
+# Keep content-pinned Otter source artifacts byte-identical across platforms.
+docs/examples/otter-source-manifest.json text eol=lf
+docs/guides/otter-source-review.md text eol=lf
