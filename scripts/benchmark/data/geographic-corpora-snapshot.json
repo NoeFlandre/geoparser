@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "retrieved_on": "2026-10-09",
+  "unitoprank": {
+    "figshare_article": "https://figshare.com/articles/software/UniTopRank/30445541",
+    "doi": "10.6084/m9.figshare.30445541.v10",
+    "version": 10,
+    "modified": "2026-01-06T21:08:27Z",
+    "data_file": {
+      "name": "data.zip",
+      "figshare_file_id": 59465342,
+      "download_url": "https://ndownloader.figshare.com/files/59465342",
+      "bytes": 63356728,
+      "md5": "8e6f82a0931cb909e6f18217e80ce1f3"
+    },
+    "licence_as_found": [
+      {
+        "source": "figshare licence field",
+        "value": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+      },
+      {
+        "source": "README.md in the release (figshare file 59465336)",
+        "value": "Free for research and educational use. Please credit the author when reusing or modifying the code or datasets."
+      }
+    ],
+    "central_directory": {
+      "read_on": "2026-10-09",
+      "method": "Member names and sizes read from a full local copy of data.zip, which was deleted after listing. No member was extracted or read as content.",
+      "members": 59519,
+      "dataset_folders": 25,
+      "gold_json_files": 25
+    },
+    "folders": {
+      "19th": {"entries": 456, "text_files": 455, "status": "possible_duplicate", "registered_as": "topres19th-en", "language": "unverified", "reason": "The name matches TopRes19th, which the harness already reads as the HIPE-2022 split topres19th-en. The same corpus is likely but not shown; compare article IDs or text against the split before deciding."},
+      "ITA-DSTR": {"entries": 1808, "text_files": 1807, "status": "candidate", "registered_as": null, "language": "unverified (name suggests Italian)", "reason": "Gold file not inspected. Schema, licence and genre are unverified. IDs look like social-media post IDs."},
+      "LDC": {"entries": 64, "text_files": 62, "status": "candidate", "registered_as": null, "language": "unverified", "reason": "Gold file not inspected. Language, genre and licence are unverified."},
+      "TUD": {"entries": 153, "text_files": 152, "status": "candidate", "registered_as": null, "language": "unverified", "reason": "Gold file not inspected. Language, genre and licence are unverified."},
+      "ar_geotoponyms": {"entries": 758, "text_files": 757, "status": "registered", "registered_as": "newsli-ar", "language": "Arabic (ar)", "reason": "Read by the NewsLi adapter, which expects this layout: <code>_geotoponyms.json beside <code>_geotoponyms/<id>.txt."},
+      "de_geotoponyms": {"entries": 13175, "text_files": 13174, "status": "registered", "registered_as": "newsli-de", "language": "German (de)", "reason": "Read by the NewsLi adapter. Capped at 500 articles by the harness."},
+      "es_geotoponyms": {"entries": 8055, "text_files": 8054, "status": "registered", "registered_as": "newsli-es", "language": "Spanish (es)", "reason": "Read by the NewsLi adapter. Capped at 500 articles by the harness."},
+      "fa_geotoponyms": {"entries": 86, "text_files": 85, "status": "registered", "registered_as": "newsli-fa", "language": "Persian (fa)", "reason": "Read by the NewsLi adapter."},
+      "fingernews_gold": {"entries": 85, "text_files": 84, "status": "candidate", "registered_as": null, "language": "unverified (name suggests Finnish)", "reason": "Gold file not inspected. Schema, licence and language are unverified. Name suggests news."},
+      "fingertweets_gold": {"entries": 981, "text_files": 980, "status": "candidate", "registered_as": null, "language": "unverified (name suggests Finnish)", "reason": "Gold file not inspected. Schema and licence are unverified. Name suggests social-media posts; IDs look like post IDs."},
+      "geocorpora": {"entries": 6649, "text_files": 6648, "status": "candidate", "registered_as": null, "language": "unverified", "reason": "Gold file not inspected. Gold, licence and language are unverified. IDs look like social-media post IDs."},
+      "geovirus": {"entries": 231, "text_files": 229, "status": "duplicate", "registered_as": "geovirus", "language": "English (en)", "reason": "The text-file count matches the 229 WikiNews articles that the GeoVirus XML holds, as noted in scripts/benchmark/corpus.py. Content was not compared, but the corpus is already registered from its original repository, so it is not added again."},
+      "gwn": {"entries": 201, "text_files": 200, "status": "candidate", "registered_as": null, "language": "unverified", "reason": "Gold file not inspected. Gold, licence, language and genre are unverified."},
+      "ja_geotoponyms": {"entries": 2869, "text_files": 2868, "status": "registered", "registered_as": "newsli-ja", "language": "Japanese (ja)", "reason": "Read by the NewsLi adapter."},
+      "lgl": {"entries": 589, "text_files": 588, "status": "candidate", "registered_as": null, "language": "unverified", "reason": "Gold file not inspected. Gold, licence, language and genre are unverified."},
+      "pl_geotoponyms": {"entries": 322, "text_files": 321, "status": "registered", "registered_as": "newsli-pl", "language": "Polish (pl)", "reason": "Read by the NewsLi adapter."},
+      "ro_geotoponyms": {"entries": 242, "text_files": 241, "status": "registered", "registered_as": "newsli-ro", "language": "Romanian (ro)", "reason": "Read by the NewsLi adapter."},
+      "semeval": {"entries": 91, "text_files": 90, "status": "candidate", "registered_as": null, "language": "unverified", "reason": "Gold file not inspected. IDs look like PubMed and PMC article IDs, which suggests scientific text rather than news. Gold, licence and language are unverified."},
+      "sr_geotoponyms": {"entries": 13951, "text_files": 13950, "status": "registered", "registered_as": "newsli-sr", "language": "Serbian (sr)", "reason": "Read by the NewsLi adapter. Capped at 500 articles by the harness."},
+      "ta_geotoponyms": {"entries": 874, "text_files": 873, "status": "registered", "registered_as": "newsli-ta", "language": "Tamil (ta)", "reason": "Read by the NewsLi adapter."},
+      "tr_geotoponyms": {"entries": 806, "text_files": 805, "status": "registered", "registered_as": "newsli-tr", "language": "Turkish (tr)", "reason": "Read by the NewsLi adapter."},
+      "trnews": {"entries": 119, "text_files": 118, "status": "candidate", "registered_as": null, "language": "unverified (name suggests Turkish)", "reason": "Gold file not inspected. Name suggests Turkish news. Its documents are not NewsLi documents, so the overlap is by language only. Gold and licence are unverified."},
+      "uk_geotoponyms": {"entries": 283, "text_files": 282, "status": "registered", "registered_as": "newsli-uk", "language": "Ukrainian (uk)", "reason": "Read by the NewsLi adapter."},
+      "wiktor": {"entries": 5001, "text_files": 5000, "status": "candidate", "registered_as": null, "language": "unverified", "reason": "Gold file not inspected. The gold JSON is the largest in the release (about 14.5 MB uncompressed). Schema, licence, language and genre are unverified."},
+      "wotr": {"entries": 1645, "text_files": 1644, "status": "candidate", "registered_as": null, "language": "unverified", "reason": "Gold file not inspected. Gold, licence, language and genre are unverified."}
+    }
+  },
+  "paper": {
+    "doi": "10.1080/13658816.2026.2645831",
+    "title": "UniTopRank: a scalable and language-independent method for toponym resolution",
+    "authors": ["Xuke Hu", "Yao Sun", "Tobias Hecking", "Jens Kersten", "Friederike Klan"],
+    "journal": "International Journal of Geographical Information Science",
+    "published": "2026-03-25",
+    "licence_as_found": "CC BY 4.0 (Crossref licence URL for the article; not a licence for the data)",
+    "dataset_table": "unverified. The publisher page returned a bot challenge (HTTP 403), so the paper's dataset table was not read."
+  },
+  "toporesolve": {
+    "repository": "https://github.com/wm-newslab/toporesolve",
+    "commit": "1aae0e0c6a81c708ed47dd974912c2e30f49a727",
+    "commit_date": "2024-12-28T20:51:29Z",
+    "licence_as_found": null,
+    "licence_note": "No licence field in the repository metadata and no licence file at the root (the root holds README.md, data and models). The README states no licence.",
+    "gold_files": [
+      {"path": "data/gold_standards/GPE_2024_05_21T134100Z.jsonl", "blob_sha": "dc1c47f9768ec6f4db891de70cc92fa9f81e3bd0", "bytes": 111535, "records_claimed_by_readme": 102},
+      {"path": "data/gold_standards/LOC_2024_05_21T134100Z.jsonl", "blob_sha": "9346566224ce47f8005961aa7108f11799080ce9", "bytes": 104079, "records_claimed_by_readme": 102},
+      {"path": "data/gold_standards/FAC_2024_05_21T134100Z.jsonl", "blob_sha": "4c7ede36096c9c7a3d740e3cd016d17308fbfb12", "bytes": 97465, "records_claimed_by_readme": 102}
+    ],
+    "gold_fields_as_documented": ["lat_long", "entity", "entity_label", "context.sents", "link", "title", "published", "link_extracted_from", "media_dets"],
+    "gold_granularity": "One entity per record, with coordinates and context sentences. The gold has no character offsets into the text.",
+    "evaluation_radius_miles": 25,
+    "gpe_geometry_note": "The README scores GPE by whether the prediction falls inside the state or country polygon, not by distance. The gold file holds a point, not a polygon, so the polygon comes from outside the gold."
+  }
+}

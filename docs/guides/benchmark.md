@@ -47,6 +47,8 @@ The registry includes these corpora:
 
 The harness uses unmasked test files. It scores a HIPE location entity when its Wikidata item has coordinates. NewsLi has a limit of 500 documents for each language. The harness selects them in identifier order.
 
+Other corpora from the UniTopRank release and from TopoResolve are listed with their status and reasons in the [geographic corpora inventory](geographic-corpora-inventory.md). None of them is registered yet.
+
 The text of the downloadable corpora stays in the local cache. The benchmark uploader does not publish it. The benchmark dataset contains reports, checkpoints, logs, a results table, and charts. The source terms stay with their corpora:
 
 | Corpus | Source and terms |
