@@ -1,0 +1,203 @@
+{
+  "manifest_version": 1,
+  "review_date": "2026-10-07",
+  "custom_code_review": "docs/guides/otter-source-review.md",
+  "inference_imports": [
+    "configuration_otter.py",
+    "modeling_otter.py",
+    "loss.py",
+    "masks.py",
+    "metrics.py"
+  ],
+  "models": [
+    {
+      "identifier": "whoisjones/otter-cross-mmbert",
+      "revision": "8729188e4f5fc7948d0e9dfd7d7e6d36c2e7270d",
+      "license": "Apache-2.0",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "8d644ce75b4609fc7ccf936c5a63ec0fb8a0ae31b9d76289821edd315688255b",
+          "bytes": 4183,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "collate_fn.py",
+          "sha256": "1b1fbfe6dffd913272783218a86c2d2e965d43ec1bae37f87152cad1605a386b",
+          "bytes": 44720,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "config.json",
+          "sha256": "01b919ae8b94450f077779f1523d5cdd7df63740aee745c80fbad602c5084ab9",
+          "bytes": 3365,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "configuration_otter.py",
+          "sha256": "74390931c1ca49b2b1e367d4a1f361fd847f61dc9885d19041ce9cd8905ee3bf",
+          "bytes": 4431,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "loss.py",
+          "sha256": "659b6b7c652d13b841e7100221a60316a00cecd67c9fc332e49167c51d0b9864",
+          "bytes": 4933,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "masks.py",
+          "sha256": "25bb783bff875d8c714721a774e424e5c0ee6487c6e29b38bd483d4ebbf8f45f",
+          "bytes": 10423,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "metrics.py",
+          "sha256": "effb726caa594cc6588baa80b33b30dc8599a2483e50f76c931c356897c38a05",
+          "bytes": 4390,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "model.safetensors",
+          "sha256": "8987080bfc3e6672a75fb19ffe904d39e79ad804eabfda8247a62c347fb024b2",
+          "bytes": 1235084300,
+          "digest_evidence": "hub_lfs_metadata_only"
+        },
+        {
+          "path": "modeling_otter.py",
+          "sha256": "b80a5fed71a78c986fe42a4b1e9d7b2533b73ca2c133113c851ab05951e2b93d",
+          "bytes": 24361,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "sha256": "6e3204c5a4004719c185007a745d1940471a6fb02521cfa0a00306dbb6bc5903",
+          "bytes": 1051,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "token_encoder_config.json",
+          "sha256": "9694a9b43161963d2f6d5be4ae6d9a01b96788343496356527411e88e48a3c86",
+          "bytes": 1260,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "tokenizer.json",
+          "sha256": "1cd61f03e5def45b8097b3ec02a89b3f5aff7c40b44b87bf0583765e2a112d6d",
+          "bytes": 34363565,
+          "digest_evidence": "hub_lfs_metadata_only"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "sha256": "280d577acd2e0eaa4445304ddaba1fb4f87c348e4a15aae5fa74fb3f7a67c9f2",
+          "bytes": 46822,
+          "digest_evidence": "downloaded_metadata_or_source"
+        }
+      ]
+    },
+    {
+      "identifier": "whoisjones/otter-bi-mmbert",
+      "revision": "53e10a09bc71a2e45980a7a257233a28305a5777",
+      "license": "Apache-2.0",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "e1c05eeba648143006a0a464c73303033d3645c4847b1e7d4d8d8aba21c0a4fe",
+          "bytes": 4253,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "collate_fn.py",
+          "sha256": "1b1fbfe6dffd913272783218a86c2d2e965d43ec1bae37f87152cad1605a386b",
+          "bytes": 44720,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "config.json",
+          "sha256": "b1d90c73cd224e0b37577dc623eb74581b067ee59b486b8bb0fdb90b85bf44d0",
+          "bytes": 4608,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "configuration_otter.py",
+          "sha256": "74390931c1ca49b2b1e367d4a1f361fd847f61dc9885d19041ce9cd8905ee3bf",
+          "bytes": 4431,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "loss.py",
+          "sha256": "659b6b7c652d13b841e7100221a60316a00cecd67c9fc332e49167c51d0b9864",
+          "bytes": 4933,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "masks.py",
+          "sha256": "25bb783bff875d8c714721a774e424e5c0ee6487c6e29b38bd483d4ebbf8f45f",
+          "bytes": 10423,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "metrics.py",
+          "sha256": "effb726caa594cc6588baa80b33b30dc8599a2483e50f76c931c356897c38a05",
+          "bytes": 4390,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "model.safetensors",
+          "sha256": "05c4f718fb9e5871d66b8eb68fc40e17d0d8611c5b8e6252e371662bc0f78c91",
+          "bytes": 1906302124,
+          "digest_evidence": "hub_lfs_metadata_only"
+        },
+        {
+          "path": "modeling_otter.py",
+          "sha256": "b80a5fed71a78c986fe42a4b1e9d7b2533b73ca2c133113c851ab05951e2b93d",
+          "bytes": 24361,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "token_encoder_config.json",
+          "sha256": "c5ff4d49df8705289e8d5af35d248f4ce9f8a4880cff6edf668cb41e8a7e5c28",
+          "bytes": 1260,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "token_tokenizer/tokenizer.json",
+          "sha256": "609d8f4c067cd3950f88594c5a802616cea245823836ef5848ee4fc40aab5b6f",
+          "bytes": 34363188,
+          "digest_evidence": "hub_lfs_metadata_only"
+        },
+        {
+          "path": "token_tokenizer/tokenizer_config.json",
+          "sha256": "14b147f2a4f939d9b12ab36e9633917040dd948fa78ce283b03402e4cf2c9cba",
+          "bytes": 574,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "type_encoder_config.json",
+          "sha256": "cfae8675f685ffee76bf8bd69e2dea46eda6a392ce5adbc76fcb4942a2dc22c9",
+          "bytes": 793,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "type_tokenizer/tokenizer.json",
+          "sha256": "11aaf894a4ccf3d95e8830e27c0f8152791fbbff2b988e29a265580b86edd216",
+          "bytes": 2563370,
+          "digest_evidence": "downloaded_metadata_or_source"
+        },
+        {
+          "path": "type_tokenizer/tokenizer_config.json",
+          "sha256": "e1c2a61a99bda00f6c55303a210b30e2f92dcf8b555e215812e2eb583e177ffd",
+          "bytes": 351,
+          "digest_evidence": "downloaded_metadata_or_source"
+        }
+      ]
+    }
+  ],
+  "upstream": {
+    "identifier": "https://github.com/whoisjones/otter",
+    "revision": "b7d53e4eb533296ac5940bf03efa0ae17cff8f6c",
+    "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  "execution_status": "not_run",
+  "weights_downloaded": false
+}
