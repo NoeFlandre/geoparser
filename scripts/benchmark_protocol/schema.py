@@ -346,6 +346,11 @@ class Result(Contract):
                 all(value is not None for value in values),
                 "complete result requires provenance, measurements, scores and raw predictions",
             )
+            measurements = self.measurements
+            require(
+                measurements is not None and measurements.steady_seconds > 0,
+                "complete result requires a positive steady-inference duration",
+            )
         else:
             require(
                 self.scores is None and self.measurements is None,

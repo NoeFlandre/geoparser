@@ -849,6 +849,19 @@ def test_complete_results_require_positive_process_rss():
         parse(payload)
 
 
+def test_complete_results_require_positive_steady_inference_time():
+    payload = completed_payload()
+    payload["results"][0]["measurements"]["steady_seconds"] = 0.0
+    with pytest.raises(ValidationError, match="steady-inference"):
+        parse(payload)
+
+
+def test_zero_fetch_and_warmup_time_stay_valid_for_complete_results():
+    payload = completed_payload()
+    payload["results"][0]["measurements"].update(fetch_seconds=0.0, warmup_seconds=0.0)
+    assert parse(payload).results[0].measurements.steady_seconds == 4.0
+
+
 @pytest.mark.parametrize("changed_pin", ["code", "review"])
 def test_one_pipeline_cannot_mix_reviewed_custom_code(changed_pin):
     payload = experiment_payload()
