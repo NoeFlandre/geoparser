@@ -7,6 +7,8 @@ from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from geoparser._logging import get_logger
+from geoparser.gazetteer.artifact import SEARCH_METHODS as _SEARCH_METHODS
+from geoparser.gazetteer.artifact import SearchMethod
 from geoparser.gazetteer.description import (
     GAZETTEER_ATTRIBUTE_MAP as SHARED_ATTRIBUTE_MAP,
 )
@@ -48,12 +50,7 @@ class SentenceTransformerResolver(
     NAME = "SentenceTransformerResolver"
 
     # Search methods in order of preference, from most to least restrictive.
-    SEARCH_METHODS: t.ClassVar[tuple[str, ...]] = (
-        "exact",
-        "phrase",
-        "partial",
-        "fuzzy",
-    )
+    SEARCH_METHODS: t.ClassVar[tuple[SearchMethod, ...]] = _SEARCH_METHODS
 
     # Gazetteer-specific attribute mappings for location descriptions
     GAZETTEER_ATTRIBUTE_MAP: t.ClassVar[dict[str, dict[str, str]]] = (
@@ -360,7 +357,7 @@ class SentenceTransformerResolver(
         contexts: list[list[str]],
         candidates: list[list[list["Feature"]]],
         results: list[list[tuple[str, str] | None]],
-        method: str,
+        method: SearchMethod,
         tiers: int,
     ) -> None:
         """
@@ -473,7 +470,7 @@ class SentenceTransformerResolver(
         references: list[list[tuple[int, int]]],
         candidates: list[list[list["Feature"]]],
         results: list[list[tuple[str, str] | None]],
-        method: str,
+        method: SearchMethod,
         tiers: int,
     ) -> None:
         """
@@ -501,7 +498,7 @@ class SentenceTransformerResolver(
                 self._merge_candidates(doc_candidates[ref_idx], found)
 
     def _search_candidates(
-        self, name: str, method: str, tiers: int, limit: int = 10000
+        self, name: str, method: SearchMethod, tiers: int, limit: int = 10000
     ) -> tuple["Feature", ...]:
         """Search the gazetteer once for each normalized query and tier."""
         normalized_name = normalize_name(name)

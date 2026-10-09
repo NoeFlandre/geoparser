@@ -36,3 +36,17 @@ class TestDownloadCli:
         message = mock_secho.call_args[0][0]
         assert "install" in message.lower()
         assert "geonames" in message
+
+    def test_help_documents_deprecation_and_replacement(self):
+        """Test that download --help explains the deprecation and the replacement."""
+        from typer.testing import CliRunner
+
+        from geoparser.cli.app import app
+
+        result = CliRunner().invoke(app, ["download", "--help"])
+
+        assert result.exit_code == 0
+        text = " ".join(result.output.split())
+        assert "renamed to install" in text
+        assert "does not download anything" in text
+        assert "Gazetteer name (e.g. geonames)" in text
