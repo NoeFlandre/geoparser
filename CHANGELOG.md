@@ -6,6 +6,15 @@ This file records all notable changes to GeoParser. The project follows
 
 ## [Unreleased]
 
+### Added
+
+- Add an offline adapter for the UniTopRank rule-based toponym ranker, pinned to
+  GitLab commit `346deb166f12b0c97c8c0f9759b593ff178ceafd` (Apache-2.0). It checks a
+  local checkout against 15 reviewed blob IDs before importing anything, maps gazetteer
+  candidates in a deterministic order and counts every drop and substitution, and
+  traces the ranker's top choice back to a gazetteer identifier. The held-out comparison
+  is not part of this change. See `docs/guides/unitoprank.md`.
+
 ### Fixed
 
 - Show a clear deprecation notice in `geoparser download --help`. It names the

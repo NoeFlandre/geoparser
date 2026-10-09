@@ -1,0 +1,114 @@
+"""
+Pin the UniTopRank code this adapter may execute, and verify a checkout of it.
+
+UniTopRank (Hu et al., IJGIS 2026) publishes no tagged release, so the pin is
+the commit of its GitLab repository that was reviewed. Each file the adapter
+imports is pinned by its Git blob ID: the SHA-1 Git computes over
+``"blob <size>\\0" + content``. A checkout is verified from its bytes alone,
+without Git and without the network, and an unverified checkout is never
+imported.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import importlib
+import sys
+import typing as t
+from pathlib import Path
+
+REPOSITORY = "https://gitlab.com/dlr-dw/UniTopRank"
+COMMIT = "346deb166f12b0c97c8c0f9759b593ff178ceafd"
+LICENSE_SPDX = "Apache-2.0"
+
+# Every file of the reviewed tree that the direct ranking import reaches, plus
+# the licence and the files reviewed but not imported. The blob IDs are the
+# ones GitLab's repository tree API reports for COMMIT.
+REVIEWED_BLOBS: dict[str, str] = {
+    "LICENSE": "5d817e2e7a576e60810d167d17e37d8c9e57dd20",
+    "NOTICE": "102525039689d30b0e1b8f91577e25b0c473402b",
+    "THIRD_PARTY_LICENSES.md": "ef488c3826b02c2465e723c87c1293a1ba6ffe52",
+    "dependencies.md": "a9103631e062e90aaebfc6c55f40c7b3db6ffac0",
+    "requirements.txt": "6b82771cefeaec461d181992e48865f660a12bac",
+    "requirements-ner.txt": "2d13ba5012c3fa08a47a8a0e31ebd409745b933f",
+    "geo_rank_api.py": "108c5e8ac8ceea53a645ae01541ac93976f5fddc",
+    "geoparsing_api.py": "f323b234faa414b293c268f70737b758fdb7eb1d",
+    "thread_weight_rank_algorithm_3_beam.py": (
+        "d110989ed3abd2382b4af250a616e9cd9c3272ae"
+    ),
+    "unitorank/__init__.py": "1cf57de1dfe3c8b31913964b9c962823a9a63a77",
+    "unitorank/ranker.py": "b34c490fdcd15809857d3440812d08b72be198db",
+    "unitorank/types.py": "815cbcde11c55a2ec2baf9bdf2e96cc1c886c536",
+    "unitorank/candidate_retriever.py": "8a7e3f2fcbc1d839885f71212e58409a6e40694f",
+    "unitorank/pipeline.py": "0c3df1d34d3a1866d24bf6ab883c140f6d78c5e5",
+    "unitorank/ner.py": "a5d002a8326f7719fe888565ddb5fac46a2dd444",
+}
+
+
+class UpstreamMismatchError(RuntimeError):
+    """A checkout differs from the reviewed tree, so it must not be imported."""
+
+
+def git_blob_id(content: bytes) -> str:
+    """Return the Git blob ID of file content, as ``git hash-object`` computes it."""
+    header = f"blob {len(content)}\0".encode()
+    return hashlib.sha1(header + content, usedforsecurity=False).hexdigest()
+
+
+def verify_checkout(
+    checkout: Path, blobs: t.Mapping[str, str] = REVIEWED_BLOBS
+) -> list[str]:
+    """
+    Compare a checkout with the reviewed blob IDs.
+
+    Args:
+        checkout: Directory holding the UniTopRank tree at COMMIT
+        blobs: Relative path to the expected blob ID
+
+    Returns:
+        One message per missing or changed file; empty when the tree matches
+    """
+    problems = []
+    for relative, expected in sorted(blobs.items()):
+        path = checkout / relative
+        if not path.is_file():
+            problems.append(f"missing: {relative}")
+            continue
+        actual = git_blob_id(path.read_bytes())
+        if actual != expected:
+            problems.append(f"changed: {relative} is {actual}, pinned {expected}")
+    return problems
+
+
+def load_rank_toponyms(checkout: Path) -> tuple[t.Callable[..., t.Any], t.Any]:
+    """
+    Verify a checkout, then import its direct ranking API.
+
+    Only ``unitorank.ranker`` is named. ``geo_rank_api`` does not import at the
+    pinned commit. The package ``__init__`` also imports the candidate retriever
+    and the NER backends, but imports nothing that connects or downloads, and
+    none of those objects is called here.
+
+    Args:
+        checkout: Directory holding the verified UniTopRank tree
+
+    Returns:
+        The ``rank_toponyms`` function and the ``RankerConfig`` class
+
+    Raises:
+        UpstreamMismatchError: If the checkout differs from the pin, or if
+            ``unitorank`` was already imported from another location
+    """
+    problems = verify_checkout(checkout)
+    if problems:
+        message = "; ".join(problems)
+        raise UpstreamMismatchError(message)
+    root = checkout.resolve()
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    ranker = t.cast(t.Any, importlib.import_module("unitorank.ranker"))
+    loaded = Path(sys.modules["unitorank"].__file__ or "").resolve()
+    if not loaded.is_relative_to(root):
+        message = f"unitorank was imported from {loaded}, not {root}"
+        raise UpstreamMismatchError(message)
+    return ranker.rank_toponyms, ranker.RankerConfig
