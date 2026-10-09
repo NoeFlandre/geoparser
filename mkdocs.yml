@@ -69,6 +69,8 @@ nav:
       - Benchmarking: guides/benchmark.md
       - Public Benchmark Protocol: guides/benchmark-protocol.md
       - Offline Model Pilot: guides/model-pilot.md
+      - Otter Recognition: guides/otter-recognition.md
+      - Otter Source Review: guides/otter-source-review.md
   - API Reference:
       - Geoparser: api/geoparser.md
       - Project: api/project.md
