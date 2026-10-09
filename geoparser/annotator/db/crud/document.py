@@ -3,8 +3,9 @@ import uuid
 
 from fastapi import UploadFile
 from markupsafe import Markup
+from sqlalchemy import and_, case, func
 from sqlmodel import Session as DBSession
-from sqlmodel import select
+from sqlmodel import col, select
 from werkzeug.utils import secure_filename
 
 from geoparser.annotator.db.crud.base import BaseRepository
@@ -14,12 +15,24 @@ from geoparser.annotator.db.models.document import (
     AnnotatorDocumentCreate,
     AnnotatorDocumentUpdate,
 )
-from geoparser.annotator.db.models.toponym import AnnotatorToponymCreate
+from geoparser.annotator.db.models.toponym import (
+    AnnotatorToponym,
+    AnnotatorToponymCreate,
+)
 from geoparser.annotator.exceptions import (
     DocumentNotFoundException,
     InvalidUploadException,
 )
 from geoparser.modules.recognizers.spacy import SpacyRecognizer
+
+
+class DocumentProgress(t.TypedDict):
+    filename: str
+    doc_index: int
+    doc_id: uuid.UUID
+    annotated_toponyms: int
+    total_toponyms: int
+    progress_percentage: float
 
 
 class DocumentRepository(BaseRepository[AnnotatorDocument]):
@@ -214,11 +227,31 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
         return Markup("").join(html_parts)
 
     @classmethod
-    def get_progress(cls, db: DBSession, **filters) -> t.Iterator[dict]:
-        documents = cls.read_all(db, **filters)
-        for document in documents:
-            total_toponyms = len(document.toponyms)
-            annotated_toponyms = sum(t.loc_id != "" for t in document.toponyms)
+    def get_progress(cls, db: DBSession, **filters) -> t.Iterator[DocumentProgress]:
+        # One grouped query: a LEFT JOIN keeps documents without toponyms, and
+        # the id guard stops that placeholder row from counting as annotated.
+        filter_args = [
+            getattr(AnnotatorDocument, key) == value for key, value in filters.items()
+        ]
+        toponym_id = col(AnnotatorToponym.id)
+        toponym_loc = col(AnnotatorToponym.loc_id)
+        document_id = col(AnnotatorDocument.id)
+        document_index = col(AnnotatorDocument.doc_index)
+        # Without an else, non-annotated rows are NULL and SUM skips them.
+        annotated = case(
+            (and_(toponym_id.is_not(None), toponym_loc.is_distinct_from("")), 1),
+        )
+        rows = db.exec(
+            select(AnnotatorDocument, func.count(toponym_id), func.sum(annotated))
+            .select_from(AnnotatorDocument)
+            .outerjoin(AnnotatorDocument.toponyms)  # ty: ignore[invalid-argument-type]
+            .where(*filter_args)
+            .group_by(document_id)
+            .order_by(document_index)
+        ).all()
+        for document, total, annotated_count in rows:
+            total_toponyms = int(total)
+            annotated_toponyms = int(annotated_count or 0)
             progress_percentage = (
                 (annotated_toponyms / total_toponyms) * 100 if total_toponyms > 0 else 0
             )
@@ -232,7 +265,7 @@ class DocumentRepository(BaseRepository[AnnotatorDocument]):
             }
 
     @classmethod
-    def get_document_progress(cls, db: DBSession, id: uuid.UUID) -> dict[str, t.Any]:
+    def get_document_progress(cls, db: DBSession, id: uuid.UUID) -> DocumentProgress:
         try:
             return next(cls.get_progress(db, id=id))
         except StopIteration as error:
