@@ -9,6 +9,10 @@ Three groups are reported and never merged:
   These are labelled transfer scores, not native results.
 * ``unsupported``: languages with no native pipeline. They are counted and
   never predicted by any model, including the English control in either group.
+
+``matched_macro`` may include the native English score, which transfer never
+includes. ``paired_matched_macro`` averages matched scores over exactly the
+transfer languages, so it is the figure to compare with ``transfer_macro``.
 """
 
 from __future__ import annotations
@@ -197,9 +201,13 @@ def evaluate_baselines(
     transfer = _transfer_scores(
         english_control, examples_by_language, recognizers, batch_size
     )
+    paired = {
+        language: scores for language, scores in matched.items() if language in transfer
+    }
     return {
         "matched": matched,
         "matched_macro": macro_scores(matched),
+        "paired_matched_macro": macro_scores(paired),
         "transfer": transfer,
         "transfer_macro": macro_scores(transfer),
         "unsupported": _unsupported_counts(examples_by_language, roster),

@@ -122,6 +122,9 @@ equal the roster's label set exactly, or `LabelSchemeError` is raised. Only the
     group may additionally contain the native English score.
   - `unsupported`: counts of examples in languages with no native pipeline. No
     model predicts them.
+  - Macro averages: `matched_macro` may include the native English score, so
+    compare `paired_matched_macro` (matched scores over exactly the transfer
+    languages) with `transfer_macro` for the headline gap.
 - `configuration_id(pipeline)` returns a deterministic 16-hex identity from the
   pinned package, wheel, wheel URL, SHA-256 digest, tokenizer requirements,
   label set and label harmonization.

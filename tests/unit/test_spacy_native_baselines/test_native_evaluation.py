@@ -334,3 +334,23 @@ def test_macro_scores_average_languages_with_equal_weight(roster, examples):
 
     assert result["matched_macro"]["precision"] == pytest.approx(1.0)
     assert result["matched_macro"]["recall"] == pytest.approx(1.0)
+
+
+def test_paired_matched_macro_drops_the_native_english_score(roster):
+    examples = {
+        "en": (_example("en", "Paris calls.", {(0, 5)}),),
+        "de": (_example("de", "Berlin liegt.", {(0, 6)}),),
+    }
+    english = _identify(FakeRecognizer({"Paris calls.": {(0, 5)}}), roster, "en")
+    german = _identify(FakeRecognizer({}), roster, "de")
+    control = _identify(FakeRecognizer({"Berlin liegt.": {(0, 6)}}), roster, "en")
+
+    result = evaluate_baselines(
+        examples, {"de": german, "en": english}, control, roster
+    )
+
+    assert set(result["matched"]) == {"de", "en"}
+    assert set(result["transfer"]) == {"de"}
+    assert result["matched_macro"]["recall"] == pytest.approx(0.5)
+    assert result["paired_matched_macro"]["recall"] == pytest.approx(0.0)
+    assert result["transfer_macro"]["recall"] == pytest.approx(1.0)
