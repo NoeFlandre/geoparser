@@ -26,13 +26,24 @@ class RecordingEncoder:
 
     def __init__(self, rows=None):
         self.calls = []
+        self.batch_sizes = []
         self.rows = rows
 
-    def encode(self, texts, *, prompt):
+    def encode(self, texts, *, prompt, batch_size):
         self.calls.append((list(texts), prompt))
+        self.batch_sizes.append(batch_size)
         if self.rows is not None:
             return self.rows(texts)
         return np.array([[len(text), 3.0, 4.0] for text in texts])
+
+
+def test_the_configured_batch_size_reaches_every_encode_call():
+    encoder = RecordingEncoder()
+    adapter = EmbeddingAdapter(small_model(), encoder, batch_size=64)
+
+    adapter.encode_documents(["a", "bb", "ccc"])
+
+    assert encoder.batch_sizes == [64]
 
 
 def test_batches_are_split_in_order_and_sized_by_batch_size():
@@ -196,7 +207,7 @@ def fake_transformer(monkeypatch, fake_hub):
 def test_the_real_backend_loads_the_pinned_commit_only_from_its_local_snapshot(
     fake_transformer, fake_hub, tmp_path
 ):
-    encoder = SentenceTransformerEncoder(JINA_V5_TEXT_SMALL)
+    SentenceTransformerEncoder(JINA_V5_TEXT_SMALL)
 
     assert fake_hub == [
         (JINA_V5_TEXT_SMALL.repository, JINA_V5_TEXT_SMALL.revision),
@@ -208,6 +219,12 @@ def test_the_real_backend_loads_the_pinned_commit_only_from_its_local_snapshot(
         )
     )
     assert loaded.kwargs == {"device": "cpu", "trust_remote_code": True}
+
+
+def test_the_real_backend_keeps_the_pinned_model_and_sequence_length(fake_transformer):
+    encoder = SentenceTransformerEncoder(JINA_V5_TEXT_SMALL)
+
+    (loaded,) = fake_transformer.instances
     assert loaded.max_seq_length == JINA_V5_TEXT_SMALL.max_seq_length
     assert encoder.model is JINA_V5_TEXT_SMALL
 
@@ -239,11 +256,12 @@ def test_a_snapshot_path_that_is_a_file_is_refused_before_any_model_loads(
 def test_the_real_backend_passes_the_documented_task_and_prompt(fake_transformer):
     encoder = SentenceTransformerEncoder(JINA_V5_TEXT_SMALL)
 
-    encoder.encode(["a", "b"], prompt="Query: ")
+    encoder.encode(["a", "b"], prompt="Query: ", batch_size=64)
 
     (options,) = fake_transformer.instances[0].encode_calls
     assert options["task"] == "retrieval"
     assert options["prompt"] == "Query: "
+    assert options["batch_size"] == 64
     assert options["normalize_embeddings"] is False
 
 
@@ -252,7 +270,7 @@ def test_the_real_backend_omits_prompt_and_task_when_the_model_has_none(
 ):
     encoder = SentenceTransformerEncoder(GEO_MINILM)
 
-    encoder.encode(["a"], prompt="")
+    encoder.encode(["a"], prompt="", batch_size=8)
 
     (options,) = fake_transformer.instances[0].encode_calls
     assert "prompt" not in options

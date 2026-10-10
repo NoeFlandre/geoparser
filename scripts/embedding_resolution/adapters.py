@@ -25,12 +25,14 @@ if t.TYPE_CHECKING:
 class Encoder(Protocol):
     """Anything that encodes one batch of strings, one row per string."""
 
-    def encode(self, texts: list[str], *, prompt: str) -> np.ndarray:
+    def encode(self, texts: list[str], *, prompt: str, batch_size: int) -> np.ndarray:
         """Return an array of shape ``(len(texts), dimension)``.
 
         Args:
             texts: One batch of strings, in order
             prompt: Literal text to prefix to every string; empty for none
+            batch_size: The configured batch size, which the backend must use for
+                any internal batching so the measured batch size is the one planned
         """
         ...
 
@@ -90,7 +92,10 @@ class EmbeddingAdapter:
             return np.empty((0, self.model.dimension), dtype=np.float64)
         prompt = self.model.prompt(role)
         rows = [
-            self._checked(self.encoder.encode(batch, prompt=prompt), len(batch))
+            self._checked(
+                self.encoder.encode(batch, prompt=prompt, batch_size=self.batch_size),
+                len(batch),
+            )
             for batch in _batches(items, self.batch_size)
         ]
         return np.vstack(rows)
@@ -195,18 +200,21 @@ class SentenceTransformerEncoder:
         )
         self._transformer.max_seq_length = model.max_seq_length
 
-    def encode(self, texts: list[str], *, prompt: str) -> np.ndarray:
+    def encode(self, texts: list[str], *, prompt: str, batch_size: int) -> np.ndarray:
         """
         Encode one batch with the model's documented prompt and task.
 
         Args:
             texts: One batch of strings
             prompt: Literal prompt text; empty for none
+            batch_size: The configured batch size, passed through so Sentence
+                Transformers does not re-batch at its own default
 
         Returns:
             The raw embeddings, one row per string
         """
         options: dict[str, t.Any] = {
+            "batch_size": batch_size,
             "convert_to_numpy": True,
             "show_progress_bar": False,
             "normalize_embeddings": False,
