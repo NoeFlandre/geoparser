@@ -18,7 +18,11 @@ from typing import Any, Protocol
 
 from scripts.panx_benchmark.data import Example
 from scripts.panx_benchmark.metrics import Counts, macro_scores
-from scripts.spacy_native_baselines.roster import ENGLISH_CONTROL_LANGUAGE, Roster
+from scripts.spacy_native_baselines.roster import (
+    ENGLISH_CONTROL_LANGUAGE,
+    NativePipeline,
+    Roster,
+)
 
 
 class BatchPredictor(Protocol):
@@ -59,11 +63,37 @@ def _has_native_pipeline(roster: Roster, language: str) -> bool:
     return roster.route(language).pipeline is not None
 
 
+def _check_recorded_pipeline(
+    language: str,
+    predictor: BatchPredictor,
+    pipeline: NativePipeline,
+) -> None:
+    """Require the predictor's recorded identity to match the routed pipeline."""
+    expected = {
+        "language": pipeline.language,
+        "package": pipeline.package,
+        "version": pipeline.version,
+        "place_label_map": dict(pipeline.place_label_map),
+    }
+    config = getattr(predictor, "config", None)
+    recorded = (
+        {key: config.get(key) for key in expected}
+        if isinstance(config, Mapping)
+        else None
+    )
+    if recorded != expected:
+        message = (
+            f"Predictor for {language!r} does not record its routed pipeline "
+            f"{pipeline.package!r} version {pipeline.version!r}."
+        )
+        raise ValueError(message)
+
+
 def _check_native_recognizers(
     recognizers: Mapping[str, BatchPredictor],
     roster: Roster,
 ) -> None:
-    for language in recognizers:
+    for language, recognizer in recognizers.items():
         route = roster.route(language)
         if route.pipeline is None:
             message = (
@@ -71,6 +101,7 @@ def _check_native_recognizers(
                 f"{language!r}: {route.reason}"
             )
             raise ValueError(message)
+        _check_recorded_pipeline(language, recognizer, route.pipeline)
 
 
 def _matched_scores(
@@ -129,6 +160,10 @@ def evaluate_baselines(
     """Score every arm on the same examples and return the three groups."""
     batch_size = _positive_batch_size(batch_size)
     _check_native_recognizers(recognizers, roster)
+    if english_control is not None:
+        _check_recorded_pipeline(
+            ENGLISH_CONTROL_LANGUAGE, english_control, roster.english_control
+        )
     matched = _matched_scores(recognizers, examples_by_language, batch_size)
     transfer = _transfer_scores(
         english_control, examples_by_language, roster, batch_size
