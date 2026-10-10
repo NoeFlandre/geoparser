@@ -69,10 +69,17 @@ class NativePipeline:
         """Install the exact pinned wheel plus its recorded tokenizer requirements.
 
         The model is named by its release URL, so no index search selects it.
-        Requirements are shell-quoted because specifiers such as ``>=`` are
-        shell operators when left bare.
+        The recorded SHA-256 rides in the URL fragment, which pip checks before
+        installing, so a replaced release asset is refused. Requirements are
+        shell-quoted because specifiers such as ``>=`` are shell operators when
+        left bare.
         """
-        return shlex.join(["pip", "install", self.wheel_url, *self.extra_requirements])
+        url = (
+            self.wheel_url
+            if self.sha256 is None
+            else f"{self.wheel_url}#sha256={self.sha256}"
+        )
+        return shlex.join(["pip", "install", url, *self.extra_requirements])
 
     def harmonized_label(self, label: str) -> str | None:
         """Return the WikiANN class for a native label, or None when dropped."""

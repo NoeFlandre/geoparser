@@ -134,8 +134,14 @@ def test_install_command_adds_the_recorded_tokenizer_requirements(
     pipeline = roster.pipelines[code]
 
     assert pipeline.install_command == (
-        f"pip install {pipeline.wheel_url}{tokenizer_arguments}"
+        f"pip install '{pipeline.wheel_url}#sha256={pipeline.sha256}'"
+        f"{tokenizer_arguments}"
     )
+
+
+def test_install_command_verifies_each_native_pipelines_digest(roster):
+    for pipeline in roster.pipelines.values():
+        assert f"#sha256={pipeline.sha256}" in pipeline.install_command
 
 
 def test_configuration_id_is_deterministic_for_equal_inputs(roster):
