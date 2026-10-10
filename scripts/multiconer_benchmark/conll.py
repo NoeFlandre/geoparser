@@ -119,20 +119,22 @@ def _blocks(lines: Iterable[str]) -> Iterator[_Block]:
     for number, raw in enumerate(lines, start=1):
         line = raw.removesuffix("\n").removesuffix("\r")
         if not line.strip(" \t"):
-            if current is not None:
-                yield current
+            yield from _release(current)
             current = None
-            continue
-        if line.startswith(_HEADER_PREFIXES):
-            if current is not None:
-                yield current
+        elif line.startswith(_HEADER_PREFIXES):
+            yield from _release(current)
             current = _Block(header=(number, line))
-            continue
-        if current is None:
-            current = _Block()
-        current.tokens.append((number, line))
-    if current is not None:
-        yield current
+        else:
+            if current is None:
+                current = _Block()
+            current.tokens.append((number, line))
+    yield from _release(current)
+
+
+def _release(block: _Block | None) -> Iterator[_Block]:
+    """Hand out an open block once it is complete."""
+    if block is not None:
+        yield block
 
 
 def _parse_block(
