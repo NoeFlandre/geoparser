@@ -1,6 +1,6 @@
 # Geographic corpora inventory
 
-This guide records which corpora from the UniTopRank release and from TopoResolve could extend the benchmark, which already cover them, and what is still unverified. The machine-readable pin is `scripts/benchmark/data/geographic-corpora-snapshot.json`. The inventory was taken on 2026-10-09. The member listing of the UniTopRank archive came from a full local copy of `data.zip`: a byte-range request returned the whole file, which was used only to list the members and then deleted. No member was extracted or read as content, no corpus was downloaded for scoring, and no model ran.
+This guide records which corpora from the UniTopRank release and from TopoResolve could extend the benchmark, which already cover them, and what is still unverified. The machine-readable pin is `scripts/benchmark/data/geographic-corpora-snapshot.json`. The inventory was taken on 2026-10-09. The member names and sizes of the UniTopRank archive were read from a full local copy of `data.zip`: a byte-range request returned the whole file, and the copy was deleted after the listing. No member was extracted or read as content, no corpus was downloaded for scoring, and no model ran.
 
 ## Status
 
@@ -88,7 +88,7 @@ The two UniTopRank statements conflict. `docs/guides/benchmark.md` and `scripts/
 
 ## Open decisions
 
-- **Gold schema inspection.** The 12 candidate gold JSON files need their schema read before any adapter. That needs the 63 MB `data.zip` in a scratch location, which is a download the owner must approve. A byte-range request would avoid the full copy. One attempt during this inventory returned the whole file instead, so the range request cannot be relied on. That copy was used only to list the members and was then deleted.
+- **Gold schema inspection.** The 12 candidate gold JSON files need their schema read before any adapter. That needs the 63 MB `data.zip` in a scratch location, which is a download the owner must approve. A byte-range request would avoid the full copy. One attempt during this inventory returned the whole file instead, so the range request cannot be relied on. That copy was read for the member names and sizes and was then deleted.
 - **Licence conflict.** Decide which UniTopRank statement governs the data before any corpus from the release is added or reported as Apache 2.0.
 - **TopoResolve.** Decide whether it may enter the benchmark without a licence, and if so as a separate resolution-only track. Gold-span and end-to-end results stay separate.
 - **TopRes19th.** Decide whether `19th` is the registered `topres19th-en` corpus. A comparison of article IDs or text is needed for that.
@@ -102,6 +102,7 @@ The two UniTopRank statements conflict. `docs/guides/benchmark.md` and `scripts/
 
 ## Not verified
 
+- The source of the MD5 checksum of `data.zip`. The snapshot does not record where it came from.
 - The gold schema, record counts and coordinates of the 12 candidates and of the `19th` folder.
 - The language and text type of every folder other than the 11 NewsLi folders and `geovirus`.
 - The contents of the paper's dataset table, which was behind a publisher bot challenge that was not bypassed.
