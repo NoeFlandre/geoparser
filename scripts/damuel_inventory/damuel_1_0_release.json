@@ -1,0 +1,476 @@
+{
+  "schema_version": "1.0",
+  "dataset": "DaMuEL",
+  "release": "1.0",
+  "record": {
+    "publisher": "Charles University, Faculty of Mathematics and Physics, Institute of Formal and Applied Linguistics (UFAL)",
+    "handle": "11234/1-5047",
+    "url": "https://lindat.mff.cuni.cz/repository/xmlui/handle/11234/1-5047",
+    "paper": "arXiv:2306.09288",
+    "paper_authors": [
+      "David Kubeša",
+      "Milan Straka"
+    ]
+  },
+  "retrieved_on": "2026-10-09",
+  "retrieval_method": "LINDAT item page and DSpace REST bitstream metadata; README, LICENSE and schema.json read by HTTP range request from the end of two archives. No dataset archive was downloaded in full.",
+  "dumps": {
+    "wikipedia": "2022-11-01",
+    "wikidata": "2022-11-09"
+  },
+  "licence": {
+    "name": "Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)",
+    "verified_sources": [
+      "LINDAT item record: 'licensed under Creative Commons - Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)'",
+      "LICENSE member of damuel_1.0_wo.tar, byte-identical to the LICENSE member of damuel_1.0_wikidata.tar (20139 bytes; text is Attribution-ShareAlike 4.0 International)"
+    ],
+    "not_verified": [
+      "licence terms of the upstream Wikipedia text and Wikidata data, beyond the release statement"
+    ]
+  },
+  "bundled_metadata": {
+    "README": "2476 bytes, byte-identical in damuel_1.0_wo.tar and damuel_1.0_wikidata.tar",
+    "text_schema": "schema.json, 5074 bytes, in damuel_1.0_wo.tar",
+    "knowledge_base_schema": "schema.json, 2767 bytes, in damuel_1.0_wikidata.tar"
+  },
+  "unofficial_mirror": {
+    "url": "https://huggingface.co/datasets/FrancophonIA/DaMuEL_1.0_fr",
+    "note": "French-only mirror tagged cc-by-sa-4.0; not used as a source of truth."
+  },
+  "files": [
+    {
+      "file": "damuel_1.0_wikidata.tar",
+      "kind": "knowledge_base",
+      "language": null,
+      "size_display": "2.53 GB",
+      "md5": "778ccad6e829d59938419064c9f8de4d",
+      "listing_description": "DaMuEL Wikidata knowledge base",
+      "size_bytes": 2715955200
+    },
+    {
+      "file": "damuel_1.0_af.tar",
+      "kind": "text",
+      "language": "af",
+      "size_display": "265.29 MB",
+      "md5": "fbd49f4dc61a492e7bf126d1fc06ff59",
+      "listing_description": "DaMuEL texts, af"
+    },
+    {
+      "file": "damuel_1.0_ar.tar",
+      "kind": "text",
+      "language": "ar",
+      "size_display": "2.26 GB",
+      "md5": "7883fe79b2af2806ccfda130cd9128d4",
+      "listing_description": "DaMuEL texts, ar"
+    },
+    {
+      "file": "damuel_1.0_be.tar",
+      "kind": "text",
+      "language": "be",
+      "size_display": "449.8 MB",
+      "md5": "638250103d4f8f0d88672e2c4e32e3bb",
+      "listing_description": "DaMuEL texts, be"
+    },
+    {
+      "file": "damuel_1.0_bg.tar",
+      "kind": "text",
+      "language": "bg",
+      "size_display": "845.42 MB",
+      "md5": "c476bdae642db9651b9fe57c3e8f9d3a",
+      "listing_description": "DaMuEL texts, bg"
+    },
+    {
+      "file": "damuel_1.0_ca.tar",
+      "kind": "text",
+      "language": "ca",
+      "size_display": "2.35 GB",
+      "md5": "701d28edf4c36065095ae5741da3eba1",
+      "listing_description": "DaMuEL texts, ca"
+    },
+    {
+      "file": "damuel_1.0_cs.tar",
+      "kind": "text",
+      "language": "cs",
+      "size_display": "1.84 GB",
+      "md5": "e18f11498f958ca07b4724c049af5e17",
+      "listing_description": "DaMuEL texts, cs"
+    },
+    {
+      "file": "damuel_1.0_da.tar",
+      "kind": "text",
+      "language": "da",
+      "size_display": "744.79 MB",
+      "md5": "ebb7a801bc4aa3e5ebd210fcc45c653a",
+      "listing_description": "DaMuEL texts, da"
+    },
+    {
+      "file": "damuel_1.0_de.tar",
+      "kind": "text",
+      "language": "de",
+      "size_display": "10.2 GB",
+      "md5": "a43353daa26c5547a2f63a2ee1ee6064",
+      "listing_description": "DaMuEL texts, de"
+    },
+    {
+      "file": "damuel_1.0_el.tar",
+      "kind": "text",
+      "language": "el",
+      "size_display": "1018.08 MB",
+      "md5": "a7a867043f313635a7a8feee7d3d8800",
+      "listing_description": "DaMuEL texts, el"
+    },
+    {
+      "file": "damuel_1.0_en.tar",
+      "kind": "text",
+      "language": "en",
+      "size_display": "24.5 GB",
+      "md5": "9abbef5a126d6ec8720616b4aa3a20cb",
+      "listing_description": "DaMuEL texts, en"
+    },
+    {
+      "file": "damuel_1.0_es.tar",
+      "kind": "text",
+      "language": "es",
+      "size_display": "6.99 GB",
+      "md5": "2eeadc057cc2349f1c047ff19ce386bf",
+      "listing_description": "DaMuEL texts, es"
+    },
+    {
+      "file": "damuel_1.0_et.tar",
+      "kind": "text",
+      "language": "et",
+      "size_display": "502.46 MB",
+      "md5": "9f51587e1177434d39df2f30f4e2adf0",
+      "listing_description": "DaMuEL texts, et"
+    },
+    {
+      "file": "damuel_1.0_eu.tar",
+      "kind": "text",
+      "language": "eu",
+      "size_display": "578.38 MB",
+      "md5": "83f980cbfa1a692525fa17af16197aec",
+      "listing_description": "DaMuEL texts, eu"
+    },
+    {
+      "file": "damuel_1.0_fa.tar",
+      "kind": "text",
+      "language": "fa",
+      "size_display": "1.12 GB",
+      "md5": "5124b69cd90d7ac0bd9e4acfa32277fb",
+      "listing_description": "DaMuEL texts, fa"
+    },
+    {
+      "file": "damuel_1.0_fi.tar",
+      "kind": "text",
+      "language": "fi",
+      "size_display": "1.26 GB",
+      "md5": "8e80ada7ed2820c1d2a6fb641bf3a01d",
+      "listing_description": "DaMuEL texts, fi"
+    },
+    {
+      "file": "damuel_1.0_fr.tar",
+      "kind": "text",
+      "language": "fr",
+      "size_display": "8.51 GB",
+      "md5": "d209ec23140e1289f574b131e528a3d8",
+      "listing_description": "DaMuEL texts, fr"
+    },
+    {
+      "file": "damuel_1.0_ga.tar",
+      "kind": "text",
+      "language": "ga",
+      "size_display": "164.47 MB",
+      "md5": "5cd7623e976f6a84bb9c55c51bf4eee2",
+      "listing_description": "DaMuEL texts, ga"
+    },
+    {
+      "file": "damuel_1.0_gd.tar",
+      "kind": "text",
+      "language": "gd",
+      "size_display": "23.87 MB",
+      "md5": "d883d2c2e162196630f1a2d1d9009aa3",
+      "listing_description": "DaMuEL texts, gd"
+    },
+    {
+      "file": "damuel_1.0_gl.tar",
+      "kind": "text",
+      "language": "gl",
+      "size_display": "623.74 MB",
+      "md5": "65f2630eee23c166a7cf5553f65d7759",
+      "listing_description": "DaMuEL texts, gl"
+    },
+    {
+      "file": "damuel_1.0_he.tar",
+      "kind": "text",
+      "language": "he",
+      "size_display": "1.73 GB",
+      "md5": "1b4441b80267c89cb4a7fb02a5714b8f",
+      "listing_description": "DaMuEL texts, he"
+    },
+    {
+      "file": "damuel_1.0_hi.tar",
+      "kind": "text",
+      "language": "hi",
+      "size_display": "401.61 MB",
+      "md5": "8c2f5b5a953d06b1042f5290f40ebb52",
+      "listing_description": "DaMuEL texts, hi"
+    },
+    {
+      "file": "damuel_1.0_hr.tar",
+      "kind": "text",
+      "language": "hr",
+      "size_display": "586.05 MB",
+      "md5": "07a869d3a0852e94cc3c1739c0f93314",
+      "listing_description": "DaMuEL texts, hr"
+    },
+    {
+      "file": "damuel_1.0_hu.tar",
+      "kind": "text",
+      "language": "hu",
+      "size_display": "1.53 GB",
+      "md5": "0d54d3d162ad8026d7824160d9070d4b",
+      "listing_description": "DaMuEL texts, hu"
+    },
+    {
+      "file": "damuel_1.0_hy.tar",
+      "kind": "text",
+      "language": "hy",
+      "size_display": "753.11 MB",
+      "md5": "ac9e9386ee8b82483b1c7b89fea9a20e",
+      "listing_description": "DaMuEL texts, hy"
+    },
+    {
+      "file": "damuel_1.0_id.tar",
+      "kind": "text",
+      "language": "id",
+      "size_display": "1.06 GB",
+      "md5": "682b75fbf0efecc6f5f17fbb07fe712b",
+      "listing_description": "DaMuEL texts, id"
+    },
+    {
+      "file": "damuel_1.0_it.tar",
+      "kind": "text",
+      "language": "it",
+      "size_display": "5.58 GB",
+      "md5": "cd6b963e72491cad3883d8e60f8b8df9",
+      "listing_description": "DaMuEL texts, it"
+    },
+    {
+      "file": "damuel_1.0_ja.tar",
+      "kind": "text",
+      "language": "ja",
+      "size_display": "5.57 GB",
+      "md5": "4a71380405d350168f38bb9446627a91",
+      "listing_description": "DaMuEL texts, ja"
+    },
+    {
+      "file": "damuel_1.0_ko.tar",
+      "kind": "text",
+      "language": "ko",
+      "size_display": "1021.28 MB",
+      "md5": "49cf701a18113a2f4ca81bd191b24f68",
+      "listing_description": "DaMuEL texts, ko"
+    },
+    {
+      "file": "damuel_1.0_la.tar",
+      "kind": "text",
+      "language": "la",
+      "size_display": "165.36 MB",
+      "md5": "430690b326a5d7ef86ea421457881cad",
+      "listing_description": "DaMuEL texts, la"
+    },
+    {
+      "file": "damuel_1.0_lt.tar",
+      "kind": "text",
+      "language": "lt",
+      "size_display": "401.68 MB",
+      "md5": "4ea2372c8d87caa8d6687b0d4368492f",
+      "listing_description": "DaMuEL texts, lt"
+    },
+    {
+      "file": "damuel_1.0_lv.tar",
+      "kind": "text",
+      "language": "lv",
+      "size_display": "267.64 MB",
+      "md5": "2de0a426cd6a481d6b436e4bffc49ae7",
+      "listing_description": "DaMuEL texts, lv"
+    },
+    {
+      "file": "damuel_1.0_mr.tar",
+      "kind": "text",
+      "language": "mr",
+      "size_display": "113.63 MB",
+      "md5": "b337d8d238b2dec892e5aafc1fb71ccc",
+      "listing_description": "DaMuEL texts, mr"
+    },
+    {
+      "file": "damuel_1.0_mt.tar",
+      "kind": "text",
+      "language": "mt",
+      "size_display": "26.41 MB",
+      "md5": "fc669e8def57243531f4f9c08677f85f",
+      "listing_description": "DaMuEL texts, mt"
+    },
+    {
+      "file": "damuel_1.0_nl.tar",
+      "kind": "text",
+      "language": "nl",
+      "size_display": "3.02 GB",
+      "md5": "ef908041ab0d19912627943c82fee18d",
+      "listing_description": "DaMuEL texts, nl"
+    },
+    {
+      "file": "damuel_1.0_nn.tar",
+      "kind": "text",
+      "language": "nn",
+      "size_display": "332.82 MB",
+      "md5": "771ec9602b49723eed66cdd016d0b8a3",
+      "listing_description": "DaMuEL texts, nn"
+    },
+    {
+      "file": "damuel_1.0_pl.tar",
+      "kind": "text",
+      "language": "pl",
+      "size_display": "3.23 GB",
+      "md5": "d5abdc3e6aa1ffab4c87f456c7d03c1c",
+      "listing_description": "DaMuEL texts, pl"
+    },
+    {
+      "file": "damuel_1.0_pt.tar",
+      "kind": "text",
+      "language": "pt",
+      "size_display": "2.77 GB",
+      "md5": "28bc61c0e51440310efc23cb80b301ab",
+      "listing_description": "DaMuEL texts, pt"
+    },
+    {
+      "file": "damuel_1.0_ro.tar",
+      "kind": "text",
+      "language": "ro",
+      "size_display": "976.49 MB",
+      "md5": "e3a6ee2237d31149707bf016f7fbcc4e",
+      "listing_description": "DaMuEL texts, ro"
+    },
+    {
+      "file": "damuel_1.0_ru.tar",
+      "kind": "text",
+      "language": "ru",
+      "size_display": "6.73 GB",
+      "md5": "a78aa04a97b1fee9ac73acfd2d88cdf3",
+      "listing_description": "DaMuEL texts, ru"
+    },
+    {
+      "file": "damuel_1.0_se.tar",
+      "kind": "text",
+      "language": "se",
+      "size_display": "7.91 MB",
+      "md5": "5335920f76465380a819d8bbf56ad127",
+      "listing_description": "DaMuEL texts, se"
+    },
+    {
+      "file": "damuel_1.0_sk.tar",
+      "kind": "text",
+      "language": "sk",
+      "size_display": "471.92 MB",
+      "md5": "ad3233a4c23f58e5a16f801e5ec76c41",
+      "listing_description": "DaMuEL texts, sk"
+    },
+    {
+      "file": "damuel_1.0_sl.tar",
+      "kind": "text",
+      "language": "sl",
+      "size_display": "581.05 MB",
+      "md5": "e2d73ed91db0ee32d26ae6b5d7eb5f60",
+      "listing_description": "DaMuEL texts, sl"
+    },
+    {
+      "file": "damuel_1.0_sr.tar",
+      "kind": "text",
+      "language": "sr",
+      "size_display": "1.05 GB",
+      "md5": "9a9b93414022aaf610b51196aeca0920",
+      "listing_description": "DaMuEL texts, sr"
+    },
+    {
+      "file": "damuel_1.0_sv.tar",
+      "kind": "text",
+      "language": "sv",
+      "size_display": "2.12 GB",
+      "md5": "31db45ec8619329cdc3a099ced8547ad",
+      "listing_description": "DaMuEL texts, sv"
+    },
+    {
+      "file": "damuel_1.0_ta.tar",
+      "kind": "text",
+      "language": "ta",
+      "size_display": "342.49 MB",
+      "md5": "29d931b0942382ed98c4ee3815e553d6",
+      "listing_description": "DaMuEL texts, ta"
+    },
+    {
+      "file": "damuel_1.0_te.tar",
+      "kind": "text",
+      "language": "te",
+      "size_display": "210.89 MB",
+      "md5": "53be46148d1772ea52ab7886d630978f",
+      "listing_description": "DaMuEL texts, te"
+    },
+    {
+      "file": "damuel_1.0_tr.tar",
+      "kind": "text",
+      "language": "tr",
+      "size_display": "971.5 MB",
+      "md5": "0e1f45181a1c25a3d915d3be58dce237",
+      "listing_description": "DaMuEL texts, tr"
+    },
+    {
+      "file": "damuel_1.0_ug.tar",
+      "kind": "text",
+      "language": "ug",
+      "size_display": "28.78 MB",
+      "md5": "f04b98e1c13d59a9cca0bc599629a952",
+      "listing_description": "DaMuEL texts, ug"
+    },
+    {
+      "file": "damuel_1.0_uk.tar",
+      "kind": "text",
+      "language": "uk",
+      "size_display": "3.21 GB",
+      "md5": "4db74a6119c95c25963c2715523968a7",
+      "listing_description": "DaMuEL texts, uk"
+    },
+    {
+      "file": "damuel_1.0_ur.tar",
+      "kind": "text",
+      "language": "ur",
+      "size_display": "309.22 MB",
+      "md5": "a3e0a612b6ab7fb380bab4c2d6633a1e",
+      "listing_description": "DaMuEL texts, ur"
+    },
+    {
+      "file": "damuel_1.0_vi.tar",
+      "kind": "text",
+      "language": "vi",
+      "size_display": "1.4 GB",
+      "md5": "85d7d7cf79a8081f3ed2ad306cf0962a",
+      "listing_description": "DaMuEL texts, vi"
+    },
+    {
+      "file": "damuel_1.0_wo.tar",
+      "kind": "text",
+      "language": "wo",
+      "size_display": "10.22 MB",
+      "md5": "bc04313f6d6727963ebc77d5a353b7a0",
+      "listing_description": "DaMuEL texts, wo",
+      "size_bytes": 10721280
+    },
+    {
+      "file": "damuel_1.0_zh.tar",
+      "kind": "text",
+      "language": "zh",
+      "size_display": "3.12 GB",
+      "md5": "5ec2f2540c99cd1eebc726d90e35beae",
+      "listing_description": "DaMuEL texts, zh"
+    }
+  ]
+}
