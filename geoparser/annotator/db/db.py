@@ -25,7 +25,7 @@ def get_database_location() -> Path:
 
 def get_engine() -> Engine:
     """Return the annotator database engine, creating it on first use."""
-    global _engine  # noqa: PLW0603 - lazy singleton; test fixtures patch _engine directly
+    global _engine  # noqa: PLW0603 - lazy singleton; test fixtures patch _engine directly, which functools.cache would change
 
     patched_engine = globals().get("engine")
     if patched_engine is not None:
