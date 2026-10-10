@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, TypedDict
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
@@ -91,14 +91,48 @@ class ReleaseFile(Contract):
     def file_identity(self) -> ReleaseFile:
         """Tie each archive name to exactly one kind and language."""
         if self.kind == "knowledge_base":
-            expected_file = "damuel_1.0_wikidata.tar"
-            message = "the knowledge base must be damuel_1.0_wikidata.tar"
-            if self.language is not None or self.file != expected_file:
-                raise ValueError(message)
-        elif self.language is None or self.file != f"damuel_1.0_{self.language}.tar":
-            message = "a text archive name must match its language code"
-            raise ValueError(message)
+            _require_knowledge_base_identity(self)
+        else:
+            _require_text_archive_identity(self)
         return self
+
+
+def _require_knowledge_base_identity(entry: ReleaseFile) -> None:
+    """Reject a knowledge base that has a language or another archive name."""
+    if entry.language is not None or entry.file != "damuel_1.0_wikidata.tar":
+        message = "the knowledge base must be damuel_1.0_wikidata.tar"
+        raise ValueError(message)
+
+
+def _require_text_archive_identity(entry: ReleaseFile) -> None:
+    """Reject a text archive whose name does not match its language code."""
+    if entry.language is None or entry.file != f"damuel_1.0_{entry.language}.tar":
+        message = "a text archive name must match its language code"
+        raise ValueError(message)
+
+
+def _require_unique_archives(files: list[ReleaseFile]) -> None:
+    """Reject a release that lists the same archive name more than once."""
+    names = [entry.file for entry in files]
+    if len(set(names)) != len(names):
+        message = "the release lists an archive more than once"
+        raise ValueError(message)
+
+
+def _require_one_knowledge_base(files: list[ReleaseFile]) -> None:
+    """Reject a release that lists zero or several knowledge bases."""
+    knowledge_bases = [entry for entry in files if entry.kind == "knowledge_base"]
+    if len(knowledge_bases) != 1:
+        message = "the release must list exactly one knowledge base"
+        raise ValueError(message)
+
+
+def _require_text_archive_count(files: list[ReleaseFile]) -> None:
+    """Reject a release that does not list one text archive per expected language."""
+    languages = [entry.language for entry in files if entry.kind == "text"]
+    if len(languages) != EXPECTED_TEXT_LANGUAGES:
+        message = "the release must list 53 text archives"
+        raise ValueError(message)
 
 
 class Release(Contract):
@@ -119,18 +153,9 @@ class Release(Contract):
     @model_validator(mode="after")
     def inventory_identity(self) -> Release:
         """Require one knowledge base and one text archive per language."""
-        names = [entry.file for entry in self.files]
-        if len(set(names)) != len(names):
-            message = "the release lists an archive more than once"
-            raise ValueError(message)
-        knowledge_bases = [e for e in self.files if e.kind == "knowledge_base"]
-        if len(knowledge_bases) != 1:
-            message = "the release must list exactly one knowledge base"
-            raise ValueError(message)
-        languages = [e.language for e in self.files if e.kind == "text"]
-        if len(languages) != EXPECTED_TEXT_LANGUAGES:
-            message = "the release must list 53 text archives"
-            raise ValueError(message)
+        _require_unique_archives(self.files)
+        _require_one_knowledge_base(self.files)
+        _require_text_archive_count(self.files)
         return self
 
     def text_languages(self) -> tuple[str, ...]:
@@ -166,15 +191,42 @@ def coverage(release: Release, targets: tuple[str, ...] | None = None) -> Covera
     """
     canonical = target_languages() if targets is None else targets
     available = set(release.text_languages())
+    covered, missing = _split_by_membership(canonical, available)
     return Coverage(
         canonical=tuple(canonical),
-        covered=tuple(code for code in canonical if code in available),
-        missing=tuple(code for code in canonical if code not in available),
+        covered=covered,
+        missing=missing,
         release_only=tuple(sorted(available.difference(canonical))),
     )
 
 
-def coverage_summary(release: Release) -> dict[str, object]:
+def _split_by_membership(
+    codes: tuple[str, ...], available: set[str]
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Split canonical codes into those the release has and those it lacks."""
+    covered = tuple(code for code in codes if code in available)
+    missing = tuple(code for code in codes if code not in available)
+    return covered, missing
+
+
+class CoverageSummary(TypedDict):
+    """The JSON-ready figures printed by the command line interface."""
+
+    dataset: str
+    release: str
+    retrieved_on: str
+    licence: str
+    text_archive_count: int
+    canonical_target_count: int
+    covered_count: int
+    missing_count: int
+    release_only_count: int
+    covered: list[str]
+    missing: list[str]
+    release_only: list[str]
+
+
+def coverage_summary(release: Release) -> CoverageSummary:
     """Return a JSON-ready report with counts, so no figure is typed by hand."""
     report = coverage(release)
     return {

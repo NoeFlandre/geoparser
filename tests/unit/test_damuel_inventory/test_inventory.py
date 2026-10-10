@@ -117,16 +117,26 @@ def release_payload():
     return copy.deepcopy(json.loads(RELEASE_PATH.read_text(encoding="utf-8")))
 
 
-def test_checked_in_record_validates_and_names_the_expected_archives():
+def test_checked_in_record_validates_with_fifty_four_archives():
     release = load_release()
     assert isinstance(release, Release)
     assert len(release.files) == 54
+
+
+def test_checked_in_record_names_the_wikidata_archive_as_its_only_knowledge_base():
     knowledge_bases = [
-        entry for entry in release.files if entry.kind == "knowledge_base"
+        entry for entry in load_release().files if entry.kind == "knowledge_base"
     ]
     assert [entry.file for entry in knowledge_bases] == ["damuel_1.0_wikidata.tar"]
-    assert knowledge_bases[0].size_bytes == 2_715_955_200
-    assert knowledge_bases[0].md5 == "778ccad6e829d59938419064c9f8de4d"
+
+
+def test_checked_in_knowledge_base_records_its_size_and_checksum():
+    by_name = {entry.file: entry for entry in load_release().files}
+    knowledge_base = by_name["damuel_1.0_wikidata.tar"]
+    assert (knowledge_base.size_bytes, knowledge_base.md5) == (
+        2_715_955_200,
+        "778ccad6e829d59938419064c9f8de4d",
+    )
 
 
 def test_byte_sizes_and_checksums_match_the_two_values_read_from_the_api():
@@ -145,7 +155,7 @@ def test_licence_is_recorded_with_its_verified_source_only():
     assert any("Wikipedia" in item for item in licence.not_verified)
 
 
-def test_coverage_matches_the_hand_counted_language_sets():
+def test_coverage_counts_match_the_hand_counted_language_sets():
     report = coverage(load_release())
     assert len(report.canonical) == 85
     assert (len(report.covered), len(report.missing), len(report.release_only)) == (
@@ -153,6 +163,10 @@ def test_coverage_matches_the_hand_counted_language_sets():
         37,
         5,
     )
+
+
+def test_coverage_members_match_the_hand_counted_language_sets():
+    report = coverage(load_release())
     assert set(report.covered) == COVERED
     assert set(report.missing) == MISSING
     assert set(report.release_only) == RELEASE_ONLY
@@ -193,6 +207,13 @@ def test_knowledge_base_must_use_the_wikidata_archive_name():
     kb = next(entry for entry in payload["files"] if entry["kind"] == "knowledge_base")
     kb["file"] = "damuel_1.0_en.tar"
     with pytest.raises(ValidationError):
+        Release.model_validate(payload)
+
+
+def test_release_without_a_knowledge_base_is_rejected():
+    payload = release_payload()
+    payload["files"] = [entry for entry in payload["files"] if entry["kind"] == "text"]
+    with pytest.raises(ValidationError, match="exactly one knowledge base"):
         Release.model_validate(payload)
 
 
