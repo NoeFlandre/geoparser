@@ -584,3 +584,70 @@ class TestNewsliRecordedTotals:
         benchmark_cli.require_clean_corpus(loaded)
 
         assert (loaded.expected_documents, len(loaded.documents)) == (226, 226)
+
+
+HIPE_HEADER = "TOKEN\tNE-COARSE-LIT\tA\tB\tC\tD\tE\tNEL-LIT\tF\tMISC\n"
+
+
+def _hipe_tsv(spans_per_document: list) -> str:
+    """A HIPE file whose document i holds the given number of one-word places."""
+    lines = [HIPE_HEADER]
+    for index, spans in enumerate(spans_per_document):
+        lines.append(f"# hipe2022:document_id = doc-{index:03d}\n")
+        lines.extend("Paris\tB-loc\tO\tO\tO\tO\tO\tQ90\t_\t_\n" for _ in range(spans))
+    return "".join(lines)
+
+
+def _stage_hipe(monkeypatch, folder, spans_per_document: list) -> None:
+    """Write a HIPE split into the corpus folder and resolve its one place offline."""
+    folder.mkdir(parents=True, exist_ok=True)
+    filename = corpora.CORPORA["hipe2020-de"].filename
+    (folder / filename).write_text(_hipe_tsv(spans_per_document), encoding="utf-8")
+    monkeypatch.setattr(
+        corpora, "load_coordinates", lambda qids, cache, **_: {"Q90": (48.85, 2.35)}
+    )
+
+
+# 48 documents holding 558 places, as the checked-in report recorded for hipe2020-de.
+RECORDED_HIPE_DE = [12] * 30 + [11] * 18
+
+
+class TestHipeRecordedTotals:
+    """An uncapped HIPE split is compared with the totals its report recorded."""
+
+    def test_a_truncated_uncapped_hipe_split_is_refused_before_any_model(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """47 of the 48 documents recorded for hipe2020-de are refused, not scored."""
+        _stub_run_environment(monkeypatch)
+        phase_calls = _record_phase_calls(monkeypatch)
+        _stage_hipe(monkeypatch, tmp_path / "hipe2020-de", RECORDED_HIPE_DE[:-1])
+
+        exit_code = benchmark_cli.main(
+            [
+                "--output-dir",
+                str(tmp_path),
+                "--corpus",
+                "hipe2020-de",
+                "--device",
+                "cpu",
+            ]
+        )
+
+        assert (exit_code, phase_calls) == (1, [])
+        assert "source_count" in capsys.readouterr().err
+
+    def test_the_recorded_counts_of_an_uncapped_hipe_split_pass_the_gate(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """48 documents holding 558 places are the recorded totals, so they pass."""
+        _stage_hipe(monkeypatch, tmp_path / "hipe2020-de", RECORDED_HIPE_DE)
+        loaded = corpora.load("hipe2020-de", tmp_path / "hipe2020-de")
+
+        benchmark_cli.require_clean_corpus(loaded)
+
+        assert (len(loaded.documents), corpus_gold(loaded)) == (48, 558)
+        assert (
+            "documents compared with 48; gold spans compared with 558"
+            in capsys.readouterr().out
+        )

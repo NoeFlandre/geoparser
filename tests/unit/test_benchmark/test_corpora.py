@@ -145,8 +145,9 @@ class TestExpectedTotals:
             ("newsli-fa", 10, (10, None)),
             ("newsli-fa", 1000, (71, 326)),
             ("newsli-pl", None, (186, 196)),
-            ("hipe2020-fr", None, (None, None)),
-            ("hipe2020-fr", 5, (None, None)),
+            ("hipe2020-fr", None, (43, 800)),
+            ("hipe2020-fr", 5, (5, None)),
+            ("topres19th-en", None, (110, 880)),
         ],
     )
     def test_a_full_load_holds_the_source_totals_and_a_capped_one_its_cap(

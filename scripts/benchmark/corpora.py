@@ -91,16 +91,37 @@ class LoadedCorpus:
     expected_gold: int | None = None
 
 
+# Totals per HIPE-2022 test split, as the checked-in multilingual report of the
+# 2026-09-23 run recorded them (benchmark-evidence/2026-09-23-multilingual). Each
+# entry is (documents, gold spans). Parsing the upstream files on 2026-10-10
+# with the current parser and the committed coordinate cache reproduces every
+# one of these totals, so a truncated split is refused.
+HIPE_RECORDED_TOTALS: dict[str, tuple[int, int]] = {
+    "hipe2020-de": (48, 558),
+    "hipe2020-fr": (43, 800),
+    "hipe2020-en": (38, 158),
+    "newseye-de": (8, 628),
+    "newseye-fr": (33, 665),
+    "newseye-fi": (18, 214),
+    "newseye-sv": (18, 265),
+    "topres19th-en": (110, 880),
+}
+
+
 def _hipe(dataset: str, language: str) -> CorpusSpec:
     """Return the spec of one HIPE-2022 test split."""
+    name = f"{dataset}-{language}"
+    documents, gold_spans = HIPE_RECORDED_TOTALS[name]
     return CorpusSpec(
-        name=f"{dataset}-{language}",
+        name=name,
         language=language,
         url=(
             f"{HIPE_BASE_URL}/{dataset}/{language}/"
             f"HIPE-2022-v2.1-{dataset}-test-{language}.tsv"
         ),
         kind=HIPE,
+        documents=documents,
+        gold_spans=gold_spans,
     )
 
 
@@ -146,12 +167,12 @@ def expected_totals(
     Return the document and gold totals a load of one corpus must hold.
 
     A full load holds the totals recorded for the corpus: the source's own for
-    GeoVirus, and the adapter-output totals of the checked-in NewsLi report. A
-    capped load holds its cap in documents: NewsLi keeps MAX_DOCUMENTS articles
-    per language, and ``limit`` keeps the first N. The gold total of a capped
-    load is not known in advance, so it is None and is not compared. A corpus
-    with no recorded total gives None for both, and the gate reports that it was
-    not compared.
+    GeoVirus, and the adapter-output totals of the checked-in reports for NewsLi
+    and HIPE. A capped load holds its cap in documents: NewsLi keeps
+    MAX_DOCUMENTS articles per language, and ``limit`` keeps the first N. The
+    gold total of a capped load is not known in advance, so it is None and is
+    not compared. A corpus with no recorded total gives None for both, and the
+    gate reports that it was not compared.
 
     Args:
         spec: The registered corpus
