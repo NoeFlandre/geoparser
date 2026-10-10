@@ -19,10 +19,12 @@ from scripts.spacy_native_baselines.roster import (
     SPACY_RUNTIME_BELOW,
     SPACY_RUNTIME_MIN,
     NativePipeline,
+    configuration_id,
 )
 
 KEPT_COMPONENTS = frozenset({"ner", "tok2vec"})
 SPACY_PACKAGE = "spacy"
+_REQUIREMENT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 _VERSION = re.compile(
     r"(?P<release>\d+\.\d+(?:\.\d+)?)"
     r"(?P<pre>(?:a|b|rc)\d+)?"
@@ -169,3 +171,41 @@ def load_pipeline(
     check_label_scheme(nlp, pipeline)
     _keep_only_ner(nlp)
     return nlp
+
+
+def requirement_name(requirement: str) -> str:
+    """Return the distribution name at the start of a requirement specifier."""
+    match = _REQUIREMENT_NAME.match(requirement)
+    if match is None:
+        message = f"Cannot read a distribution name from {requirement!r}."
+        raise ValueError(message)
+    return match.group(0)
+
+
+def resolved_versions(
+    pipeline: NativePipeline,
+    *,
+    version_lookup: Callable[[str], str | None] = installed_version,
+) -> dict[str, str | None]:
+    """Return the installed version of spaCy, the pipeline and each tokenizer."""
+    names = [SPACY_PACKAGE, pipeline.package]
+    names.extend(
+        requirement_name(requirement) for requirement in pipeline.extra_requirements
+    )
+    return {name: version_lookup(name) for name in names}
+
+
+def run_identity(
+    pipeline: NativePipeline,
+    *,
+    version_lookup: Callable[[str], str | None] = installed_version,
+) -> str:
+    """Return the configuration identity extended with the installed releases.
+
+    The roster's tokenizer specifiers are open-ended, so clean installs at
+    different times can resolve to different releases, and spaCy patch releases
+    can change predictions. An identity built from the specifiers alone cannot
+    tell those environments apart, so the resolved versions are part of it.
+    """
+    resolved = resolved_versions(pipeline, version_lookup=version_lookup)
+    return configuration_id(pipeline, extra={"resolved": resolved})

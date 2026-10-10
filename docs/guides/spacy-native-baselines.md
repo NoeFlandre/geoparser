@@ -125,6 +125,12 @@ equal the roster's label set exactly, or `LabelSchemeError` is raised. Only the
 - `configuration_id(pipeline)` returns a deterministic 16-hex identity from the
   pinned package, wheel, wheel URL, SHA-256 digest, tokenizer requirements,
   label set and label harmonization.
+- `run_identity(pipeline)` extends that identity with the installed versions of
+  spaCy, the pipeline package and each tokenizer requirement. The tokenizer
+  specifiers (`sudachipy`, `sudachidict_core`, `natto-py`) are open-ended and no
+  reviewed release is pinned, so clean installs at different times can tokenize
+  differently. Use `run_identity` for result records: two runs are comparable
+  only when their run identities match.
 
 ## Verification status and gaps
 

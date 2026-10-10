@@ -14,6 +14,9 @@ from scripts.spacy_native_baselines.loading import (
     check_spacy_runtime,
     installed_version,
     load_pipeline,
+    requirement_name,
+    resolved_versions,
+    run_identity,
 )
 from scripts.spacy_native_baselines.roster import load_roster
 
@@ -154,3 +157,56 @@ def test_loaded_pipeline_keeps_only_ner_and_its_tok2vec_listener(german):
 
     assert "tagger" not in loaded.pipe_names
     assert "ner" in loaded.pipe_names
+
+
+@pytest.mark.parametrize(
+    ("requirement", "name"),
+    [
+        ("sudachipy!=0.6.1,>=0.5.2", "sudachipy"),
+        ("sudachidict_core>=20211220", "sudachidict_core"),
+        ("natto-py>=0.9.0", "natto-py"),
+        ("spacy", "spacy"),
+    ],
+)
+def test_requirement_name_is_the_distribution_before_its_specifier(requirement, name):
+    assert requirement_name(requirement) == name
+
+
+def test_requirement_without_a_distribution_name_is_refused():
+    with pytest.raises(ValueError, match="distribution name"):
+        requirement_name("!>=1.0")
+
+
+def test_resolved_versions_name_spacy_the_pipeline_and_each_tokenizer():
+    japanese = load_roster().pipelines["ja"]
+
+    versions = resolved_versions(japanese, version_lookup=lambda name: "1.0")
+
+    assert set(versions) == {
+        "spacy",
+        "ja_core_news_sm",
+        "sudachipy",
+        "sudachidict_core",
+    }
+
+
+def test_run_identity_changes_with_the_installed_tokenizer_release():
+    japanese = load_roster().pipelines["ja"]
+    installed = {
+        "spacy": "3.8.16",
+        "ja_core_news_sm": "3.8.0",
+        "sudachipy": "0.6.9",
+        "sudachidict_core": "20250129",
+    }
+
+    base = run_identity(japanese, version_lookup=installed.get)
+
+    assert run_identity(japanese, version_lookup=installed.get) == base
+    assert (
+        run_identity(japanese, version_lookup=dict(installed, sudachipy="0.7.0").get)
+        != base
+    )
+    assert (
+        run_identity(japanese, version_lookup=dict(installed, spacy="3.8.0").get)
+        != base
+    )
