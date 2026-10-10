@@ -521,3 +521,66 @@ class TestSourceTotalsGate:
         assert phase_calls == []
         assert not (tmp_path / "geovirus" / "benchmark-report.md").exists()
         assert "source_count" in capsys.readouterr().err
+
+
+def _newsli_articles(articles: int, gold_spans: int) -> dict:
+    """Articles with unique names whose gold spans total `gold_spans`.
+
+    The first `gold_spans - articles` hold two toponyms and the rest hold one.
+    """
+    two_span = gold_spans - articles
+    documents = {}
+    for index in range(articles):
+        first, second = f"Alfa{index}", f"Beta{index}"
+        if index < two_span:
+            text = f"{first} {second}"
+            spans = [
+                (0, len(first), first, 45.0, 25.0),
+                (len(first) + 1, len(text), second, 45.0, 25.0),
+            ]
+        else:
+            text, spans = first, [(0, len(first), first, 45.0, 25.0)]
+        documents[f"ro-{index:04d}"] = (text, spans)
+    return documents
+
+
+def _serve_newsli_release(monkeypatch, tmp_path, documents: dict) -> None:
+    """Make the NewsLi loader read a release written from the given articles."""
+    from tests.unit.test_benchmark.test_newsli import write_release
+
+    release = write_release(tmp_path, language="ro", documents=documents)
+    monkeypatch.setattr(
+        corpora.corpus, "download_corpus", lambda cache_path, *, url: release
+    )
+
+
+class TestNewsliRecordedTotals:
+    """An uncapped NewsLi load is compared with the counts its report recorded."""
+
+    def test_an_uncapped_run_with_the_recorded_counts_passes_the_gate(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """226 articles holding 385 gold toponyms are the recorded Romanian totals."""
+        _serve_newsli_release(monkeypatch, tmp_path, _newsli_articles(226, 385))
+        loaded = corpora.load("newsli-ro", tmp_path / "newsli-ro")
+
+        benchmark_cli.require_clean_corpus(loaded)
+
+        assert (len(loaded.documents), corpus_gold(loaded)) == (226, 385)
+        assert (
+            "documents compared with 226; gold spans compared with 385"
+            in capsys.readouterr().out
+        )
+
+    def test_the_raw_text_file_count_is_not_the_expected_total(
+        self, monkeypatch, tmp_path
+    ):
+        """241 text files hold 226 articles with gold; 241 is never the expected count."""
+        documents = _newsli_articles(226, 385)
+        documents.update({f"ro-x{index:04d}": ("Sin oro.", []) for index in range(15)})
+        _serve_newsli_release(monkeypatch, tmp_path, documents)
+        loaded = corpora.load("newsli-ro", tmp_path / "newsli-ro")
+
+        benchmark_cli.require_clean_corpus(loaded)
+
+        assert (loaded.expected_documents, len(loaded.documents)) == (226, 226)

@@ -98,7 +98,7 @@ The two UniTopRank statements conflict. `docs/guides/benchmark.md` and `scripts/
 
 ## Checks available now
 
-`scripts/benchmark/corpus_checks.py` checks any loaded corpus offline. It reports offset and surface alignment, coordinate ranges and finiteness, duplicate and overlapping spans, documents without gold, and totals that differ from the published counts. It reports problems and does not repair them. Region geometry is not checked, because the gold has no polygons.
+`scripts/benchmark/corpus_checks.py` checks any loaded corpus offline. It reports offset and surface alignment, coordinate ranges and finiteness, duplicate and overlapping spans, documents without gold, and totals that differ from the recorded counts. It reports problems and does not repair them. Region geometry is not checked, because the gold has no polygons.
 
 ## Not verified
 

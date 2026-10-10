@@ -141,9 +141,10 @@ class TestExpectedTotals:
             ("geovirus", 9, (9, None)),
             ("newsli-de", None, (500, None)),
             ("newsli-de", 40, (40, None)),
-            ("newsli-fa", None, (85, None)),
+            ("newsli-fa", None, (71, 326)),
             ("newsli-fa", 10, (10, None)),
-            ("newsli-fa", 1000, (85, None)),
+            ("newsli-fa", 1000, (71, 326)),
+            ("newsli-pl", None, (186, 196)),
             ("hipe2020-fr", None, (None, None)),
             ("hipe2020-fr", 5, (None, None)),
         ],
@@ -165,4 +166,4 @@ class TestExpectedTotals:
 
         loaded = corpora.load("newsli-ro", tmp_path / "newsli-ro")
 
-        assert (loaded.expected_documents, loaded.expected_gold) == (241, None)
+        assert (loaded.expected_documents, loaded.expected_gold) == (226, 385)

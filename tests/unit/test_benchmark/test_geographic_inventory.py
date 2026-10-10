@@ -15,6 +15,9 @@ import pytest
 from scripts.benchmark import corpora
 
 SNAPSHOT = Path(corpora.__file__).with_name("data") / "geographic-corpora-snapshot.json"
+NEWSLI_EVIDENCE = (
+    Path(__file__).resolve().parents[3] / "benchmark-evidence" / "2026-09-23-newsli"
+)
 GUIDE = (
     Path(__file__).resolve().parents[3]
     / "docs"
@@ -183,14 +186,27 @@ class TestNewsliAgreement:
             assert row["status"] == "registered"
             assert row["registered_as"] == f"newsli-{language}"
 
-    def test_the_published_newsli_totals_are_the_folder_text_file_counts(self, folders):
-        """The document totals the gate checks NewsLi against are the inventoried counts."""
-        counted = {
-            language: folders[f"{language}_geotoponyms"]["text_files"]
-            for language in NEWSLI_LANGUAGES
-        }
+    def test_the_newsli_totals_are_the_checked_in_report_counts(self):
+        """Each language's documents, and gold when uncapped, are the report's own counts."""
+        for language in NEWSLI_LANGUAGES:
+            report = json.loads(
+                (
+                    NEWSLI_EVIDENCE / f"newsli-{language}" / "benchmark-report.json"
+                ).read_text(encoding="utf-8")
+            )
+            documents, gold = corpora.NEWSLI_RECORDED_TOTALS[language]
+            assert documents == report["documents"], language
+            uncapped = report["documents"] < corpora.MAX_DOCUMENTS
+            assert gold == (report["gold_toponyms"] if uncapped else None), language
 
-        assert counted == corpora.NEWSLI_TEXT_FILES
+    def test_the_raw_text_file_count_is_not_the_newsli_expected_total(self, folders):
+        """Text files outnumber the articles the adapter keeps, so they are not the total."""
+        for language in ("fa", "pl", "ro", "uk"):
+            text_files = folders[f"{language}_geotoponyms"]["text_files"]
+            documents, _gold = corpora.NEWSLI_RECORDED_TOTALS[language]
+
+            assert corpora.CORPORA[f"newsli-{language}"].documents == documents
+            assert documents < text_files, language
 
 
 class TestToporesolve:

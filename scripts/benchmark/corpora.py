@@ -35,25 +35,27 @@ NEWSLI = "newsli"
 # serves every language, so it is cached once beside the corpus folders.
 NEWSLI_URL = "https://ndownloader.figshare.com/files/59465342"
 NEWSLI_RELEASE = "unitoprank-data.zip"
-# Text files per NewsLi language in the release, as the inventory snapshot
-# records them. Each text file is one article, so a full load is expected to
-# hold one document per file. An article that yields no aligned gold span is
-# then reported as a source-count problem. The release has not been read for
-# this check, so the per-language counts of aligned articles are unverified.
-NEWSLI_TEXT_FILES = {
-    "ar": 757,
-    "de": 13174,
-    "es": 8054,
-    "fa": 85,
-    "ja": 2868,
-    "pl": 321,
-    "ro": 241,
-    "sr": 13950,
-    "ta": 873,
-    "tr": 805,
-    "uk": 282,
+# Totals per NewsLi language, as the checked-in report of the 2026-09-23 run
+# recorded them at commit bbb8a7b (benchmark-evidence/2026-09-23-newsli). A
+# document is an article the adapter keeps: its text file exists and its gold
+# has an aligned span. The raw text-file count is not used, because it also
+# counts the articles the adapter drops. Each entry is (documents, gold spans).
+# A language at the 500-article cap has no gold total for a full load, since
+# its recorded gold belongs to the capped subset, so the gold total is None.
+NEWSLI_RECORDED_TOTALS: dict[str, tuple[int, int | None]] = {
+    "ar": (500, None),
+    "de": (500, None),
+    "es": (500, None),
+    "fa": (71, 326),
+    "ja": (500, None),
+    "pl": (186, 196),
+    "ro": (226, 385),
+    "sr": (500, None),
+    "ta": (500, None),
+    "tr": (500, None),
+    "uk": (164, 258),
 }
-NEWSLI_LANGUAGES = tuple(NEWSLI_TEXT_FILES)
+NEWSLI_LANGUAGES = tuple(NEWSLI_RECORDED_TOTALS)
 # GeoVirus holds 229 articles and 2167 gold toponyms. Both figures are recorded
 # in this repository, and a parse of the upstream file matched them on 2026-10-10.
 GEOVIRUS_DOCUMENTS = 229
@@ -127,7 +129,8 @@ CORPORA: dict[str, CorpusSpec] = {
                 language,
                 NEWSLI_URL,
                 NEWSLI,
-                documents=NEWSLI_TEXT_FILES[language],
+                documents=NEWSLI_RECORDED_TOTALS[language][0],
+                gold_spans=NEWSLI_RECORDED_TOTALS[language][1],
             )
             for language in NEWSLI_LANGUAGES
         ),
@@ -142,11 +145,13 @@ def expected_totals(
     """
     Return the document and gold totals a load of one corpus must hold.
 
-    A full load holds what the source publishes. A capped load holds its cap in
-    documents: NewsLi keeps MAX_DOCUMENTS articles per language, and ``limit``
-    keeps the first N. The gold total of a capped load is not known in advance,
-    so it is None and is not compared. A corpus whose source publishes no total
-    gives None for both, and the gate reports that it was not compared.
+    A full load holds the totals recorded for the corpus: the source's own for
+    GeoVirus, and the adapter-output totals of the checked-in NewsLi report. A
+    capped load holds its cap in documents: NewsLi keeps MAX_DOCUMENTS articles
+    per language, and ``limit`` keeps the first N. The gold total of a capped
+    load is not known in advance, so it is None and is not compared. A corpus
+    with no recorded total gives None for both, and the gate reports that it was
+    not compared.
 
     Args:
         spec: The registered corpus
