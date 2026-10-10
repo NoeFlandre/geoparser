@@ -37,6 +37,13 @@ def test_a_file_matching_its_pinned_size_and_digest_is_accepted(tmp_path):
     check_local_file(path, "en", "test", manifest)
 
 
+def test_the_checked_bytes_are_the_ones_returned_for_parsing(tmp_path):
+    path = tmp_path / "en_test.conll"
+    path.write_bytes(HELLO)
+    manifest = _manifest_with_en_test(len(HELLO), "git-blob-sha1", HELLO_GIT_BLOB)
+    assert check_local_file(path, "en", "test", manifest) == HELLO
+
+
 def test_a_file_of_another_size_is_refused_before_it_is_parsed(tmp_path):
     path = tmp_path / "en_test.conll"
     path.write_bytes(HELLO)

@@ -19,12 +19,14 @@ from scripts.multiconer_benchmark.manifest import (
 )
 
 
-def _parse_local(path: Path, language: str | None):
-    """Read one UTF-8 file, expecting the given dataset language."""
+def _parse_local(data: bytes, language: str | None):
+    """Parse verified UTF-8 bytes, expecting the given dataset language."""
     if language not in intersection_languages(load_manifest()):
         message = f"{language!r} is not a dataset language in the intersection"
         raise ValueError(message)
-    return parse_conll(path.read_text(encoding="utf-8"), expected_domain=language)
+    # Match the universal newlines that reading the file as text applied before.
+    text = data.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    return parse_conll(text, expected_domain=language)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -73,8 +75,8 @@ def _print_manifest(path: Path) -> int:
 def _validate_file(path: Path, language: str, split: str) -> int:
     """Check a file against its pinned split, then print its record counts."""
     try:
-        check_local_file(path, language, split, load_manifest())
-        parsed = _parse_local(path, language)
+        data = check_local_file(path, language, split, load_manifest())
+        parsed = _parse_local(data, language)
     except (OSError, UnicodeError, ValueError) as error:
         print(f"Invalid MultiCoNER file: {error}", file=sys.stderr)
         return 2

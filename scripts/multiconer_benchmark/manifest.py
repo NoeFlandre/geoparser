@@ -153,8 +153,11 @@ def inventory_report(manifest: dict[str, Any]) -> dict[str, Any]:
 
 def check_local_file(
     path: Path, language: str, split: str, manifest: dict[str, Any]
-) -> None:
-    """Refuse a local file whose size or digest differs from its pinned split."""
+) -> bytes:
+    """Refuse a local file whose size or digest differs from its pinned split.
+
+    Returns the verified bytes, so the caller parses the same snapshot it checked.
+    """
     if language not in manifest["languages"]:
         message = f"{language!r} has no pinned split in this manifest"
         raise ValueError(message)
@@ -169,6 +172,7 @@ def check_local_file(
     if _local_digest(data, entry["digest_algorithm"]) != entry["digest"]:
         message = f"{path.name} does not match the pinned digest for {language} {split}"
         raise ValueError(message)
+    return data
 
 
 def _local_digest(data: bytes, algorithm: str) -> str:

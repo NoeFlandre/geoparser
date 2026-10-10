@@ -35,9 +35,10 @@ def test_dry_run_prints_the_pinned_inventory_without_network(capsys):
 
 @pytest.fixture
 def parse_only(monkeypatch):
-    """Parse-level tests use short fixture text, so they skip the pinned check."""
+    """Parse-level tests use short fixture text, so they skip the pinned size and digest."""
     monkeypatch.setattr(
-        "scripts.multiconer_benchmark.__main__.check_local_file", lambda *args: None
+        "scripts.multiconer_benchmark.__main__.check_local_file",
+        lambda path, *args: path.read_bytes(),
     )
 
 
