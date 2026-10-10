@@ -174,7 +174,7 @@ class SpacyRecognizer(Recognizer):
 
         return results
 
-    def fit(  # noqa: PLR0913, PLR0917 - public API; make keyword-only in the next major release
+    def fit(  # noqa: PLR0913, PLR0917 - public API; keyword-only would break callers before the next major release
         self,
         texts: list[str],
         references: list[list[tuple[int, int]]],
