@@ -235,14 +235,18 @@ def configuration_id(
     """Return a deterministic 16-hex identity for one pinned configuration.
 
     The identity covers the language, the exact pinned package and wheel, the
-    NER label scheme and the explicit label harmonization. Key order and
-    dictionary insertion order do not change it.
+    wheel URL and SHA-256 digest, the tokenizer requirements, the NER label
+    scheme and the explicit label harmonization. Key order and dictionary
+    insertion order do not change it.
     """
     payload = {
         "language": pipeline.language,
         "package": pipeline.package,
         "version": pipeline.version,
         "wheel": pipeline.wheel,
+        "wheel_url": pipeline.wheel_url,
+        "sha256": pipeline.sha256,
+        "extra_requirements": list(pipeline.extra_requirements),
         "release_tag": pipeline.release_tag,
         "spacy_runtime": SPACY_RUNTIME,
         "ner_labels": sorted(pipeline.ner_labels),

@@ -160,6 +160,24 @@ def test_configuration_id_is_sensitive_to_its_inputs(roster):
     assert configuration_id(pipeline, extra={"role": "control"}) != base
 
 
+def test_configuration_id_covers_the_artifact_and_its_requirements(roster):
+    pipeline = roster.pipelines["de"]
+    base = configuration_id(pipeline)
+
+    assert configuration_id(dataclasses.replace(pipeline, sha256="0" * 64)) != base
+    assert (
+        configuration_id(
+            dataclasses.replace(pipeline, wheel_url=pipeline.wheel_url + "?x")
+        )
+        != base
+    )
+    extra = (*pipeline.extra_requirements, "unrecorded-requirement")
+    assert (
+        configuration_id(dataclasses.replace(pipeline, extra_requirements=extra))
+        != base
+    )
+
+
 def test_configuration_id_is_a_short_hex_string(roster):
     identifier = configuration_id(roster.pipelines["de"])
 

@@ -121,7 +121,8 @@ equal the roster's label set exactly, or `LabelSchemeError` is raised. Only the
   - `unsupported`: counts of examples in languages with no native pipeline. No
     model predicts them.
 - `configuration_id(pipeline)` returns a deterministic 16-hex identity from the
-  pinned package, wheel, label set and label harmonization.
+  pinned package, wheel, wheel URL, SHA-256 digest, tokenizer requirements,
+  label set and label harmonization.
 
 ## Verification status and gaps
 
