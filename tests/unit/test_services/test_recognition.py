@@ -537,3 +537,74 @@ class TestRecognitionBatchStatusQueries:
 
         assert remaining == [documents[0]]
         lookup.assert_called_once_with(session, ["d1", "d2"], "rec")
+
+
+@pytest.mark.unit
+class TestRecognitionRowShapes:
+    """The rows a recognition batch stages carry exactly the model's columns."""
+
+    def test_reference_row_has_the_reference_columns_and_an_id(
+        self, mock_spacy_recognizer
+    ):
+        """A reference row is a plain mapping of its columns plus a new UUID."""
+        # Arrange
+        document = SimpleNamespace(id=uuid.uuid4(), text="Paris Berlin")
+        service = RecognitionService(mock_spacy_recognizer)
+
+        # Act
+        row = service._create_reference_record(cast(Any, document), 0, 5, "rec")
+
+        # Assert
+        assert isinstance(row, dict)
+        assert set(row) == {
+            "id",
+            "start",
+            "end",
+            "text",
+            "document_id",
+            "recognizer_id",
+        }
+        assert isinstance(row["id"], uuid.UUID)
+        assert (row["start"], row["end"], row["text"]) == (0, 5, "Paris")
+        assert row["document_id"] == document.id
+        assert row["recognizer_id"] == "rec"
+
+    def test_recognition_row_has_the_recognition_columns_and_an_id(
+        self, mock_spacy_recognizer
+    ):
+        """A processing marker is a plain mapping of its columns plus a new UUID."""
+        # Arrange
+        service = RecognitionService(mock_spacy_recognizer)
+        document_id = uuid.uuid4()
+
+        # Act
+        row = service._create_recognition_record(document_id, "rec")
+
+        # Assert
+        assert isinstance(row, dict)
+        assert set(row) == {"id", "document_id", "recognizer_id"}
+        assert isinstance(row["id"], uuid.UUID)
+        assert row["document_id"] == document_id
+        assert row["recognizer_id"] == "rec"
+
+    def test_each_document_yields_one_reference_row_per_span_and_one_marker(
+        self, mock_spacy_recognizer
+    ):
+        """Every predicted span gets a row, and the document gets its marker."""
+        # Arrange
+        document = SimpleNamespace(id=uuid.uuid4(), text="Paris Berlin")
+        service = RecognitionService(mock_spacy_recognizer)
+
+        # Act
+        reference_rows, marker = service._document_records(
+            cast(Any, document), [(0, 5), (6, 12)], "rec"
+        )
+
+        # Assert
+        assert [row["text"] for row in reference_rows if row is not None] == [
+            "Paris",
+            "Berlin",
+        ]
+        assert all(isinstance(row, dict) for row in reference_rows)
+        assert isinstance(marker, dict)
+        assert marker["document_id"] == document.id

@@ -61,6 +61,13 @@ class TestCombinedScores:
 
         assert scores[0] > scores[1]
 
+    def test_a_missing_population_adds_no_boost(self):
+        """An unknown population contributes nothing; a known one still counts."""
+        scores = combined_scores([0.5, 0.4], [None, 1_000_000], 0.1)
+
+        assert scores[0] == 0.5
+        assert scores[1] > 0.4
+
 
 @pytest.mark.unit
 class TestInflectionVariants:

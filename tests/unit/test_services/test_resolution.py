@@ -790,3 +790,68 @@ class TestResolutionBatchStatusQueries:
         assert boundaries == [[(0, 1)]]
         assert remaining == [[references[0]]]
         lookup.assert_called_once_with(session, ["r1", "r2"], "res")
+
+
+@pytest.mark.unit
+class TestResolutionRowShapes:
+    """The rows a resolution batch stages carry exactly the model's columns."""
+
+    def test_referent_row_has_the_referent_columns_and_an_id(self):
+        """A referent row is a plain mapping of its columns plus a new UUID."""
+        # Arrange
+        service = ResolutionService(Mock())
+        reference_id = uuid.uuid4()
+
+        # Act
+        with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
+            gazetteer.return_value.find.return_value = SimpleNamespace(identifier="42")
+            row = service._create_referent_record(reference_id, "geonames", "42", "res")
+
+        # Assert
+        assert isinstance(row, dict)
+        assert set(row) == {
+            "id",
+            "reference_id",
+            "gazetteer_name",
+            "feature_identifier",
+            "resolver_id",
+        }
+        assert isinstance(row["id"], uuid.UUID)
+        assert row["reference_id"] == reference_id
+        assert (row["gazetteer_name"], row["feature_identifier"]) == ("geonames", "42")
+        assert row["resolver_id"] == "res"
+
+    def test_resolution_row_has_the_resolution_columns_and_an_id(self):
+        """A processing marker is a plain mapping of its columns plus a new UUID."""
+        # Arrange
+        service = ResolutionService(Mock())
+        reference_id = uuid.uuid4()
+
+        # Act
+        row = service._create_resolution_record(reference_id, "res")
+
+        # Assert
+        assert isinstance(row, dict)
+        assert set(row) == {"id", "reference_id", "resolver_id"}
+        assert isinstance(row["id"], uuid.UUID)
+        assert row["reference_id"] == reference_id
+        assert row["resolver_id"] == "res"
+
+    def test_each_resolved_reference_yields_a_referent_and_a_marker(self):
+        """Both records are always built for a resolved reference, never omitted."""
+        # Arrange
+        service = ResolutionService(Mock())
+        reference = SimpleNamespace(id=uuid.uuid4())
+
+        # Act
+        with patch("geoparser.services.resolution.Gazetteer") as gazetteer:
+            gazetteer.return_value.find.return_value = SimpleNamespace(identifier="42")
+            referent_row, resolution_row = service._reference_records(
+                cast(Any, reference), ("geonames", "42"), "res"
+            )
+
+        # Assert
+        assert isinstance(referent_row, dict)
+        assert isinstance(resolution_row, dict)
+        assert referent_row["reference_id"] == reference.id
+        assert resolution_row["reference_id"] == reference.id
