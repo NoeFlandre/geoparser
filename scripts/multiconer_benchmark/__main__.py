@@ -65,7 +65,7 @@ def _print_manifest(path: Path) -> int:
     """Print the inventory for a pinned manifest, or fail with the reason."""
     try:
         manifest = load_manifest(path)
-    except (OSError, UnicodeError, ValueError, KeyError) as error:
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError) as error:
         print(f"Invalid MultiCoNER manifest: {error}", file=sys.stderr)
         return 2
     print(json.dumps(inventory_report(manifest), indent=2, ensure_ascii=False))

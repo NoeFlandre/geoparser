@@ -96,6 +96,14 @@ def test_a_file_that_differs_from_the_pinned_split_is_refused(tmp_path, capsys):
     assert "pinned en test file" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("text", ["[]", '"text"', "{}"])
+def test_a_manifest_of_the_wrong_shape_is_a_validation_error(tmp_path, capsys, text):
+    path = tmp_path / "bad.json"
+    path.write_text(text, encoding="utf-8")
+    assert main(["--manifest", str(path)]) == 2
+    assert "Invalid MultiCoNER manifest" in capsys.readouterr().err
+
+
 def test_validation_needs_both_the_language_and_the_split(tmp_path):
     path = tmp_path / "en_test.conll"
     path.write_text("", encoding="utf-8")
