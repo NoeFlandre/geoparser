@@ -198,25 +198,33 @@ def test_a_pinned_module_already_loaded_from_elsewhere_is_refused(
     monkeypatch.setattr(pins, "verify_checkout", lambda _path: [])
     with pytest.raises(
         UpstreamMismatchError,
-        match=r"thread_weight_rank_algorithm_3_beam is imported from",
+        match=r"thread_weight_rank_algorithm_3_beam is already imported from",
     ):
         load_rank_toponyms(checkout)
     assert not marker.exists()
     assert "unitorank" not in sys.modules
 
 
-def test_a_pinned_module_already_loaded_from_the_checkout_is_accepted(
+def test_a_pinned_module_already_loaded_from_the_checkout_is_refused(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clean_upstream_modules
 ):
+    """A cached copy from the checkout may predate an in-place update, so it is refused."""
     checkout = _fake_checkout(tmp_path / "verified")
+    marker = tmp_path / "verified-code-ran"
+    (checkout / "unitorank" / "__init__.py").write_text(
+        f"from pathlib import Path\nPath({str(marker)!r}).write_text('ran')\n"
+    )
     cached = t.cast(t.Any, types.ModuleType("thread_weight_rank_algorithm_3_beam"))
     cached.__file__ = str(checkout.resolve() / "thread_weight_rank_algorithm_3_beam.py")
     monkeypatch.setitem(sys.modules, "thread_weight_rank_algorithm_3_beam", cached)
     monkeypatch.setattr(pins, "verify_checkout", lambda _path: [])
-    rank_toponyms, _ = load_rank_toponyms(checkout)
-    assert (
-        rank_toponyms(text="", toponyms=[], candidates_by_toponym={}, config=None) == {}
-    )
+    with pytest.raises(
+        UpstreamMismatchError,
+        match=r"thread_weight_rank_algorithm_3_beam is already imported from",
+    ):
+        load_rank_toponyms(checkout)
+    assert not marker.exists()
+    assert "unitorank" not in sys.modules
 
 
 def test_the_provided_module_names_cover_the_import_chain():
