@@ -122,6 +122,13 @@ def test_peak_rss_is_converted_to_bytes_on_macos_and_kibibytes_elsewhere(monkeyp
     assert peak_rss_bytes() == 2048 * 1024
 
 
+def test_peak_rss_is_refused_on_windows_where_it_is_not_measured(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+
+    with pytest.raises(NotImplementedError, match="not measured on Windows"):
+        peak_rss_bytes()
+
+
 def test_the_documented_example_plan_is_valid():
     root = Path(__file__).resolve().parents[3]
     example = root / "docs" / "examples" / "embedding-resolution-plan.json"

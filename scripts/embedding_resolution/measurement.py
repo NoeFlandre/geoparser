@@ -30,9 +30,18 @@ def peak_rss_bytes() -> int:
     normalized here. The benchmark protocol rejects a zero value because a zero
     would read as a measurement rather than as an unavailable one.
 
+    Windows has no ``resource`` module, and peak memory is not read there, so the
+    call refuses with a clear message instead of failing on the import.
+
     Returns:
         The peak resident set size in bytes
+
+    Raises:
+        NotImplementedError: On Windows, where peak memory is not measured
     """
+    if sys.platform == "win32":
+        msg = "peak resident set size is not measured on Windows"
+        raise NotImplementedError(msg)
     import resource
 
     peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
