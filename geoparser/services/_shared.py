@@ -1,7 +1,7 @@
 """Helpers shared by the recognition and resolution services."""
 
-from collections.abc import Callable
-from typing import Any, Protocol
+from collections.abc import Callable, Mapping, Sequence
+from typing import Protocol
 
 from sqlalchemy import insert
 from sqlmodel import Session, SQLModel
@@ -61,7 +61,7 @@ def require_fit(module: _NamedModule, kind: str) -> Callable[..., None]:
 
 
 def insert_rows(
-    session: Session, model: type[SQLModel], rows: list[dict[str, Any]]
+    session: Session, model: type[SQLModel], rows: Sequence[Mapping[str, object]]
 ) -> None:
     """Insert a batch of service records when it contains rows."""
     if rows:

@@ -14,6 +14,11 @@ This file records all notable changes to GeoParser. The project follows
   the shared protocol contract, and reports every invalid record. It runs no
   model and downloads no data. Clean and noisy breakdowns are not supported by
   the release.
+- Add offline contracts for comparing Qwen3-Reranker-0.6B and
+  jina-reranker-v3.5 on identical frozen candidate lists. They pin both
+  checkpoints and gate the custom code of the Jina checkpoint behind its
+  reviewed digest. They report gain, regressions, timing and memory against a
+  no-reranker baseline. They load no model and run no inference.
 
 ### Fixed
 

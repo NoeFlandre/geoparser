@@ -190,9 +190,11 @@ def _score_pipeline(
                 loaded.documents,
                 state,
                 checkpoint_path,
-                device=run.device,
-                min_similarity=arguments.min_similarity,
-                chunk_size=arguments.chunk_size,
+                runner.PhaseSettings(
+                    device=run.device,
+                    min_similarity=arguments.min_similarity,
+                    chunk_size=arguments.chunk_size,
+                ),
             )
         )
     return runner.score(
