@@ -9,6 +9,8 @@ beside the unit tests of the same totals.
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts.benchmark import corpora
 
 EVIDENCE = Path(__file__).resolve().parents[2] / "benchmark-evidence"
@@ -32,10 +34,19 @@ def test_the_newsli_totals_are_the_checked_in_report_counts():
         assert gold == (report["gold_toponyms"] if uncapped else None), language
 
 
-def test_every_hipe_split_carries_its_recorded_report_counts():
-    """Each registered HIPE split has the documents and gold its report recorded."""
-    hipe = {name for name, spec in corpora.CORPORA.items() if spec.kind == corpora.HIPE}
-    assert set(corpora.HIPE_RECORDED_TOTALS) == hipe
-    for name, (documents, gold) in corpora.HIPE_RECORDED_TOTALS.items():
-        report = _report(MULTILINGUAL_EVIDENCE, name)
-        assert (documents, gold) == (report["documents"], report["gold_toponyms"]), name
+def _registered_hipe_splits() -> set:
+    """The names of every corpus the registry declares as a HIPE split."""
+    return {name for name, spec in corpora.CORPORA.items() if spec.kind == corpora.HIPE}
+
+
+def test_every_registered_hipe_split_has_recorded_totals():
+    """No HIPE split is registered without the totals its report recorded."""
+    assert set(corpora.HIPE_RECORDED_TOTALS) == _registered_hipe_splits()
+
+
+@pytest.mark.parametrize("name", sorted(corpora.HIPE_RECORDED_TOTALS))
+def test_a_hipe_split_carries_its_recorded_report_counts(name):
+    """The split's documents and gold are the counts its report recorded."""
+    documents, gold = corpora.HIPE_RECORDED_TOTALS[name]
+    report = _report(MULTILINGUAL_EVIDENCE, name)
+    assert (documents, gold) == (report["documents"], report["gold_toponyms"])
