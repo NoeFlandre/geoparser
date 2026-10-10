@@ -102,7 +102,7 @@ class EmbeddingAdapter:
 
     def _checked(self, output: t.Any, expected_rows: int) -> np.ndarray:
         """Validate one batch's output and normalize it when the model does."""
-        array = np.asarray(output, dtype=np.float64)
+        array = _float_array(output)
         expected = (expected_rows, self.model.dimension)
         if array.shape != expected:
             msg = (
@@ -130,6 +130,25 @@ def _as_strings(texts: Iterable[str]) -> list[str]:
             msg = f"Embedding inputs must be strings, got {type(item).__name__}."
             raise TypeError(msg)
     return items
+
+
+def _float_array(output: t.Any) -> np.ndarray:
+    """
+    Keep the backend's floating dtype, so checks and normalization add no wider copy.
+
+    A float32 backend stays float32 through the checks and the normalization, which
+    keeps each batch at the size the backend produced. Other dtypes become float64.
+
+    Args:
+        output: The raw output of one encoder call
+
+    Returns:
+        The output as an array of its own floating dtype, or float64 for other dtypes
+    """
+    array = np.asarray(output)
+    if array.dtype.kind == "f":
+        return array
+    return array.astype(np.float64)
 
 
 def _batches(items: list[str], size: int) -> list[list[str]]:

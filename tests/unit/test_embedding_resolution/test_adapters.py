@@ -81,6 +81,26 @@ def test_normalization_is_skipped_when_the_model_does_not_declare_it():
     assert adapter.encode_queries(["ab"]).tolist() == [[2.0, 3.0, 4.0]]
 
 
+def test_a_float32_backend_keeps_its_width_through_normalization():
+    class Float32Encoder:
+        def encode(self, texts, *, prompt, batch_size):
+            return np.array([[2.0, 3.0, 4.0] for _ in texts], dtype=np.float32)
+
+    adapter = EmbeddingAdapter(small_model(), Float32Encoder(), batch_size=8)
+
+    vectors = adapter.encode_queries(["ab"])
+
+    assert vectors.dtype == np.float32
+    assert np.isclose(np.linalg.norm(vectors[0]), 1.0)
+
+
+def test_integer_backend_output_is_converted_to_float64():
+    encoder = RecordingEncoder(rows=lambda texts: np.array([[1, 2, 3] for _ in texts]))
+    adapter = EmbeddingAdapter(small_model(normalize=False), encoder, batch_size=8)
+
+    assert adapter.encode_queries(["ab"]).dtype == np.float64
+
+
 def test_queries_and_documents_are_sent_under_their_own_prompts():
     model = small_model(query_prompt="Query: ", document_prompt="Document: ")
     encoder = RecordingEncoder()
