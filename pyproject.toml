@@ -7,6 +7,22 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10,<3.15"
+keywords = ["geoparsing", "geocoding", "toponym-resolution", "nlp", "gazetteer"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Text Processing :: Linguistic",
+    "Typing :: Typed",
+]
 dependencies = [
     # Not imported directly: transformers' Trainer (behind
     # SentenceTransformerTrainer in SentenceTransformerResolver.fit) requires it.
@@ -85,7 +101,6 @@ lint = [
     "ruff==0.16.6",
     "ty==0.0.78",
     "pre-commit>=4.3.0,<5",
-    "toml>=0.10.2,<1",
     # radon + coverage are what scripts/crap.py needs to combine complexity
     # with coverage; coverage also backs the combined report in CI.
     "radon>=6.0.1,<7",
@@ -93,7 +108,6 @@ lint = [
     "deptry>=0.23.1,<0.24",
 ]
 test = [
-    "toml>=0.10.2,<1",
     "pytest>=8.4.2,<10",
     "pytest-cov>=7.0.0,<8",
     "pytest-benchmark>=5,<6",
@@ -137,6 +151,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["geoparser"]
+# PEP 561 marker: the package ships inline type annotations.
+include = ["geoparser/py.typed"]
 
 [tool.hatch.build.targets.sdist]
 include = ["geoparser", "LICENSE", "README.md", "ROADMAP.md", "CHANGELOG.md"]
@@ -163,8 +179,8 @@ DEP002 = [
 ]
 # DEP004: dev-only imports outside the package: scripts/crap.py (coverage,
 # radon), scripts/benchmark/publish.py (huggingface_hub),
-# scripts/changed_mutation_patterns.py (mutmut, toml) and the demo notebook
-# (plotly).
+# scripts/changed_mutation_patterns.py (mutmut, and tomli on Python 3.10) and
+# the demo notebook (plotly).
 # None of them ship in the wheel.
 DEP004 = [
     "coverage",
@@ -172,7 +188,7 @@ DEP004 = [
     "mutmut",
     "plotly",
     "radon",
-    "toml",
+    "tomli",
 ]
 
 [tool.ruff]
@@ -321,6 +337,7 @@ pytest_add_cli_args = ["--no-cov", "-p", "no:cacheprovider"]
 # along or every mutant "fails" for want of a file.
 also_copy = [
     "docs",
+    ".gitattributes",
     # The documentation guard scans the public surfaces for transformer
     # examples; without these it finds nothing to check and every mutant
     # "fails" for want of a file rather than because it survived.

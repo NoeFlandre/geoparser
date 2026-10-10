@@ -37,6 +37,11 @@ _NAME_PATTERN = re.compile(r"[a-zA-Z0-9_-]+")
 # Default maximum number of candidates a gazetteer search considers.
 DEFAULT_SEARCH_LIMIT = 10_000
 
+# The single source of the search method names. The strings are public: callers
+# pass them to Gazetteer.search.
+SearchMethod = t.Literal["exact", "phrase", "partial", "fuzzy"]
+SEARCH_METHODS: t.Final[tuple[SearchMethod, ...]] = t.get_args(SearchMethod)
+
 # Per-name BM25 match query shared by phrase and partial search; only the
 # MATCH expression differs between them.
 _BM25_MATCH_SQL = """
