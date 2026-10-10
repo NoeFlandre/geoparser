@@ -82,6 +82,13 @@ def test_manifest_rejects_a_moved_revision():
         validate_manifest(payload)
 
 
+def test_manifest_rejects_another_full_commit():
+    payload = copy.deepcopy(load_manifest())
+    payload["dataset"]["revision"] = "a" * 40
+    with pytest.raises(ValueError, match="revision"):
+        validate_manifest(payload)
+
+
 def test_manifest_rejects_a_count_that_does_not_match_the_viewer():
     payload = copy.deepcopy(load_manifest())
     payload["languages"]["en"]["splits"]["test"] += 1

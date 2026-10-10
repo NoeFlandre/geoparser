@@ -12,6 +12,7 @@ from pathlib import Path
 from scripts.multiconer_benchmark.conll import parse_conll
 from scripts.multiconer_benchmark.manifest import (
     DEFAULT_MANIFEST_PATH,
+    check_local_file,
     intersection_languages,
     inventory_report,
     load_manifest,
@@ -45,10 +46,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="parse one local split file and count invalid records",
     )
     parser.add_argument("--language", help="dataset language code for --validate-conll")
+    parser.add_argument(
+        "--split",
+        choices=("train", "dev", "test"),
+        help="pinned split the file belongs to, for --validate-conll",
+    )
     arguments = parser.parse_args(argv)
     if arguments.manifest is not None:
         return _print_manifest(arguments.manifest)
-    return _validate_file(arguments.validate_conll, arguments.language)
+    if arguments.language is None or arguments.split is None:
+        parser.error("--validate-conll needs --language and --split")
+    return _validate_file(arguments.validate_conll, arguments.language, arguments.split)
 
 
 def _print_manifest(path: Path) -> int:
@@ -62,9 +70,10 @@ def _print_manifest(path: Path) -> int:
     return 0
 
 
-def _validate_file(path: Path, language: str | None) -> int:
-    """Parse a local file and print its record counts; invalid records fail."""
+def _validate_file(path: Path, language: str, split: str) -> int:
+    """Check a file against its pinned split, then print its record counts."""
     try:
+        check_local_file(path, language, split, load_manifest())
         parsed = _parse_local(path, language)
     except (OSError, UnicodeError, ValueError) as error:
         print(f"Invalid MultiCoNER file: {error}", file=sys.stderr)
@@ -73,6 +82,7 @@ def _validate_file(path: Path, language: str | None) -> int:
     report = {
         "file": path.name,
         "language": language,
+        "split": split,
         "records": parsed.record_count,
         "valid": len(parsed.sentences),
         "invalid": len(parsed.invalid),

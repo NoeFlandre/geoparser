@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -11,7 +12,7 @@ from scripts.panx_benchmark.data import target_languages
 
 DEFAULT_MANIFEST_PATH = Path(__file__).with_name("multiconer_manifest.json")
 DATASET_ID = "MultiCoNER/multiconer_v2"
-_FULL_COMMIT = re.compile(r"^[0-9a-f]{40}$")
+PINNED_REVISION = "4be2d62c912977ee26ed14d2553a4fe17ca3d980"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _SPLITS = ("train", "dev", "test")
 
@@ -41,8 +42,8 @@ def _validate_dataset(payload: dict[str, Any]) -> None:
     if dataset["id"] != DATASET_ID:
         message = "the manifest names a different dataset"
         raise ValueError(message)
-    if not _FULL_COMMIT.fullmatch(dataset["revision"]):
-        message = "dataset revision must be a full 40-character commit"
+    if dataset["revision"] != PINNED_REVISION:
+        message = "dataset revision must be the verified 40-character commit"
         raise ValueError(message)
     if payload["license"]["spdx"] != "CC-BY-4.0":
         message = "the pinned license is not CC-BY-4.0"
@@ -140,3 +141,32 @@ def inventory_report(manifest: dict[str, Any]) -> dict[str, Any]:
         "gap_count": len(manifest["gaps"]),
         "gaps": manifest["gaps"],
     }
+
+
+def check_local_file(
+    path: Path, language: str, split: str, manifest: dict[str, Any]
+) -> None:
+    """Refuse a local file whose size or digest differs from its pinned split."""
+    if language not in manifest["languages"]:
+        message = f"{language!r} has no pinned split in this manifest"
+        raise ValueError(message)
+    entry = manifest["languages"][language]["files"][split]
+    data = path.read_bytes()
+    if len(data) != entry["bytes"]:
+        message = (
+            f"{path.name} has {len(data)} bytes; the pinned {language} {split} "
+            f"file has {entry['bytes']}"
+        )
+        raise ValueError(message)
+    if _local_digest(data, entry["digest_algorithm"]) != entry["digest"]:
+        message = f"{path.name} does not match the pinned digest for {language} {split}"
+        raise ValueError(message)
+
+
+def _local_digest(data: bytes, algorithm: str) -> str:
+    """Hash file bytes the way the manifest pinned them."""
+    if algorithm == "sha256":
+        return hashlib.sha256(data).hexdigest()
+    # A git blob id hashes a short header and then the bytes.
+    header = f"blob {len(data)}\0".encode("ascii")
+    return hashlib.sha1(header + data).hexdigest()  # noqa: S324 - git blob ids are sha1
