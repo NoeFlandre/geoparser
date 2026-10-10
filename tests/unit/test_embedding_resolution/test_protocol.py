@@ -332,6 +332,15 @@ def test_a_historical_value_is_only_accepted_for_the_model_that_used_it():
         FreezePlan.model_validate(payload)
 
 
+@pytest.mark.parametrize("value", [1.5, 0.333, -1.2])
+def test_a_calibrated_threshold_off_the_calibration_grid_is_refused(value):
+    payload = plan_payload()
+    payload["thresholds"][0]["min_similarity"] = value
+
+    with pytest.raises(ValidationError, match="calibration grid"):
+        FreezePlan.model_validate(payload)
+
+
 def test_an_unregistered_model_key_is_refused_by_the_plan():
     payload = plan_payload()
     payload["thresholds"][0]["model"] = "unregistered"

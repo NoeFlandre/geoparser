@@ -33,7 +33,11 @@ from scripts.embedding_resolution.models import (
     get_model,
     historical_setting,
 )
-from scripts.embedding_resolution.resolution import POPULATION_WEIGHT, Policy
+from scripts.embedding_resolution.resolution import (
+    CALIBRATION_GRID,
+    POPULATION_WEIGHT,
+    Policy,
+)
 
 BASELINE_NAME = "baseline"
 # The two policies every registered model is scored under, as the library names them.
@@ -106,6 +110,11 @@ class ThresholdRecord(Contract):
             require(
                 self.calibration_sha256 is not None,
                 "a calibrated threshold needs its development calibration digest",
+            )
+            require(
+                self.min_similarity in CALIBRATION_GRID,
+                "a calibrated threshold must be a value on the development "
+                "calibration grid",
             )
             return
         require(
