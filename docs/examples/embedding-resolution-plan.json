@@ -53,7 +53,38 @@
       "identifier": "jinaai/jina-embeddings-v5-text-small",
       "revision": "dd76d535f5447ca3897a9c893fb1e612ead98192",
       "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "qwen3-embedding-0.6b": {
+      "identifier": "Qwen/Qwen3-Embedding-0.6B",
+      "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "qwen3-embedding-4b": {
+      "identifier": "Qwen/Qwen3-Embedding-4B",
+      "revision": "5cf2132abc99cad020ac570b19d031efec650f2b",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "bge-m3": {
+      "identifier": "BAAI/bge-m3",
+      "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
     }
+  },
+  "reviewed_code": {
+    "jina-v5-text-small": [
+      {
+        "code": {
+          "identifier": "jinaai/jina-embeddings-v5-text-small",
+          "revision": "dd76d535f5447ca3897a9c893fb1e612ead98192",
+          "sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+        },
+        "review": {
+          "identifier": "review-fixture",
+          "revision": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      }
+    ]
   },
   "sources": [
     {
@@ -95,6 +126,78 @@
       "origin": "structural",
       "calibration_sha256": null,
       "note": "Most populous candidate, no similarity cutoff."
+    },
+    {
+      "model": "geo-minilm",
+      "policy": "population",
+      "min_similarity": 0.5,
+      "origin": "development_calibrated",
+      "calibration_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "note": "Development calibration of geo-minilm under population."
+    },
+    {
+      "model": "jina-v5-text-small",
+      "policy": "similarity",
+      "min_similarity": 0.5,
+      "origin": "development_calibrated",
+      "calibration_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "note": "Development calibration of jina-v5-text-small under similarity."
+    },
+    {
+      "model": "jina-v5-text-small",
+      "policy": "population",
+      "min_similarity": 0.5,
+      "origin": "development_calibrated",
+      "calibration_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "note": "Development calibration of jina-v5-text-small under population."
+    },
+    {
+      "model": "qwen3-embedding-0.6b",
+      "policy": "similarity",
+      "min_similarity": 0.5,
+      "origin": "development_calibrated",
+      "calibration_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "note": "Development calibration of qwen3-embedding-0.6b under similarity."
+    },
+    {
+      "model": "qwen3-embedding-0.6b",
+      "policy": "population",
+      "min_similarity": 0.5,
+      "origin": "development_calibrated",
+      "calibration_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "note": "Development calibration of qwen3-embedding-0.6b under population."
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "policy": "similarity",
+      "min_similarity": 0.5,
+      "origin": "development_calibrated",
+      "calibration_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "note": "Development calibration of qwen3-embedding-4b under similarity."
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "policy": "population",
+      "min_similarity": 0.5,
+      "origin": "development_calibrated",
+      "calibration_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "note": "Development calibration of qwen3-embedding-4b under population."
+    },
+    {
+      "model": "bge-m3",
+      "policy": "similarity",
+      "min_similarity": 0.5,
+      "origin": "development_calibrated",
+      "calibration_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "note": "Development calibration of bge-m3 under similarity."
+    },
+    {
+      "model": "bge-m3",
+      "policy": "population",
+      "min_similarity": 0.5,
+      "origin": "development_calibrated",
+      "calibration_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "note": "Development calibration of bge-m3 under population."
     }
   ],
   "batch_size": 32,

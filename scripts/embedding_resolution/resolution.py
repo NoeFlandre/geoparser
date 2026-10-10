@@ -29,7 +29,15 @@ TASK = "gold_span_resolution"
 
 # Cosine similarity lies in [-1, 1]. Calibration scans the whole range rather
 # than starting from any model's historical cutoff, so no scale is assumed.
-CALIBRATION_GRID = tuple(round(-1.0 + 0.01 * step, 2) for step in range(201))
+# A chosen candidate is accepted when its similarity reaches the threshold, so a
+# cutoff above every cosine abstains on every span. Without that point the grid
+# could never score abstaining on everything, and a wrong resolution at cosine
+# exactly 1.0 would always be accepted.
+ABSTAIN_ALL_THRESHOLD = 1.01
+CALIBRATION_GRID = (
+    *(round(-1.0 + 0.01 * step, 2) for step in range(201)),
+    ABSTAIN_ALL_THRESHOLD,
+)
 
 _POLICIES: dict[Policy, float] = {"similarity": 0.0, "population": POPULATION_WEIGHT}
 

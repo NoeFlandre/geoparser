@@ -6,10 +6,15 @@ import pytest
 from pydantic import ValidationError
 
 from scripts.benchmark_protocol.schema import Experiment
+from scripts.embedding_resolution.models import MODELS
 from scripts.embedding_resolution.protocol import FreezePlan, build_experiment
 
 MINILM_REVISION = "d678769f195c194ffdc6f3735a9360118a855b43"
 JINA_REVISION = "dd76d535f5447ca3897a9c893fb1e612ead98192"
+# Five registered models under two embedding policies, plus the baseline, name
+# 11 pairs. MiniLM's historical 0.6 similarity record adds a twelfth pipeline.
+PIPELINES = 12
+SOURCES = 2
 
 
 def artifact(identifier, revision, digit):
@@ -17,8 +22,20 @@ def artifact(identifier, revision, digit):
     return {"identifier": identifier, "revision": revision, "sha256": digit * 64}
 
 
+def calibrated(model, policy):
+    """A development-calibrated record for a registered model under one policy."""
+    return {
+        "model": model,
+        "policy": policy,
+        "min_similarity": 0.5,
+        "origin": "development_calibrated",
+        "calibration_sha256": "5" * 64,
+        "note": f"Development calibration of {model} under {policy}.",
+    }
+
+
 def plan_payload():
-    """A two-source, three-threshold plan with a development-calibrated MiniLM."""
+    """A complete plan: every registered model under both policies, and the baseline."""
     protocol = {
         "schema_version": "1.0",
         "task": "gold_span_resolution",
@@ -52,10 +69,18 @@ def plan_payload():
             "tokenizer": artifact("tokenizer-fixture", "7" * 40, "8"),
         },
         "models": {
-            "geo-minilm": artifact("dguzh/geo-all-MiniLM-L6-v2", MINILM_REVISION, "3"),
-            "jina-v5-text-small": artifact(
-                "jinaai/jina-embeddings-v5-text-small", JINA_REVISION, "4"
-            ),
+            model.key: artifact(model.repository, model.revision, str(index + 3))
+            for index, model in enumerate(MODELS)
+        },
+        "reviewed_code": {
+            "jina-v5-text-small": [
+                {
+                    "code": artifact(
+                        "jinaai/jina-embeddings-v5-text-small", JINA_REVISION, "9"
+                    ),
+                    "review": artifact("review-fixture", "a" * 40, "c"),
+                }
+            ]
         },
         "sources": [
             {
@@ -98,6 +123,12 @@ def plan_payload():
                 "calibration_sha256": None,
                 "note": "Most populous candidate, no similarity cutoff.",
             },
+            *[
+                calibrated(model.key, policy)
+                for model in MODELS
+                for policy in ("similarity", "population")
+                if (model.key, policy) != ("geo-minilm", "similarity")
+            ],
         ],
         "batch_size": 32,
         "seed": 0,
@@ -122,9 +153,9 @@ def test_a_plan_expands_into_one_planned_configuration_per_pipeline_and_source()
     experiment = build_experiment(valid_plan())
 
     assert isinstance(experiment, Experiment)
-    assert len(experiment.configurations) == 3 * 2
+    assert len(experiment.configurations) == PIPELINES * SOURCES
     assert {result.status for result in experiment.results} == {"planned"}
-    assert len({config.pipeline for config in experiment.configurations}) == 3
+    assert len({config.pipeline for config in experiment.configurations}) == PIPELINES
 
 
 def test_every_pipeline_covers_every_source_slice():
@@ -134,7 +165,7 @@ def test_every_pipeline_covers_every_source_slice():
         (config.pipeline, config.language, config.source_config)
         for config in experiment.configurations
     }
-    assert len(cells) == 6
+    assert len(cells) == PIPELINES * SOURCES
 
 
 def test_a_historical_zero_six_is_labelled_and_its_pipeline_name_says_so():
@@ -169,7 +200,7 @@ def test_policies_record_the_prior_weight_they_apply():
         for config in experiment.configurations
         if config.parameters["policy"] != "population_only"
     }
-    assert weights == {"similarity": 0.0}
+    assert weights == {"similarity": 0.0, "population": 0.3}
 
 
 def test_a_population_prior_policy_is_frozen_at_the_library_weight():
@@ -276,45 +307,14 @@ def test_a_model_without_a_weight_artifact_is_refused_by_the_plan():
 
 def test_custom_code_models_are_refused_until_their_code_is_reviewed():
     payload = plan_payload()
-    payload["thresholds"].append(
-        {
-            "model": "jina-v5-text-small",
-            "policy": "similarity",
-            "min_similarity": 0.5,
-            "origin": "development_calibrated",
-            "calibration_sha256": "6" * 64,
-            "note": "Jina calibration.",
-        }
-    )
+    del payload["reviewed_code"]
 
     with pytest.raises(ValueError, match="reviewed and pinned before the freeze"):
         build_experiment(FreezePlan.model_validate(payload))
 
 
 def test_reviewed_custom_code_is_carried_into_each_of_that_models_configurations():
-    payload = plan_payload()
-    payload["thresholds"].append(
-        {
-            "model": "jina-v5-text-small",
-            "policy": "similarity",
-            "min_similarity": 0.5,
-            "origin": "development_calibrated",
-            "calibration_sha256": "6" * 64,
-            "note": "Jina calibration.",
-        }
-    )
-    payload["reviewed_code"] = {
-        "jina-v5-text-small": [
-            {
-                "code": artifact(
-                    "jinaai/jina-embeddings-v5-text-small", JINA_REVISION, "9"
-                ),
-                "review": artifact("review-fixture", "a" * 40, "c"),
-            }
-        ]
-    }
-
-    experiment = build_experiment(FreezePlan.model_validate(payload))
+    experiment = build_experiment(valid_plan())
 
     jina = [
         config
@@ -325,7 +325,7 @@ def test_reviewed_custom_code_is_carried_into_each_of_that_models_configurations
         len(jina),
         [len(config.custom_code) for config in jina],
         jina[0].parameters["task"],
-    ) == (2, [1, 1], "retrieval")
+    ) == (4, [1, 1, 1, 1], "retrieval")
 
 
 @pytest.mark.parametrize(
@@ -337,16 +337,6 @@ def test_reviewed_custom_code_is_carried_into_each_of_that_models_configurations
 )
 def test_a_review_of_code_that_is_not_the_registry_pin_is_refused(identifier, revision):
     payload = plan_payload()
-    payload["thresholds"].append(
-        {
-            "model": "jina-v5-text-small",
-            "policy": "similarity",
-            "min_similarity": 0.5,
-            "origin": "development_calibrated",
-            "calibration_sha256": "6" * 64,
-            "note": "Jina calibration.",
-        }
-    )
     payload["reviewed_code"] = {
         "jina-v5-text-small": [
             {
@@ -414,4 +404,50 @@ def test_an_embedding_threshold_without_a_model_key_is_refused():
     payload["thresholds"][0]["model"] = None
 
     with pytest.raises(ValidationError, match="needs a model key"):
+        FreezePlan.model_validate(payload)
+
+
+def test_a_plan_with_only_the_baseline_is_refused():
+    payload = plan_payload()
+    payload["thresholds"] = [
+        record
+        for record in payload["thresholds"]
+        if record["policy"] == "population_only"
+    ]
+
+    with pytest.raises(ValidationError, match="every registered model"):
+        FreezePlan.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "omitted",
+    [
+        pytest.param(lambda record: record["model"] == "bge-m3", id="registered-model"),
+        pytest.param(
+            lambda record: (
+                record["model"] == "qwen3-embedding-4b"
+                and record["policy"] == "population"
+            ),
+            id="embedding-policy",
+        ),
+        pytest.param(
+            lambda record: record["policy"] == "population_only", id="baseline"
+        ),
+    ],
+)
+def test_a_plan_omitting_a_model_a_policy_or_the_baseline_is_refused(omitted):
+    payload = plan_payload()
+    payload["thresholds"] = [
+        record for record in payload["thresholds"] if not omitted(record)
+    ]
+
+    with pytest.raises(ValidationError, match="every registered model"):
+        FreezePlan.model_validate(payload)
+
+
+def test_an_extra_weight_artifact_outside_the_registry_is_refused():
+    payload = plan_payload()
+    payload["models"]["unregistered"] = artifact("x", "a" * 40, "b")
+
+    with pytest.raises(ValidationError, match="weight artifact for each registered"):
         FreezePlan.model_validate(payload)

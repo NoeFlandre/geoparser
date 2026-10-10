@@ -10,7 +10,7 @@ a dataset or a gazetteer, and every result it returns is ``planned``.
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, get_args
 
 from pydantic import Field, model_validator
 
@@ -33,9 +33,11 @@ from scripts.embedding_resolution.models import (
     get_model,
     historical_setting,
 )
-from scripts.embedding_resolution.resolution import POPULATION_WEIGHT
+from scripts.embedding_resolution.resolution import POPULATION_WEIGHT, Policy
 
 BASELINE_NAME = "baseline"
+# The two policies every registered model is scored under, as the library names them.
+EMBEDDING_POLICIES: tuple[str, ...] = get_args(Policy)
 # GPE and LOC both name places, so both map to the protocol's single location label.
 _DEFAULT_LABEL_MAPPING: dict[str, Literal["LOC", "ignore"]] = {
     "GPE": "LOC",
@@ -151,6 +153,7 @@ class FreezePlan(Contract):
             "gazetteer has no attribute map for candidate descriptions",
         )
         self._check_sources_and_thresholds()
+        self._check_complete()
         require(
             set(self.reviewed_code) <= {model.key for model in MODELS},
             "reviewed code names a model outside the registry",
@@ -166,11 +169,33 @@ class FreezePlan(Contract):
             for record in self.thresholds
         ]
         require(len(set(identities)) == len(identities), "duplicate threshold record")
-        thresholded = {record.model for record in self.thresholds} - {None}
+
+    def _check_complete(self) -> None:
+        """Name every registered model under each embedding policy, and the baseline.
+
+        A comparison cell that is absent from the plan would never be run, so the
+        named (model, policy) pairs must equal the expected set exactly. Each
+        registered model also needs one weight artifact, and no other is accepted.
+        """
+        named = {(record.model, record.policy) for record in self.thresholds}
         require(
-            thresholded <= set(self.models),
-            "every thresholded model needs a weight artifact in the plan",
+            named == _expected_pairs(),
+            "the plan must name every registered model under similarity and "
+            "population, plus the population-only baseline",
         )
+        require(
+            set(self.models) == {model.key for model in MODELS},
+            "the plan needs a weight artifact for each registered model and no other",
+        )
+
+
+def _expected_pairs() -> set[tuple[str | None, str]]:
+    """Every registered model under each embedding policy, plus the baseline."""
+    pairs: set[tuple[str | None, str]] = {(None, "population_only")}
+    pairs.update(
+        (model.key, policy) for model in MODELS for policy in EMBEDDING_POLICIES
+    )
+    return pairs
 
 
 def _require_pin(model: EmbeddingModel, label: str, artifact: Artifact) -> None:

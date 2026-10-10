@@ -48,7 +48,7 @@ Each gold span is counted once as resolved, abstained or invalid, so the three a
 
 ## Thresholds
 
-Thresholds are calibrated per model and per policy on development spans only. Each span gives one observation: the chosen candidate's similarity and whether it is the gold canonical ID. For each threshold in a grid of 201 values from -1 to 1 in steps of 0.01, the objective is the number of correct resolutions minus the number of incorrect ones. An abstention scores zero. The lowest threshold among the maxima is kept, which preserves coverage.
+Thresholds are calibrated per model and per policy on development spans only. Each span gives one observation: the chosen candidate's similarity and whether it is the gold canonical ID. For each threshold in a grid of 201 values from -1 to 1 in steps of 0.01, the objective is the number of correct resolutions minus the number of incorrect ones. An abstention scores zero. The grid ends with a cutoff at 1.01, which no cosine reaches, so abstaining on every span is always a candidate; without it, a wrong resolution at cosine exactly 1 could never be abstained. The lowest threshold among the maxima is kept, which preserves coverage.
 
 Cosine scales differ between models, so a threshold is never copied between them. The 0.6 constructor default of the resolver and the 0.0 default of the benchmark CLI were never calibrated. They are kept only as labelled historical settings for MiniLM, the encoder the 2026-09-23 evidence runs used. A historical value for any other model is refused by the freeze.
 
@@ -62,7 +62,7 @@ A freeze plan holds only what an approved run can supply:
 - one weight artifact per embedding model, whose identifier and revision must match the registry pin;
 - reviewed custom code for each model that loads it, at the registry pin;
 - source slices, each with an example count, a gold-span count and a sample digest;
-- threshold records: a calibrated value with its calibration digest, a labelled historical value, or the structural baseline;
+- threshold records: a calibrated value with its calibration digest, a labelled historical value, or the structural baseline. The records must name every registered model under `similarity` and under `population`, and the population-only baseline. A plan that omits any of them is refused, because an absent comparison cell would never be run;
 - the batch size, the seed, and the provenance note.
 
 A synthetic example with fixture digests is in `docs/examples/embedding-resolution-plan.json`. `freeze` accepts it and writes nothing unless `--output` is given. Its digests are not real, so do not use it as an experiment.

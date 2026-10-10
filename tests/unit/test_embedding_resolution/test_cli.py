@@ -10,7 +10,11 @@ import pytest
 from scripts.benchmark_protocol.schema import Experiment
 from scripts.embedding_resolution import __main__ as cli
 from scripts.embedding_resolution.measurement import peak_rss_bytes, timed
-from tests.unit.test_embedding_resolution.test_protocol import plan_payload
+from tests.unit.test_embedding_resolution.test_protocol import (
+    PIPELINES,
+    SOURCES,
+    plan_payload,
+)
 
 
 def test_registry_prints_every_pin_and_scoring_constant(capsys):
@@ -34,7 +38,7 @@ def test_registry_prints_every_pin_and_scoring_constant(capsys):
         ],
         0.3,
         [1.0, 10.0, 50.0],
-        201,
+        202,
     )
 
 
@@ -46,10 +50,10 @@ def test_freeze_writes_the_validated_inventory_and_prints_its_summary(tmp_path, 
     assert cli.main(["freeze", str(plan), "--output", str(output)]) == 0
 
     summary = json.loads(capsys.readouterr().out)
-    assert summary["configuration_count"] == 6
-    assert summary["status_counts"] == {"planned": 6}
+    assert summary["configuration_count"] == PIPELINES * SOURCES
+    assert summary["status_counts"] == {"planned": PIPELINES * SOURCES}
     experiment = Experiment.model_validate_json(output.read_text(encoding="utf-8"))
-    assert len(experiment.configurations) == 6
+    assert len(experiment.configurations) == PIPELINES * SOURCES
 
 
 def test_an_invalid_plan_exits_two_and_writes_nothing(tmp_path, capsys):

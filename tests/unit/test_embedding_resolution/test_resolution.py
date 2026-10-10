@@ -8,6 +8,7 @@ import pytest
 from geoparser.modules.resolvers.prior import PriorResolver
 from scripts.benchmark_protocol.schema import ResolutionCounts
 from scripts.embedding_resolution.resolution import (
+    ABSTAIN_ALL_THRESHOLD,
     CALIBRATION_GRID,
     POPULATION_WEIGHT,
     Candidate,
@@ -278,10 +279,26 @@ def test_calibration_needs_observations_and_a_grid():
 
 
 def test_the_calibration_grid_spans_the_full_cosine_range_in_hundredths():
-    assert len(CALIBRATION_GRID) == 201
+    assert len(CALIBRATION_GRID) == 202
     assert CALIBRATION_GRID[0] == -1.0
-    assert CALIBRATION_GRID[-1] == 1.0
+    assert CALIBRATION_GRID[200] == pytest.approx(1.0)
     assert CALIBRATION_GRID[1] == pytest.approx(-0.99)
+
+
+def test_the_calibration_grid_ends_with_a_cutoff_no_cosine_reaches():
+    assert CALIBRATION_GRID[-1] == ABSTAIN_ALL_THRESHOLD
+    assert CALIBRATION_GRID[-1] > 1.0
+
+
+def test_a_single_wrong_resolution_at_cosine_one_is_calibrated_to_abstain():
+    # Under ">=" a cosine of exactly 1.0 reaches every grid value up to 1.0, so
+    # only the cutoff above it can abstain. Accepting the wrong span scores -1,
+    # abstaining on it scores 0, and abstaining must be the chosen threshold.
+    calibration = calibrate_min_similarity([Observation(1.0, correct=False)])
+
+    assert calibration.min_similarity == ABSTAIN_ALL_THRESHOLD
+    assert calibration.net_correct == 0
+    assert calibration.observations == 1
 
 
 def test_a_chosen_candidate_without_coordinates_is_located_at_no_distance():
