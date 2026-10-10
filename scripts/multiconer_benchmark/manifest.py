@@ -13,6 +13,21 @@ from scripts.panx_benchmark.data import target_languages
 DEFAULT_MANIFEST_PATH = Path(__file__).with_name("multiconer_manifest.json")
 DATASET_ID = "MultiCoNER/multiconer_v2"
 PINNED_REVISION = "4be2d62c912977ee26ed14d2553a4fe17ca3d980"
+# Split counts and viewer totals of PINNED_REVISION, one entry per language.
+VERIFIED_SPLIT_COUNTS: dict[str, dict[str, int]] = {
+    "bn": {"train": 9708, "dev": 507, "test": 19859, "viewer_num_rows": 30074},
+    "de": {"train": 9785, "dev": 512, "test": 20145, "viewer_num_rows": 30442},
+    "en": {"train": 16778, "dev": 871, "test": 249980, "viewer_num_rows": 267629},
+    "es": {"train": 16453, "dev": 854, "test": 246900, "viewer_num_rows": 264207},
+    "fa": {"train": 16321, "dev": 855, "test": 219168, "viewer_num_rows": 236344},
+    "fr": {"train": 16548, "dev": 857, "test": 249786, "viewer_num_rows": 267191},
+    "hi": {"train": 9632, "dev": 514, "test": 18399, "viewer_num_rows": 28545},
+    "it": {"train": 16579, "dev": 858, "test": 247881, "viewer_num_rows": 265318},
+    "pt": {"train": 16469, "dev": 854, "test": 229490, "viewer_num_rows": 246813},
+    "sv": {"train": 16363, "dev": 856, "test": 231190, "viewer_num_rows": 248409},
+    "uk": {"train": 16429, "dev": 851, "test": 238296, "viewer_num_rows": 255576},
+    "zh": {"train": 9759, "dev": 506, "test": 20265, "viewer_num_rows": 30530},
+}
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _SPLITS = ("train", "dev", "test")
 
@@ -79,6 +94,10 @@ def _validate_split_counts(code: str, language: dict[str, Any]) -> None:
         raise ValueError(message)
     if sum(splits.values()) != language["viewer_num_rows"]:
         message = f"split counts for {code} do not match the dataset-viewer total"
+        raise ValueError(message)
+    counts = {**splits, "viewer_num_rows": language["viewer_num_rows"]}
+    if VERIFIED_SPLIT_COUNTS.get(code) != counts:
+        message = f"split counts for {code} differ from the verified release"
         raise ValueError(message)
 
 

@@ -96,6 +96,15 @@ def test_manifest_rejects_a_count_that_does_not_match_the_viewer():
         validate_manifest(payload)
 
 
+def test_manifest_rejects_counts_that_change_with_the_viewer_total():
+    payload = copy.deepcopy(load_manifest())
+    english = payload["languages"]["en"]
+    english["splits"]["test"] += 1
+    english["viewer_num_rows"] += 1
+    with pytest.raises(ValueError, match="verified release"):
+        validate_manifest(payload)
+
+
 def test_manifest_rejects_a_sha256_claim_on_a_non_lfs_file():
     payload = copy.deepcopy(load_manifest())
     payload["languages"]["bn"]["files"]["test"]["sha256"] = "a" * 64
