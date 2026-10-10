@@ -242,6 +242,13 @@ def test_valid_sentences_survive_around_rejected_blocks():
     assert [sentence.sample_id for sentence in parsed.sentences] == ["ok-1", "last"]
 
 
+def test_a_tag_without_a_bio_prefix_is_an_invalid_record():
+    parsed = parse_conll("# id bad-tag\tdomain=en\nParis _ _ HumanSettlement\n")
+    assert [item.reason for item in parsed.invalid] == [
+        "unknown tag format: HumanSettlement"
+    ]
+
+
 def test_every_invalid_record_is_counted_with_its_line_and_reason():
     parsed = parse_conll("\n".join(INVALID_LINES))
     observed = [(item.line, item.sample_id, item.reason) for item in parsed.invalid]

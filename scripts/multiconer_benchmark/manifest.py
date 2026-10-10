@@ -32,11 +32,20 @@ def intersection_languages(manifest: dict[str, Any]) -> tuple[str, ...]:
 
 def validate_manifest(payload: dict[str, Any]) -> None:
     """Check pins, counts and digest policy, then require the verified release."""
+    _require_mapping(payload, "the manifest")
     _validate_dataset(payload)
     _validate_languages(payload["languages"])
     if payload != _verified_release():
         message = "the manifest differs from the verified release"
         raise ValueError(message)
+
+
+def _require_mapping(value: Any, what: str) -> dict[str, Any]:
+    """Return a JSON object, refusing any other value before its keys are read."""
+    if isinstance(value, dict):
+        return value
+    message = f"{what} must be a JSON object"
+    raise ValueError(message)
 
 
 def _verified_release() -> dict[str, Any]:
@@ -60,6 +69,7 @@ def _validate_dataset(payload: dict[str, Any]) -> None:
 
 def _validate_languages(languages: dict[str, Any]) -> None:
     """Check the language inventory, then each language in turn."""
+    _require_mapping(languages, "languages")
     if "multi" in languages:
         message = "the MULTI configuration is not a language and must be excluded"
         raise ValueError(message)
@@ -73,15 +83,17 @@ def _validate_languages(languages: dict[str, Any]) -> None:
 
 def _validate_language(code: str, language: dict[str, Any]) -> None:
     """Check one language's split counts, file paths and digest policy."""
+    _require_mapping(language, f"{code} language entry")
     _validate_split_counts(code, language)
     folder = f"{code.upper()}-{language['name']}"
+    files = _require_mapping(language["files"], f"{code} files")
     for split in _SPLITS:
-        _validate_file(code, split, folder, language["files"][split])
+        _validate_file(code, split, folder, files[split])
 
 
 def _validate_split_counts(code: str, language: dict[str, Any]) -> None:
     """Check that the three split counts are integers that add up to the total."""
-    splits = language["splits"]
+    splits = _require_mapping(language["splits"], f"{code} splits")
     if set(splits) != set(_SPLITS) or any(type(v) is not int for v in splits.values()):
         message = f"{code} must record integer train, dev and test counts"
         raise ValueError(message)

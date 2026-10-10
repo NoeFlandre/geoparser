@@ -4,7 +4,9 @@ import json
 
 import pytest
 
-from scripts.multiconer_benchmark.__main__ import main
+from scripts.multiconer_benchmark import __main__ as cli
+from scripts.multiconer_benchmark.__main__ import _parse_local, main
+from scripts.multiconer_benchmark.manifest import load_manifest
 
 
 def _dry_run_report(capsys) -> dict:
@@ -102,6 +104,47 @@ def test_a_manifest_of_the_wrong_shape_is_a_validation_error(tmp_path, capsys, t
     path.write_text(text, encoding="utf-8")
     assert main(["--manifest", str(path)]) == 2
     assert "Invalid MultiCoNER manifest" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "keys",
+    [
+        ("languages",),
+        ("languages", "en"),
+        ("languages", "en", "splits"),
+        ("languages", "en", "files"),
+    ],
+)
+@pytest.mark.parametrize("value", [["train", "dev", "test"], "text"])
+def test_a_manifest_container_of_the_wrong_type_is_a_validation_error(
+    tmp_path, capsys, keys, value
+):
+    manifest = load_manifest()
+    parent = manifest
+    for key in keys[:-1]:
+        parent = parent[key]
+    parent[keys[-1]] = value
+    path = tmp_path / "bad.json"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    assert main(["--manifest", str(path)]) == 2
+    assert "must be a JSON object" in capsys.readouterr().err
+
+
+def test_parsing_refuses_a_language_outside_the_intersection():
+    with pytest.raises(ValueError, match="not a dataset language"):
+        _parse_local(b"", "xx")
+
+
+def test_module_entrypoint_prints_the_pinned_inventory(monkeypatch, capsys):
+    import runpy
+    import sys
+    from pathlib import Path
+
+    monkeypatch.setattr(sys, "argv", ["multiconer_benchmark", "--manifest"])
+    with pytest.raises(SystemExit) as error:
+        runpy.run_path(str(Path(cli.__file__)), run_name="__main__")
+    assert error.value.code == 0
+    assert json.loads(capsys.readouterr().out)["languages"][0] == "bn"
 
 
 def test_validation_needs_both_the_language_and_the_split(tmp_path):
