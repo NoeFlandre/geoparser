@@ -166,6 +166,16 @@ def test_batches_are_bounded_by_batch_size(roster):
     assert [len(batch) for batch in german.seen] == [2, 2, 1]
 
 
+@pytest.mark.parametrize("batch_size", [0, -1, True, 2.0])
+def test_batch_size_must_be_a_positive_integer(roster, batch_size):
+    examples = {"de": (_example("de", "Berlin liegt.", {(0, 6)}),)}
+
+    with pytest.raises(ValueError, match="batch_size must be a positive integer"):
+        evaluate_baselines(
+            examples, {"de": FakeRecognizer({})}, None, roster, batch_size=batch_size
+        )
+
+
 def test_predictor_time_is_recorded_and_drives_sentences_per_second(
     roster, monkeypatch
 ):

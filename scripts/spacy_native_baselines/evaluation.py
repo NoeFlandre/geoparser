@@ -48,6 +48,13 @@ def _score(
     return counts.scores()
 
 
+def _positive_batch_size(value: Any) -> int:
+    if type(value) is not int or value < 1:
+        message = "batch_size must be a positive integer."
+        raise ValueError(message)
+    return value
+
+
 def _has_native_pipeline(roster: Roster, language: str) -> bool:
     return roster.route(language).pipeline is not None
 
@@ -120,6 +127,7 @@ def evaluate_baselines(
     batch_size: int = 8,
 ) -> dict[str, Any]:
     """Score every arm on the same examples and return the three groups."""
+    batch_size = _positive_batch_size(batch_size)
     _check_native_recognizers(recognizers, roster)
     matched = _matched_scores(recognizers, examples_by_language, batch_size)
     transfer = _transfer_scores(
