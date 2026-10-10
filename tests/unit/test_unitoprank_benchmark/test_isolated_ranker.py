@@ -3,6 +3,7 @@
 import importlib.metadata
 import io
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -149,6 +150,34 @@ def test_a_run_that_fails_in_its_interpreter_raises_with_the_reason(tmp_path: Pa
             candidates_by_toponym={},
             config={},
         )
+
+
+def test_a_relative_interpreter_path_is_read_from_the_callers_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """The child runs from the repository root, so a relative path must be made absolute first."""
+    base = tmp_path.resolve()
+    try:
+        relative = os.path.relpath(Path(sys.executable).absolute(), base)
+    except ValueError:  # the interpreter is on another drive
+        pytest.skip("no relative path to the interpreter on this platform")
+    monkeypatch.chdir(base)
+    assert not Path(relative).is_absolute()
+    with pytest.raises(RuntimeError, match="the reviewed ranker did not run"):
+        rank_in_reviewed_environment(
+            base / "checkout",
+            relative,
+            text="",
+            toponyms=[],
+            candidates_by_toponym={},
+            config={},
+        )
+
+
+def test_an_interpreter_path_is_made_absolute_and_a_bare_name_is_kept():
+    assert Path(isolated_ranker._interpreter_command(".venv/bin/python")).is_absolute()
+    assert Path(isolated_ranker._interpreter_command("./python")).is_absolute()
+    assert isolated_ranker._interpreter_command("python3") == "python3"
 
 
 def test_a_shadow_module_on_pythonpath_is_not_imported_by_the_child(

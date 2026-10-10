@@ -142,8 +142,9 @@ def load_rank_toponyms(checkout: Path) -> tuple[t.Callable[..., t.Any], t.Any]:
         The ``rank_toponyms`` function and the ``RankerConfig`` class
 
     Raises:
-        UpstreamMismatchError: If the checkout differs from the pin, or if
-            ``unitorank`` resolves outside the checkout. The location is checked
+        UpstreamMismatchError: If the checkout differs from the pin, if a module
+            of the pinned tree is already loaded from outside the checkout, or if
+            ``unitorank`` resolves outside the checkout. Every location is checked
             before anything is imported, so no foreign code runs.
     """
     problems = verify_checkout(checkout)
@@ -151,6 +152,7 @@ def load_rank_toponyms(checkout: Path) -> tuple[t.Callable[..., t.Any], t.Any]:
         message = "; ".join(problems)
         raise UpstreamMismatchError(message)
     root = checkout.resolve()
+    _refuse_cached_foreign_modules(root)
     _place_first_on_path(root)
     origin = _unitorank_origin()
     if origin is None or not origin.is_relative_to(root):
@@ -158,6 +160,58 @@ def load_rank_toponyms(checkout: Path) -> tuple[t.Callable[..., t.Any], t.Any]:
         raise UpstreamMismatchError(message)
     ranker = _import_without_bytecode("unitorank.ranker")
     return ranker.rank_toponyms, ranker.RankerConfig
+
+
+def _refuse_cached_foreign_modules(root: Path) -> None:
+    """
+    Refuse when a module of the pinned tree is already loaded from elsewhere.
+
+    Python reuses a module that is already in ``sys.modules``, so a cached copy
+    of, say, ``thread_weight_rank_algorithm_3_beam`` from another directory would
+    run in place of the verified one. A module without a file cannot be shown to
+    come from the checkout, so it is refused too.
+
+    Raises:
+        UpstreamMismatchError: Naming each cached module and where it came from
+    """
+    problems = []
+    for name in provided_module_names(REVIEWED_BLOBS):
+        problem = _cached_foreign_problem(name, root)
+        if problem is not None:
+            problems.append(problem)
+    if problems:
+        raise UpstreamMismatchError("; ".join(problems))
+
+
+def _cached_foreign_problem(name: str, root: Path) -> str | None:
+    """Describe a cached module of the pinned tree that is not from the checkout."""
+    module = sys.modules.get(name)
+    if module is None:
+        return None
+    origin = getattr(module, "__file__", None)
+    if origin is not None and Path(origin).resolve().is_relative_to(root):
+        return None
+    return f"{name} is imported from {origin}, not {root}"
+
+
+def provided_module_names(blobs: t.Mapping[str, str]) -> list[str]:
+    """
+    Return the sorted import names of the modules the pinned tree provides.
+
+    ``unitorank/ranker.py`` provides ``unitorank.ranker``, and a package's
+    ``__init__.py`` provides the package name. The root ``__init__.py`` names no
+    module, so it contributes nothing.
+    """
+    names: set[str] = set()
+    for relative in blobs:
+        if not relative.endswith(".py"):
+            continue
+        parts = relative.removesuffix(".py").split("/")
+        if parts[-1] == "__init__":
+            parts = parts[:-1]
+        if parts:
+            names.add(".".join(parts))
+    return sorted(names)
 
 
 def _place_first_on_path(directory: Path) -> None:

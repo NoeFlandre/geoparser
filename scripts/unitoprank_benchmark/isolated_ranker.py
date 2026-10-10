@@ -63,6 +63,23 @@ def installed_mismatches(pins: Mapping[str, str]) -> list[str]:
     return problems
 
 
+def _interpreter_command(python: str | Path) -> str:
+    """
+    Return the interpreter as the child is launched.
+
+    A path such as ``.venv/bin/python`` is made absolute here, from the caller's
+    directory, because the child runs from the repository root. It is not resolved
+    through symbolic links: a virtual environment's interpreter is a link whose
+    location selects that environment. A bare command name is returned unchanged
+    for PATH lookup.
+    """
+    text = str(python)
+    # A bare name has no directory part; "./python" has one, so it is a path.
+    if Path(text).name != text:
+        return str(Path(text).absolute())
+    return text
+
+
 def rank_in_reviewed_environment(
     checkout: Path,
     python: str | Path,
@@ -82,7 +99,9 @@ def rank_in_reviewed_environment(
 
     Args:
         checkout: Directory holding the verified UniTopRank tree
-        python: Interpreter of the environment built from ``ranker-requirements.txt``
+        python: Interpreter of the environment built from ``ranker-requirements.txt``.
+            A path is read from the caller's working directory, not the repository
+            root the child runs from; a bare command name is looked up on PATH.
 
     Returns:
         The ranked candidates by normalized toponym, under
@@ -102,7 +121,7 @@ def rank_in_reviewed_environment(
     }
     completed = subprocess.run(
         [
-            str(python),
+            _interpreter_command(python),
             "-I",
             "-c",
             CHILD_BOOTSTRAP,
