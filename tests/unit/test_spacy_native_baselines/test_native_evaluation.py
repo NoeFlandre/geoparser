@@ -52,6 +52,12 @@ def _example(language, text, gold):
     return Example(language, text, frozenset(gold))
 
 
+def _unlabelled(language, count):
+    return tuple(
+        _example(language, f"sentence {index}", set()) for index in range(count)
+    )
+
+
 def _identify(predictor, roster, language):
     """Record the identity a NativeSpacyRecognizer routed to ``language`` records."""
     pipeline = roster.route(language).pipeline
@@ -218,8 +224,7 @@ def test_predictor_time_is_recorded_and_drives_sentences_per_second(
     monkeypatch.setattr(
         evaluation, "time", SimpleNamespace(perf_counter=clock.perf_counter)
     )
-    texts = [f"sentence {index}" for index in range(3)]
-    examples = {"de": tuple(_example("de", text, set()) for text in texts)}
+    examples = {"de": _unlabelled("de", 3)}
     german = _identify(TickingRecognizer(clock, step=2.0), roster, "de")
     control = _identify(TickingRecognizer(clock, step=1.0), roster, "en")
 
