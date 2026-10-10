@@ -74,7 +74,7 @@ Points to carry into any run:
 
 ## Geographic-entity filter (decision needed)
 
-The issue requires a documented filter that separates physical places from people, organisations, metonymic references, and other non-place entities. It also rules out treating coordinates as sufficient. The schema does not settle which entities count as places, and this plan does not choose for you. The options are:
+The issue requires a documented filter that separates physical places from people, organisations, metonymic references, and other non-place entities. It also rules out treating coordinates as sufficient. The schema does not settle which entities count as places, and this plan does not choose for you. No option below separates metonymic references from literal places, because the KB is entity-level. Item 3 below records how they are counted. The options are:
 
 - **A. Type only.** Keep mentions whose KB entity passes the type test below. This is cheap to apply. The class is coarse, and the audit has to test whether it admits non-physical or administrative entities.
 - **B. Wikidata classes.** Keep entities that pass the type test below and whose instance-of (`P31`) or subclass-of (`P279`) claims place them under a pinned list of place classes (bucket 4). The predicate reads only fields that the pinned DaMuEL KB provides. Each claim is a positional array of a datatype tag, a value, and optional qualifiers, keyed by property ID. An accepted claim is a `P31` or `P279` claim whose datatype is `wikibase-item`. Qualifiers and references are not used. Membership has a base case and a transitive step. An entity passes when one of its accepted `P31` values is itself a listed class, or when a listed class is reached from one of its accepted `P31` values through one or more accepted `P279` claims. The search follows accepted `P279` claims with no depth limit and a visited set against cycles. The KB has no rank field, so competing and deprecated claims are all accepted. This is a known limit, and the audit counts entities whose accepted `P31` or `P279` claims disagree. Option B does not run until two preconditions hold. (1) The sample check confirms that the pinned records carry `P31` and `P279` claims, which the schema does not name. (2) The class list is pinned: a set of Wikidata item IDs, reviewed by a person and committed with its review date. It is not written yet. *Rank rule, dependent on the source.* The paper's text says the KB keeps all claims and ranks, but the schema has no rank field, so this is unverified. The rank rule applies only if a rank field is verified on the pinned records, or a rank-bearing Wikidata snapshot is pinned with its own digest. Neither is pinned here. If the rule applies, an entity's accepted values for a property are those of its `preferred` statements if it has any, and otherwise those of its `normal` statements. `deprecated` statements are never accepted, as in Wikidata's ranking help. Otherwise the rule is void, and the predicate above is the whole rule. Gazetteer mapping and coordinates are not part of this predicate. They are tested only for resolution, in buckets 5 to 7.
@@ -86,7 +86,8 @@ Proposal, not decided: option B with an audit of a stratified sample. Decide the
 
 1. Which option to use.
 2. Whether administrative units (for example, a country, or a municipality) count as place mentions.
-3. Whether metonymic uses (for example, a country name standing for its national team) count as place mentions, or are excluded and reported as a separate category.
+
+Metonymic uses are not an open question, because no option can separate them. A country name standing for its national team shares its QID with the literal country, and the KB and the pinned snapshot are entity-level. Gold therefore counts a metonymic mention as a place mention, and the validation sample reports the metonymic share as a rate. This is a limitation of the plan. An owner can change it only by adding a mention-level annotation with its own bucket.
 
 ## Gazetteer and coordinate pins (decision needed)
 
@@ -135,7 +136,7 @@ Keep the three tasks of the [public benchmark protocol](benchmark-protocol.md) s
 Slices and checks, to be fixed before any output is seen:
 
 - Hold out whole articles by a seeded hash of the QID. No threshold, label, prompt, or example is chosen on the evaluated articles.
-- Draw a validation sample of flat mentions, stratified by language and by `origin` (original `wiki` mentions against each expanded origin). A person checks span boundaries and QIDs on that sample. Report the agreement before trusting any aggregate score.
+- Draw a validation sample of flat mentions, stratified by language and by `origin` (original `wiki` mentions against each expanded origin). A person checks span boundaries and QIDs on that sample, and labels each mention as literal or metonymic. The metonymic share is reported as a rate beside the scores. It is not a bucket and does not change gold. Report the agreement before trusting any aggregate score.
 - Report per-language sample sizes and a macro summary over languages, with the uncertainty method from the protocol. Report throughput separately.
 - Record the training overlap of each pinned model as `known`, `unknown`, or `verified_absent`. Absent a disclosure, record `unknown`. The DaMuEL text is Wikipedia from 2022, and the overlap question is open until the model cards or an audit say otherwise.
 
@@ -149,7 +150,7 @@ The sample sizes, the number of languages, and the thresholds are not chosen her
 ## Decisions needed before implementation
 
 1. **Scope.** The issue says that opening it does not authorize implementation, model inference, or dataset uploads. This branch adds only the documentation and the offline coverage report. Confirm whether the adapter and evaluator should be built next.
-2. **Geographic filter.** Choose option A, B, or C, and answer the three questions above. For option B, the predicate reads only the pinned KB fields. The rank rule waits on a verified rank field or a pinned rank-bearing snapshot. The place-class list still needs review and commit.
+2. **Geographic filter.** Choose option A, B, or C, and answer the administrative-units question above. Metonymic uses are counted as place mentions, as stated under the options. For option B, the predicate reads only the pinned KB fields. The rank rule waits on a verified rank field or a pinned rank-bearing snapshot. The place-class list still needs review and commit.
 3. **Gazetteer and pins.** Choose the gazetteer and the QID mapping source, and pin the coordinate snapshot.
 4. **Slices and sizes.** Choose the languages to include, the held-out fraction, and the validation sample size.
 5. **Canonical list.** Confirm how to treat `no`, `nn`, `hr`, and the script variants of `sr` and `zh`.
