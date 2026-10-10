@@ -15,7 +15,7 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.sql.schema import Index
 from sqlmodel import Session, SQLModel, create_engine
 
-import geoparser.db.models  # noqa: F401
+import geoparser.db.models  # noqa: F401 - registers the models on SQLModel.metadata for create_all
 from geoparser.paths import geoparser_data_dir
 
 _engine: Engine | None = None
