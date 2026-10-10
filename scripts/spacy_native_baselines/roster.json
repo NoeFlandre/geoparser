@@ -1045,7 +1045,9 @@
         "LOC": "LOC"
       },
       "label_meaning_basis": "ontonotes_names",
-      "extra_requirements": [],
+      "extra_requirements": [
+        "spacy-pkuseg>=1.0.0,<2.0.0"
+      ],
       "other_3_8_packages_not_selected": [
         "zh_core_web_lg",
         "zh_core_web_md",

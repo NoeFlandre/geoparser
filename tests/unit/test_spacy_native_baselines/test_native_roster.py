@@ -125,6 +125,7 @@ def test_japanese_pipeline_records_its_tokenizer_requirements(roster):
         ("de", ""),
         ("ja", " 'sudachipy!=0.6.1,>=0.5.2' 'sudachidict_core>=20211220'"),
         ("ko", " 'natto-py>=0.9.0'"),
+        ("zh", " 'spacy-pkuseg>=1.0.0,<2.0.0'"),
     ],
 )
 def test_install_command_adds_the_recorded_tokenizer_requirements(
