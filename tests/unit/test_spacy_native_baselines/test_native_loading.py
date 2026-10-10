@@ -87,11 +87,15 @@ def test_installed_version_reads_the_distribution_metadata_or_none():
     assert installed_version("geoparser-no-such-distribution") is None
 
 
-def test_spacy_runtime_inside_the_roster_range_passes(no_download):
-    check_spacy_runtime(version_lookup=lambda package: "3.8.16")
+@pytest.mark.parametrize("found", ["3.8.0", "3.8.16", "3.8.0.post1", "3.8.1rc1"])
+def test_spacy_runtime_inside_the_roster_range_passes(found, no_download):
+    check_spacy_runtime(version_lookup=lambda package: found)
 
 
-@pytest.mark.parametrize("found", ["3.7.1", "3.9.0", "4.0.0"])
+@pytest.mark.parametrize(
+    "found",
+    ["3.7.1", "3.8.0rc1", "3.8.0.dev1", "3.9.0", "3.9.0rc1", "4.0.0", "not-a-version"],
+)
 def test_spacy_runtime_outside_the_roster_range_is_refused(found, no_download):
     with pytest.raises(SpacyRuntimeError) as raised:
         check_spacy_runtime(version_lookup=lambda package: found)

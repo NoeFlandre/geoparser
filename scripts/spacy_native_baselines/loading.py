@@ -23,7 +23,12 @@ from scripts.spacy_native_baselines.roster import (
 
 KEPT_COMPONENTS = frozenset({"ner", "tok2vec"})
 SPACY_PACKAGE = "spacy"
-_RELEASE = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?")
+_VERSION = re.compile(
+    r"(?P<release>\d+\.\d+(?:\.\d+)?)"
+    r"(?P<pre>(?:a|b|rc)\d+)?"
+    r"(?P<post>\.post\d+)?"
+    r"(?P<dev>\.dev\d+)?"
+)
 
 
 class MissingPipelineError(RuntimeError):
@@ -68,12 +73,41 @@ def check_installed(
         raise MissingPipelineError(message)
 
 
-def _release(version: str) -> tuple[int, ...] | None:
-    """Return the leading major.minor.patch of a version string, or None."""
-    match = _RELEASE.match(version)
+def _release_and_stage(version: str) -> tuple[tuple[int, ...], bool] | None:
+    """Return the release tuple and whether the version sorts before its final.
+
+    A pre-release, or a dev release that is not also a post-release, sorts
+    before the final release it names. Returns None for any string the PEP 440
+    pattern does not recognize.
+    """
+    match = _VERSION.fullmatch(version)
     if match is None:
         return None
-    return tuple(int(part) for part in match.groups(default="0"))
+    numbers = [int(part) for part in match.group("release").split(".")]
+    release: tuple[int, ...] = (*numbers, 0, 0)[:3]
+    before_final = match.group("pre") is not None or (
+        match.group("dev") is not None and match.group("post") is None
+    )
+    return release, before_final
+
+
+def _within_runtime_range(version: str) -> bool:
+    """Return True when a PEP 440 version lies in the pinned runtime range.
+
+    The range is inclusive below and exclusive above, as the roster's
+    ``SPACY_RUNTIME`` specifier reads. A prerelease or dev release of the lower
+    bound's own release (3.8.0rc1, 3.8.0.dev1) sorts before that release, so it
+    is refused. A prerelease of the exclusive upper bound (3.9.0rc1) is refused
+    too, as PEP 440 requires. Any version the pattern does not recognize is
+    refused.
+    """
+    parsed = _release_and_stage(version)
+    if parsed is None:
+        return False
+    release, before_final = parsed
+    if release == SPACY_RUNTIME_MIN and before_final:
+        return False
+    return SPACY_RUNTIME_MIN <= release < SPACY_RUNTIME_BELOW
 
 
 def check_spacy_runtime(
@@ -92,8 +126,7 @@ def check_spacy_runtime(
             f"{SPACY_RUNTIME}."
         )
         raise SpacyRuntimeError(message)
-    release = _release(found)
-    if release is None or not SPACY_RUNTIME_MIN <= release < SPACY_RUNTIME_BELOW:
+    if not _within_runtime_range(found):
         message = (
             f"spaCy {found} is installed, but the roster pins the runtime range "
             f"{SPACY_RUNTIME}."
