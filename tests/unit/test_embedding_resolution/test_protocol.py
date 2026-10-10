@@ -328,6 +328,40 @@ def test_reviewed_custom_code_is_carried_into_each_of_that_models_configurations
     ) == (2, [1, 1], "retrieval")
 
 
+@pytest.mark.parametrize(
+    ("identifier", "revision"),
+    [
+        ("jinaai/jina-embeddings-v5-text-small", "0" * 40),
+        ("someone-else/jina-embeddings-v5-text-small", JINA_REVISION),
+    ],
+)
+def test_a_review_of_code_that_is_not_the_registry_pin_is_refused(identifier, revision):
+    payload = plan_payload()
+    payload["thresholds"].append(
+        {
+            "model": "jina-v5-text-small",
+            "policy": "similarity",
+            "min_similarity": 0.5,
+            "origin": "development_calibrated",
+            "calibration_sha256": "6" * 64,
+            "note": "Jina calibration.",
+        }
+    )
+    payload["reviewed_code"] = {
+        "jina-v5-text-small": [
+            {
+                "code": artifact(identifier, revision, "9"),
+                "review": artifact("review-fixture", "a" * 40, "c"),
+            }
+        ]
+    }
+
+    with pytest.raises(
+        ValueError, match=r"reviewed code .* differs from the registry pin"
+    ):
+        build_experiment(FreezePlan.model_validate(payload))
+
+
 def test_reviewed_code_for_an_unknown_model_is_refused():
     payload = plan_payload()
     payload["reviewed_code"] = {

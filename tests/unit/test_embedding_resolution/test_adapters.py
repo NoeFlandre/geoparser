@@ -2,7 +2,7 @@
 
 import dataclasses
 import math
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 import pytest
@@ -133,8 +133,10 @@ def test_non_string_inputs_are_refused_before_any_encoding():
     encoder = RecordingEncoder()
     adapter = EmbeddingAdapter(small_model(), encoder, batch_size=8)
 
+    # Typed as Any: the input is wrong on purpose, and the adapter must refuse it.
+    mixed: list[Any] = ["a", 3]
     with pytest.raises(TypeError, match="must be strings, got int"):
-        adapter.encode_documents(["a", 3])
+        adapter.encode_documents(mixed)
     assert encoder.calls == []
 
 

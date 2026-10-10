@@ -1,5 +1,7 @@
 """Hand-counted oracles for ranking, abstention, gold-span counts and calibration."""
 
+from typing import Any
+
 import numpy as np
 import pytest
 
@@ -78,7 +80,9 @@ def test_the_population_prior_can_overturn_a_near_tie():
 def test_a_chosen_candidate_below_the_threshold_is_abstained_with_its_similarity():
     prediction = decide([LONDON], [0.6], policy="similarity", min_similarity=0.7)
 
-    assert prediction == Prediction(chosen=None, similarity=pytest.approx(0.6))
+    assert prediction.chosen is None
+    assert prediction.invalid is False
+    assert prediction.similarity == pytest.approx(0.6)
 
 
 def test_no_candidates_means_abstention_without_a_similarity():
@@ -93,8 +97,10 @@ def test_mismatched_candidate_and_similarity_lists_are_refused():
 
 
 def test_an_unknown_policy_is_refused():
+    # Typed as Any: the policy is unknown on purpose, and decide must refuse it.
+    unknown_policy: Any = "sum"
     with pytest.raises(ValueError, match="Unknown policy"):
-        decide([LONDON], [0.1], policy="sum", min_similarity=0.0)  # type: ignore[arg-type]
+        decide([LONDON], [0.1], policy=unknown_policy, min_similarity=0.0)
 
 
 def test_ties_go_to_the_earlier_candidate():
@@ -208,7 +214,8 @@ def test_observations_record_the_policy_choice_before_any_threshold():
         [LONDON, PARIS], [0.40, 0.45], PARIS_GOLD, policy="similarity"
     )
 
-    assert observation == Observation(similarity=pytest.approx(0.45), correct=True)
+    assert observation.correct is True
+    assert observation.similarity == pytest.approx(0.45)
 
 
 def test_an_observation_needs_a_gold_identifier():

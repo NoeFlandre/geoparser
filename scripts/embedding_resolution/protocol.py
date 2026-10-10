@@ -173,19 +173,28 @@ class FreezePlan(Contract):
         )
 
 
-def _pinned(plan: FreezePlan, model: EmbeddingModel) -> None:
-    """Require the plan's weight artifact to be the registry's exact pin."""
-    artifact = plan.models[model.key]
+def _require_pin(model: EmbeddingModel, label: str, artifact: Artifact) -> None:
+    """Require an artifact to be the registry's exact pin for the model."""
     if artifact.identifier != model.repository or artifact.revision != model.revision:
         msg = (
-            f"{model.key}: plan artifact {artifact.identifier}@{artifact.revision} "
+            f"{model.key}: {label} {artifact.identifier}@{artifact.revision} "
             f"differs from the registry pin {model.repository}@{model.revision}"
         )
         raise ValueError(msg)
 
 
+def _pinned(plan: FreezePlan, model: EmbeddingModel) -> None:
+    """Require the plan's weight artifact to be the registry's exact pin."""
+    _require_pin(model, "plan artifact", plan.models[model.key])
+
+
 def _reviewed(plan: FreezePlan, model: EmbeddingModel) -> list[ReviewedCode]:
-    """Return the reviewed custom code for a model, refusing unreviewed code."""
+    """
+    Return the reviewed custom code for a model, refusing unreviewed or unpinned code.
+
+    A review covers one code artifact, so each reviewed code artifact must be the
+    registry's exact pin. A review of another repository or commit is refused.
+    """
     reviewed = plan.reviewed_code.get(model.key, [])
     if model.trust_remote_code and not reviewed:
         msg = (
@@ -193,6 +202,8 @@ def _reviewed(plan: FreezePlan, model: EmbeddingModel) -> list[ReviewedCode]:
             "before the freeze can name it."
         )
         raise ValueError(msg)
+    for entry in reviewed:
+        _require_pin(model, "reviewed code", entry.code)
     return reviewed
 
 

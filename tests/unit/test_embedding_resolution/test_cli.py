@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from scripts.benchmark_protocol.schema import Experiment
 from scripts.embedding_resolution import __main__ as cli
 from scripts.embedding_resolution.measurement import peak_rss_bytes, timed
@@ -100,10 +102,13 @@ def test_timed_returns_the_result_and_a_non_negative_duration():
 
 
 def test_peak_rss_is_converted_to_bytes_on_macos_and_kibibytes_elsewhere(monkeypatch):
+    # The resource module is POSIX-only, so the unit test is skipped on Windows.
+    resource = pytest.importorskip(
+        "resource", reason="peak RSS is read with the POSIX resource module"
+    )
+
     class Usage:
         ru_maxrss = 2048
-
-    import resource
 
     monkeypatch.setattr(resource, "getrusage", lambda _who: Usage())
 

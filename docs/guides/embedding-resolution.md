@@ -23,7 +23,7 @@ Each revision is a full commit hash that the Hugging Face model API reported on 
 | `qwen3-embedding-4b` | `Qwen/Qwen3-Embedding-4B` | added | 2560 | last token | instruction / none | no | Apache-2.0 |
 | `bge-m3` | `BAAI/bge-m3` | added | 1024 | CLS | none / none | no | MIT |
 
-The Qwen instruction is `Instruct: Given a web search query, retrieve relevant passages that answer the query` followed by a newline and `Query:`. Only the query side receives it. All five models L2-normalize their outputs, and the adapter checks that as well.
+The Qwen instruction is `Instruct: Given a web search query, retrieve relevant passages that answer the query` followed by a newline and `Query:`. Only the query side receives it. All five models declare L2 normalization of their outputs. The adapter rescales each row to unit length. It does not check the raw output for normalization.
 
 Jina v5 loads its modelling code from the repository (`trust_remote_code`). The freeze refuses to name that model until a reviewed code artifact is supplied for it. The review itself is outstanding; see the gaps below.
 
@@ -60,7 +60,7 @@ A freeze plan holds only what an approved run can supply:
 - the gazetteer artifact, whose identifier must have an attribute map for candidate descriptions;
 - the context budget: a token limit and the tokenizer artifact that counts it;
 - one weight artifact per embedding model, whose identifier and revision must match the registry pin;
-- reviewed custom code for each model that loads it;
+- reviewed custom code for each model that loads it, at the registry pin;
 - source slices, each with an example count, a gold-span count and a sample digest;
 - threshold records: a calibrated value with its calibration digest, a labelled historical value, or the structural baseline;
 - the batch size, the seed, and the provenance note.
