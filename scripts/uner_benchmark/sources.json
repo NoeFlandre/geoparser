@@ -1,0 +1,1720 @@
+{
+  "audit_status": "complete",
+  "paper": "https://arxiv.org/html/2604.12744v1",
+  "snapshot_cutoff": "2026-04-15T00:00:00Z",
+  "release_note": "UNER v2 scope from the 2026 paper. There are no dataset version tags in the official organization. Each repository is pinned to its last commit before the manuscript cutoff; this is a reproducible source snapshot, not an official immutable release archive.",
+  "expected_configuration_count": 30,
+  "repository_count": 29,
+  "split_file_count": 62,
+  "datasets": [
+    {
+      "configuration": "ceb_gja",
+      "repository": "UNER_Cebuano-GJA",
+      "revision": "336794a031b197e9f928c07a34926ee14f329ffe",
+      "source_language": "ceb",
+      "target_language": "ceb",
+      "domains": [
+        "grammar examples"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "ceb_gja-ud-test.iob2",
+          "git_blob_sha1": "5c41a7d4e9880fb816798f077a8ae133f7ab1e4e"
+        }
+      }
+    },
+    {
+      "configuration": "cs_pud",
+      "repository": "UNER_Czech-PUD",
+      "revision": "7a4729d0988bdae905395ba33d8ed6577b211ee9",
+      "source_language": "cs",
+      "target_language": "cs",
+      "domains": [
+        "news",
+        "wiki"
+      ],
+      "domain_source": "https://arxiv.org/html/2604.12744v1",
+      "annotation_provenance": "Human UNER annotation. Parallel translated sentences are related across languages.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "cs_pud-ud-test.iob2",
+          "git_blob_sha1": "57481e503fe6f719e408059a882facb17eda81c7"
+        }
+      }
+    },
+    {
+      "configuration": "da_ddt",
+      "repository": "UNER_Danish-DDT",
+      "revision": "983c4cdc09f8ece6069d2b692b60dc4b3649ec6e",
+      "source_language": "da",
+      "target_language": "da",
+      "domains": [
+        "fiction",
+        "news",
+        "nonfiction",
+        "spoken"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Converted from human DaN+ annotations.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "da_ddt-ud-dev.iob2",
+          "git_blob_sha1": "af60507897843451435a0cd0b9d5313d04d2f7ce"
+        },
+        "test": {
+          "path": "da_ddt-ud-test.iob2",
+          "git_blob_sha1": "eac840a2cad35bd68f8d6c40119424cb19e4b7fa"
+        },
+        "train": {
+          "path": "da_ddt-ud-train.iob2",
+          "git_blob_sha1": "462257517e822ab3621ba3225ed1aaa66b1408df"
+        }
+      }
+    },
+    {
+      "configuration": "de_pud",
+      "repository": "UNER_German-PUD",
+      "revision": "47eb039b6d80079b280ba70efe4136413fb7af9c",
+      "source_language": "de",
+      "target_language": "de",
+      "domains": [
+        "news",
+        "wiki"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation. Parallel translated sentences are related across languages.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-3.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "a0bd8baeb667daae1407869f3152489fab3001de"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "de_pud-ud-test.iob2",
+          "git_blob_sha1": "fa7167641f86efa2a3aeb3482e3de554176e95e6"
+        }
+      }
+    },
+    {
+      "configuration": "el_gdt",
+      "repository": "UNER_Greek_GDT",
+      "revision": "73bbd59607ec776f6eba07ed5a54b3840907c4af",
+      "source_language": "el",
+      "target_language": "el",
+      "domains": [
+        "news",
+        "spoken",
+        "wiki"
+      ],
+      "domain_source": "https://arxiv.org/html/2604.12744v1",
+      "annotation_provenance": "Human UNER annotation.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "No license file or annotation-license declaration is present in the pinned UNER tree. Do not inherit a license from UD or the paper.",
+      "license": "unknown",
+      "license_sources": [],
+      "splits": {
+        "dev": {
+          "path": "el_gdt-ud-dev.iob2",
+          "git_blob_sha1": "bedec37300c764cc459a502d2ed5b9e3e629f779"
+        },
+        "test": {
+          "path": "el_gdt-ud-test.iob2",
+          "git_blob_sha1": "8816973eb2286bdf6bcc7498b94ba3d043083742"
+        },
+        "train": {
+          "path": "el_gdt-ud-train.iob2",
+          "git_blob_sha1": "751ad841dd95dadbfacfba3359726e3bfc139d02"
+        }
+      }
+    },
+    {
+      "configuration": "en_ewt",
+      "repository": "UNER_English-EWT",
+      "revision": "8ed072de2fd24022cc62458997fe96a8fe191ea4",
+      "source_language": "en",
+      "target_language": "en",
+      "domains": [
+        "blog",
+        "email",
+        "reviews",
+        "social",
+        "web"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "547fb999d1fc888c7071f50a0cf6b7338eeae2fe"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "en_ewt-ud-dev.iob2",
+          "git_blob_sha1": "ba19f8b2c24da16a9131408b5f07e3a3f0bdc5b8"
+        },
+        "test": {
+          "path": "en_ewt-ud-test.iob2",
+          "git_blob_sha1": "45c5da3de8d9908dfff8d1883837ae4c42d48424"
+        },
+        "train": {
+          "path": "en_ewt-ud-train.iob2",
+          "git_blob_sha1": "b2423d72f37f2226e56cbe750da76f820e6c36a9"
+        }
+      }
+    },
+    {
+      "configuration": "en_pud",
+      "repository": "UNER_English-PUD",
+      "revision": "07ea0553144e3fcf3d6633efe2a075b725a0d262",
+      "source_language": "en",
+      "target_language": "en",
+      "domains": [
+        "news",
+        "wiki"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation. Parallel translated sentences are related across languages.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-3.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "a0bd8baeb667daae1407869f3152489fab3001de"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "en_pud-ud-test.iob2",
+          "git_blob_sha1": "a9403a25be54b42fca4ee373463f4128f1496c46"
+        }
+      }
+    },
+    {
+      "configuration": "he_htb",
+      "repository": "UNER_Hebrew-HTB",
+      "revision": "7bbec19c74d6869965cf51523dd279257850565e",
+      "source_language": "he",
+      "target_language": "he",
+      "domains": [
+        "news"
+      ],
+      "domain_source": "https://arxiv.org/html/2604.12744v1",
+      "annotation_provenance": "Human UNER annotation.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "a825a962e91095a649798a5d08f23dd39a4d31c1"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "he_htb-ud-dev.iob2",
+          "git_blob_sha1": "3c00047556c6e6140bbb795eb0d82cacf4123007"
+        },
+        "test": {
+          "path": "he_htb-ud-test.iob2",
+          "git_blob_sha1": "9426157edb714a9c00cf1a0cabb1743b5b6bff2c"
+        },
+        "train": {
+          "path": "he_htb-ud-train.iob2",
+          "git_blob_sha1": "4abb1b8c69fee57d9ebce2be21ef3e1448135448"
+        }
+      }
+    },
+    {
+      "configuration": "hr_set",
+      "repository": "UNER_Croatian-SET",
+      "revision": "20dcb2ef6b6bf9d5e03605a74c4d87215a1574c1",
+      "source_language": "hr",
+      "target_language": null,
+      "domains": [
+        "news",
+        "web",
+        "wiki"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Converted from human hr500k annotations.",
+      "mapping_note": "Source language is outside canonical85. No substitute target language is assigned.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "2c32e4c6fadee0c570c57fe7b48c129327ce4bc0"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "hr_set-ud-dev.iob2",
+          "git_blob_sha1": "81e7943b49053f3b853508fb1fb7860ebd5311c0"
+        },
+        "test": {
+          "path": "hr_set-ud-test.iob2",
+          "git_blob_sha1": "89fe2dcfb31fbb9274ffa718b25cba1c7c6a2d8b"
+        },
+        "train": {
+          "path": "hr_set-ud-train.iob2",
+          "git_blob_sha1": "8990179123f7422cb037437eee3e79c568c7cf81"
+        }
+      }
+    },
+    {
+      "configuration": "id_pud",
+      "repository": "UNER_Indonesian-PUD",
+      "revision": "1cd63f67fcdbfd1d1a1437157770364b7213fd1d",
+      "source_language": "id",
+      "target_language": "id",
+      "domains": [
+        "news",
+        "wiki"
+      ],
+      "domain_source": "https://arxiv.org/html/2604.12744v1",
+      "annotation_provenance": "Human UNER annotation. Parallel translated sentences are related across languages.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "id_pud-ud-test.iob2",
+          "git_blob_sha1": "80338d8204caada4170512b5b663516e6437ba7f"
+        }
+      }
+    },
+    {
+      "configuration": "ja_pud",
+      "repository": "UNER_Japanese-PUD",
+      "revision": "c788fcd993c512a118d956a9c210520604ab2965",
+      "source_language": "ja",
+      "target_language": "ja",
+      "domains": [
+        "news",
+        "wiki"
+      ],
+      "domain_source": "https://arxiv.org/html/2604.12744v1",
+      "annotation_provenance": "Human UNER annotation. Parallel translated sentences are related across languages.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "ja_pud-ud-test.iob2",
+          "git_blob_sha1": "5cd6e84b64b75ca1389762ca44ba50e28fb20ae7"
+        }
+      }
+    },
+    {
+      "configuration": "ko_pud",
+      "repository": "UNER_Korean-PUD",
+      "revision": "23a8f3814e2396a1503868f30e6278eb43db7242",
+      "source_language": "ko",
+      "target_language": "ko",
+      "domains": [
+        "news",
+        "wiki"
+      ],
+      "domain_source": "https://arxiv.org/html/2604.12744v1",
+      "annotation_provenance": "Human UNER annotation. Parallel translated sentences are related across languages.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "No license file or annotation-license declaration is present in the pinned UNER tree. Do not inherit a license from UD or the paper.",
+      "license": "unknown",
+      "license_sources": [],
+      "splits": {
+        "test": {
+          "path": "ko_pud-ud-test.iob2",
+          "git_blob_sha1": "f6fe4f6ec3433c1034f5fbe16c296a6160b83cca"
+        }
+      }
+    },
+    {
+      "configuration": "nno_norne",
+      "repository": "UNER_Norwegian-NDT",
+      "revision": "f1da13196788be028fe8124cdc7b9b197399ad98",
+      "source_language": "nno",
+      "target_language": "no",
+      "domains": [
+        "blog",
+        "news",
+        "nonfiction"
+      ],
+      "domain_source": "https://arxiv.org/html/2604.12744v1",
+      "annotation_provenance": "Converted from human NorNE annotations.",
+      "mapping_note": "nno maps to canonical no; Nynorsk and Bokmål remain distinct source configurations.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "nno_norne-ud-dev.iob2",
+          "git_blob_sha1": "d0fc63e2dd3be91ece6c6cf5648c321ca18f20ae"
+        },
+        "test": {
+          "path": "nno_norne-ud-test.iob2",
+          "git_blob_sha1": "343410a4149dcfcc77aa6dc83dd681152c715a48"
+        },
+        "train": {
+          "path": "nno_norne-ud-train.iob2",
+          "git_blob_sha1": "2b44d2a96009fa640d2cba53acf8e9c8c7938881"
+        }
+      }
+    },
+    {
+      "configuration": "nob_norne",
+      "repository": "UNER_Norwegian-NDT",
+      "revision": "f1da13196788be028fe8124cdc7b9b197399ad98",
+      "source_language": "nob",
+      "target_language": "no",
+      "domains": [
+        "blog",
+        "news",
+        "nonfiction"
+      ],
+      "domain_source": "https://arxiv.org/html/2604.12744v1",
+      "annotation_provenance": "Converted from human NorNE annotations.",
+      "mapping_note": "nob maps to canonical no; Nynorsk and Bokmål remain distinct source configurations.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "nob_norne-ud-dev.iob2",
+          "git_blob_sha1": "83e456ec40b15c41e82369dc9639d0f0d5f3e0ca"
+        },
+        "test": {
+          "path": "nob_norne-ud-test.iob2",
+          "git_blob_sha1": "56de21ed04eb43504dcb8c8a41ce98981ed4a636"
+        },
+        "train": {
+          "path": "nob_norne-ud-train.iob2",
+          "git_blob_sha1": "1fabfa885478f5e2c65498c4c8007a308e00fb6a"
+        }
+      }
+    },
+    {
+      "configuration": "pt_bosque",
+      "repository": "UNER_Portuguese-Bosque",
+      "revision": "f2c2ad67aed900385fbe5d655af41f439c9b3333",
+      "source_language": "pt",
+      "target_language": "pt",
+      "domains": [
+        "news"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "a95920ada82b1cada4a067ee02d86eb19ba5fe42"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "pt_bosque-ud-dev.iob2",
+          "git_blob_sha1": "c45ec24ccaaef7ac52abcda4b2f72c36019d7981"
+        },
+        "test": {
+          "path": "pt_bosque-ud-test.iob2",
+          "git_blob_sha1": "63d219763cde41a389a965f33eb9c7d5792e1d1f"
+        },
+        "train": {
+          "path": "pt_bosque-ud-train.iob2",
+          "git_blob_sha1": "8092ca64ae8b0a89cad7c0f3f47852d8a48692f3"
+        }
+      }
+    },
+    {
+      "configuration": "pt_pud",
+      "repository": "UNER_Portuguese-PUD",
+      "revision": "cda2cf86b68d45e896aab97ceca5e91d43a86db7",
+      "source_language": "pt",
+      "target_language": "pt",
+      "domains": [
+        "news",
+        "wiki"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation. Parallel translated sentences are related across languages.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-3.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "a0bd8baeb667daae1407869f3152489fab3001de"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "pt_pud-ud-test.iob2",
+          "git_blob_sha1": "94381b0505f5a5a0dda9c03cee829e2cb2613821"
+        }
+      }
+    },
+    {
+      "configuration": "qaf_arabizi",
+      "repository": "UNER_Maghrebi_Arabic_French-Arabizi",
+      "revision": "9b39d96f6de25ed2730481e67d777e1707028550",
+      "source_language": "qaf",
+      "target_language": null,
+      "domains": [
+        "blog",
+        "web",
+        "social"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Converted from human NArabizi annotations.",
+      "mapping_note": "Source language is outside canonical85. No substitute target language is assigned. NArabizi is Romanized North African Arabic with French; it is not mapped to ar or fr.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "qaf_arabizi-ud-dev.iob2",
+          "git_blob_sha1": "fd30548031bd2ea1025156a742f801b998c00c9b"
+        },
+        "test": {
+          "path": "qaf_arabizi-ud-test.iob2",
+          "git_blob_sha1": "b32f51d12bb07495b8ad8476956024c97e261edb"
+        },
+        "train": {
+          "path": "qaf_arabizi-ud-train.iob2",
+          "git_blob_sha1": "d94209a30385c49ce1a210997b6a58431fc10492"
+        }
+      }
+    },
+    {
+      "configuration": "ro_legalnero",
+      "repository": "UNER_Romanian-LegalNERo",
+      "revision": "4bfcf822305abf6c5ff61ce1f4ede354a238ba7a",
+      "source_language": "ro",
+      "target_language": "ro",
+      "domains": [
+        "legal"
+      ],
+      "domain_source": "https://arxiv.org/html/2604.12744v1",
+      "annotation_provenance": "Converted from human LegalNERo annotations.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license. The UNER README distinguishes this CC-BY-SA release from the CC-BY-NC-ND Zenodo original.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "7d4f96c54aa155a17387e64501c50b6a0469932c"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "ro_legalnero.iob2",
+          "git_blob_sha1": "52ee83b0467146dc932639321b0a2ce49533b6bb"
+        }
+      }
+    },
+    {
+      "configuration": "ru_pud",
+      "repository": "UNER_Russian-PUD",
+      "revision": "6f5acd6d728f70b20e4326d841356567796ee844",
+      "source_language": "ru",
+      "target_language": "ru",
+      "domains": [
+        "news",
+        "wiki"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation. Parallel translated sentences are related across languages.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-3.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "a0bd8baeb667daae1407869f3152489fab3001de"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "ru_pud-ud-test.iob2",
+          "git_blob_sha1": "7abc8d4d27ef207641d5e4bc64d45a981d35690d"
+        }
+      }
+    },
+    {
+      "configuration": "sk_snk",
+      "repository": "UNER_Slovak-SNK",
+      "revision": "886e7c6d7e066e23246af5070d115a036a465c6d",
+      "source_language": "sk",
+      "target_language": "sk",
+      "domains": [
+        "fiction",
+        "news",
+        "nonfiction"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "sk_snk-ud-dev.iob2",
+          "git_blob_sha1": "428c097477b06cf73c9d8456818c61f5f8386bc1"
+        },
+        "test": {
+          "path": "sk_snk-ud-test.iob2",
+          "git_blob_sha1": "4548a51e0659806dc3a7842a7e98d1c332f0d77d"
+        },
+        "train": {
+          "path": "sk_snk-ud-train.iob2",
+          "git_blob_sha1": "9e2726c88c238f94597dfe8b781062aca15bec1c"
+        }
+      }
+    },
+    {
+      "configuration": "sl_ssj",
+      "repository": "UNER_Slovenian_SSJ",
+      "revision": "f6c6f40e297749ecb7ce7143e9783083e545aadf",
+      "source_language": "sl",
+      "target_language": "sl",
+      "domains": [
+        "fiction",
+        "news",
+        "nonfiction"
+      ],
+      "domain_source": "https://arxiv.org/html/2604.12744v1",
+      "annotation_provenance": "Converted from human JANES annotations with UNER manual additions and corrections. The pinned export retains OTH labels; they are negative for location recognition.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "33af88f4e70299256a8c830f8193e2f04e84c77c"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "sl_ssj-ud-dev.iob2",
+          "git_blob_sha1": "46ff85040c00453c14ce4ae34cf4687ba3aadaf9"
+        },
+        "test": {
+          "path": "sl_ssj-ud-test.iob2",
+          "git_blob_sha1": "ee5df285eff7382aa32f1b1f0ecfee278848bed6"
+        },
+        "train": {
+          "path": "sl_ssj-ud-train.iob2",
+          "git_blob_sha1": "48acc2ab8dbb95b89693836e855cccac5cc81997"
+        }
+      }
+    },
+    {
+      "configuration": "sr_set",
+      "repository": "UNER_Serbian-SET",
+      "revision": "0d9685f001c10895572d844ef789c53dade0e265",
+      "source_language": "sr",
+      "target_language": "sr",
+      "domains": [
+        "news"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Converted from human SETimes.SR annotations.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "f95e2e34cb20519ce6c1f170e74a84a735fe8374"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "sr_set-ud-dev.iob2",
+          "git_blob_sha1": "f3fd9d680b7ad7c3f78a70744a2127c2324d5a14"
+        },
+        "test": {
+          "path": "sr_set-ud-test.iob2",
+          "git_blob_sha1": "1d95b3e7666ec2342d06ae9fa81e841587467905"
+        },
+        "train": {
+          "path": "sr_set-ud-train.iob2",
+          "git_blob_sha1": "d2c4e987e081643502db6a2ad42d84012fb4df49"
+        }
+      }
+    },
+    {
+      "configuration": "sv_lines",
+      "repository": "UNER_Swedish-Lines",
+      "revision": "897414e7bae2386ecb8be2d3c561ea8570882827",
+      "source_language": "sv",
+      "target_language": "sv",
+      "domains": [
+        "fiction",
+        "nonfiction",
+        "spoken"
+      ],
+      "domain_source": "https://arxiv.org/html/2604.12744v1",
+      "annotation_provenance": "Human UNER annotation.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "sv_lines-ud-dev.iob2",
+          "git_blob_sha1": "613bed361074fa45763637371662bbf27046c8da"
+        },
+        "test": {
+          "path": "sv_lines-ud-test.iob2",
+          "git_blob_sha1": "680dac2dde17e40af9357b0735a8e2935de5c8d8"
+        },
+        "train": {
+          "path": "sv_lines-ud-train.iob2",
+          "git_blob_sha1": "1e5f7e09881bef769a993c131d37a6b029cd8b8b"
+        }
+      }
+    },
+    {
+      "configuration": "sv_pud",
+      "repository": "UNER_Swedish-PUD",
+      "revision": "7fed5e267858a295f53083051a16d73c76f60f07",
+      "source_language": "sv",
+      "target_language": "sv",
+      "domains": [
+        "news",
+        "wiki"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation. Parallel translated sentences are related across languages.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "sv_pud-ud-test.iob2",
+          "git_blob_sha1": "c3cb09eea1de3bbb85e9c5d5e6e75bb0b11f5a6f"
+        }
+      }
+    },
+    {
+      "configuration": "sv_talbanken",
+      "repository": "UNER_Swedish-Talbanken",
+      "revision": "dbb692085267da83a35d1e1d2c111671b3c7c46b",
+      "source_language": "sv",
+      "target_language": "sv",
+      "domains": [
+        "news",
+        "nonfiction"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "58d4738fa23f95f9a5f242374482199231270cc0"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "sv_talbanken-ud-dev.iob2",
+          "git_blob_sha1": "f75ff2331e964d695f469384169b68bb6f32019d"
+        },
+        "test": {
+          "path": "sv_talbanken-ud-test.iob2",
+          "git_blob_sha1": "fed27118efe99d29773c8556b2bdb58713a3c16d"
+        },
+        "train": {
+          "path": "sv_talbanken-ud-train.iob2",
+          "git_blob_sha1": "4ee74f493e06a790df56641b9e0c496282e0782a"
+        }
+      }
+    },
+    {
+      "configuration": "tl_trg",
+      "repository": "UNER_Tagalog-TRG",
+      "revision": "a80b309b5254d9d6afebebd7c65789eee3215256",
+      "source_language": "tl",
+      "target_language": null,
+      "domains": [
+        "grammar examples"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation.",
+      "mapping_note": "Source language is outside canonical85. No substitute target language is assigned.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "tl_trg-ud-test.iob2",
+          "git_blob_sha1": "5842769f205f6fff370c2f7b2d55c32843e0ab84"
+        }
+      }
+    },
+    {
+      "configuration": "tl_ugnayan",
+      "repository": "UNER_Tagalog-Ugnayan",
+      "revision": "69e95595b6b1f2354d0ba735f7ec9e36c18373e4",
+      "source_language": "tl",
+      "target_language": null,
+      "domains": [
+        "fiction",
+        "nonfiction"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation.",
+      "mapping_note": "Source language is outside canonical85. No substitute target language is assigned.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-NC-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "a15a8b4eeb63f1eb29f991b012109803e12b0d87"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "tl_ugnayan-ud-test.iob2",
+          "git_blob_sha1": "80282fff2309072f39dfeccf3e49e5baf1221e22"
+        }
+      }
+    },
+    {
+      "configuration": "zh_gsd",
+      "repository": "UNER_Chinese-GSD",
+      "revision": "2a0c196d7a54d41119fd069874e976a58f0d7dad",
+      "source_language": "zh",
+      "target_language": "zh",
+      "domains": [
+        "wiki"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list. Traditional GSD/PUD and Simplified GSDSIMP remain separate configurations; no script conversion is performed.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "zh_gsd-ud-dev.iob2",
+          "git_blob_sha1": "218e9bb391a1bad1678b8fc48b5600d79e509058"
+        },
+        "test": {
+          "path": "zh_gsd-ud-test.iob2",
+          "git_blob_sha1": "5c32a94508a4de9ad7ba82ab37684ebc5c5a6a8c"
+        },
+        "train": {
+          "path": "zh_gsd-ud-train.iob2",
+          "git_blob_sha1": "94f9186d0b452a1f73993761cc88f6f0cada22b8"
+        }
+      }
+    },
+    {
+      "configuration": "zh_gsdsimp",
+      "repository": "UNER_Chinese-GSDSIMP",
+      "revision": "1f0307599dece7b83f4cba90ce9b63ef37a7b162",
+      "source_language": "zh",
+      "target_language": "zh",
+      "domains": [
+        "wiki"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation. The Simplified counterpart shares underlying GSD material and nearly identical annotations.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list. Traditional GSD/PUD and Simplified GSDSIMP remain separate configurations; no script conversion is performed.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-4.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e"
+        }
+      ],
+      "splits": {
+        "dev": {
+          "path": "zh_gsdsimp-ud-dev.iob2",
+          "git_blob_sha1": "3ef7095d3d10328b7dadbcccf521a42b17864175"
+        },
+        "test": {
+          "path": "zh_gsdsimp-ud-test.iob2",
+          "git_blob_sha1": "58e9c3a04c02707beb8b9613b6f012cf649fd747"
+        },
+        "train": {
+          "path": "zh_gsdsimp-ud-train.iob2",
+          "git_blob_sha1": "8c4046ec942087afeafe1e042dbaeb6cbfce15e7"
+        }
+      }
+    },
+    {
+      "configuration": "zh_pud",
+      "repository": "UNER_Chinese-PUD",
+      "revision": "647ba53747e1aa1818541965db99a0196440b7d2",
+      "source_language": "zh",
+      "target_language": "zh",
+      "domains": [
+        "news",
+        "wiki"
+      ],
+      "domain_source": "https://aclanthology.org/2024.naacl-long.243.pdf",
+      "annotation_provenance": "Human UNER annotation. Parallel translated sentences are related across languages.",
+      "mapping_note": "Source language code is unchanged in the canonical85 target list. Traditional GSD/PUD and Simplified GSDSIMP remain separate configurations; no script conversion is performed.",
+      "license_note": "The pinned UNER repository declares this license.",
+      "license": "CC-BY-SA-3.0",
+      "license_sources": [
+        {
+          "path": "LICENSE.txt",
+          "git_blob_sha1": "a0bd8baeb667daae1407869f3152489fab3001de"
+        }
+      ],
+      "splits": {
+        "test": {
+          "path": "zh_pud-ud-test.iob2",
+          "git_blob_sha1": "5e8888444e1b5c2dfe446893e714b670edcd3360"
+        }
+      }
+    }
+  ],
+  "metadata_checksums": [
+    {
+      "repository": "UNER_Cebuano-GJA",
+      "revision": "336794a031b197e9f928c07a34926ee14f329ffe",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e",
+      "sha256": "76cbab13f5ddb068524dafb0600017c796311cd459def36d3d9d8cd0b8fb49be",
+      "bytes": 221
+    },
+    {
+      "repository": "UNER_Cebuano-GJA",
+      "revision": "336794a031b197e9f928c07a34926ee14f329ffe",
+      "path": "README.md",
+      "git_blob_sha1": "003ead52404f023ebfb5f4f43b1b7590a1cbf472",
+      "sha256": "6096b55041572995ef3c844ed65c5ce8ea4bb93fcce3f756993597e16c2beccd",
+      "bytes": 1196
+    },
+    {
+      "repository": "UNER_Cebuano-GJA",
+      "revision": "336794a031b197e9f928c07a34926ee14f329ffe",
+      "path": "ceb_gja-ud-test.stats",
+      "git_blob_sha1": "143ebae4baf4b2239739268572c368c737bcc477",
+      "sha256": "10a6c6527efaab2cd1ae0407d41381eeec50a8ea3bd20e516e5db8dcdc022f2e",
+      "bytes": 1201
+    },
+    {
+      "repository": "UNER_Chinese-GSD",
+      "revision": "2a0c196d7a54d41119fd069874e976a58f0d7dad",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e",
+      "sha256": "76cbab13f5ddb068524dafb0600017c796311cd459def36d3d9d8cd0b8fb49be",
+      "bytes": 221
+    },
+    {
+      "repository": "UNER_Chinese-GSD",
+      "revision": "2a0c196d7a54d41119fd069874e976a58f0d7dad",
+      "path": "README.md",
+      "git_blob_sha1": "4d287d64dca1dca393db7a906c8e6534a5a7d07d",
+      "sha256": "0c39a4224645ced6a6f3dd2f6c61b6e1ec7c2bc009a8ef80ed231713b9113140",
+      "bytes": 1200
+    },
+    {
+      "repository": "UNER_Chinese-GSD",
+      "revision": "2a0c196d7a54d41119fd069874e976a58f0d7dad",
+      "path": "zh_gsd-ud-dev.stats",
+      "git_blob_sha1": "af12f25f06a7af42bba210fb7a10c7d72da60f3f",
+      "sha256": "91b076807d510bf4139c0ef1b87217d0a98850222b1a03124fcd668430f8cc4c",
+      "bytes": 1313
+    },
+    {
+      "repository": "UNER_Chinese-GSD",
+      "revision": "2a0c196d7a54d41119fd069874e976a58f0d7dad",
+      "path": "zh_gsd-ud-test.stats",
+      "git_blob_sha1": "53163e606e10e2fc22e4e86451913751e5660798",
+      "sha256": "459d2d90b614cc96e1024430b52564bef7a629a54e8f950f2da19c344551fd37",
+      "bytes": 1301
+    },
+    {
+      "repository": "UNER_Chinese-GSD",
+      "revision": "2a0c196d7a54d41119fd069874e976a58f0d7dad",
+      "path": "zh_gsd-ud-train.stats",
+      "git_blob_sha1": "2156253d66ae1558e294fa9307c1885a842daf78",
+      "sha256": "76eb492ace15d6071d4ff1a233837cf8a5601c95050329a4aab119c3f72a4e06",
+      "bytes": 1280
+    },
+    {
+      "repository": "UNER_Chinese-GSDSIMP",
+      "revision": "1f0307599dece7b83f4cba90ce9b63ef37a7b162",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e",
+      "sha256": "76cbab13f5ddb068524dafb0600017c796311cd459def36d3d9d8cd0b8fb49be",
+      "bytes": 221
+    },
+    {
+      "repository": "UNER_Chinese-GSDSIMP",
+      "revision": "1f0307599dece7b83f4cba90ce9b63ef37a7b162",
+      "path": "README.md",
+      "git_blob_sha1": "ac7937e7d762a32df5714b6dbeee828fa84ee6e3",
+      "sha256": "cf0ac7971c6a58b7ebb6361a66279faf5c800f427e512488ff0b0d5429e247ca",
+      "bytes": 1231
+    },
+    {
+      "repository": "UNER_Chinese-GSDSIMP",
+      "revision": "1f0307599dece7b83f4cba90ce9b63ef37a7b162",
+      "path": "zh_gsdsimp-ud-dev.stats",
+      "git_blob_sha1": "2e7daf193cbea1436bc95b029b1e4740acb58b20",
+      "sha256": "d208ccc3c3eca38fb8812753b8a3593bd7791257b5ba4985b08fcf16ab418b52",
+      "bytes": 349
+    },
+    {
+      "repository": "UNER_Chinese-GSDSIMP",
+      "revision": "1f0307599dece7b83f4cba90ce9b63ef37a7b162",
+      "path": "zh_gsdsimp-ud-test.stats",
+      "git_blob_sha1": "86aa336b606a2d358e2ff130b9b509e4b2832a87",
+      "sha256": "654752439110a7b61324746cd5b2ae291c6879367d1ca9b87c813e5d1a4770ae",
+      "bytes": 1216
+    },
+    {
+      "repository": "UNER_Chinese-GSDSIMP",
+      "revision": "1f0307599dece7b83f4cba90ce9b63ef37a7b162",
+      "path": "zh_gsdsimp-ud-train.stats",
+      "git_blob_sha1": "fa3b8f49e96a2d35e84b27deb5dcc2c85082d855",
+      "sha256": "e948c392e6e1bd71f56fce9cbd6020672cf67b53cc08f92f44cb3a3a0621e351",
+      "bytes": 358
+    },
+    {
+      "repository": "UNER_Chinese-PUD",
+      "revision": "647ba53747e1aa1818541965db99a0196440b7d2",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "a0bd8baeb667daae1407869f3152489fab3001de",
+      "sha256": "b278eb53fe50b8bb7fa0d90fb8536c35fdcaa80f9d63812cb51db539555d2a89",
+      "bytes": 19556
+    },
+    {
+      "repository": "UNER_Chinese-PUD",
+      "revision": "647ba53747e1aa1818541965db99a0196440b7d2",
+      "path": "README.md",
+      "git_blob_sha1": "9fde5621fcbf0e3d833180f217eb76f120e8c496",
+      "sha256": "f3844b000b59792724b2b7b07c96cb1f11aeddfbfca5e11254f48b7b9c950e14",
+      "bytes": 1325
+    },
+    {
+      "repository": "UNER_Chinese-PUD",
+      "revision": "647ba53747e1aa1818541965db99a0196440b7d2",
+      "path": "zh_pud-ud-test.stats",
+      "git_blob_sha1": "2e5a880a7f7f1455ae8f696eb4a1dab13cb55c6c",
+      "sha256": "17f5d0cd4f94e746f6bde1a8f8a327e9695323bedda3421e58e2b8b6c992d03b",
+      "bytes": 3527
+    },
+    {
+      "repository": "UNER_Croatian-SET",
+      "revision": "20dcb2ef6b6bf9d5e03605a74c4d87215a1574c1",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "2c32e4c6fadee0c570c57fe7b48c129327ce4bc0",
+      "sha256": "a4f41f912e45003b1aa158161bc99b3e0c2a1dd207d546b3f292ce8373308afd",
+      "bytes": 253
+    },
+    {
+      "repository": "UNER_Croatian-SET",
+      "revision": "20dcb2ef6b6bf9d5e03605a74c4d87215a1574c1",
+      "path": "README.md",
+      "git_blob_sha1": "c07295bd5704754e244a43eb4c6e3ad7b09533f6",
+      "sha256": "b9c5aa8fffbc82b6258c0cd8f7c2270d0e42637259f05f0615b0c3a4511f3802",
+      "bytes": 1221
+    },
+    {
+      "repository": "UNER_Czech-PUD",
+      "revision": "7a4729d0988bdae905395ba33d8ed6577b211ee9",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c",
+      "sha256": "df653272772ee86b0098bfc640b0ab583f6ecf59bb6254b82feaba3aed3ed93c",
+      "bytes": 20013
+    },
+    {
+      "repository": "UNER_Czech-PUD",
+      "revision": "7a4729d0988bdae905395ba33d8ed6577b211ee9",
+      "path": "cs_pud-ud-test.stats",
+      "git_blob_sha1": "7ab04d9f75c9610e73dabc3cebe517d469b735e0",
+      "sha256": "27e21373e381023df5cbce4c15c87df99fbd20cc1f3c8e43bcf41c040dc0df9d",
+      "bytes": 2044
+    },
+    {
+      "repository": "UNER_Danish-DDT",
+      "revision": "983c4cdc09f8ece6069d2b692b60dc4b3649ec6e",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c",
+      "sha256": "df653272772ee86b0098bfc640b0ab583f6ecf59bb6254b82feaba3aed3ed93c",
+      "bytes": 20013
+    },
+    {
+      "repository": "UNER_Danish-DDT",
+      "revision": "983c4cdc09f8ece6069d2b692b60dc4b3649ec6e",
+      "path": "README.md",
+      "git_blob_sha1": "5349fb1a6f7628090d808a48a0d86533e072a868",
+      "sha256": "02020d4b0780d4bef6438bba915d5582f236b793f57f16716598370c7e8bfef4",
+      "bytes": 2368
+    },
+    {
+      "repository": "UNER_English-EWT",
+      "revision": "8ed072de2fd24022cc62458997fe96a8fe191ea4",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "547fb999d1fc888c7071f50a0cf6b7338eeae2fe",
+      "sha256": "b3d1b0f4c6ae151f7eb78738f46ebd5ee140f8a7f76501ba26af123140d35ae7",
+      "bytes": 20014
+    },
+    {
+      "repository": "UNER_English-EWT",
+      "revision": "8ed072de2fd24022cc62458997fe96a8fe191ea4",
+      "path": "README.md",
+      "git_blob_sha1": "ad6f8c7fc44500527af2cc23c0ec1adb5ccc455d",
+      "sha256": "e5f3f45467a7b87ebe71fad751158f45ffdb282d78483e90b6265bb0d61b7c5f",
+      "bytes": 1202
+    },
+    {
+      "repository": "UNER_English-EWT",
+      "revision": "8ed072de2fd24022cc62458997fe96a8fe191ea4",
+      "path": "en_ewt-ud-dev.stats",
+      "git_blob_sha1": "2e7587f67f009e7e8e62e2e386347a26d74149e4",
+      "sha256": "2e8821cda6522573fe19900784b83bf84510070e179e1a29abf45fdcaeced712",
+      "bytes": 1273
+    },
+    {
+      "repository": "UNER_English-EWT",
+      "revision": "8ed072de2fd24022cc62458997fe96a8fe191ea4",
+      "path": "en_ewt-ud-test.stats",
+      "git_blob_sha1": "e2f503e3f1c7ecf57938a015c6e9b7db84e15db3",
+      "sha256": "28a2e2497260665c42ffde6df6aaf5ddec9e68a32964871f614b515f0df261cd",
+      "bytes": 1286
+    },
+    {
+      "repository": "UNER_English-EWT",
+      "revision": "8ed072de2fd24022cc62458997fe96a8fe191ea4",
+      "path": "en_ewt-ud-train.stats",
+      "git_blob_sha1": "75ecc908aeef3421c24b07cc70caade10c466808",
+      "sha256": "b2c59a4ed7606615830b4856a895c5688f4aed35d92735637cf5aded16665980",
+      "bytes": 2154
+    },
+    {
+      "repository": "UNER_English-PUD",
+      "revision": "07ea0553144e3fcf3d6633efe2a075b725a0d262",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "a0bd8baeb667daae1407869f3152489fab3001de",
+      "sha256": "b278eb53fe50b8bb7fa0d90fb8536c35fdcaa80f9d63812cb51db539555d2a89",
+      "bytes": 19556
+    },
+    {
+      "repository": "UNER_English-PUD",
+      "revision": "07ea0553144e3fcf3d6633efe2a075b725a0d262",
+      "path": "README.md",
+      "git_blob_sha1": "e747d66619f42ce0de320d427b26e724eca07c25",
+      "sha256": "eeca1028e6900f03e481b8c906cb7e18820606c90de717979dacb22322d8c50d",
+      "bytes": 1210
+    },
+    {
+      "repository": "UNER_English-PUD",
+      "revision": "07ea0553144e3fcf3d6633efe2a075b725a0d262",
+      "path": "en_pud-ud-test.stats",
+      "git_blob_sha1": "850ffa63bec46efb8a0730a50206e6db7625b7ca",
+      "sha256": "448864511e6a6c79b99ff53229a65da09e261b6c4121eb246060ac4282e66406",
+      "bytes": 2084
+    },
+    {
+      "repository": "UNER_German-PUD",
+      "revision": "47eb039b6d80079b280ba70efe4136413fb7af9c",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "a0bd8baeb667daae1407869f3152489fab3001de",
+      "sha256": "b278eb53fe50b8bb7fa0d90fb8536c35fdcaa80f9d63812cb51db539555d2a89",
+      "bytes": 19556
+    },
+    {
+      "repository": "UNER_German-PUD",
+      "revision": "47eb039b6d80079b280ba70efe4136413fb7af9c",
+      "path": "README.md",
+      "git_blob_sha1": "7672ca9c467546e2df6b08486ca9faad3121d36f",
+      "sha256": "5193bae44224c4334cee6338d49a5bb4fdd0e047d664af24f45afc9922eba3ab",
+      "bytes": 1204
+    },
+    {
+      "repository": "UNER_German-PUD",
+      "revision": "47eb039b6d80079b280ba70efe4136413fb7af9c",
+      "path": "de_pud-ud-test.stats",
+      "git_blob_sha1": "848e942d96f667441f073cea4946cccbe18aec02",
+      "sha256": "444769bb272e84a0d6ec8283575b2a15d98202290eff59b2ce717711787055de",
+      "bytes": 1256
+    },
+    {
+      "repository": "UNER_Greek_GDT",
+      "revision": "73bbd59607ec776f6eba07ed5a54b3840907c4af",
+      "path": "README.md",
+      "git_blob_sha1": "93b1009c78981036ad9b41a498c1488b189e243c",
+      "sha256": "d571e8a6989a4b109dc476731a5bfe93fed959de01ca8e1f2127167ce4515082",
+      "bytes": 142
+    },
+    {
+      "repository": "UNER_Greek_GDT",
+      "revision": "73bbd59607ec776f6eba07ed5a54b3840907c4af",
+      "path": "el_gdt-ud-dev.stats",
+      "git_blob_sha1": "3be2ee9db4b3bfc0ef6f100b8c0e4bff0d18f124",
+      "sha256": "be1ad3602ced48fae2996d0a0fb8d3c2fa9777560239204d7a9eb4dba13938a9",
+      "bytes": 2208
+    },
+    {
+      "repository": "UNER_Greek_GDT",
+      "revision": "73bbd59607ec776f6eba07ed5a54b3840907c4af",
+      "path": "el_gdt-ud-test.stats",
+      "git_blob_sha1": "5608dc36e69d8cbd8725874160d009617502951c",
+      "sha256": "35524170856ebd4aaf2eeae80298b19964f36baa517db2651407db6fa65a19ff",
+      "bytes": 2261
+    },
+    {
+      "repository": "UNER_Greek_GDT",
+      "revision": "73bbd59607ec776f6eba07ed5a54b3840907c4af",
+      "path": "el_gdt-ud-train.stats",
+      "git_blob_sha1": "ec707ae939152f6bc6403a64e49ea5e430458f7b",
+      "sha256": "a1a585068ed6a43d3a771d39262bdd084a6b56d8bc59dcd659a2d7dca30e7994",
+      "bytes": 1249
+    },
+    {
+      "repository": "UNER_Hebrew-HTB",
+      "revision": "7bbec19c74d6869965cf51523dd279257850565e",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "a825a962e91095a649798a5d08f23dd39a4d31c1",
+      "sha256": "4acf8a5475ff6ca7a33e4518a0d61ac7ce631c04f4a078df60553ea54b21eeb1",
+      "bytes": 20013
+    },
+    {
+      "repository": "UNER_Hebrew-HTB",
+      "revision": "7bbec19c74d6869965cf51523dd279257850565e",
+      "path": "README.md",
+      "git_blob_sha1": "cae3e386958d9285d1349a3aa4c21347ca602658",
+      "sha256": "9dcbf4b120929723ed86dfa1346b1492883de223b04b129e7996b92c2bea51ba",
+      "bytes": 297
+    },
+    {
+      "repository": "UNER_Hebrew-HTB",
+      "revision": "7bbec19c74d6869965cf51523dd279257850565e",
+      "path": "he_htb-ud-dev.stats",
+      "git_blob_sha1": "ddfb6943f77b5d48a7db2fe606b184a9adab8aab",
+      "sha256": "4fb81775cd67d2e2b467736775da9b4852ced73c1570c2a1586c85b83322fd53",
+      "bytes": 1296
+    },
+    {
+      "repository": "UNER_Hebrew-HTB",
+      "revision": "7bbec19c74d6869965cf51523dd279257850565e",
+      "path": "he_htb-ud-test.stats",
+      "git_blob_sha1": "af8ae5a18e0328a8a5e6ab712a600643ea971153",
+      "sha256": "1251410b43cb4316fc53e3dbe21dafe81c5b962c3f607f1bf379eae5bab9f73e",
+      "bytes": 1352
+    },
+    {
+      "repository": "UNER_Hebrew-HTB",
+      "revision": "7bbec19c74d6869965cf51523dd279257850565e",
+      "path": "he_htb-ud-train.stats",
+      "git_blob_sha1": "287225cb450bf9c56ce71cdb1afecbbd92e275fa",
+      "sha256": "eefa4c18da72bfd0f30a04f32426fd889cb2ec02b53457a3c93d0cf90bdfef80",
+      "bytes": 2362
+    },
+    {
+      "repository": "UNER_Indonesian-PUD",
+      "revision": "1cd63f67fcdbfd1d1a1437157770364b7213fd1d",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c",
+      "sha256": "df653272772ee86b0098bfc640b0ab583f6ecf59bb6254b82feaba3aed3ed93c",
+      "bytes": 20013
+    },
+    {
+      "repository": "UNER_Indonesian-PUD",
+      "revision": "1cd63f67fcdbfd1d1a1437157770364b7213fd1d",
+      "path": "id_pud-ud-test.stats",
+      "git_blob_sha1": "bddc4600de3c2ef31f27ba1eab35cc7b7d7b3934",
+      "sha256": "51dee9d1d70e2b4fbb2b1146b0344825988f56e4ef3a19799098afa2995933c3",
+      "bytes": 3462
+    },
+    {
+      "repository": "UNER_Japanese-PUD",
+      "revision": "c788fcd993c512a118d956a9c210520604ab2965",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c",
+      "sha256": "df653272772ee86b0098bfc640b0ab583f6ecf59bb6254b82feaba3aed3ed93c",
+      "bytes": 20013
+    },
+    {
+      "repository": "UNER_Japanese-PUD",
+      "revision": "c788fcd993c512a118d956a9c210520604ab2965",
+      "path": "ja_pud-ud-test.stats",
+      "git_blob_sha1": "5393e3c7eb2384829a0c6d2ae4449d736f16d54d",
+      "sha256": "60631c32ea15e60b7e8afb9068a1ce17e2fd3b088c9a945643fae42f06b4232e",
+      "bytes": 1262
+    },
+    {
+      "repository": "UNER_Korean-PUD",
+      "revision": "23a8f3814e2396a1503868f30e6278eb43db7242",
+      "path": "ko_pud-ud-test.stats",
+      "git_blob_sha1": "186f4937cb8da79c5491fe93c4f0f856b83e0841",
+      "sha256": "d27a235337a600076fb600caf044cda3374bde742fde5496d244d479bd78c46b",
+      "bytes": 2230
+    },
+    {
+      "repository": "UNER_Maghrebi_Arabic_French-Arabizi",
+      "revision": "9b39d96f6de25ed2730481e67d777e1707028550",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e",
+      "sha256": "76cbab13f5ddb068524dafb0600017c796311cd459def36d3d9d8cd0b8fb49be",
+      "bytes": 221
+    },
+    {
+      "repository": "UNER_Maghrebi_Arabic_French-Arabizi",
+      "revision": "9b39d96f6de25ed2730481e67d777e1707028550",
+      "path": "README.md",
+      "git_blob_sha1": "18f44cbecfaba7d517a0baedafe8e6eaa363baf1",
+      "sha256": "22853bca5d2501607210fe447eaf20226e7e5ef37dabc025901bda6091597350",
+      "bytes": 1923
+    },
+    {
+      "repository": "UNER_Norwegian-NDT",
+      "revision": "f1da13196788be028fe8124cdc7b9b197399ad98",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c",
+      "sha256": "df653272772ee86b0098bfc640b0ab583f6ecf59bb6254b82feaba3aed3ed93c",
+      "bytes": 20013
+    },
+    {
+      "repository": "UNER_Norwegian-NDT",
+      "revision": "f1da13196788be028fe8124cdc7b9b197399ad98",
+      "path": "README.md",
+      "git_blob_sha1": "043cc944f052df69a1c14f2ba1bce1eb9647167a",
+      "sha256": "79fbcf17ca35f062dfc3b72583e6aa46b05518f8357a3bce957f5d789e33bca0",
+      "bytes": 2607
+    },
+    {
+      "repository": "UNER_Norwegian-NDT",
+      "revision": "f1da13196788be028fe8124cdc7b9b197399ad98",
+      "path": "scripts/README.md",
+      "git_blob_sha1": "ff7c3015844974f12917393f783f1fcfb47c9634",
+      "sha256": "e2d45e5368b1aee32a8398c99d9f10606095794597301fb911bdcffff40f79b1",
+      "bytes": 991
+    },
+    {
+      "repository": "UNER_Portuguese-Bosque",
+      "revision": "f2c2ad67aed900385fbe5d655af41f439c9b3333",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "a95920ada82b1cada4a067ee02d86eb19ba5fe42",
+      "sha256": "ab3a36080055dd29ad2b59162e43d1368c7f15643666bea982d4e103f546e025",
+      "bytes": 269
+    },
+    {
+      "repository": "UNER_Portuguese-Bosque",
+      "revision": "f2c2ad67aed900385fbe5d655af41f439c9b3333",
+      "path": "README.md",
+      "git_blob_sha1": "9dd437001449e49f9191ba068a2956191d31341a",
+      "sha256": "4fb294d1c946cfa3ca294afd65e2025c42b9ee622fef5bbb32179a3290a65f88",
+      "bytes": 1232
+    },
+    {
+      "repository": "UNER_Portuguese-Bosque",
+      "revision": "f2c2ad67aed900385fbe5d655af41f439c9b3333",
+      "path": "pt_bosque-ud-dev.stats",
+      "git_blob_sha1": "cd246b30290229a3dac96cf14ddd66fd6d11261b",
+      "sha256": "66fb2e38487714d28bddce01dfc844911c1b8e48da51cc248952e56b85018492",
+      "bytes": 1314
+    },
+    {
+      "repository": "UNER_Portuguese-Bosque",
+      "revision": "f2c2ad67aed900385fbe5d655af41f439c9b3333",
+      "path": "pt_bosque-ud-test.stats",
+      "git_blob_sha1": "07c6b7843ed4857a85ca4f5b7beb6ec54c46d512",
+      "sha256": "ddbce2826c409d30dc1442abe4614de44ca117c8c1a2a1a2705dffe8efaa6197",
+      "bytes": 1289
+    },
+    {
+      "repository": "UNER_Portuguese-Bosque",
+      "revision": "f2c2ad67aed900385fbe5d655af41f439c9b3333",
+      "path": "pt_bosque-ud-train.stats",
+      "git_blob_sha1": "0262f20ab206862963f4eaf00fb69e337e9842a1",
+      "sha256": "aaf4bf99f5ebdb134c5ba58450b97e897d92a8d08dfc4574953bb0aff8482eb3",
+      "bytes": 1323
+    },
+    {
+      "repository": "UNER_Portuguese-PUD",
+      "revision": "cda2cf86b68d45e896aab97ceca5e91d43a86db7",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "a0bd8baeb667daae1407869f3152489fab3001de",
+      "sha256": "b278eb53fe50b8bb7fa0d90fb8536c35fdcaa80f9d63812cb51db539555d2a89",
+      "bytes": 19556
+    },
+    {
+      "repository": "UNER_Portuguese-PUD",
+      "revision": "cda2cf86b68d45e896aab97ceca5e91d43a86db7",
+      "path": "README.md",
+      "git_blob_sha1": "9d3fac8741633e3c0c07b5914080fe245ce3165e",
+      "sha256": "6ee7184ccd34fd43e5c283ddc8f0716bb8c89ce3e41c2cf5964d463de96d4449",
+      "bytes": 1229
+    },
+    {
+      "repository": "UNER_Portuguese-PUD",
+      "revision": "cda2cf86b68d45e896aab97ceca5e91d43a86db7",
+      "path": "pt_pud-ud-test.stats",
+      "git_blob_sha1": "36f7abc19571b587669b29d13944e8745259b1cb",
+      "sha256": "bbf53917bfa329341949c600d1de5aa59a14b24cbed7f96c0456fdbd8e12eb1d",
+      "bytes": 2075
+    },
+    {
+      "repository": "UNER_Romanian-LegalNERo",
+      "revision": "4bfcf822305abf6c5ff61ce1f4ede354a238ba7a",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "7d4f96c54aa155a17387e64501c50b6a0469932c",
+      "sha256": "23ee78c8bae49cf08ea2f0c84945c66b987ebe4520881fb51b3dad4fb43d07c2",
+      "bytes": 20137
+    },
+    {
+      "repository": "UNER_Romanian-LegalNERo",
+      "revision": "4bfcf822305abf6c5ff61ce1f4ede354a238ba7a",
+      "path": "README.md",
+      "git_blob_sha1": "5c37bb415f22e46b65d660ba368ecf711dadc92e",
+      "sha256": "f12d7233f0b9ac32a93eae101f5f119c0d2f3d6d479a36ae8353c63cb67827cf",
+      "bytes": 3507
+    },
+    {
+      "repository": "UNER_Russian-PUD",
+      "revision": "6f5acd6d728f70b20e4326d841356567796ee844",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "a0bd8baeb667daae1407869f3152489fab3001de",
+      "sha256": "b278eb53fe50b8bb7fa0d90fb8536c35fdcaa80f9d63812cb51db539555d2a89",
+      "bytes": 19556
+    },
+    {
+      "repository": "UNER_Russian-PUD",
+      "revision": "6f5acd6d728f70b20e4326d841356567796ee844",
+      "path": "README.md",
+      "git_blob_sha1": "08a2f39f1dd2b02b7f04f0317adaabd365eca4dc",
+      "sha256": "e475e1aaad64c589535c86fe4124d3fcbeab3e84fcbe949bfcc98438f243c4a3",
+      "bytes": 1210
+    },
+    {
+      "repository": "UNER_Russian-PUD",
+      "revision": "6f5acd6d728f70b20e4326d841356567796ee844",
+      "path": "ru_pud-ud-test.stats",
+      "git_blob_sha1": "ac0a28a7b4a0bc4da68490160779c5c1d4dd6e47",
+      "sha256": "db361533e2f9ad7fa3ceff55a00d87beccb76a9fab8dad53a5c6d193fd1f1e1a",
+      "bytes": 1330
+    },
+    {
+      "repository": "UNER_Serbian-SET",
+      "revision": "0d9685f001c10895572d844ef789c53dade0e265",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "f95e2e34cb20519ce6c1f170e74a84a735fe8374",
+      "sha256": "87b91250d049b839d25cd011511fbe8160fc592cf9e4f9ffbe859061c6b28916",
+      "bytes": 250
+    },
+    {
+      "repository": "UNER_Serbian-SET",
+      "revision": "0d9685f001c10895572d844ef789c53dade0e265",
+      "path": "README.md",
+      "git_blob_sha1": "b27afec8aeb938f3ac0c4b01ccd5b7a3b9dff12c",
+      "sha256": "1d9a18b12982a381680730f305ba115a92f3f9c3886998e2007c19c0630d5567",
+      "bytes": 1198
+    },
+    {
+      "repository": "UNER_Slovak-SNK",
+      "revision": "886e7c6d7e066e23246af5070d115a036a465c6d",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e",
+      "sha256": "76cbab13f5ddb068524dafb0600017c796311cd459def36d3d9d8cd0b8fb49be",
+      "bytes": 221
+    },
+    {
+      "repository": "UNER_Slovak-SNK",
+      "revision": "886e7c6d7e066e23246af5070d115a036a465c6d",
+      "path": "README.md",
+      "git_blob_sha1": "e835030c9fe6fa77d8ddb6e5fff5de2243cbd874",
+      "sha256": "900d7e4e9b466c90bcc235d50d24977f0e5b371cde0d2d04d5c62687220d3b0b",
+      "bytes": 1236
+    },
+    {
+      "repository": "UNER_Slovak-SNK",
+      "revision": "886e7c6d7e066e23246af5070d115a036a465c6d",
+      "path": "sk_snk-ud-dev.stats",
+      "git_blob_sha1": "b11c472160200d8f5267cec80c872874169285fb",
+      "sha256": "c5a1995d9de41e327506165bee72428ad14dd81651e0bb7d4d45f47a7b8f435f",
+      "bytes": 2257
+    },
+    {
+      "repository": "UNER_Slovak-SNK",
+      "revision": "886e7c6d7e066e23246af5070d115a036a465c6d",
+      "path": "sk_snk-ud-test.stats",
+      "git_blob_sha1": "873d30ddbeade30dd439069ce5855795b2d42d57",
+      "sha256": "9d4d9c3979a9ba3e8c5bbb975bd9a6de430281938bd6af779e0f0abf2ca82f60",
+      "bytes": 1271
+    },
+    {
+      "repository": "UNER_Slovak-SNK",
+      "revision": "886e7c6d7e066e23246af5070d115a036a465c6d",
+      "path": "sk_snk-ud-train.stats",
+      "git_blob_sha1": "cac31423d881d7ec1319fec2abb095ab75749d73",
+      "sha256": "a20d6ce0005f2be9c5d362013e9b79df7ef2950c7ed2819c71cb511392c0bf14",
+      "bytes": 1304
+    },
+    {
+      "repository": "UNER_Slovenian_SSJ",
+      "revision": "f6c6f40e297749ecb7ce7143e9783083e545aadf",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "33af88f4e70299256a8c830f8193e2f04e84c77c",
+      "sha256": "fcb427c5b741be52981022ce8d48a6498eae0d8c428aa82ef55ccc3e0f4c9c44",
+      "bytes": 232
+    },
+    {
+      "repository": "UNER_Slovenian_SSJ",
+      "revision": "f6c6f40e297749ecb7ce7143e9783083e545aadf",
+      "path": "README.md",
+      "git_blob_sha1": "aa7422b4441987a9be4710950e919b4ebb26e44d",
+      "sha256": "041e1358fa784e69743b20a311643b10f560df60a0885378a910193785be1274",
+      "bytes": 997
+    },
+    {
+      "repository": "UNER_Swedish-Lines",
+      "revision": "897414e7bae2386ecb8be2d3c561ea8570882827",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "410c7bb01820c06bc0d42b04c01687491ce2dc5c",
+      "sha256": "df653272772ee86b0098bfc640b0ab583f6ecf59bb6254b82feaba3aed3ed93c",
+      "bytes": 20013
+    },
+    {
+      "repository": "UNER_Swedish-Lines",
+      "revision": "897414e7bae2386ecb8be2d3c561ea8570882827",
+      "path": "README.md",
+      "git_blob_sha1": "e5dfe876c2cf3de34baddbb73feb7a8a955f0108",
+      "sha256": "77821e043408361cb709e31010937f5a7a83d1381d1ca3b31b8f7ef8e3f0387c",
+      "bytes": 20
+    },
+    {
+      "repository": "UNER_Swedish-Lines",
+      "revision": "897414e7bae2386ecb8be2d3c561ea8570882827",
+      "path": "sv_lines-ud-dev.stats",
+      "git_blob_sha1": "3a29f01d0c070cfd9a18653c2828ccc92f568f81",
+      "sha256": "95981fe3fb64c04dd157f0ff24b481ccff3b29d060c9c2b5c0a0f7d09f80ffbb",
+      "bytes": 1288
+    },
+    {
+      "repository": "UNER_Swedish-Lines",
+      "revision": "897414e7bae2386ecb8be2d3c561ea8570882827",
+      "path": "sv_lines-ud-test.stats",
+      "git_blob_sha1": "657997e7fed1afbac5ee46ae9eeeebbdc4441589",
+      "sha256": "ca56580c50dd3fd93d409bb1ce36e5ddd78292196c7ed505533cbca88870007a",
+      "bytes": 1175
+    },
+    {
+      "repository": "UNER_Swedish-Lines",
+      "revision": "897414e7bae2386ecb8be2d3c561ea8570882827",
+      "path": "sv_lines-ud-train.stats",
+      "git_blob_sha1": "a4d727422bb6cbcc3a408a0767c1c02d0e578411",
+      "sha256": "7e033fc8d5f6caa71c9f5f8b315478d99003fc106d00644b62c425d8bfd3ddb4",
+      "bytes": 370
+    },
+    {
+      "repository": "UNER_Swedish-PUD",
+      "revision": "7fed5e267858a295f53083051a16d73c76f60f07",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e",
+      "sha256": "76cbab13f5ddb068524dafb0600017c796311cd459def36d3d9d8cd0b8fb49be",
+      "bytes": 221
+    },
+    {
+      "repository": "UNER_Swedish-PUD",
+      "revision": "7fed5e267858a295f53083051a16d73c76f60f07",
+      "path": "README.md",
+      "git_blob_sha1": "621c52f16352a9f1c037b02aff0632186d8a1620",
+      "sha256": "03e34e902464388ca2b6823417e7ba314eb7e4bf55929a8f79841eeceba23b1d",
+      "bytes": 1210
+    },
+    {
+      "repository": "UNER_Swedish-PUD",
+      "revision": "7fed5e267858a295f53083051a16d73c76f60f07",
+      "path": "sv_pud-ud-test.stats",
+      "git_blob_sha1": "7bd8450aee4a6b3e03c58f3bd157512e95a1f317",
+      "sha256": "5220c8aff77adcea53a57783fb185dfefb48d753a842540e4107523250ed770f",
+      "bytes": 2153
+    },
+    {
+      "repository": "UNER_Swedish-Talbanken",
+      "revision": "dbb692085267da83a35d1e1d2c111671b3c7c46b",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "58d4738fa23f95f9a5f242374482199231270cc0",
+      "sha256": "239ff95d499df7dc011f6a55dc34cb1f1d47fe5edb55db677b51a15da819af0e",
+      "bytes": 20016
+    },
+    {
+      "repository": "UNER_Swedish-Talbanken",
+      "revision": "dbb692085267da83a35d1e1d2c111671b3c7c46b",
+      "path": "README.md",
+      "git_blob_sha1": "fcb6fd8a6f69a661f3a7e462e6d3f12f5b7bee14",
+      "sha256": "bd9f3f24fc05081746a40a1d80ee1d96d122168cadce16ec7bcf66b33b15aaf1",
+      "bytes": 1231
+    },
+    {
+      "repository": "UNER_Swedish-Talbanken",
+      "revision": "dbb692085267da83a35d1e1d2c111671b3c7c46b",
+      "path": "sv_talbanken-ud-dev.stats",
+      "git_blob_sha1": "83686a7421c6512447aca842a6b260f0f1e8ccca",
+      "sha256": "0ac9348a19015299d8bf07015e9f84eb83fe2ec228db3c7ae00d0be1285c3181",
+      "bytes": 1187
+    },
+    {
+      "repository": "UNER_Swedish-Talbanken",
+      "revision": "dbb692085267da83a35d1e1d2c111671b3c7c46b",
+      "path": "sv_talbanken-ud-test.stats",
+      "git_blob_sha1": "02b10ac059ff238f9563994cb743b5581cf90bef",
+      "sha256": "a9329dc36f0c7470eabd93d5a40d61cd4b083fcdf4680956a406d49f054ad298",
+      "bytes": 1279
+    },
+    {
+      "repository": "UNER_Swedish-Talbanken",
+      "revision": "dbb692085267da83a35d1e1d2c111671b3c7c46b",
+      "path": "sv_talbanken-ud-train.stats",
+      "git_blob_sha1": "c4108e03a8ab58faa19d33640799c97f566b151c",
+      "sha256": "e5bd2112235f5d28fab9de272d82e2458f0461d27d49fb99346f812cbffbe358",
+      "bytes": 1281
+    },
+    {
+      "repository": "UNER_Tagalog-TRG",
+      "revision": "a80b309b5254d9d6afebebd7c65789eee3215256",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "35bd6c4f3e8be88de60514f073004a167ae7704e",
+      "sha256": "76cbab13f5ddb068524dafb0600017c796311cd459def36d3d9d8cd0b8fb49be",
+      "bytes": 221
+    },
+    {
+      "repository": "UNER_Tagalog-TRG",
+      "revision": "a80b309b5254d9d6afebebd7c65789eee3215256",
+      "path": "README.md",
+      "git_blob_sha1": "efd56e24d0bcd57cf7e9ab2e59b0ac4bb22ffb02",
+      "sha256": "f261489bb02346c95119d60d6f74280ee73d908860a7f00ca7df59a57e89babe",
+      "bytes": 1256
+    },
+    {
+      "repository": "UNER_Tagalog-TRG",
+      "revision": "a80b309b5254d9d6afebebd7c65789eee3215256",
+      "path": "tl_trg-ud-test.stats",
+      "git_blob_sha1": "70aac5b2a2bcb639cfb3e749d1c743a108d93fd5",
+      "sha256": "33ae1421ac6d6525f06bd2c3f0024d0a9f7d1c263d639917d3a283f6fee2788d",
+      "bytes": 3602
+    },
+    {
+      "repository": "UNER_Tagalog-Ugnayan",
+      "revision": "69e95595b6b1f2354d0ba735f7ec9e36c18373e4",
+      "path": "LICENSE.txt",
+      "git_blob_sha1": "a15a8b4eeb63f1eb29f991b012109803e12b0d87",
+      "sha256": "adcbea9589eefe9c75f46defcc7f7502fe1770b9eb2adc6c29adf5a20b6b390f",
+      "bytes": 238
+    },
+    {
+      "repository": "UNER_Tagalog-Ugnayan",
+      "revision": "69e95595b6b1f2354d0ba735f7ec9e36c18373e4",
+      "path": "README.md",
+      "git_blob_sha1": "c44928d841136f970c2cde39f7b27bc8aff06909",
+      "sha256": "c58c58cd68e3a7e016069ebd644a294f2b9df0ba9e5c04e5a89c8f0a2ca7ca88",
+      "bytes": 1220
+    },
+    {
+      "repository": "UNER_Tagalog-Ugnayan",
+      "revision": "69e95595b6b1f2354d0ba735f7ec9e36c18373e4",
+      "path": "tl_ugnayan-ud-test.stats",
+      "git_blob_sha1": "c4a051ca3d3b307521984ed1c43e670165b27fbb",
+      "sha256": "e9edbba863ac283b52f73e9ce0a22f7d3dd984da8568dfba5f73459fbd1bf437",
+      "bytes": 1188
+    }
+  ]
+}
