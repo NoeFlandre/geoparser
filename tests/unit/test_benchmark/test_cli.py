@@ -345,31 +345,15 @@ class TestCorpusChecksGate:
         self, monkeypatch, tmp_path, capsys
     ):
         """Test that a rejected corpus fails the run and no phase builds a model."""
-        phase_calls = []
-        monkeypatch.setattr(benchmark_cli.pipelines, "resolve_device", lambda v: v)
-        monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda v: v)
-        monkeypatch.setattr(
-            benchmark_cli.provenance, "source_commit", lambda root: "commit"
-        )
-        monkeypatch.setattr(benchmark_cli.provenance, "environment", lambda job: {})
-        monkeypatch.setattr(
-            benchmark_cli.corpora,
-            "load",
-            lambda name, folder, *, limit: _malformed_corpus(),
-        )
-        monkeypatch.setattr(
-            benchmark_cli.runner,
-            "run_phase",
-            lambda *args, **kwargs: phase_calls.append(args) or {},
-        )
-        monkeypatch.delenv("GEOPARSER_DB_PATH", raising=False)
+        _stub_run_environment(monkeypatch)
+        _stub_corpus_load(monkeypatch, _malformed_corpus())
+        phase_calls = _record_phase_calls(monkeypatch)
 
         exit_code = benchmark_cli.main(
             ["--output-dir", str(tmp_path), "--device", "cpu"]
         )
 
-        assert exit_code == 1
-        assert phase_calls == []
+        assert (exit_code, phase_calls) == (1, [])
         assert not (tmp_path / "geovirus" / "benchmark-report.md").exists()
         assert not (tmp_path / "summary.json").exists()
         assert "rejected by corpus checks, no model was run" in capsys.readouterr().err
@@ -422,6 +406,35 @@ def _geovirus_article(index: int) -> str:
     )
 
 
+def _stub_run_environment(monkeypatch) -> None:
+    """Stub the device, provenance and database around a benchmark run."""
+    monkeypatch.setattr(benchmark_cli.pipelines, "resolve_device", lambda v: v)
+    monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda v: v)
+    monkeypatch.setattr(
+        benchmark_cli.provenance, "source_commit", lambda root: "commit"
+    )
+    monkeypatch.setattr(benchmark_cli.provenance, "environment", lambda job: {})
+    monkeypatch.delenv("GEOPARSER_DB_PATH", raising=False)
+
+
+def _stub_corpus_load(monkeypatch, loaded: LoadedCorpus) -> None:
+    """Make the CLI load the given corpus whatever it is asked for."""
+    monkeypatch.setattr(
+        benchmark_cli.corpora, "load", lambda name, folder, *, limit: loaded
+    )
+
+
+def _record_phase_calls(monkeypatch) -> list:
+    """Replace the phase runner with one that records each call and builds no model."""
+    phase_calls: list = []
+    monkeypatch.setattr(
+        benchmark_cli.runner,
+        "run_phase",
+        lambda *args, **kwargs: phase_calls.append(args) or {},
+    )
+    return phase_calls
+
+
 def _write_geovirus(folder, articles: int) -> None:
     """Write a GeoVirus file holding the first `articles` articles of the source."""
     folder.mkdir(parents=True, exist_ok=True)
@@ -446,7 +459,7 @@ class TestSourceTotalsGate:
             GEOVIRUS_GOLD_SPANS,
         )
         assert (
-            "compared with source totals of 229 documents, 2167 gold spans"
+            "documents compared with 229; gold spans compared with 2167"
             in capsys.readouterr().out
         )
 
@@ -461,7 +474,7 @@ class TestSourceTotalsGate:
 
         assert len(loaded.documents) == 9
         assert (
-            "compared with source totals of 9 documents; not compared: gold spans"
+            "documents compared with 9; gold spans not compared"
             in capsys.readouterr().out
         )
 
@@ -470,19 +483,8 @@ class TestSourceTotalsGate:
         self, monkeypatch, tmp_path, capsys, articles
     ):
         """A well-formed file with 228 articles, or none, is refused end to end."""
-        phase_calls = []
-        monkeypatch.setattr(benchmark_cli.pipelines, "resolve_device", lambda v: v)
-        monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda v: v)
-        monkeypatch.setattr(
-            benchmark_cli.provenance, "source_commit", lambda root: "commit"
-        )
-        monkeypatch.setattr(benchmark_cli.provenance, "environment", lambda job: {})
-        monkeypatch.setattr(
-            benchmark_cli.runner,
-            "run_phase",
-            lambda *args, **kwargs: phase_calls.append(args) or {},
-        )
-        monkeypatch.delenv("GEOPARSER_DB_PATH", raising=False)
+        _stub_run_environment(monkeypatch)
+        phase_calls = _record_phase_calls(monkeypatch)
         _write_geovirus(tmp_path / "geovirus", articles)
 
         exit_code = benchmark_cli.main(

@@ -119,22 +119,18 @@ def corpus_output_dir(output_dir: Path, name: str) -> Path:
     return output_dir / name
 
 
+def _total_note(label: str, value: int | None) -> str:
+    """Name one source total with the value it was compared with, or say it was not."""
+    if value is None:
+        return f"{label} not compared"
+    return f"{label} compared with {value}"
+
+
 def totals_note(loaded: corpora.LoadedCorpus) -> str:
     """Say which source totals a run was compared with, and which it was not."""
-    totals = {
-        "documents": loaded.expected_documents,
-        "gold spans": loaded.expected_gold,
-    }
-    compared = [
-        f"{value} {label}" for label, value in totals.items() if value is not None
-    ]
-    skipped = [label for label, value in totals.items() if value is None]
-    if not compared:
-        return f"{loaded.name}: no source totals to compare with, so none were checked"
-    note = f"{loaded.name}: compared with source totals of {', '.join(compared)}"
-    if skipped:
-        note += f"; not compared: {', '.join(skipped)}"
-    return note
+    documents = _total_note("documents", loaded.expected_documents)
+    gold = _total_note("gold spans", loaded.expected_gold)
+    return f"{loaded.name}: {documents}; {gold}"
 
 
 def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:

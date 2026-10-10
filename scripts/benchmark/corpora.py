@@ -155,13 +155,16 @@ def expected_totals(
     Returns:
         The expected document count and gold span count, each None when not compared
     """
-    if spec.documents is None:
-        return None, None
-    caps = [cap for cap in (_harness_cap(spec), limit) if cap is not None]
-    cap = min(caps, default=None)
-    if cap is None or cap >= spec.documents:
+    cap = _effective_cap(spec, limit)
+    if spec.documents is None or cap is None or cap >= spec.documents:
         return spec.documents, spec.gold_spans
     return cap, None
+
+
+def _effective_cap(spec: CorpusSpec, limit: int | None) -> int | None:
+    """Return the smaller of the harness cap and the run's limit, if either applies."""
+    caps = [cap for cap in (_harness_cap(spec), limit) if cap is not None]
+    return min(caps, default=None)
 
 
 def _harness_cap(spec: CorpusSpec) -> int | None:
