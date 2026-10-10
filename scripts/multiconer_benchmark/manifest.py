@@ -177,4 +177,4 @@ def _local_digest(data: bytes, algorithm: str) -> str:
         return hashlib.sha256(data).hexdigest()
     # A git blob id hashes a short header and then the bytes.
     header = f"blob {len(data)}\0".encode("ascii")
-    return hashlib.sha1(header + data).hexdigest()  # noqa: S324 - git blob ids are sha1
+    return hashlib.sha1(header + data, usedforsecurity=False).hexdigest()
