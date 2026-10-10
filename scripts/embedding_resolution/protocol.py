@@ -49,9 +49,10 @@ _DEFAULT_LABEL_MAPPING: dict[str, Literal["LOC", "ignore"]] = {
     "LOC": "LOC",
 }
 DESCRIPTION_FUNCTION = "geoparser.gazetteer.description.describe_feature"
-# The gazetteer search orders candidates by ascending score, then feature id. That
-# rule is library code, so it is recorded by name rather than taken as a plan input.
-CANDIDATE_ORDER = "score_ascending_then_feature_id"
+# Library code orders each search method's candidates: exact search by feature id,
+# and the scored methods by ascending score, then feature id. That rule is library
+# code, so it is recorded by name rather than taken as a plan input.
+CANDIDATE_ORDER = "exact_by_feature_id_scored_by_score_then_feature_id"
 # Language support and training overlap are not established for any model or source,
 # so every configuration records them as unknown. Recording them per model and per
 # source needs evidence that this freeze does not take yet.

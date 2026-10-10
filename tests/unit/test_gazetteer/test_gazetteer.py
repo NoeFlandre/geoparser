@@ -64,6 +64,31 @@ class TestGazetteerSearch:
 
         assert {feature.identifier for feature in results} == {"1"}
 
+    def test_search_exact_returns_feature_id_order_and_keeps_the_lowest_ids_at_the_limit(
+        self, make_artifact
+    ):
+        """Exact matches have no score, so order and the limit cut follow feature id."""
+        make_artifact(
+            features=[
+                {
+                    "identifier": str(index),
+                    "source": "city",
+                    "data": {"name": "Springfield"},
+                    "names": ["Springfield"],
+                }
+                for index in range(1, 6)
+            ]
+        )
+        gazetteer = Gazetteer("testgaz")
+
+        everything = gazetteer.search("Springfield", method="exact")
+        cut = gazetteer.search("Springfield", method="exact", limit=2)
+
+        ids = [feature.id for feature in everything]
+        assert ids == sorted(ids)
+        assert len(ids) == 5
+        assert [feature.id for feature in cut] == ids[:2]
+
     def test_search_phrase_matches_names_containing_query(self, make_artifact):
         """Phrase search finds names containing the query as a phrase."""
         make_artifact()

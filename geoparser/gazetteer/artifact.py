@@ -309,14 +309,15 @@ class GazetteerArtifact:
 
         Uses the FTS index for case- and diacritics-insensitive matching, then
         keeps only names of exactly the query's length so token matches on
-        substrings are excluded.
+        substrings are excluded. Exact matches have no score, so the results are
+        in feature id order, and a limit keeps the lowest feature ids.
 
         Args:
             name: Name string to search for
             limit: Maximum number of results to return
 
         Returns:
-            List of matching features
+            List of matching features, in ascending feature id order
         """
         rows = (
             self._connection()
@@ -328,6 +329,7 @@ class GazetteerArtifact:
             JOIN feature f ON f.id = n.feature_id
             WHERE name_fts MATCH ? AND length(n.text) = ?
             GROUP BY f.id
+            ORDER BY f.id ASC
             LIMIT ?
             """,  # noqa: S608 - columns and match SQL are module constants, values are bound
                 (f'"{name}"', len(name), limit),
