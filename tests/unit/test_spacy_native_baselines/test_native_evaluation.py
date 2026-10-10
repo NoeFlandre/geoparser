@@ -4,11 +4,36 @@ Predictors are fakes keyed by sentence text, so the expected counts are
 worked out by hand from the gold and predicted spans below.
 """
 
+from types import SimpleNamespace
+
 import pytest
 
 from scripts.panx_benchmark.data import Example
+from scripts.spacy_native_baselines import evaluation
 from scripts.spacy_native_baselines.evaluation import evaluate_baselines
 from scripts.spacy_native_baselines.roster import load_roster
+
+
+class FakeClock:
+    """A perf_counter stand-in that only moves when a predictor advances it."""
+
+    def __init__(self):
+        self.now = 0.0
+
+    def perf_counter(self):
+        return self.now
+
+
+class TickingRecognizer:
+    """Advance the fake clock by a fixed step on every predict_batch call."""
+
+    def __init__(self, clock, step):
+        self.clock = clock
+        self.step = step
+
+    def predict_batch(self, texts):
+        self.clock.now += self.step
+        return [set() for _ in texts]
 
 
 class FakeRecognizer:
@@ -139,6 +164,32 @@ def test_batches_are_bounded_by_batch_size(roster):
     evaluate_baselines(examples, {"de": german}, None, roster, batch_size=2)
 
     assert [len(batch) for batch in german.seen] == [2, 2, 1]
+
+
+def test_predictor_time_is_recorded_and_drives_sentences_per_second(
+    roster, monkeypatch
+):
+    clock = FakeClock()
+    monkeypatch.setattr(
+        evaluation, "time", SimpleNamespace(perf_counter=clock.perf_counter)
+    )
+    texts = [f"sentence {index}" for index in range(3)]
+    examples = {"de": tuple(_example("de", text, set()) for text in texts)}
+
+    result = evaluate_baselines(
+        examples,
+        {"de": TickingRecognizer(clock, step=2.0)},
+        TickingRecognizer(clock, step=1.0),
+        roster,
+        batch_size=2,
+    )
+
+    matched = result["matched"]["de"]
+    assert matched["elapsed_seconds"] == pytest.approx(4.0)
+    assert matched["sentences_per_second"] == pytest.approx(3 / 4.0)
+    transfer = result["transfer"]["de"]
+    assert transfer["elapsed_seconds"] == pytest.approx(2.0)
+    assert transfer["sentences_per_second"] == pytest.approx(3 / 2.0)
 
 
 def test_malformed_gold_tags_are_counted_for_matched_and_transfer_scores(roster):

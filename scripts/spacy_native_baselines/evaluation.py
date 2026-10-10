@@ -12,6 +12,7 @@ Three groups are reported and never merged:
 
 from __future__ import annotations
 
+import time
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
@@ -35,7 +36,9 @@ def _score(
     counts = Counts()
     for start in range(0, len(examples), batch_size):
         batch = examples[start : start + batch_size]
+        started = time.perf_counter()
         predictions = predictor.predict_batch([example.text for example in batch])
+        counts.elapsed_seconds += time.perf_counter() - started
         if len(predictions) != len(batch):
             message = "A predictor must return one span set per input text."
             raise ValueError(message)
