@@ -102,7 +102,7 @@ class EmbeddingAdapter:
 
     def _checked(self, output: t.Any, expected_rows: int) -> np.ndarray:
         """Validate one batch's output and normalize it when the model does."""
-        array = _float_array(output)
+        array = float_array(output)
         expected = (expected_rows, self.model.dimension)
         if array.shape != expected:
             msg = (
@@ -132,7 +132,7 @@ def _as_strings(texts: Iterable[str]) -> list[str]:
     return items
 
 
-def _float_array(output: t.Any) -> np.ndarray:
+def float_array(output: t.Any) -> np.ndarray:
     """
     Keep the backend's floating dtype, so checks and normalization add no wider copy.
 

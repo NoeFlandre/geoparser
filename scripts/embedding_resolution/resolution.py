@@ -19,6 +19,7 @@ import numpy as np
 from geoparser.evaluation import haversine_km
 from geoparser.modules.resolvers.ranking import combined_scores, population_prior
 from scripts.benchmark_protocol.schema import ResolutionCounts
+from scripts.embedding_resolution.adapters import float_array
 
 Policy = Literal["similarity", "population"]
 
@@ -93,6 +94,9 @@ def cosine_similarities(query: np.ndarray, candidates: np.ndarray) -> list[float
     """
     Cosine similarity between one query vector and each candidate row.
 
+    The backend's floating dtype is kept, so a float32 candidate matrix is scored
+    without a float64 copy of the whole matrix.
+
     Args:
         query: One embedding, shape ``(dimension,)``
         candidates: Candidate embeddings, shape ``(count, dimension)``; a zero
@@ -105,8 +109,8 @@ def cosine_similarities(query: np.ndarray, candidates: np.ndarray) -> list[float
     Raises:
         ValueError: If the shapes disagree or an embedding has zero length
     """
-    matrix = np.asarray(candidates, dtype=np.float64)
-    vector = np.asarray(query, dtype=np.float64)
+    matrix = float_array(candidates)
+    vector = float_array(query)
     if matrix.size == 0:
         return []
     _check_shapes(vector, matrix)

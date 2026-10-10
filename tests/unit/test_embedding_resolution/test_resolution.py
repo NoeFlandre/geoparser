@@ -38,6 +38,26 @@ def test_cosine_similarity_matches_hand_values():
     assert cosine_similarities(query, candidates) == pytest.approx([1.0, 0.0, -1.0])
 
 
+def test_float32_scores_keep_the_float64_ranking_within_rounding_noise():
+    rng = np.random.default_rng(7)
+    candidates = rng.standard_normal((2000, 128)).astype(np.float32)
+    query = rng.standard_normal(128).astype(np.float32)
+
+    single = np.array(cosine_similarities(query, candidates))
+    double = np.array(
+        cosine_similarities(query.astype(np.float64), candidates.astype(np.float64))
+    )
+
+    # The float32 path is really taken: exact equality would mean a float64 copy.
+    assert not np.array_equal(single, double)
+    assert np.max(np.abs(single - double)) < 1e-6
+    # The best candidate is unchanged, and in the float32 order each candidate
+    # trails its predecessor in float64 by at most rounding noise.
+    assert np.argmax(single) == np.argmax(double)
+    order = np.argsort(-single, kind="stable")
+    assert np.all(double[order[:-1]] >= double[order[1:]] - 1e-6)
+
+
 def test_an_empty_candidate_set_scores_to_an_empty_list():
     assert cosine_similarities(np.array([1.0, 0.0]), np.empty((0, 2))) == []
 
