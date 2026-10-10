@@ -4,9 +4,10 @@ Three groups are reported and never merged:
 
 * ``matched``: a native pipeline scored on examples in its own language.
 * ``transfer``: the English cross-language control scored on every
-  non-English language. These are labelled transfer scores, not native results.
+  non-English language that has a native pipeline. These are labelled transfer
+  scores, not native results.
 * ``unsupported``: languages with no native pipeline. They are counted and
-  never predicted by any model, including the English control in ``matched``.
+  never predicted by any model, including the English control in either group.
 """
 
 from __future__ import annotations
@@ -43,6 +44,10 @@ def _score(
     return counts.scores()
 
 
+def _has_native_pipeline(roster: Roster, language: str) -> bool:
+    return roster.route(language).pipeline is not None
+
+
 def _check_native_recognizers(
     recognizers: Mapping[str, BatchPredictor],
     roster: Roster,
@@ -57,6 +62,51 @@ def _check_native_recognizers(
             raise ValueError(message)
 
 
+def _matched_scores(
+    recognizers: Mapping[str, BatchPredictor],
+    examples_by_language: Mapping[str, Sequence[Example]],
+    batch_size: int,
+) -> dict[str, dict[str, Any]]:
+    return {
+        language: _score(
+            recognizers[language], examples_by_language[language], batch_size
+        )
+        for language in examples_by_language
+        if language in recognizers
+    }
+
+
+def _transfer_scores(
+    english_control: BatchPredictor | None,
+    examples_by_language: Mapping[str, Sequence[Example]],
+    roster: Roster,
+    batch_size: int,
+) -> dict[str, dict[str, Any]]:
+    if english_control is None:
+        return {}
+    return {
+        language: _score(english_control, examples, batch_size)
+        for language, examples in examples_by_language.items()
+        if language != ENGLISH_CONTROL_LANGUAGE
+        and _has_native_pipeline(roster, language)
+    }
+
+
+def _unsupported_counts(
+    examples_by_language: Mapping[str, Sequence[Example]],
+    roster: Roster,
+) -> dict[str, dict[str, Any]]:
+    unsupported: dict[str, dict[str, Any]] = {}
+    for language, examples in examples_by_language.items():
+        route = roster.route(language)
+        if route.pipeline is None:
+            unsupported[language] = {
+                "sentences": len(examples),
+                "reason": route.reason,
+            }
+    return unsupported
+
+
 def evaluate_baselines(
     examples_by_language: Mapping[str, Sequence[Example]],
     recognizers: Mapping[str, BatchPredictor],
@@ -67,36 +117,14 @@ def evaluate_baselines(
 ) -> dict[str, Any]:
     """Score every arm on the same examples and return the three groups."""
     _check_native_recognizers(recognizers, roster)
-
-    matched = {
-        language: _score(
-            recognizers[language], examples_by_language[language], batch_size
-        )
-        for language in examples_by_language
-        if language in recognizers
-    }
-
-    transfer: dict[str, dict[str, Any]] = {}
-    if english_control is not None:
-        transfer = {
-            language: _score(english_control, examples, batch_size)
-            for language, examples in examples_by_language.items()
-            if language != ENGLISH_CONTROL_LANGUAGE
-        }
-
-    unsupported = {}
-    for language, examples in examples_by_language.items():
-        route = roster.route(language)
-        if route.pipeline is None:
-            unsupported[language] = {
-                "sentences": len(examples),
-                "reason": route.reason,
-            }
-
+    matched = _matched_scores(recognizers, examples_by_language, batch_size)
+    transfer = _transfer_scores(
+        english_control, examples_by_language, roster, batch_size
+    )
     return {
         "matched": matched,
         "matched_macro": macro_scores(matched),
         "transfer": transfer,
         "transfer_macro": macro_scores(transfer),
-        "unsupported": unsupported,
+        "unsupported": _unsupported_counts(examples_by_language, roster),
     }

@@ -117,7 +117,7 @@ def _pipeline(language: str, entry: dict[str, Any]) -> NativePipeline:
     )
 
 
-def _check_pipeline(language: str, pipeline: NativePipeline) -> None:
+def _check_release(language: str, pipeline: NativePipeline) -> None:
     expected_wheel = f"{pipeline.package}-{MODEL_VERSION}-py3-none-any.whl"
     if pipeline.version != MODEL_VERSION or pipeline.wheel != expected_wheel:
         message = f"{language}: wheel is not the pinned {MODEL_VERSION} release"
@@ -128,6 +128,9 @@ def _check_pipeline(language: str, pipeline: NativePipeline) -> None:
     if not pipeline.package.startswith(pipeline.spacy_language + "_"):
         message = f"{language}: package does not belong to {pipeline.spacy_language}"
         raise RosterError(message)
+
+
+def _check_labels(language: str, pipeline: NativePipeline) -> None:
     if not set(pipeline.place_label_map) <= set(pipeline.ner_labels):
         message = f"{language}: a mapped label is not in the pipeline's NER labels"
         raise RosterError(message)
@@ -136,8 +139,26 @@ def _check_pipeline(language: str, pipeline: NativePipeline) -> None:
         raise RosterError(message)
 
 
-def parse_roster(document: dict[str, Any]) -> Roster:
-    """Validate a decoded roster document against the 85 target codes."""
+def _check_pipeline(language: str, pipeline: NativePipeline) -> None:
+    _check_release(language, pipeline)
+    _check_labels(language, pipeline)
+
+
+def _parse_native(language: str, entry: dict[str, Any]) -> NativePipeline:
+    pipeline = _pipeline(language, entry)
+    _check_pipeline(language, pipeline)
+    return pipeline
+
+
+def _parse_unsupported(language: str, entry: dict[str, Any]) -> str:
+    reason = entry.get("reason")
+    if not isinstance(reason, str) or not reason:
+        message = f"{language}: unsupported entries need a reason"
+        raise RosterError(message)
+    return reason
+
+
+def _check_header(document: dict[str, Any]) -> dict[str, Any]:
     if document.get("format") != ROSTER_FORMAT:
         message = f"Roster format must be {ROSTER_FORMAT!r}"
         raise RosterError(message)
@@ -148,42 +169,45 @@ def parse_roster(document: dict[str, Any]) -> Roster:
     if not isinstance(entries, dict):
         message = "Roster must contain a languages object"
         raise RosterError(message)
-    expected = target_languages()
-    if tuple(entries) != expected:
+    if tuple(entries) != target_languages():
         message = "Roster languages must be the 85 target codes, in order, once each"
         raise RosterError(message)
+    return entries
 
+
+def _english_control(
+    document: dict[str, Any],
+    pipelines: dict[str, NativePipeline],
+) -> NativePipeline:
+    control_package = document.get("english_control", {}).get("package")
+    english = pipelines.get(ENGLISH_CONTROL_LANGUAGE)
+    if english is None or english.package != control_package:
+        message = "The English control must be the native English pipeline"
+        raise RosterError(message)
+    return english
+
+
+def parse_roster(document: dict[str, Any]) -> Roster:
+    """Validate a decoded roster document against the 85 target codes."""
+    entries = _check_header(document)
     statuses: dict[str, Status] = {}
     pipelines: dict[str, NativePipeline] = {}
     unsupported: dict[str, str] = {}
     for language, entry in entries.items():
         status = entry.get("status")
         if status == "native":
-            pipeline = _pipeline(language, entry)
-            _check_pipeline(language, pipeline)
-            statuses[language] = "native"
-            pipelines[language] = pipeline
+            pipelines[language] = _parse_native(language, entry)
         elif status == "unsupported":
-            reason = entry.get("reason")
-            if not isinstance(reason, str) or not reason:
-                message = f"{language}: unsupported entries need a reason"
-                raise RosterError(message)
-            statuses[language] = "unsupported"
-            unsupported[language] = reason
+            unsupported[language] = _parse_unsupported(language, entry)
         else:
             message = f"{language}: unknown status {status!r}"
             raise RosterError(message)
-
-    control_package = document.get("english_control", {}).get("package")
-    english = pipelines.get(ENGLISH_CONTROL_LANGUAGE)
-    if english is None or english.package != control_package:
-        message = "The English control must be the native English pipeline"
-        raise RosterError(message)
+        statuses[language] = status
     return Roster(
         languages=statuses,
         pipelines=pipelines,
         unsupported=unsupported,
-        english_control=english,
+        english_control=_english_control(document, pipelines),
         verification=dict(document.get("verification", {})),
     )
 

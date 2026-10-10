@@ -27,6 +27,10 @@ def test_native_pipelines_pin_the_spacy_3_8_0_release_wheels(roster):
         assert pipeline.version == "3.8.0"
         assert pipeline.wheel == f"{pipeline.package}-3.8.0-py3-none-any.whl"
         assert pipeline.release_tag == f"{pipeline.package}-3.8.0"
+
+
+def test_native_release_tags_name_the_wheel_url_and_package_prefix(roster):
+    for pipeline in roster.pipelines.values():
         assert pipeline.release_tag in pipeline.wheel_url
         assert pipeline.package.startswith(pipeline.spacy_language + "_")
 
@@ -102,20 +106,29 @@ def test_native_labels_map_to_loc_or_are_dropped(roster, code, label, expected):
 def test_native_wheel_digests_come_from_a_verified_download(roster):
     assert roster.verification["wheels_downloaded"] is True
     assert roster.verification["sha256_verified"] is True
-    native = [pipeline for pipeline in roster.pipelines.values() if pipeline.sha256]
-    assert len(native) == 23
-    assert all(len(pipeline.sha256) == 64 for pipeline in native)
+
+
+def test_every_selected_wheel_records_a_sha256_digest(roster):
+    digests = [pipeline.sha256 for pipeline in roster.pipelines.values()]
+
+    assert len(digests) == 23
+    assert all(len(digest) == 64 for digest in digests)
 
 
 def test_japanese_pipeline_records_its_tokenizer_requirements(roster):
     assert "sudachidict_core>=20211220" in roster.pipelines["ja"].extra_requirements
 
 
-def test_configuration_id_is_deterministic_and_sensitive_to_its_inputs(roster):
+def test_configuration_id_is_deterministic_for_equal_inputs(roster):
+    pipeline = roster.pipelines["de"]
+
+    assert configuration_id(load_roster().pipelines["de"]) == configuration_id(pipeline)
+
+
+def test_configuration_id_is_sensitive_to_its_inputs(roster):
     pipeline = roster.pipelines["de"]
     base = configuration_id(pipeline)
 
-    assert configuration_id(load_roster().pipelines["de"]) == base
     assert configuration_id(dataclasses.replace(pipeline, version="3.7.0")) != base
     assert (
         configuration_id(dataclasses.replace(pipeline, package="fr_core_news_sm"))

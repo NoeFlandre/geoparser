@@ -60,16 +60,22 @@ def test_matched_scores_come_from_the_native_recognizer_only(roster, examples):
     assert result["matched"]["de"]["sentences"] == 2
     assert result["matched"]["en"]["true_positive"] == 0
     assert "ar" not in result["matched"]
+
+
+def test_native_recognizer_receives_only_its_own_language(roster, examples):
+    german = FakeRecognizer({})
+
+    evaluate_baselines(examples, {"de": german}, None, roster)
+
     assert german.seen == [["Berlin liegt.", "Nichts hier."]]
 
 
-def test_english_control_transfer_is_separate_and_excludes_english(roster, examples):
+def test_english_control_transfer_excludes_english_and_unsupported(roster, examples):
     control = FakeRecognizer({"Berlin liegt.": {(0, 6)}})
 
     result = evaluate_baselines(examples, {"de": FakeRecognizer({})}, control, roster)
 
-    assert set(result["transfer"]) == {"de", "ar"}
-    assert "en" not in result["transfer"]
+    assert set(result["transfer"]) == {"de"}
     assert result["transfer"]["de"]["true_positive"] == 1
     assert result["transfer"]["de"]["false_negative"] == 0
 
@@ -83,9 +89,34 @@ def test_unsupported_languages_are_recorded_and_never_predicted(roster, examples
         "ar": {"sentences": 1, "reason": roster.route("ar").reason}
     }
     assert "ar" not in result["matched"]
-    # The English control may score Arabic only inside the labelled transfer group.
-    assert ["مرحبا Paris"] in control.seen
-    assert result["transfer"]["ar"]["false_negative"] == 1
+    assert "ar" not in result["transfer"]
+    assert all("مرحبا Paris" not in batch for batch in control.seen)
+
+
+def test_a_run_with_only_unsupported_languages_never_calls_a_model(roster):
+    arabic = {"ar": (_example("ar", "مرحبا Paris", {(6, 11)}),)}
+    control = FakeRecognizer({})
+
+    result = evaluate_baselines(arabic, {}, control, roster)
+
+    assert control.seen == []
+    assert result["matched"] == {}
+    assert result["transfer"] == {}
+    assert result["unsupported"]["ar"]["sentences"] == 1
+
+
+class ShortRecognizer:
+    """Return fewer span sets than the number of input texts."""
+
+    def predict_batch(self, texts):
+        return []
+
+
+def test_a_predictor_must_return_one_span_set_per_input_text(roster):
+    examples = {"de": (_example("de", "Berlin liegt.", {(0, 6)}),)}
+
+    with pytest.raises(ValueError, match="one span set per input text"):
+        evaluate_baselines(examples, {"de": ShortRecognizer()}, None, roster)
 
 
 def test_without_a_control_no_transfer_scores_are_reported(roster, examples):

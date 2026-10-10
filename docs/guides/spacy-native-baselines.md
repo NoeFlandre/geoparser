@@ -7,8 +7,9 @@ pipeline or recorded as unsupported. An unsupported code is never sent to the
 English pipeline.
 
 Only the roster, routing, label harmonization, loading guards and matched-versus-transfer
-scoring are implemented. No pipeline has been downloaded or run, and no quality,
-speed or memory result exists yet.
+scoring are implemented. No pipeline has been installed or run, and no quality,
+speed or memory result exists yet. The 23 selected wheels were downloaded once to
+record their sha256 digests, then deleted.
 
 ## Roster
 
@@ -17,7 +18,7 @@ the format `spacy-native-baseline-roster-v1` and covers the 85 codes in
 `scripts/panx_benchmark/target_languages.json`, exactly once each.
 
 - Every native pipeline pins spaCy model version `3.8.0`, the GitHub release tag
-  `<package>-3.8.0`, and its wheel file name and byte size.
+  `<package>-3.8.0`, and its wheel file name, byte size and sha256 digest.
 - The compatibility list is `compatibility.json` in `explosion/spacy-models`,
   retrieved on 2026-10-09. It lists 23 target codes with a native pipeline and
   62 without one.
@@ -75,7 +76,7 @@ Several entries are non-commercial or copyleft (`cc-by-nc-sa-3.0`,
 A code outside the 85 raises `UnknownLanguageError`. No code is ever routed to
 the English pipeline unless it is `en` itself. The English pipeline is also the
 cross-language control, and it is reported only as a labelled transfer score,
-never as a native result.
+never as a native result. The control never scores an unsupported code.
 
 ## Label harmonization
 
@@ -113,8 +114,8 @@ equal the roster's label set exactly, or `LabelSchemeError` is raised. Only the
 - `scripts/spacy_native_baselines/evaluation.py` scores all arms on the same
   examples and reports three groups that are never merged:
   - `matched`: a native pipeline on examples in its own language.
-  - `transfer`: the English control on every non-English language, labelled as
-    cross-language transfer.
+  - `transfer`: the English control on every non-English language that has a
+    native pipeline, labelled as cross-language transfer.
   - `unsupported`: counts of examples in languages with no native pipeline. No
     model predicts them.
 - `configuration_id(pipeline)` returns a deterministic 16-hex identity from the
@@ -122,21 +123,24 @@ equal the roster's label set exactly, or `LabelSchemeError` is raised. Only the
 
 ## Verification status and gaps
 
-Verified from metadata only, without downloading any pipeline:
+Verified:
 
 - Native and unsupported status for all 85 codes, from the compatibility list.
-- Release tags, wheel names and byte sizes for the 24 selected 3.8.0 packages,
+- Release tags, wheel names and byte sizes for the 23 selected 3.8.0 packages,
   from the GitHub release API.
+- sha256 digests for the same 23 wheels. Each wheel was downloaded once, hashed,
+  checked against its byte size and its NER labels in `meta.json`, and then
+  deleted.
 - Hub license values and model-card NER label sets for the same package names.
 - The installed spaCy 3.8.16 extras that declare the Japanese tokenizer
   dependencies (`sudachipy`, `sudachidict_core`) and the Korean `natto-py` extra.
 
 Not verified, and recorded as gaps:
 
-- No wheel has a sha256. The GitHub release API reports no digest for these
-  assets, so a reviewed download is needed before hashes can be pinned.
-- The 3.8.0 wheels' label sets and licenses have not been inspected. The Hub
-  cards describe 3.7.x content.
+- The GitHub release API reports no digest for these assets. The sha256 values
+  come only from the one-time download above, so no published digest confirms them.
+- The licenses have not been checked against the 3.8.0 wheels. The Hub cards
+  describe 3.7.x content.
 - The Korean system dependency (`mecab`) is not verified.
 - No Hub revision is pinned, because the Hub main describes 3.7.x content.
 

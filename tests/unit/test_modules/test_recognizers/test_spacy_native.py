@@ -5,35 +5,52 @@ depend on the recognizer's own arithmetic. No model is downloaded: the pipeline
 is a blank English tokenizer with an entity ruler.
 """
 
+from typing import Any, cast
+
 import pytest
 import spacy
+from spacy.pipeline import EntityRuler
 
 from geoparser.modules.recognizers.spacy_native import NativeSpacyRecognizer
 
 PLACE_MAP = {"GPE": "LOC", "LOC": "LOC"}
-RULES = [
+RULES: list[dict[str, Any]] = [
     {"label": "GPE", "pattern": "Paris"},
     {"label": "PERSON", "pattern": "Alice"},
     {"label": "LOC", "pattern": "Rhine River"},
 ]
 TEXT = "Alice visited Paris near the Rhine River."
+OPTIONS: dict[str, Any] = {
+    "language": "de",
+    "package": "de_core_news_sm",
+    "version": "3.8.0",
+    "place_label_map": PLACE_MAP,
+}
+
+
+class RecordingPipeline:
+    """Delegate to a real pipeline and record the batch size each call requests."""
+
+    def __init__(self, nlp: spacy.language.Language) -> None:
+        self.nlp = nlp
+        self.requested_batch_sizes: list[Any] = []
+
+    def pipe(self, texts: list[str], *, batch_size: Any) -> Any:
+        self.requested_batch_sizes.append(batch_size)
+        return self.nlp.pipe(texts, batch_size=batch_size)
 
 
 def _pipeline() -> spacy.language.Language:
     nlp = spacy.blank("en")
-    nlp.add_pipe("entity_ruler").add_patterns(RULES)
+    # spaCy annotates add_pipe as returning the pipeline callable, not the ruler.
+    ruler = cast(EntityRuler, nlp.add_pipe("entity_ruler"))
+    ruler.add_patterns(RULES)
     return nlp
 
 
-def _recognizer(**overrides) -> NativeSpacyRecognizer:
-    options = {
-        "language": "de",
-        "package": "de_core_news_sm",
-        "version": "3.8.0",
-        "place_label_map": PLACE_MAP,
-    }
-    options.update(overrides)
-    return NativeSpacyRecognizer(_pipeline(), **options)
+def _recognizer(nlp: Any = None, **overrides: Any) -> NativeSpacyRecognizer:
+    options = {**OPTIONS, **overrides}
+    return NativeSpacyRecognizer(nlp if nlp is not None else _pipeline(), **options)
 
 
 def test_predict_keeps_only_mapped_place_labels_at_character_offsets():
@@ -61,19 +78,70 @@ def test_place_label_values_must_be_the_wikiann_location_class():
 
 
 def test_empty_place_label_map_is_rejected():
-    with pytest.raises(ValueError, match="place_label_map"):
+    with pytest.raises(
+        ValueError, match=r"^place_label_map must be a nonempty mapping\.$"
+    ):
         _recognizer(place_label_map={})
+
+
+@pytest.mark.parametrize("label", ["", "   "])
+def test_blank_place_labels_are_rejected(label):
+    with pytest.raises(
+        ValueError, match=r"^place_label_map label must be a nonblank string\.$"
+    ):
+        _recognizer(place_label_map={label: "LOC"})
 
 
 @pytest.mark.parametrize("batch_size", [0, -1, True, 1.5])
 def test_batch_size_must_be_a_positive_integer(batch_size):
-    with pytest.raises((TypeError, ValueError), match="batch_size"):
+    with pytest.raises(ValueError, match=r"^batch_size must be a positive integer\.$"):
         _recognizer(batch_size=batch_size)
 
 
+def test_batch_size_one_is_the_smallest_accepted_value():
+    recognizer = _recognizer(batch_size=1)
+
+    assert recognizer.config["batch_size"] == 1
+    assert recognizer.predict_batch([TEXT]) == [{(14, 19), (29, 40)}]
+
+
+def test_predict_batch_passes_the_configured_batch_size_to_the_pipeline():
+    pipeline = RecordingPipeline(_pipeline())
+    recognizer = _recognizer(pipeline, batch_size=2)
+
+    assert recognizer.predict_batch([TEXT, "Paris"]) == [
+        {(14, 19), (29, 40)},
+        {(0, 5)},
+    ]
+    assert pipeline.requested_batch_sizes == [2]
+
+
+@pytest.mark.parametrize("field", ["language", "package", "version"])
+@pytest.mark.parametrize("value", ["", "   "])
+def test_identity_fields_must_be_nonblank(field, value):
+    with pytest.raises(ValueError, match=rf"^{field} must be a nonblank string\.$"):
+        _recognizer(**{field: value})
+
+
+@pytest.mark.parametrize("field", ["language", "package", "version"])
+def test_identity_fields_must_be_strings(field):
+    with pytest.raises(ValueError, match=rf"^{field} must be a nonblank string\.$"):
+        _recognizer(**{field: 3})
+
+
+@pytest.mark.parametrize("texts", ["Paris", ("Paris",)])
+def test_documents_must_be_passed_as_a_list(texts):
+    with pytest.raises(TypeError, match=r"^texts must be a list of strings\.$"):
+        _recognizer().predict_batch(texts)
+
+
 def test_non_string_documents_are_rejected():
-    with pytest.raises(TypeError, match="string"):
-        _recognizer().predict([TEXT, 3])
+    mixed: list[Any] = [TEXT, 3]
+
+    with pytest.raises(
+        TypeError, match=r"^Every document in texts must be a string\.$"
+    ):
+        _recognizer().predict(mixed)
 
 
 def test_configuration_records_language_package_version_and_mapping():
