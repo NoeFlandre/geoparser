@@ -7,6 +7,7 @@ for micro F1, so one language's uncertainty is not hidden by its point estimate.
 
 from __future__ import annotations
 
+import math
 import random
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
@@ -89,9 +90,15 @@ def bootstrap_f1_interval(
         for _ in range(resamples)
     )
     tail = (1 - confidence) / 2
-    low = values[int(tail * (resamples - 1))]
-    high = values[int((1 - tail) * (resamples - 1))]
+    low = values[_order_index(tail, resamples)]
+    high = values[_order_index(1 - tail, resamples)]
     return low, high
+
+
+def _order_index(probability: float, count: int) -> int:
+    """Return the 0-based empirical inverse-CDF index, as in benchmark_protocol."""
+    # Round away float noise first (0.025 * 2000 is not exactly 50).
+    return max(0, math.ceil(round(probability * count, 9)) - 1)
 
 
 def _check_bootstrap_settings(

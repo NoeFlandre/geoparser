@@ -80,18 +80,28 @@ def test_invalid_bootstrap_settings_are_rejected(
         )
 
 
-def test_percentile_bounds_are_the_expected_order_statistics():
-    # Replays the same seeded draws to check the index arithmetic: with 1000
-    # resamples the 2.5th and 97.5th percentiles are the 25th and 975th values.
+@pytest.mark.parametrize(
+    ("resamples", "low_index", "high_index"),
+    [
+        # With 1000 resamples the 2.5th and 97.5th percentiles are the 25th and 975th values.
+        (1000, 24, 974),
+        # With 100 resamples the 97.5th percentile is the 98th value, not the 97th.
+        (100, 2, 97),
+    ],
+)
+def test_percentile_bounds_are_the_expected_order_statistics(
+    resamples, low_index, high_index
+):
+    # Replays the same seeded draws to check the index arithmetic.
     counts = [(2, 1, 0), (0, 2, 1), (3, 0, 1), (1, 1, 1)]
     rng = random.Random(5)
     size = len(counts)
     values = sorted(
         micro_scores(counts[rng.randrange(size)] for _ in range(size)).f1
-        for _ in range(1000)
+        for _ in range(resamples)
     )
 
-    assert bootstrap_f1_interval(counts, seed=5, resamples=1000) == (
-        values[24],
-        values[974],
+    assert bootstrap_f1_interval(counts, seed=5, resamples=resamples) == (
+        values[low_index],
+        values[high_index],
     )
