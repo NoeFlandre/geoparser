@@ -126,14 +126,19 @@ def test_final_sentence_without_blank_line_is_kept():
     assert [sentence.sample_id for sentence in parsed.sentences] == ["last"]
 
 
-def test_a_token_with_spaces_stays_one_token_with_exact_offsets():
+def test_a_token_with_spaces_stays_one_token():
     parsed = parse_conll(
         "# id s1\tdomain=en\nNew York _ _ B-HumanSettlement\nRome _ _ O\n"
     )
-    sentence = parsed.sentences[0]
     assert parsed.invalid == ()
-    assert sentence.tokens == ("New York", "Rome")
-    assert sentence.text == "New York Rome"
+    assert parsed.sentences[0].tokens == ("New York", "Rome")
+    assert parsed.sentences[0].text == "New York Rome"
+
+
+def test_a_token_with_spaces_has_exact_offsets_and_location_span():
+    sentence = parse_conll(
+        "# id s1\tdomain=en\nNew York _ _ B-HumanSettlement\nRome _ _ O\n"
+    ).sentences[0]
     assert sentence.offsets == ((0, 8), (9, 13))
     assert sentence.location_spans() == {(0, 8)}
 
@@ -184,6 +189,7 @@ def test_sample_id_keeps_its_leading_spaces_and_trailing_spaces_after_the_domain
     [
         ("# id \tdomain=en", None, "missing sample id"),
         ("# id x\tdomain=", "x", "missing domain"),
+        ("# id x extra", "x", "missing domain"),
     ],
 )
 def test_header_defects_are_reported_with_their_sample_id(header, sample_id, reason):
