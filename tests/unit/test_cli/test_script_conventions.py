@@ -26,8 +26,22 @@ from tests.conftest import PROJECT_ROOT
 
 CHANGELOG_SCRIPT = PROJECT_ROOT / "scripts" / "changelog.py"
 ARCHITECTURE_SCRIPT = PROJECT_ROOT / "scripts" / "check_architecture.py"
-SCRIPTS = (CHANGELOG_SCRIPT, ARCHITECTURE_SCRIPT)
 CHANGELOG_TEXT = "# Changelog\n\n## [1.0.0]\n\nShipped.\n\n## [0.9.0]\n\n   \n"
+
+
+def _argparse_scripts() -> tuple[Path, ...]:
+    """Every script under scripts/ that builds an argument parser."""
+    return tuple(
+        sorted(
+            path
+            for path in (PROJECT_ROOT / "scripts").rglob("*.py")
+            if "ArgumentParser(" in path.read_text(encoding="utf-8")
+        )
+    )
+
+
+SCRIPTS = _argparse_scripts()
+
 
 # Help text of the original scripts, captured at 80 columns before the refactor.
 CHANGELOG_HELP = """\
@@ -508,3 +522,11 @@ def test_only_build_parser_constructs_the_argument_parser(script: Path) -> None:
         == 1
     )
     assert _calls_build_parser(functions["main"])
+
+
+@pytest.mark.parametrize("script", SCRIPTS)
+def test_main_takes_an_optional_argument_list(script: Path) -> None:
+    main = _top_level_functions(_parse_script(script))["main"]
+
+    assert [argument.arg for argument in main.args.args] == ["argv"]
+    assert len(main.args.defaults) == 1
