@@ -349,8 +349,10 @@ def test_paired_matched_macro_drops_the_native_english_score(roster):
         examples, {"de": german, "en": english}, control, roster
     )
 
-    assert set(result["matched"]) == {"de", "en"}
-    assert set(result["transfer"]) == {"de"}
+    assert (set(result["matched"]), set(result["transfer"])) == (
+        {"de", "en"},
+        {"de"},
+    )
     assert result["matched_macro"]["recall"] == pytest.approx(0.5)
     assert result["paired_matched_macro"]["recall"] == pytest.approx(0.0)
     assert result["transfer_macro"]["recall"] == pytest.approx(1.0)
