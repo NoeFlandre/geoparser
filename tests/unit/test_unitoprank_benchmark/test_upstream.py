@@ -16,8 +16,18 @@ from scripts.unitoprank_benchmark.candidates import Candidate, build_candidate_s
 from scripts.unitoprank_benchmark.pins import load_rank_toponyms
 from scripts.unitoprank_benchmark.ranking import Mention, rank_document
 
+# Only the Linux Python 3.12 test cell and the quality gauntlet fetch the pinned
+# checkout (.github/workflows/test.yml and quality.yml). Cloning it in every cell
+# would add Windows and macOS checkouts that pins.py has not been verified on, so
+# the other cells skip this test on purpose.
 CHECKOUT = os.environ.get("UNITORANK_CHECKOUT")
-pytestmark = pytest.mark.skipif(not CHECKOUT, reason="UNITORANK_CHECKOUT is not set")
+pytestmark = pytest.mark.skipif(
+    not CHECKOUT,
+    reason=(
+        "UNITORANK_CHECKOUT is not set; only the Linux 3.12 test cell and the "
+        "quality gauntlet fetch the pinned UniTopRank checkout"
+    ),
+)
 
 TEXT = "Ich habe Paris besucht und bin dann nach Berlin geflogen."
 CANDIDATES = {

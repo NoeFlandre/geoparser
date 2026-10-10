@@ -89,7 +89,7 @@ uv run pytest tests/unit/test_unitoprank_benchmark -o addopts="" -p no:cacheprov
 UNITORANK_CHECKOUT=/path/to/UniTopRank uv run pytest tests/unit/test_unitoprank_benchmark/test_upstream.py -o addopts="" -p no:cacheprovider
 ```
 
-CI runs this test as well. The Ubuntu, Python 3.12 test cell and the quality gauntlet each clone the pinned commit into the runner's temporary directory and set `UNITORANK_CHECKOUT`. Without that setting the test is skipped, and its lines would count as uncovered in the CRAP gate. The workflow steps and `tests/unit/test_quality/test_unitoprank_ci_checkout.py` keep the fetched commit equal to the one in `pins.py`.
+CI runs this test as well. The Ubuntu, Python 3.12 test cell and the quality gauntlet each clone the pinned commit into the runner's temporary directory and set `UNITORANK_CHECKOUT`. The other test cells skip the test by design, because they do not fetch the checkout. Without that setting the test is skipped, and its lines would count as uncovered in the CRAP gate. The workflow steps and `tests/unit/test_quality/test_unitoprank_ci_checkout.py` keep the fetched commit equal to the one in `pins.py`.
 
 ## Not done
 
