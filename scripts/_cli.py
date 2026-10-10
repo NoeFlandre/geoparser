@@ -1,8 +1,8 @@
 """Conventions shared by the scripts that take command-line arguments.
 
-Each script describes its command line in ``build_parser()``, which reads and
-writes nothing. ``main(argv=None)`` parses the arguments and returns the exit
-status, and the module ends with ``raise SystemExit(main())``.
+Each script describes its command line in ``build_parser()``, which does not read
+the script's input files. ``main(argv=None)`` parses the arguments and returns the
+exit status, and the module ends with ``raise SystemExit(main())``.
 
 The exit statuses are:
 
