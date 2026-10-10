@@ -4,8 +4,10 @@ import importlib.metadata
 import io
 import json
 import os
+import socket
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -178,6 +180,76 @@ def test_an_interpreter_path_is_made_absolute_and_a_bare_name_is_kept():
     assert Path(isolated_ranker._interpreter_command(".venv/bin/python")).is_absolute()
     assert Path(isolated_ranker._interpreter_command("./python")).is_absolute()
     assert isolated_ranker._interpreter_command("python3") == "python3"
+
+
+def test_the_child_guard_allows_loopback_and_refuses_external_addresses():
+    with socket.create_server(("127.0.0.1", 0)) as listener:
+        port = listener.getsockname()[1]
+        with isolated_ranker.external_network_refused():
+            socket.create_connection(("127.0.0.1", port), timeout=5).close()
+            with pytest.raises(
+                RuntimeError, match="network access is disabled for the reviewed ranker"
+            ):
+                socket.create_connection(("192.0.2.1", 9), timeout=1)
+
+
+def test_the_child_guard_judges_each_kind_of_address():
+    assert isolated_ranker._is_loopback_host(b"LOCALHOST.")
+    assert isolated_ranker._is_loopback_host("127.0.0.1")
+    assert not isolated_ranker._is_loopback_host("example.invalid")
+    isolated_ranker._require_loopback("/run/unix-socket")
+    isolated_ranker._require_loopback(("localhost", 80))
+    for address in (("192.0.2.1", 80), 42):
+        with pytest.raises(
+            RuntimeError, match="network access is disabled for the reviewed ranker"
+        ):
+            isolated_ranker._require_loopback(address)
+
+
+def test_the_child_guard_removes_its_patches_on_exit():
+    before = (socket.getaddrinfo, socket.socket.connect, socket.socket.sendto)
+    with isolated_ranker.external_network_refused():
+        assert socket.socket.connect is not before[1]
+    after = (socket.getaddrinfo, socket.socket.connect, socket.socket.sendto)
+    assert all(old is new for old, new in zip(before, after, strict=True))
+
+
+def test_a_child_that_attempts_a_connection_while_ranking_fails(tmp_path: Path):
+    """The pytest guard does not reach the child, so the child refuses the connection itself."""
+    code = textwrap.dedent(
+        """
+        import socket
+        import sys
+
+        sys.path.insert(0, sys.argv[1])
+        from scripts.unitoprank_benchmark import isolated_ranker
+
+        isolated_ranker.installed_mismatches = lambda _pins: []
+
+        def load(_checkout):
+            socket.create_connection(("192.0.2.1", 9), timeout=1)
+            raise AssertionError("the connection was not refused")
+
+        isolated_ranker.load_rank_toponyms = load
+        sys.exit(isolated_ranker.main([sys.argv[2]]))
+        """
+    )
+    request = {
+        "text": "",
+        "toponyms": [],
+        "candidates_by_toponym": {},
+        "config": {},
+    }
+    completed = subprocess.run(
+        [sys.executable, "-I", "-c", code, str(REPOSITORY_ROOT), str(tmp_path)],
+        input=json.dumps(request),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode != 0
+    assert "network access is disabled for the reviewed ranker" in completed.stderr
+    assert "AssertionError" not in completed.stderr
 
 
 def test_a_shadow_module_on_pythonpath_is_not_imported_by_the_child(

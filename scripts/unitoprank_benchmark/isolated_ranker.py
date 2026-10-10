@@ -15,11 +15,15 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import json
+import socket
 import subprocess
 import sys
 import typing as t
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import ExitStack, contextmanager
+from ipaddress import ip_address
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts.unitoprank_benchmark.pins import load_rank_toponyms
 
@@ -141,28 +145,93 @@ def rank_in_reviewed_environment(
     return json.loads(completed.stdout)
 
 
+NETWORK_REFUSAL = "network access is disabled for the reviewed ranker"
+
+
+def _is_loopback_host(host: t.Any) -> bool:
+    text = host.decode() if isinstance(host, bytes) else str(host)
+    text = text.casefold().rstrip(".")
+    if text == "localhost":
+        return True
+    try:
+        return ip_address(text).is_loopback
+    except ValueError:
+        return False
+
+
+def _require_loopback(address: t.Any) -> None:
+    if isinstance(address, (str, bytes)):
+        return  # a Unix socket path never leaves this machine
+    if isinstance(address, tuple) and address and _is_loopback_host(address[0]):
+        return
+    raise RuntimeError(NETWORK_REFUSAL)
+
+
+@contextmanager
+def external_network_refused() -> Iterator[None]:
+    """
+    Make external socket operations in this process raise until the context exits.
+
+    The pytest process guards its own sockets, but the ranker runs in this child
+    interpreter, which does not share that guard. The rules match the test guard:
+    loopback addresses stay usable, and everything else is refused. The patches
+    are removed on exit, so a caller that imports this module keeps its sockets.
+    """
+    original_getaddrinfo = socket.getaddrinfo
+    original_connect = socket.socket.connect
+    original_connect_ex = socket.socket.connect_ex
+    original_sendto = socket.socket.sendto
+
+    def getaddrinfo(host: t.Any, *args: t.Any, **kwargs: t.Any) -> t.Any:
+        if host is not None and not _is_loopback_host(host):
+            raise RuntimeError(NETWORK_REFUSAL)
+        return original_getaddrinfo(host, *args, **kwargs)
+
+    def connect(sock: t.Any, address: t.Any) -> t.Any:
+        _require_loopback(address)
+        return original_connect(sock, address)
+
+    def connect_ex(sock: t.Any, address: t.Any) -> t.Any:
+        _require_loopback(address)
+        return original_connect_ex(sock, address)
+
+    def sendto(sock: t.Any, data: t.Any, *args: t.Any) -> t.Any:
+        _require_loopback(args[-1])
+        return original_sendto(sock, data, *args)
+
+    with ExitStack() as stack:
+        stack.enter_context(patch.object(socket, "getaddrinfo", getaddrinfo))
+        stack.enter_context(patch.object(socket.socket, "connect", connect))
+        stack.enter_context(patch.object(socket.socket, "connect_ex", connect_ex))
+        stack.enter_context(patch.object(socket.socket, "sendto", sendto))
+        yield
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """
     Read a ranking request from stdin and print the ranker's result as JSON.
 
     Exits with status 2, and prints nothing to stdout, when an installed version
-    differs from the reviewed one, so the checkout is never imported.
+    differs from the reviewed one, so the checkout is never imported. External
+    network access is refused from before the checkout is loaded until the ranking
+    is done.
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("checkout", type=Path, metavar="DIR")
     arguments = parser.parse_args(argv)
-    problems = installed_mismatches(reviewed_versions(REQUIREMENTS.read_text()))
-    if problems:
-        print("; ".join(problems), file=sys.stderr)
-        return 2
-    request = json.load(sys.stdin)
-    rank_toponyms, ranker_config = load_rank_toponyms(arguments.checkout)
-    result = rank_toponyms(
-        text=request["text"],
-        toponyms=request["toponyms"],
-        candidates_by_toponym=request["candidates_by_toponym"],
-        config=ranker_config(**request["config"]),
-    )
+    with external_network_refused():
+        problems = installed_mismatches(reviewed_versions(REQUIREMENTS.read_text()))
+        if problems:
+            print("; ".join(problems), file=sys.stderr)
+            return 2
+        request = json.load(sys.stdin)
+        rank_toponyms, ranker_config = load_rank_toponyms(arguments.checkout)
+        result = rank_toponyms(
+            text=request["text"],
+            toponyms=request["toponyms"],
+            candidates_by_toponym=request["candidates_by_toponym"],
+            config=ranker_config(**request["config"]),
+        )
     ranking = {"ranked_candidates_by_toponym": result["ranked_candidates_by_toponym"]}
     print(json.dumps(ranking, default=float))
     return 0
