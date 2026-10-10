@@ -547,6 +547,27 @@ def test_a_search_method_listed_twice_is_refused():
         FreezePlan.model_validate(payload)
 
 
+def test_every_configuration_records_language_support_and_overlap_as_unknown():
+    experiment = build_experiment(valid_plan())
+
+    assert {
+        (config.language_support, config.training_overlap)
+        for config in experiment.configurations
+    } == {("unspecified", "unknown")}
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("language_support", "documented"), ("training_overlap", "verified_absent")],
+)
+def test_a_plan_level_language_or_overlap_claim_is_refused(field, value):
+    payload = plan_payload()
+    payload[field] = value
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        FreezePlan.model_validate(payload)
+
+
 def test_an_embedding_threshold_without_a_model_key_is_refused():
     payload = plan_payload()
     payload["thresholds"][0]["model"] = None

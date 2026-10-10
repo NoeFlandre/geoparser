@@ -52,6 +52,11 @@ DESCRIPTION_FUNCTION = "geoparser.gazetteer.description.describe_feature"
 # The gazetteer search orders candidates by ascending score, then feature id. That
 # rule is library code, so it is recorded by name rather than taken as a plan input.
 CANDIDATE_ORDER = "score_ascending_then_feature_id"
+# Language support and training overlap are not established for any model or source,
+# so every configuration records them as unknown. Recording them per model and per
+# source needs evidence that this freeze does not take yet.
+LANGUAGE_SUPPORT = "unspecified"
+TRAINING_OVERLAP = "unknown"
 PolicyName = Literal["similarity", "population", "population_only"]
 Origin = Literal["development_calibrated", "historical", "structural"]
 
@@ -157,10 +162,6 @@ class FreezePlan(Contract):
     label_mapping: dict[Text, Literal["LOC", "ignore"]] = Field(
         default_factory=lambda: dict(_DEFAULT_LABEL_MAPPING)
     )
-    language_support: Literal[
-        "documented", "transfer", "unspecified", "out_of_language_control"
-    ] = "unspecified"
-    training_overlap: Literal["known", "unknown", "verified_absent"] = "unknown"
     provenance_note: Text
 
     @model_validator(mode="after")
@@ -370,8 +371,8 @@ def _configuration(
         "thresholds": {"min_similarity": record.min_similarity},
         "batch_size": plan.batch_size,
         "seed": plan.seed,
-        "language_support": plan.language_support,
-        "training_overlap": plan.training_overlap,
+        "language_support": LANGUAGE_SUPPORT,
+        "training_overlap": TRAINING_OVERLAP,
         "provenance_note": f"{plan.provenance_note} {record.note}",
         "gazetteer": plan.gazetteer.model_dump(mode="json"),
         "parameters": _parameters(plan, record, model),
