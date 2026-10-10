@@ -2,7 +2,7 @@
 
 import pytest
 
-from scripts.multiconer_benchmark.conll import parse_conll
+from scripts.multiconer_benchmark.conll import parse_conll, summarize_conll
 
 # Written as code points so the source stays free of ambiguous characters.
 LINE_SEPARATOR = chr(0x2028)
@@ -247,6 +247,27 @@ def test_a_tag_without_a_bio_prefix_is_an_invalid_record():
     assert [item.reason for item in parsed.invalid] == [
         "unknown tag format: HumanSettlement"
     ]
+
+
+def test_summary_counts_the_same_records_as_the_parsed_source():
+    summary = summarize_conll("\n".join(INVALID_LINES))
+    assert (summary.valid, summary.invalid, summary.records) == (2, 10, 12)
+    assert summary.invalid_reasons == {
+        "duplicate sample id": 1,
+        "empty sentence": 1,
+        "I- tag does not continue an entity": 2,
+        "invalid separator columns": 1,
+        "missing domain": 1,
+        "missing sentence header": 1,
+        "unknown entity type": 1,
+        "wrong column count": 2,
+    }
+
+
+def test_summary_counts_the_location_spans_of_valid_sentences():
+    text = "# id a\tdomain=en\nParis _ _ B-HumanSettlement\n\n# id b\tdomain=en\nRome _ _ O\n"
+    summary = summarize_conll(text, expected_domain="en")
+    assert (summary.valid, summary.invalid, summary.location_spans) == (2, 0, 1)
 
 
 def test_every_invalid_record_is_counted_with_its_line_and_reason():

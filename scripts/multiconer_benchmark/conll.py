@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import io
 import re
+from collections import Counter
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 
@@ -79,6 +80,25 @@ class ParsedSource:
         return len(self.sentences) + len(self.invalid)
 
 
+@dataclass(frozen=True, slots=True)
+class ConllSummary:
+    """Counts for one file, aggregated as it streams so no sentence is kept."""
+
+    valid: int
+    invalid_reasons: dict[str, int]
+    location_spans: int
+
+    @property
+    def invalid(self) -> int:
+        """The number of rejected blocks, whatever their reason."""
+        return sum(self.invalid_reasons.values())
+
+    @property
+    def records(self) -> int:
+        """Count every block, so valid and invalid records add up."""
+        return self.valid + self.invalid
+
+
 @dataclass(slots=True)
 class _Block:
     """Lines of one blank-line-delimited sentence block, with line numbers."""
@@ -102,20 +122,41 @@ def require_no_invalid_records(parsed: ParsedSource) -> None:
         raise ValueError(message)
 
 
-def parse_conll(text: str, *, expected_domain: str | None = None) -> ParsedSource:
-    """Parse one split file and report every rejected block."""
+def iter_outcomes(
+    text: str, *, expected_domain: str | None = None
+) -> Iterator[Sentence | InvalidRecord]:
+    """Yield each block's outcome in file order, one block at a time."""
     body = text[1:] if text.startswith("\ufeff") else text
-    sentences: list[Sentence] = []
-    invalid: list[InvalidRecord] = []
     seen_ids: set[str] = set()
     # Blocks stream from the text one at a time, so each raw block can be freed after parsing.
     for block in _blocks(io.StringIO(body)):
-        outcome = _parse_block(block, expected_domain, seen_ids)
+        yield _parse_block(block, expected_domain, seen_ids)
+
+
+def parse_conll(text: str, *, expected_domain: str | None = None) -> ParsedSource:
+    """Parse one split file and report every rejected block."""
+    sentences: list[Sentence] = []
+    invalid: list[InvalidRecord] = []
+    for outcome in iter_outcomes(text, expected_domain=expected_domain):
         if isinstance(outcome, Sentence):
             sentences.append(outcome)
         else:
             invalid.append(outcome)
     return ParsedSource(tuple(sentences), tuple(invalid))
+
+
+def summarize_conll(text: str, *, expected_domain: str | None = None) -> ConllSummary:
+    """Count one split file block by block, keeping no sentence once it is counted."""
+    valid = 0
+    location_spans = 0
+    reasons: Counter[str] = Counter()
+    for outcome in iter_outcomes(text, expected_domain=expected_domain):
+        if isinstance(outcome, Sentence):
+            valid += 1
+            location_spans += len(outcome.location_spans())
+        else:
+            reasons[outcome.reason.split(":")[0]] += 1
+    return ConllSummary(valid, dict(sorted(reasons.items())), location_spans)
 
 
 def _blocks(lines: Iterable[str]) -> Iterator[_Block]:

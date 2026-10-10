@@ -5,11 +5,11 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 
-from scripts.multiconer_benchmark.conll import parse_conll
+from scripts._cli import EXIT_ERROR, EXIT_OK
+from scripts.multiconer_benchmark.conll import ConllSummary, summarize_conll
 from scripts.multiconer_benchmark.manifest import (
     DEFAULT_MANIFEST_PATH,
     check_local_file,
@@ -19,18 +19,18 @@ from scripts.multiconer_benchmark.manifest import (
 )
 
 
-def _parse_local(data: bytes, language: str | None):
-    """Parse verified UTF-8 bytes, expecting the given dataset language."""
+def _parse_local(data: bytes, language: str | None) -> ConllSummary:
+    """Count the records of verified UTF-8 bytes, expecting the given language."""
     if language not in intersection_languages(load_manifest()):
         message = f"{language!r} is not a dataset language in the intersection"
         raise ValueError(message)
     # Match the universal newlines that reading the file as text applied before.
     text = data.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
-    return parse_conll(text, expected_domain=language)
+    return summarize_conll(text, expected_domain=language)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Print the pinned inventory, or validate one local file and report it."""
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the command line; building it reads and writes nothing."""
     parser = argparse.ArgumentParser(description=__doc__)
     operation = parser.add_mutually_exclusive_group(required=True)
     operation.add_argument(
@@ -53,6 +53,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         choices=("train", "dev", "test"),
         help="pinned split the file belongs to, for --validate-conll",
     )
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Print the pinned inventory, or validate one local file and report it."""
+    parser = build_parser()
     arguments = parser.parse_args(argv)
     if arguments.manifest is not None:
         return _print_manifest(arguments.manifest)
@@ -67,33 +73,32 @@ def _print_manifest(path: Path) -> int:
         manifest = load_manifest(path)
     except (OSError, UnicodeError, ValueError, KeyError, TypeError) as error:
         print(f"Invalid MultiCoNER manifest: {error}", file=sys.stderr)
-        return 2
+        return EXIT_ERROR
     print(json.dumps(inventory_report(manifest), indent=2, ensure_ascii=False))
-    return 0
+    return EXIT_OK
 
 
 def _validate_file(path: Path, language: str, split: str) -> int:
     """Check a file against its pinned split, then print its record counts."""
     try:
         data = check_local_file(path, language, split, load_manifest())
-        parsed = _parse_local(data, language)
+        summary = _parse_local(data, language)
     except (OSError, UnicodeError, ValueError) as error:
         print(f"Invalid MultiCoNER file: {error}", file=sys.stderr)
-        return 2
-    reasons = Counter(item.reason.split(":")[0] for item in parsed.invalid)
+        return EXIT_ERROR
     report = {
         "file": path.name,
         "language": language,
         "split": split,
-        "records": parsed.record_count,
-        "valid": len(parsed.sentences),
-        "invalid": len(parsed.invalid),
-        "invalid_reasons": dict(sorted(reasons.items())),
-        "location_spans": sum(len(s.location_spans()) for s in parsed.sentences),
+        "records": summary.records,
+        "valid": summary.valid,
+        "invalid": summary.invalid,
+        "invalid_reasons": summary.invalid_reasons,
+        "location_spans": summary.location_spans,
     }
     print(json.dumps(report, indent=2, ensure_ascii=False))
-    return 2 if parsed.invalid else 0
+    return EXIT_ERROR if summary.invalid else EXIT_OK
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
