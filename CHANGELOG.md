@@ -14,6 +14,11 @@ This file records all notable changes to GeoParser. The project follows
   English pipeline. Label harmonization to `LOC` is explicit per language, and
   the English cross-language control is reported separately as transfer. No
   pipeline has been downloaded or run yet, and the wheel hashes are not pinned.
+- Add offline contracts for comparing Qwen3-Reranker-0.6B and
+  jina-reranker-v3.5 on identical frozen candidate lists. They pin both
+  checkpoints and gate the custom code of the Jina checkpoint behind its
+  reviewed digest. They report gain, regressions, timing and memory against a
+  no-reranker baseline. They load no model and run no inference.
 
 ### Fixed
 

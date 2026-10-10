@@ -432,6 +432,13 @@ class TestPredictTiers:
         assert resolver.predict([], []) == []
 
 
+def _search_state(texts, references, contexts, candidates, results):
+    """Build the per-document state that one search pass works on."""
+    from geoparser.modules.resolvers.sentencetransformer import _SearchState
+
+    return _SearchState(texts, references, contexts, candidates, results)
+
+
 @pytest.mark.unit
 class TestSearchOnce:
     """One gather/embed/evaluate pass."""
@@ -446,7 +453,9 @@ class TestSearchOnce:
         ):
             # Act
             resolver._search_once(
-                ["t"], [[(0, 1)]], [["c"]], [[[]]], [[None]], "fuzzy", 2
+                _search_state(["t"], [[(0, 1)]], [["c"]], [[[]]], [[None]]),
+                "fuzzy",
+                2,
             )
 
         # Assert
@@ -463,7 +472,9 @@ class TestSearchOnce:
         ):
             # Act
             resolver._search_once(
-                ["t"], [[(0, 1)]], [["c"]], [[[]]], [[None]], "exact", 1
+                _search_state(["t"], [[(0, 1)]], [["c"]], [[[]]], [[None]]),
+                "exact",
+                1,
             )
 
         # Assert
@@ -599,11 +610,13 @@ class TestPerDocumentAlignment:
         ):
             # Act & Assert
             resolver._search_once(
-                ["a", "b"],
-                [[(0, 1)], [(0, 1)]],
-                [["ctx"], ["ctx"]],
-                [[[]], [[]]],
-                [[None]],
+                _search_state(
+                    ["a", "b"],
+                    [[(0, 1)], [(0, 1)]],
+                    [["ctx"], ["ctx"]],
+                    [[[]], [[]]],
+                    [[None]],
+                ),
                 "exact",
                 1,
             )
