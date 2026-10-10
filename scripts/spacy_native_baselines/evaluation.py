@@ -33,14 +33,32 @@ class BatchPredictor(Protocol):
         """Return one span set per input text."""
 
 
+def _batches(examples: Sequence[Example], batch_size: int) -> list[Sequence[Example]]:
+    return [
+        examples[start : start + batch_size]
+        for start in range(0, len(examples), batch_size)
+    ]
+
+
+def _warm_up(predictor: BatchPredictor, batches: list[Sequence[Example]]) -> None:
+    """Run one untimed batch, as the PAN-X runner does, before any timing starts.
+
+    One-time model and backend startup must not be charged to this predictor's
+    throughput, so the first batch is predicted once without being measured.
+    """
+    if batches:
+        predictor.predict_batch([example.text for example in batches[0]])
+
+
 def _score(
     predictor: BatchPredictor,
     examples: Sequence[Example],
     batch_size: int,
 ) -> dict[str, Any]:
     counts = Counts()
-    for start in range(0, len(examples), batch_size):
-        batch = examples[start : start + batch_size]
+    batches = _batches(examples, batch_size)
+    _warm_up(predictor, batches)
+    for batch in batches:
         started = time.perf_counter()
         predictions = predictor.predict_batch([example.text for example in batch])
         counts.elapsed_seconds += time.perf_counter() - started

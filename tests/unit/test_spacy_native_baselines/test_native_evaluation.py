@@ -25,14 +25,21 @@ class FakeClock:
 
 
 class TickingRecognizer:
-    """Advance the fake clock by a fixed step on every predict_batch call."""
+    """Advance the fake clock on every predict_batch call.
 
-    def __init__(self, clock, step):
+    The first call advances by ``first_step`` (defaulting to ``step``), as a
+    model's first inference does while it starts up.
+    """
+
+    def __init__(self, clock, step, first_step=None):
         self.clock = clock
         self.step = step
+        self.first_step = step if first_step is None else first_step
+        self.calls = 0
 
     def predict_batch(self, texts):
-        self.clock.now += self.step
+        self.calls += 1
+        self.clock.now += self.first_step if self.calls == 1 else self.step
         return [set() for _ in texts]
 
 
@@ -110,7 +117,8 @@ def test_native_recognizer_receives_only_its_own_language(roster, examples):
 
     evaluate_baselines(examples, {"de": german}, None, roster)
 
-    assert german.seen == [["Berlin liegt.", "Nichts hier."]]
+    # The untimed warm-up is the first call, then the scored batch.
+    assert german.seen == [["Berlin liegt.", "Nichts hier."]] * 2
 
 
 def test_english_control_transfer_excludes_english_and_unsupported(roster, examples):
@@ -228,7 +236,8 @@ def test_batches_are_bounded_by_batch_size(roster):
 
     evaluate_baselines(examples, {"de": german}, None, roster, batch_size=2)
 
-    assert [len(batch) for batch in german.seen] == [2, 2, 1]
+    # Warm-up on the first batch, then the three scored batches.
+    assert [len(batch) for batch in german.seen] == [2, 2, 2, 1]
 
 
 @pytest.mark.parametrize("batch_size", [0, -1, True, 2.0])
@@ -278,6 +287,23 @@ def test_predictor_time_is_recorded_and_drives_sentences_per_second(
     transfer = result["transfer"]["de"]
     assert transfer["elapsed_seconds"] == pytest.approx(2.0)
     assert transfer["sentences_per_second"] == pytest.approx(3 / 2.0)
+
+
+def test_warm_up_runs_before_the_timers_and_is_not_timed(roster, monkeypatch):
+    clock = FakeClock()
+    monkeypatch.setattr(
+        evaluation, "time", SimpleNamespace(perf_counter=clock.perf_counter)
+    )
+    examples = {"de": _unlabelled("de", 3)}
+    # A slow first call stands in for model startup; it must not be timed.
+    german = _identify(
+        TickingRecognizer(clock, step=2.0, first_step=100.0), roster, "de"
+    )
+
+    result = evaluate_baselines(examples, {"de": german}, None, roster, batch_size=2)
+
+    assert german.calls == 3  # warm-up, then the two scored batches
+    assert result["matched"]["de"]["elapsed_seconds"] == pytest.approx(4.0)
 
 
 def test_malformed_gold_tags_are_counted_for_matched_and_transfer_scores(roster):
