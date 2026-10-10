@@ -44,6 +44,19 @@ class TestGazetteerInitialization:
         assert Gazetteer("testgaz").crs == "EPSG:4326"
 
 
+def _same_name_features(name: str) -> list[dict]:
+    """Five features that share one name, so their match scores tie."""
+    return [
+        {
+            "identifier": str(index),
+            "source": "city",
+            "data": {"name": name},
+            "names": [name],
+        }
+        for index in range(1, 6)
+    ]
+
+
 @pytest.mark.unit
 class TestGazetteerSearch:
     """Test Gazetteer search method."""
@@ -64,52 +77,43 @@ class TestGazetteerSearch:
 
         assert {feature.identifier for feature in results} == {"1"}
 
-    def test_search_exact_returns_feature_id_order_and_keeps_the_lowest_ids_at_the_limit(
-        self, make_artifact
-    ):
-        """Exact matches have no score, so order and the limit cut follow feature id."""
-        make_artifact(
-            features=[
-                {
-                    "identifier": str(index),
-                    "source": "city",
-                    "data": {"name": "Springfield"},
-                    "names": ["Springfield"],
-                }
-                for index in range(1, 6)
-            ]
-        )
+    def test_search_exact_returns_matches_in_feature_id_order(self, make_artifact):
+        """Exact matches have no score, so their order follows feature id."""
+        make_artifact(features=_same_name_features("Springfield"))
+
+        ids = [
+            feature.id
+            for feature in Gazetteer("testgaz").search("Springfield", method="exact")
+        ]
+
+        assert len(ids) == 5
+        assert ids == sorted(ids)
+
+    def test_search_exact_limit_keeps_the_lowest_feature_ids(self, make_artifact):
+        """A limit on exact matches keeps the lowest feature ids."""
+        make_artifact(features=_same_name_features("Springfield"))
         gazetteer = Gazetteer("testgaz")
 
-        everything = gazetteer.search("Springfield", method="exact")
+        everything = sorted(
+            feature.id for feature in gazetteer.search("Springfield", method="exact")
+        )
         cut = gazetteer.search("Springfield", method="exact", limit=2)
 
-        ids = [feature.id for feature in everything]
-        assert ids == sorted(ids)
-        assert len(ids) == 5
-        assert [feature.id for feature in cut] == ids[:2]
+        assert sorted(feature.id for feature in cut) == everything[:2]
 
     def test_tied_scores_at_the_limit_keep_the_lowest_feature_ids(self, make_artifact):
         """Equal scores at the cut are broken by feature id, so the kept set is fixed."""
-        make_artifact(
-            features=[
-                {
-                    "identifier": str(index),
-                    "source": "city",
-                    "data": {"name": "Springfield Town"},
-                    "names": ["Springfield Town"],
-                }
-                for index in range(1, 6)
-            ]
-        )
+        make_artifact(features=_same_name_features("Springfield Town"))
         gazetteer = Gazetteer("testgaz")
 
-        everything = gazetteer.search("Springfield", method="phrase", tiers=1)
+        everything = sorted(
+            feature.id
+            for feature in gazetteer.search("Springfield", method="phrase", tiers=1)
+        )
         cut = gazetteer.search("Springfield", method="phrase", limit=2, tiers=1)
 
-        ids = sorted(feature.id for feature in everything)
-        assert len(ids) == 5
-        assert sorted(feature.id for feature in cut) == ids[:2]
+        assert len(everything) == 5
+        assert sorted(feature.id for feature in cut) == everything[:2]
 
     def test_search_phrase_matches_names_containing_query(self, make_artifact):
         """Phrase search finds names containing the query as a phrase."""
