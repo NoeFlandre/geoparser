@@ -116,8 +116,10 @@ equal the roster's label set exactly, or `LabelSchemeError` is raised. Only the
 - `scripts/spacy_native_baselines/evaluation.py` scores all arms on the same
   examples and reports three groups that are never merged:
   - `matched`: a native pipeline on examples in its own language.
-  - `transfer`: the English control on every non-English language that has a
-    native pipeline, labelled as cross-language transfer.
+  - `transfer`: the English control on every non-English language that also has
+    a matched native recognizer, labelled as cross-language transfer. Transfer
+    and matched therefore cover the same non-English languages; the matched
+    group may additionally contain the native English score.
   - `unsupported`: counts of examples in languages with no native pipeline. No
     model predicts them.
 - `configuration_id(pipeline)` returns a deterministic 16-hex identity from the

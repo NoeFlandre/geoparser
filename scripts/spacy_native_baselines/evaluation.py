@@ -4,8 +4,9 @@ Three groups are reported and never merged:
 
 * ``matched``: a native pipeline scored on examples in its own language.
 * ``transfer``: the English cross-language control scored on every
-  non-English language that has a native pipeline. These are labelled transfer
-  scores, not native results.
+  non-English language that also has a matched native recognizer, so the
+  transfer group covers exactly the non-English languages of the matched group.
+  These are labelled transfer scores, not native results.
 * ``unsupported``: languages with no native pipeline. They are counted and
   never predicted by any model, including the English control in either group.
 """
@@ -72,10 +73,6 @@ def _check_example_languages(
                 raise ValueError(message)
 
 
-def _has_native_pipeline(roster: Roster, language: str) -> bool:
-    return roster.route(language).pipeline is not None
-
-
 def _check_recorded_pipeline(
     language: str,
     predictor: BatchPredictor,
@@ -134,16 +131,16 @@ def _matched_scores(
 def _transfer_scores(
     english_control: BatchPredictor | None,
     examples_by_language: Mapping[str, Sequence[Example]],
-    roster: Roster,
+    recognizers: Mapping[str, BatchPredictor],
     batch_size: int,
 ) -> dict[str, dict[str, Any]]:
+    """Score transfer only where a matched recognizer exists, so groups pair up."""
     if english_control is None:
         return {}
     return {
         language: _score(english_control, examples, batch_size)
         for language, examples in examples_by_language.items()
-        if language != ENGLISH_CONTROL_LANGUAGE
-        and _has_native_pipeline(roster, language)
+        if language != ENGLISH_CONTROL_LANGUAGE and language in recognizers
     }
 
 
@@ -180,7 +177,7 @@ def evaluate_baselines(
         )
     matched = _matched_scores(recognizers, examples_by_language, batch_size)
     transfer = _transfer_scores(
-        english_control, examples_by_language, roster, batch_size
+        english_control, examples_by_language, recognizers, batch_size
     )
     return {
         "matched": matched,

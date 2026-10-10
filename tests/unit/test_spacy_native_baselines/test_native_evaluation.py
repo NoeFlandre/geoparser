@@ -124,6 +124,30 @@ def test_english_control_transfer_excludes_english_and_unsupported(roster, examp
     assert result["transfer"]["de"]["false_negative"] == 0
 
 
+def test_transfer_covers_only_languages_with_a_matched_recognizer(roster):
+    examples = {
+        "de": (_example("de", "Berlin liegt.", {(0, 6)}),),
+        "fr": (_example("fr", "Paris appelle.", {(0, 5)}),),
+    }
+    control = _identify(FakeRecognizer({}), roster, "en")
+
+    partial = evaluate_baselines(
+        examples, {"de": _identify(FakeRecognizer({}), roster, "de")}, control, roster
+    )
+    full = evaluate_baselines(
+        examples,
+        {
+            "de": _identify(FakeRecognizer({}), roster, "de"),
+            "fr": _identify(FakeRecognizer({}), roster, "fr"),
+        },
+        control,
+        roster,
+    )
+
+    assert set(partial["matched"]) == set(partial["transfer"]) == {"de"}
+    assert set(full["matched"]) == set(full["transfer"]) == {"de", "fr"}
+
+
 def test_unsupported_languages_are_recorded_and_never_predicted(roster, examples):
     control = _identify(FakeRecognizer({}), roster, "en")
 
