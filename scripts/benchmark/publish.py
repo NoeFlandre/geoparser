@@ -19,12 +19,12 @@ import argparse
 import csv
 import io
 import json
-import sys
 import typing as t
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from scripts._cli import EXIT_OK
 from scripts._io import PROJECT_ROOT
 from scripts.benchmark.chart import render_bar_chart
 from scripts.benchmark.corpora import CORPORA
@@ -691,19 +691,24 @@ def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> None:
     )
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Publish the committed evidence to the Hub."""
+def build_parser() -> argparse.ArgumentParser:
+    """Return the argument parser for the Hub publisher."""
     parser = argparse.ArgumentParser(prog="python -m scripts.benchmark.publish")
     parser.add_argument("--repo-id", default=DEFAULT_REPO_ID)
     parser.add_argument("--evidence-dir", type=Path, default=EVIDENCE_DIR)
-    arguments = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Publish the committed evidence to the Hub."""
+    arguments = build_parser().parse_args(argv)
 
     from huggingface_hub import HfApi
 
     publish(arguments.evidence_dir, arguments.repo_id, api=HfApi())
     print(f"https://huggingface.co/datasets/{arguments.repo_id}")
-    return 0
+    return EXIT_OK
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

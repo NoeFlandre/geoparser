@@ -153,14 +153,14 @@ def scoped_diagnostics(mutants: list[tuple[str, str]]) -> str:
     )
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
-    """Parse the mutation gate's command-line options."""
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the mutation gate's command-line options."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-survivors", type=int, required=True)
     parser.add_argument("--max-no-tests", type=int)
     parser.add_argument("--stats", type=Path, default=STATS_PATH)
     parser.add_argument("--patterns", nargs="+")
-    return parser.parse_args(argv)
+    return parser
 
 
 def _scope_stats(
@@ -318,7 +318,7 @@ def _run_gate(args: argparse.Namespace, exported: dict[str, int]) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """Report the mutation score and fail when either baseline is breached."""
-    args = _parse_args(argv)
+    args = build_parser().parse_args(argv)
     exported, error = _load_stats(args.stats)
     if error:
         print(error, file=sys.stderr)

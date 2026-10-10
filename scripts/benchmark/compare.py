@@ -94,12 +94,17 @@ def _regressions(
     return failures
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Return the argument parser for the median regression check."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("baseline", type=Path)
     parser.add_argument("candidate", type=Path)
     parser.add_argument("--maximum-regression", type=float, default=0.25)
-    arguments = parser.parse_args()
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    arguments = build_parser().parse_args(argv)
 
     baseline_report = json.loads(arguments.baseline.read_text())
     candidate_report = json.loads(arguments.candidate.read_text())
