@@ -32,10 +32,11 @@ def test_the_pin_names_one_commit_under_its_licence():
 
 
 def test_every_pinned_file_has_a_git_blob_id_and_the_import_chain_is_covered():
-    assert len(REVIEWED_BLOBS) == 15
+    assert len(REVIEWED_BLOBS) == 16
     assert all(re.fullmatch(r"[0-9a-f]{40}", blob) for blob in REVIEWED_BLOBS.values())
     assert {
         "LICENSE",
+        "__init__.py",
         "unitorank/ranker.py",
         "unitorank/__init__.py",
     } <= REVIEWED_BLOBS.keys()
@@ -64,15 +65,56 @@ def test_missing_and_changed_files_are_each_reported(tmp_path: Path):
     ]
 
 
+@pytest.mark.parametrize(
+    "extra",
+    [
+        "rapidfuzz.py",
+        "rapidfuzz.cpython-312-x86_64-linux-gnu.so",
+        "__pycache__/ranker.cpython-312.pyc",
+        "unitorank/extra.py",
+    ],
+)
+def test_an_importable_file_the_pin_does_not_name_is_refused(
+    tmp_path: Path, extra: str
+):
+    (tmp_path / "a.txt").write_bytes(b"hello\n")
+    (tmp_path / extra).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / extra).write_bytes(b"raise SystemExit('ran')\n")
+    problems = verify_checkout(tmp_path, {"a.txt": HELLO_BLOB})
+    assert problems == [f"unreviewed: {extra}"]
+
+
+def test_files_that_cannot_be_imported_and_git_metadata_are_not_refused(tmp_path: Path):
+    (tmp_path / "a.txt").write_bytes(b"hello\n")
+    (tmp_path / "README.md").write_bytes(b"not code\n")
+    (tmp_path / ".git" / "hooks").mkdir(parents=True)
+    (tmp_path / ".git" / "hooks" / "pre-commit.py").write_bytes(b"\n")
+    assert verify_checkout(tmp_path, {"a.txt": HELLO_BLOB}) == []
+
+
 def test_an_empty_directory_fails_on_every_pinned_file(tmp_path: Path):
     problems = verify_checkout(tmp_path)
-    assert len(problems) == 15
+    assert len(problems) == 16
     assert problems[0] == "missing: LICENSE"
 
 
 def test_load_refuses_a_checkout_that_does_not_match(tmp_path: Path):
     with pytest.raises(UpstreamMismatchError, match="missing: LICENSE"):
         load_rank_toponyms(tmp_path)
+
+
+def test_load_refuses_an_extra_module_before_any_of_it_runs(
+    tmp_path: Path, clean_upstream_modules
+):
+    """An extra rapidfuzz.py is first on the import path, so it must not run."""
+    checkout = _fake_checkout(tmp_path / "verified")
+    marker = tmp_path / "rapidfuzz-ran"
+    (checkout / "rapidfuzz.py").write_text(
+        f"from pathlib import Path\nPath({str(marker)!r}).write_text('ran')\n"
+    )
+    with pytest.raises(UpstreamMismatchError, match=r"unreviewed: rapidfuzz\.py"):
+        load_rank_toponyms(checkout)
+    assert not marker.exists()
 
 
 def _unitorank_module_names() -> list[str]:
@@ -109,11 +151,15 @@ def test_load_returns_the_ranker_from_a_verified_checkout(
 ):
     checkout = _fake_checkout(tmp_path)
     monkeypatch.setattr(pins, "verify_checkout", lambda _path: [])
+    monkeypatch.setattr(sys, "dont_write_bytecode", False)
     rank_toponyms, ranker_config = load_rank_toponyms(checkout)
     assert (
         rank_toponyms(text="", toponyms=[], candidates_by_toponym={}, config=None) == {}
     )
     assert ranker_config.__name__ == "RankerConfig"
+    # Importing must not leave a __pycache__ that the next verification refuses.
+    assert not (checkout / "unitorank" / "__pycache__").exists()
+    assert sys.dont_write_bytecode is False
 
 
 def test_load_refuses_a_unitorank_imported_from_somewhere_else(

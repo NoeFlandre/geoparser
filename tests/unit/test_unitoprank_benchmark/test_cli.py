@@ -20,7 +20,7 @@ def test_the_report_names_the_pin_and_how_many_files_it_covers(tmp_path: Path, c
     report = json.loads(capsys.readouterr().out)
     assert report["commit"] == COMMIT
     assert report["license"] == "Apache-2.0"
-    assert report["files_pinned"] == 15
+    assert report["files_pinned"] == 16
 
 
 def test_a_matching_checkout_exits_zero(tmp_path: Path, monkeypatch, capsys):

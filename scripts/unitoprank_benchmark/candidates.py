@@ -97,20 +97,31 @@ def _add_surface(result: CandidateSet, key: str, candidates: list[Candidate]) ->
             result.dropped["duplicate_identifier"] += 1
             continue
         seen.add(candidate.identifier)
-        entry = _to_entry(candidate, result)
-        if entry is None:
+        built = _to_entry(candidate, result)
+        if built is None:
             continue
+        entry, substitutions = built
         if entry["address"] in identifiers:
             result.dropped["address_collision"] += 1
             continue
         identifiers[entry["address"]] = candidate.identifier
         entries.append(entry)
+        # Counted only for a kept candidate: a discarded one never reaches the ranker.
+        result.missing.update(substitutions)
     result.by_surface[key] = entries
     result.identifiers[key] = identifiers
 
 
-def _to_entry(candidate: Candidate, result: CandidateSet) -> dict[str, t.Any] | None:
-    """Return the ranker's dictionary for one candidate, or None if unusable."""
+def _to_entry(
+    candidate: Candidate, result: CandidateSet
+) -> tuple[dict[str, t.Any], Counter[str]] | None:
+    """
+    Return the ranker's dictionary for one candidate and the substitutions it used.
+
+    An unusable candidate returns None, and its drop is counted here. The
+    substitutions are returned instead of counted, because the caller may still
+    discard the candidate, for example as an address collision.
+    """
     name = candidate.name.strip()
     if not name:
         result.dropped["no_name"] += 1
@@ -119,34 +130,36 @@ def _to_entry(candidate: Candidate, result: CandidateSet) -> dict[str, t.Any] | 
     if coordinates is None:
         result.dropped["no_coordinates"] += 1
         return None
-    levels = _admin_levels(candidate.admin_path, result)
-    feature_code = _feature_code(candidate.feature_code, result)
-    return {
+    substitutions: Counter[str] = Counter()
+    levels = _admin_levels(candidate.admin_path, substitutions)
+    feature_code = _feature_code(candidate.feature_code, substitutions)
+    entry = {
         "address": ", ".join([name, *levels]),
         "lat": coordinates[0],
         "lon": coordinates[1],
         "name": name,
         "alt_names": _alternate_names(candidate.alternate_names),
-        "population": _population(candidate.population, result),
+        "population": _population(candidate.population, substitutions),
         "admin_level": feature_code,
     }
+    return entry, substitutions
 
 
 def _admin_levels(
-    admin_path: tuple[str | None, ...], result: CandidateSet
+    admin_path: tuple[str | None, ...], substitutions: Counter[str]
 ) -> list[str]:
     """Return the usable administrative levels, counting each missing one."""
     levels = [level.strip() for level in admin_path if level and level.strip()]
     if not admin_path:
-        result.missing["admin_path"] += 1
-    result.missing["admin_level"] += len(admin_path) - len(levels)
+        substitutions["admin_path"] += 1
+    substitutions["admin_level"] += len(admin_path) - len(levels)
     return levels
 
 
-def _feature_code(feature_code: str | None, result: CandidateSet) -> str:
+def _feature_code(feature_code: str | None, substitutions: Counter[str]) -> str:
     """Return the stripped feature code, counting a missing or blank one."""
     if not feature_code or not feature_code.strip():
-        result.missing["feature_code"] += 1
+        substitutions["feature_code"] += 1
     return (feature_code or "").strip()
 
 
@@ -172,9 +185,9 @@ def _within(value: float, limit: float) -> bool:
     return math.isfinite(value) and -limit <= value <= limit
 
 
-def _population(value: int | float | None, result: CandidateSet) -> int:
+def _population(value: int | float | None, substitutions: Counter[str]) -> int:
     """Return a population, counting a missing or negative one as zero."""
     if value is None or not math.isfinite(value) or value < 0:
-        result.missing["population"] += 1
+        substitutions["population"] += 1
         return 0
     return int(value)

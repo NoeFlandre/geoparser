@@ -101,6 +101,14 @@ jobs:
           echo "::error::Could not fetch UniTopRank at $UNITORANK_COMMIT" >&2
           exit 1
 
+      # The ranker runs in its own environment built from the reviewed
+      # requirements; the locked project environment pins a newer RapidFuzz.
+      - name: Create the reviewed UniTopRank ranker environment
+        run: |
+          uv venv --python 3.12 "$RUNNER_TEMP/unitorank-ranker"
+          uv pip install --python "$RUNNER_TEMP/unitorank-ranker/bin/python" \
+            --requirement scripts/unitoprank_benchmark/ranker-requirements.txt
+
       - name: Run the complete deterministic quality gauntlet
         env:
           # The PR CRAP check measures integration test functions too. Execute
@@ -108,6 +116,7 @@ jobs:
           GEOPARSER_TEST_REMOTE_MODELS: '1'
           HYPOTHESIS_PROFILE: ${{ github.event_name == 'schedule' && 'nightly' || 'ci' }}
           UNITORANK_CHECKOUT: ${{ runner.temp }}/UniTopRank
+          UNITORANK_PYTHON: ${{ runner.temp }}/unitorank-ranker/bin/python
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
             uv run --no-sync python scripts/quality_gauntlet.py

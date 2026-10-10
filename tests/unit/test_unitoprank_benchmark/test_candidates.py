@@ -1,6 +1,7 @@
 """Candidate mapping, against values worked out by hand from the fixtures below."""
 
 import math
+from collections import Counter
 
 from scripts.unitoprank_benchmark.candidates import (
     Candidate,
@@ -127,6 +128,19 @@ def test_candidates_sharing_an_address_keep_the_lower_identifier():
     assert [entry["population"] for entry in result.by_surface["springfield"]] == [200]
     assert result.identifiers["springfield"] == {"Springfield, Illinois": "10"}
     assert result.dropped["address_collision"] == 1
+
+
+def test_a_discarded_address_collision_is_not_counted_as_a_substitution():
+    kept = Candidate("10", "Springfield", 39.8, -89.6, "PPLA2", 200, ("Illinois", None))
+    discarded = Candidate(
+        "11", "Springfield", 39.8, -89.6, None, None, ("Illinois", None, "")
+    )
+    result = build_candidate_set({"Springfield": [kept, discarded]})
+    assert [entry["population"] for entry in result.by_surface["springfield"]] == [200]
+    assert result.dropped["address_collision"] == 1
+    # Only the kept candidate's missing level is counted. The discarded one would
+    # add two more levels, a missing feature code and a missing population.
+    assert +result.missing == Counter({"admin_level": 1})
 
 
 def test_candidates_without_usable_coordinates_are_dropped():

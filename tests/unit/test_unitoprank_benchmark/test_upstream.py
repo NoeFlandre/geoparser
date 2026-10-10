@@ -3,17 +3,20 @@ Run the pinned UniTopRank ranker on a three-sentence example, offline.
 
 This needs a local checkout of the reviewed commit, given in the
 UNITORANK_CHECKOUT environment variable, and it is skipped without one. The
-checkout is verified against the pin before anything is imported. The
-expected identifiers are the places the README's own worked example puts first.
+ranker runs in the interpreter named by UNITORANK_PYTHON, which must be built
+from ranker-requirements.txt, because RapidFuzz's scores decide the ranking. The
+checkout is verified against the pin before anything is imported. The expected
+identifiers are the places the README's own worked example puts first.
 """
 
 import os
+from functools import partial
 from pathlib import Path
 
 import pytest
 
 from scripts.unitoprank_benchmark.candidates import Candidate, build_candidate_set
-from scripts.unitoprank_benchmark.pins import load_rank_toponyms
+from scripts.unitoprank_benchmark.isolated_ranker import rank_in_reviewed_environment
 from scripts.unitoprank_benchmark.ranking import Mention, rank_document
 
 # Only the Linux Python 3.12 test cell and the quality gauntlet fetch the pinned
@@ -73,11 +76,13 @@ MENTIONS = [
 
 
 def test_pinned_ranker_places_both_toponyms_on_the_readme_choices(no_external_network):
-    rank_toponyms, ranker_config = load_rank_toponyms(
-        Path(os.environ["UNITORANK_CHECKOUT"])
+    rank_toponyms = partial(
+        rank_in_reviewed_environment,
+        Path(os.environ["UNITORANK_CHECKOUT"]),
+        os.environ["UNITORANK_PYTHON"],
     )
     candidates = build_candidate_set(CANDIDATES)
-    config = ranker_config(top_n=10, distance_threshold_km=300.0)
+    config = {"top_n": 10, "distance_threshold_km": 300.0}
 
     first = rank_document(
         TEXT, MENTIONS, candidates, rank_toponyms=rank_toponyms, ranker_config=config

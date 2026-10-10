@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import importlib.machinery
 import importlib.util
 import sys
 import typing as t
@@ -24,8 +25,10 @@ LICENSE_SPDX = "Apache-2.0"
 
 # Every file of the reviewed tree that the direct ranking import reaches, plus
 # the licence and the files reviewed but not imported. The blob IDs are the
-# ones GitLab's repository tree API reports for COMMIT.
+# ones GitLab's repository tree API reports for COMMIT. Every Python file in the
+# tree is listed, so that none can shadow an import (see _unreviewed_modules).
 REVIEWED_BLOBS: dict[str, str] = {
+    "__init__.py": "7b2e6729b2d85906e7cc9bb9ae9402bb04f59a4d",
     "LICENSE": "5d817e2e7a576e60810d167d17e37d8c9e57dd20",
     "NOTICE": "102525039689d30b0e1b8f91577e25b0c473402b",
     "THIRD_PARTY_LICENSES.md": "ef488c3826b02c2465e723c87c1293a1ba6ffe52",
@@ -50,6 +53,11 @@ class UpstreamMismatchError(RuntimeError):
     """A checkout differs from the reviewed tree, so it must not be imported."""
 
 
+# Suffixes of every file type the import system loads: source, bytecode and
+# compiled extensions.
+IMPORTABLE_SUFFIXES = tuple(importlib.machinery.all_suffixes())
+
+
 def git_blob_id(content: bytes) -> str:
     """Return the Git blob ID of file content, as ``git hash-object`` computes it."""
     header = f"blob {len(content)}\0".encode()
@@ -67,7 +75,8 @@ def verify_checkout(
         blobs: Relative path to the expected blob ID
 
     Returns:
-        One message per missing or changed file; empty when the tree matches
+        One message per missing or changed file, and per importable file the
+        blobs do not name; empty when the tree matches
     """
     problems = []
     for relative, expected in sorted(blobs.items()):
@@ -78,7 +87,31 @@ def verify_checkout(
         actual = git_blob_id(path.read_bytes())
         if actual != expected:
             problems.append(f"changed: {relative} is {actual}, pinned {expected}")
+    problems.extend(_unreviewed_modules(checkout, blobs))
     return problems
+
+
+def _unreviewed_modules(checkout: Path, blobs: t.Mapping[str, str]) -> list[str]:
+    """
+    Name each importable file in the checkout that the blob IDs do not cover.
+
+    The checkout is placed first on the import path, so a file such as
+    ``rapidfuzz.py`` would satisfy an import meant for the installed package and
+    run unreviewed code.
+    """
+    unpinned = [name for name in _importable_names(checkout) if name not in blobs]
+    return [f"unreviewed: {name}" for name in unpinned]
+
+
+def _importable_names(checkout: Path) -> list[str]:
+    """Return the sorted POSIX paths of importable names, outside Git's metadata."""
+    names = (
+        path.relative_to(checkout).as_posix()
+        for path in checkout.rglob("*")
+        if path.name.endswith(IMPORTABLE_SUFFIXES)
+    )
+    # Git's metadata directory is never on the import path.
+    return sorted(name for name in names if not name.startswith(".git/"))
 
 
 def load_rank_toponyms(checkout: Path) -> tuple[t.Callable[..., t.Any], t.Any]:
@@ -112,8 +145,23 @@ def load_rank_toponyms(checkout: Path) -> tuple[t.Callable[..., t.Any], t.Any]:
     if origin is None or not origin.is_relative_to(root):
         message = f"unitorank is imported from {origin}, not {root}"
         raise UpstreamMismatchError(message)
-    ranker = t.cast(t.Any, importlib.import_module("unitorank.ranker"))
+    ranker = _import_without_bytecode("unitorank.ranker")
     return ranker.rank_toponyms, ranker.RankerConfig
+
+
+def _import_without_bytecode(name: str) -> t.Any:
+    """
+    Import a module without writing its bytecode into the verified checkout.
+
+    Bytecode written there would be an importable file the pin does not name, so
+    the next verification would refuse the checkout.
+    """
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        return importlib.import_module(name)
+    finally:
+        sys.dont_write_bytecode = previous
 
 
 def _unitorank_origin() -> Path | None:

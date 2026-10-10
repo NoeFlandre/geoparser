@@ -14,7 +14,7 @@ This page covers what the repository can do with it now: pin the reviewed code, 
 | Licence | Apache-2.0, from the `LICENSE` file at the pinned commit |
 | Release metadata | [figshare release 30445541](https://figshare.com/articles/software/UniTopRank/30445541), version 10, DOI `10.6084/m9.figshare.30445541.v10`, published 2025-12-15, licence field "Apache 2.0" |
 
-The module `scripts/unitoprank_benchmark/pins.py` pins 15 files by their Git blob IDs, which are the IDs GitLab's tree API reports for the commit. A checkout is checked before anything is imported:
+The module `scripts/unitoprank_benchmark/pins.py` pins 16 files by their Git blob IDs, which are the IDs GitLab's tree API reports for the commit. Every Python file in the tree is among them. A checkout is checked before anything is imported, and an importable file the pin does not name is refused:
 
 ```bash
 git clone https://gitlab.com/dlr-dw/UniTopRank /path/to/UniTopRank
@@ -83,13 +83,15 @@ The unit tests need no checkout and make no network calls. Every test in `tests/
 uv run pytest tests/unit/test_unitoprank_benchmark -o addopts="" -p no:cacheprovider
 ```
 
-`test_upstream.py` also runs the pinned ranker on a three-place example. It needs the checkout from the commands above, and is skipped without it:
+`test_upstream.py` also runs the pinned ranker on a three-place example. It needs the checkout from the commands above, and is skipped without it. The ranker runs in a separate environment built from `scripts/unitoprank_benchmark/ranker-requirements.txt`, which is byte-identical to the reviewed upstream `requirements.txt`. The locked project environment pins a newer RapidFuzz, and its scores would change the ranking. `isolated_ranker.py` refuses to rank when an installed version differs from that file:
 
 ```bash
-UNITORANK_CHECKOUT=/path/to/UniTopRank uv run pytest tests/unit/test_unitoprank_benchmark/test_upstream.py -o addopts="" -p no:cacheprovider
+uv venv /path/to/unitorank-ranker
+uv pip install --python /path/to/unitorank-ranker/bin/python --requirement scripts/unitoprank_benchmark/ranker-requirements.txt
+UNITORANK_CHECKOUT=/path/to/UniTopRank UNITORANK_PYTHON=/path/to/unitorank-ranker/bin/python uv run pytest tests/unit/test_unitoprank_benchmark/test_upstream.py -o addopts="" -p no:cacheprovider
 ```
 
-CI runs this test as well. The Ubuntu, Python 3.12 test cell and the quality gauntlet each clone the pinned commit into the runner's temporary directory and set `UNITORANK_CHECKOUT`. The other test cells skip the test by design, because they do not fetch the checkout. Without that setting the test is skipped, and its lines would count as uncovered in the CRAP gate. The workflow steps and `tests/unit/test_quality/test_unitoprank_ci_checkout.py` keep the fetched commit equal to the one in `pins.py`.
+CI runs this test as well. The Ubuntu, Python 3.12 test cell and the quality gauntlet each clone the pinned commit into the runner's temporary directory, build that environment, and set `UNITORANK_CHECKOUT` and `UNITORANK_PYTHON`. The other test cells skip the test by design, because they do not fetch the checkout. Without that setting the test is skipped, and its lines would count as uncovered in the CRAP gate. The workflow steps and `tests/unit/test_quality/test_unitoprank_ci_checkout.py` keep the fetched commit equal to the one in `pins.py`.
 
 ## Not done
 
