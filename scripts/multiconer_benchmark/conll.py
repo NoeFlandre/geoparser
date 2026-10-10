@@ -247,13 +247,12 @@ def _sentence_from_tokens(
     """Read token lines, check every column, then build spans."""
     tokens: list[str] = []
     tags: list[str] = []
-    previous: str | None = None
     for number, line in lines:
         columns = _token_columns(number, line, sample_id)
         if isinstance(columns, InvalidRecord):
             return columns
         token, tag = columns
-        error, previous = _check_tag(tag, previous)
+        error = _check_tag(tag)
         if error is not None:
             return InvalidRecord(number, sample_id, error)
         tokens.append(token)
@@ -295,17 +294,12 @@ def _spaced_token(line: str) -> tuple[str, str] | None:
     return head[: -len(_BLANK_COLUMNS)], tag
 
 
-def _check_tag(tag: str, previous: str | None) -> tuple[str | None, str | None]:
-    """Validate one BIO tag; return the error and the label it leaves open."""
+def _check_tag(tag: str) -> str | None:
+    """Return the error in one tag, or None. Any I- tag is accepted."""
     if tag == "O":
-        return None, None
+        return None
     parsed = _parse_tag(tag)
-    if isinstance(parsed, str):
-        return parsed, None
-    kind, label = parsed
-    if kind == "I" and previous != label:
-        return "I- tag does not continue an entity", None
-    return None, label
+    return parsed if isinstance(parsed, str) else None
 
 
 def _parse_tag(tag: str) -> tuple[str, str] | str:

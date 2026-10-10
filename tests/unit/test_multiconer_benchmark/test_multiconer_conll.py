@@ -212,11 +212,11 @@ INVALID_LINES = [
     "Mars _ _ B-Planet",  # 10 unknown type
     "",  # 11
     "# id orphan\tdomain=en",  # 12
-    "Lyon _ _ I-HumanSettlement",  # 13 orphan I-
+    "Lyon _ _ I-HumanSettlement",  # 13 orphan I- starts an entity
     "",  # 14
     "# id switch\tdomain=en",  # 15
     "Gare _ _ B-Station",  # 16
-    "du _ _ I-Facility",  # 17 type switch
+    "du _ _ I-Facility",  # 17 type switch starts a new entity
     "",  # 18
     "# id ok-1\tdomain=en",  # 19 duplicate id
     "Nice _ _ B-HumanSettlement",  # 20
@@ -239,7 +239,12 @@ INVALID_LINES = [
 
 def test_valid_sentences_survive_around_rejected_blocks():
     parsed = parse_conll("\n".join(INVALID_LINES))
-    assert [sentence.sample_id for sentence in parsed.sentences] == ["ok-1", "last"]
+    assert [sentence.sample_id for sentence in parsed.sentences] == [
+        "ok-1",
+        "orphan",
+        "switch",
+        "last",
+    ]
 
 
 def test_a_tag_without_a_bio_prefix_is_an_invalid_record():
@@ -249,13 +254,30 @@ def test_a_tag_without_a_bio_prefix_is_an_invalid_record():
     ]
 
 
+@pytest.mark.parametrize(
+    ("first", "entities"),
+    [
+        ("Lyon _ _ I-HumanSettlement", [("HumanSettlement", 0, 4), ("Facility", 5, 7)]),
+        ("Gare _ _ B-Station", [("Station", 0, 4), ("Facility", 5, 7)]),
+    ],
+)
+def test_an_orphan_or_switched_i_tag_starts_a_new_entity(first, entities):
+    text = f"# id e\tdomain=en\n{first}\ndu _ _ I-Facility\n"
+    parsed = parse_conll(text, expected_domain="en")
+    assert parsed.invalid == ()
+    observed = [
+        (entity.label, entity.start, entity.end)
+        for entity in parsed.sentences[0].entities
+    ]
+    assert observed == entities
+
+
 def test_summary_counts_the_same_records_as_the_parsed_source():
     summary = summarize_conll("\n".join(INVALID_LINES))
-    assert (summary.valid, summary.invalid, summary.records) == (2, 10, 12)
+    assert (summary.valid, summary.invalid, summary.records) == (4, 8, 12)
     assert summary.invalid_reasons == {
         "duplicate sample id": 1,
         "empty sentence": 1,
-        "I- tag does not continue an entity": 2,
         "invalid separator columns": 1,
         "missing domain": 1,
         "missing sentence header": 1,
@@ -277,8 +299,6 @@ def test_every_invalid_record_is_counted_with_its_line_and_reason():
         (4, None, "missing sentence header"),
         (7, "bad-col", "wrong column count: expected 4, found 5"),
         (10, "bad-label", "unknown entity type: Planet"),
-        (13, "orphan", "I- tag does not continue an entity"),
-        (17, "switch", "I- tag does not continue an entity"),
         (19, "ok-1", "duplicate sample id"),
         (22, "empty", "empty sentence"),
         (24, "nodomain", "missing domain"),

@@ -74,7 +74,7 @@ Reasons:
 - `wrong column count: expected 4, found N`.
 - `invalid separator columns`.
 - `unknown tag format` or `unknown entity type`.
-- `I- tag does not continue an entity`, for an orphan or a type change inside an entity.
+An `I-` tag that does not continue the entity before it, whether it is an orphan or changes type, starts a new entity, as in conlleval. It is not a rejected record.
 
 The loader script at the pinned revision skips a sentence whose token and tag counts differ, without a count. This adapter reports the same case as an invalid record.
 
