@@ -207,6 +207,13 @@ def external_network_refused() -> Iterator[None]:
         yield
 
 
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the command line; building it reads and writes nothing."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("checkout", type=Path, metavar="DIR")
+    return parser
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """
     Read a ranking request from stdin and print the ranker's result as JSON.
@@ -216,9 +223,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     network access is refused from before the checkout is loaded until the ranking
     is done.
     """
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("checkout", type=Path, metavar="DIR")
-    arguments = parser.parse_args(argv)
+    arguments = build_parser().parse_args(argv)
     with external_network_refused():
         problems = installed_mismatches(reviewed_versions(REQUIREMENTS.read_text()))
         if problems:
@@ -238,4 +243,4 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
