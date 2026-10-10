@@ -68,17 +68,25 @@ def coordinate_detail(span: GoldSpan) -> str | None:
     return None
 
 
+def _alignment_problem(document: Document, span: GoldSpan) -> Problem | None:
+    """Return the offset or surface problem of one gold span, or None if it aligns."""
+    text = document.text
+    if not 0 <= span.start < span.end <= len(text):
+        detail = f"offsets {span.start}:{span.end} outside text of length {len(text)}"
+        return Problem(OFFSET, document.identifier, detail)
+    found_text = text[span.start : span.end]
+    if found_text != span.name:
+        detail = f"{span.start}:{span.end} reads {found_text!r}, not {span.name!r}"
+        return Problem(SURFACE, document.identifier, detail)
+    return None
+
+
 def _span_problems(document: Document, span: GoldSpan) -> list[Problem]:
     """Return the offset, surface and coordinate problems of one gold span."""
     found: list[Problem] = []
-    text = document.text
-    if span.start < 0 or span.end <= span.start or span.end > len(text):
-        detail = f"offsets {span.start}:{span.end} outside text of length {len(text)}"
-        found.append(Problem(OFFSET, document.identifier, detail))
-    elif text[span.start : span.end] != span.name:
-        found_text = text[span.start : span.end]
-        detail = f"{span.start}:{span.end} reads {found_text!r}, not {span.name!r}"
-        found.append(Problem(SURFACE, document.identifier, detail))
+    alignment = _alignment_problem(document, span)
+    if alignment is not None:
+        found.append(alignment)
     coordinate = coordinate_detail(span)
     if coordinate is not None:
         found.append(Problem(COORDINATE, document.identifier, coordinate))
@@ -98,12 +106,17 @@ def _duplicate_problems(document: Document) -> list[Problem]:
     return found
 
 
+def _distinct_offsets(document: Document) -> list[tuple[int, int]]:
+    """Return the distinct (start, end) offsets of a document's gold, in order."""
+    return sorted({(span.start, span.end) for span in document.gold})
+
+
 def _overlap_problems(document: Document) -> list[Problem]:
     """Flag every distinct span that starts inside an earlier span."""
     found: list[Problem] = []
     reach = -1
     owner: tuple[int, int] | None = None
-    for start, end in sorted({(span.start, span.end) for span in document.gold}):
+    for start, end in _distinct_offsets(document):
         if owner is not None and start < reach:
             detail = f"{start}:{end} overlaps {owner[0]}:{owner[1]}"
             found.append(Problem(OVERLAPPING_SPAN, document.identifier, detail))

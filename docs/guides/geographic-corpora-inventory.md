@@ -1,6 +1,6 @@
 # Geographic corpora inventory
 
-This guide records which corpora from the UniTopRank release and from TopoResolve could extend the benchmark, which already cover them, and what is still unverified. The machine-readable pin is `scripts/benchmark/data/geographic-corpora-snapshot.json`. The inventory was taken on 2026-10-09 from public metadata only. No corpus was downloaded for scoring, and no model ran.
+This guide records which corpora from the UniTopRank release and from TopoResolve could extend the benchmark, which already cover them, and what is still unverified. The machine-readable pin is `scripts/benchmark/data/geographic-corpora-snapshot.json`. The inventory was taken on 2026-10-09. The member listing of the UniTopRank archive came from a full local copy of `data.zip`: a byte-range request returned the whole file, which was used only to list the members and then deleted. No member was extracted or read as content, no corpus was downloaded for scoring, and no model ran.
 
 ## Status
 
@@ -44,7 +44,7 @@ The text-file counts come from the member listing of the archive. The language c
 | `fingernews_gold` | 84 | `candidate` | Gold not inspected. | Unverified; name suggests Finnish |
 | `fingertweets_gold` | 980 | `candidate` | Gold not inspected. IDs look like post IDs. | Unverified; name suggests Finnish |
 | `geocorpora` | 6648 | `candidate` | Gold not inspected. IDs look like post IDs. | Unverified |
-| `geovirus` | 229 | `duplicate` | Already registered as `geovirus` from the original repository. The count matches the 229 articles noted in `scripts/benchmark/corpus.py`. Content was not compared. | English |
+| `geovirus` | 229 | `possible_duplicate` | The name matches the `geovirus` corpus already registered from the original repository. The count matches the 229 articles noted in `scripts/benchmark/corpus.py`. Content was not compared, so the status stays provisional until a content comparison decides it. | English |
 | `gwn` | 200 | `candidate` | Gold not inspected. | Unverified |
 | `ja_geotoponyms` | 2868 | `registered` | `newsli-ja` | Japanese |
 | `lgl` | 588 | `candidate` | Gold not inspected. | Unverified |
@@ -92,6 +92,7 @@ The two UniTopRank statements conflict. `docs/guides/benchmark.md` and `scripts/
 - **Licence conflict.** Decide which UniTopRank statement governs the data before any corpus from the release is added or reported as Apache 2.0.
 - **TopoResolve.** Decide whether it may enter the benchmark without a licence, and if so as a separate resolution-only track. Gold-span and end-to-end results stay separate.
 - **TopRes19th.** Decide whether `19th` is the registered `topres19th-en` corpus. A comparison of article IDs or text is needed for that.
+- **GeoVirus.** Decide whether the release's `geovirus` folder matches the registered corpus. A comparison of article IDs or text is needed for that. Until then its status stays `possible_duplicate`.
 - **Thresholds.** Choose the distance thresholds to report beside Acc@161 km. None has been chosen.
 - **Gazetteer crosswalk.** A pinned ID crosswalk for any new corpus is not built. It needs the gold IDs first.
 

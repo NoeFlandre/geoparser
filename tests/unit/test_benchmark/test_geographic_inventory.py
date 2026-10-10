@@ -81,6 +81,13 @@ class TestReleaseListing:
 
         assert central["members"] == 59519
         assert folder_entries + central["gold_json_files"] == 59519
+
+    def test_the_central_directory_counts_twenty_five_folders_and_gold_files(
+        self, snapshot
+    ):
+        """The archive holds one gold JSON file beside each of its 25 folders."""
+        central = snapshot["unitoprank"]["central_directory"]
+
         assert central["dataset_folders"] == 25
         assert central["gold_json_files"] == 25
 
@@ -129,9 +136,11 @@ class TestStatuses:
                 assert row["registered_as"] is None, name
                 assert row["language"], name
 
-    def test_geovirus_is_a_duplicate_of_the_registered_corpus(self, folders):
-        """GeoVirus is already scored from its original repository."""
-        assert folders["geovirus"]["status"] == "duplicate"
+    def test_geovirus_is_a_possible_duplicate_until_its_content_is_compared(
+        self, folders
+    ):
+        """GeoVirus is registered, but the name and count alone do not prove a match."""
+        assert folders["geovirus"]["status"] == "possible_duplicate"
         assert folders["geovirus"]["registered_as"] == "geovirus"
         assert "geovirus" in corpora.CORPORA
 
