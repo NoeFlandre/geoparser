@@ -37,25 +37,25 @@ The text-file counts come from the member listing of the archive. The language c
 | `ITA-DSTR` | 1807 | `candidate` | Gold not inspected. IDs look like post IDs. | Unverified; name suggests Italian |
 | `LDC` | 62 | `candidate` | Gold not inspected. | Unverified |
 | `TUD` | 152 | `candidate` | Gold not inspected. | Unverified |
-| `ar_geotoponyms` | 757 | `registered` | `newsli-ar` | Arabic |
+| `ar_geotoponyms` | 757 | `registered` | `newsli-ar`, capped at 500 articles | Arabic |
 | `de_geotoponyms` | 13174 | `registered` | `newsli-de`, capped at 500 articles | German |
 | `es_geotoponyms` | 8054 | `registered` | `newsli-es`, capped at 500 articles | Spanish |
-| `fa_geotoponyms` | 85 | `registered` | `newsli-fa` | Persian |
+| `fa_geotoponyms` | 85 | `registered` | `newsli-fa`, capped at 500 articles | Persian |
 | `fingernews_gold` | 84 | `candidate` | Gold not inspected. | Unverified; name suggests Finnish |
 | `fingertweets_gold` | 980 | `candidate` | Gold not inspected. IDs look like post IDs. | Unverified; name suggests Finnish |
 | `geocorpora` | 6648 | `candidate` | Gold not inspected. IDs look like post IDs. | Unverified |
 | `geovirus` | 229 | `possible_duplicate` | The name matches the `geovirus` corpus already registered from the original repository. The count matches the 229 articles noted in `scripts/benchmark/corpus.py`. Content was not compared, so the status stays provisional until a content comparison decides it. | English |
 | `gwn` | 200 | `candidate` | Gold not inspected. | Unverified |
-| `ja_geotoponyms` | 2868 | `registered` | `newsli-ja` | Japanese |
+| `ja_geotoponyms` | 2868 | `registered` | `newsli-ja`, capped at 500 articles | Japanese |
 | `lgl` | 588 | `candidate` | Gold not inspected. | Unverified |
-| `pl_geotoponyms` | 321 | `registered` | `newsli-pl` | Polish |
-| `ro_geotoponyms` | 241 | `registered` | `newsli-ro` | Romanian |
+| `pl_geotoponyms` | 321 | `registered` | `newsli-pl`, capped at 500 articles | Polish |
+| `ro_geotoponyms` | 241 | `registered` | `newsli-ro`, capped at 500 articles | Romanian |
 | `semeval` | 90 | `candidate` | Gold not inspected. IDs look like PubMed and PMC articles, so the text is probably scientific rather than news. | Unverified |
 | `sr_geotoponyms` | 13950 | `registered` | `newsli-sr`, capped at 500 articles | Serbian |
-| `ta_geotoponyms` | 873 | `registered` | `newsli-ta` | Tamil |
-| `tr_geotoponyms` | 805 | `registered` | `newsli-tr` | Turkish |
+| `ta_geotoponyms` | 873 | `registered` | `newsli-ta`, capped at 500 articles | Tamil |
+| `tr_geotoponyms` | 805 | `registered` | `newsli-tr`, capped at 500 articles | Turkish |
 | `trnews` | 118 | `candidate` | Gold not inspected. Its documents are not NewsLi documents, so the overlap with NewsLi is by language only. | Unverified; name suggests Turkish |
-| `uk_geotoponyms` | 282 | `registered` | `newsli-uk` | Ukrainian |
+| `uk_geotoponyms` | 282 | `registered` | `newsli-uk`, capped at 500 articles | Ukrainian |
 | `wiktor` | 5000 | `candidate` | Gold not inspected. Its gold JSON is the largest in the release, about 14.5 MB uncompressed. | Unverified |
 | `wotr` | 1644 | `candidate` | Gold not inspected. | Unverified |
 
