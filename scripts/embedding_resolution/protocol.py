@@ -173,13 +173,25 @@ class FreezePlan(Contract):
     def _check_complete(self) -> None:
         """Name every registered model under each embedding policy, and the baseline.
 
-        A comparison cell that is absent from the plan would never be run, so the
-        named (model, policy) pairs must equal the expected set exactly. Each
-        registered model also needs one weight artifact, and no other is accepted.
+        Only development-calibrated rows and the structural baseline fill the
+        comparison matrix, and each cell takes exactly one of them: a duplicate
+        would run one cell twice, and a missing cell would never be run. A
+        historical row is an extra. It never fills a cell, so a missing calibrated
+        cell is refused even when a historical row exists for it. Each registered
+        model also needs one weight artifact, and no other is accepted.
         """
-        named = {(record.model, record.policy) for record in self.thresholds}
+        filling = [
+            (record.model, record.policy)
+            for record in self.thresholds
+            if record.origin != "historical"
+        ]
         require(
-            named == _expected_pairs(),
+            len(set(filling)) == len(filling),
+            "each model and policy needs exactly one development-calibrated "
+            "threshold, and the baseline exactly once",
+        )
+        require(
+            set(filling) == _expected_pairs(),
             "the plan must name every registered model under similarity and "
             "population, plus the population-only baseline",
         )

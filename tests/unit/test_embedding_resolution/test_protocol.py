@@ -203,17 +203,84 @@ def test_policies_record_the_prior_weight_they_apply():
     assert weights == {"similarity": 0.0, "population": 0.3}
 
 
-def test_a_population_prior_policy_is_frozen_at_the_library_weight():
+def test_a_calibrated_record_relabelled_as_population_is_refused():
     payload = plan_payload()
     payload["thresholds"][0]["policy"] = "population"
+
+    with pytest.raises(ValidationError, match="exactly one development-calibrated"):
+        FreezePlan.model_validate(payload)
+
+
+def test_a_missing_calibrated_cell_is_refused_even_with_a_historical_row_for_it():
+    payload = plan_payload()
+    payload["thresholds"] = [
+        record
+        for record in payload["thresholds"]
+        if (record["model"], record["policy"], record["origin"])
+        != ("geo-minilm", "similarity", "development_calibrated")
+    ]
+    assert any(
+        (record["model"], record["policy"]) == ("geo-minilm", "similarity")
+        and record["origin"] == "historical"
+        for record in payload["thresholds"]
+    )
+
+    with pytest.raises(ValidationError, match="every registered model"):
+        FreezePlan.model_validate(payload)
+
+
+def test_a_historical_row_relabelled_as_population_cannot_fill_that_cell():
+    payload = plan_payload()
+    payload["thresholds"] = [
+        record
+        for record in payload["thresholds"]
+        if (record["model"], record["policy"], record["origin"])
+        != ("geo-minilm", "population", "development_calibrated")
+    ]
+    historical = next(
+        record for record in payload["thresholds"] if record["origin"] == "historical"
+    )
+    historical["policy"] = "population"
+
+    with pytest.raises(ValidationError, match="every registered model"):
+        FreezePlan.model_validate(payload)
+
+
+def test_duplicate_calibrated_rows_for_another_pair_are_refused():
+    payload = plan_payload()
+    duplicate = calibrated("qwen3-embedding-0.6b", "population")
+    duplicate["min_similarity"] = 0.4
+    payload["thresholds"].append(duplicate)
+
+    with pytest.raises(ValidationError, match="exactly one development-calibrated"):
+        FreezePlan.model_validate(payload)
+
+
+def test_a_historical_extra_is_frozen_beside_the_calibrated_cell_it_shares():
+    payload = plan_payload()
+    payload["thresholds"].append(
+        {
+            "model": "geo-minilm",
+            "policy": "population",
+            "min_similarity": 0.0,
+            "origin": "historical",
+            "calibration_sha256": None,
+            "note": "Benchmark prior run, kept for comparison.",
+        }
+    )
     experiment = build_experiment(FreezePlan.model_validate(payload))
 
-    populated = [
+    extras = [
         config
         for config in experiment.configurations
-        if config.parameters["policy"] == "population"
+        if config.parameters["threshold_origin"] == "historical"
+        and config.parameters["policy"] == "population"
     ]
-    assert populated[0].parameters["population_weight"] == pytest.approx(0.3)
+    assert (
+        len(experiment.configurations),
+        {config.thresholds["min_similarity"] for config in extras},
+        len({config.pipeline for config in experiment.configurations}),
+    ) == ((PIPELINES + 1) * SOURCES, {0.0}, PIPELINES + 1)
 
 
 def test_model_configurations_record_the_pinned_recipe_and_context_budget():

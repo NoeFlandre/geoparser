@@ -62,7 +62,7 @@ A freeze plan holds only what an approved run can supply:
 - one weight artifact per embedding model, whose identifier and revision must match the registry pin;
 - reviewed custom code for each model that loads it, at the registry pin;
 - source slices, each with an example count, a gold-span count and a sample digest;
-- threshold records: a calibrated value with its calibration digest, a labelled historical value, or the structural baseline. The records must name every registered model under `similarity` and under `population`, and the population-only baseline. A plan that omits any of them is refused, because an absent comparison cell would never be run;
+- threshold records: a calibrated value with its calibration digest, a labelled historical value, or the structural baseline. The calibrated records must name every registered model under `similarity` and under `population` exactly once, and the plan must name the population-only baseline. A historical value is an extra beside a cell and never fills one, so a plan with a missing or duplicated calibrated cell is refused, even when a historical value exists for that cell;
 - the batch size, the seed, and the provenance note.
 
 A synthetic example with fixture digests is in `docs/examples/embedding-resolution-plan.json`. `freeze` accepts it and writes nothing unless `--output` is given. Its digests are not real, so do not use it as an experiment.
