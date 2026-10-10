@@ -1,5 +1,7 @@
 """Independent span, Unicode, noisy-text and invalid-record fixtures for MultiCoNER II."""
 
+import pytest
+
 from scripts.multiconer_benchmark.conll import parse_conll
 
 # Written as code points so the source stays free of ambiguous characters.
@@ -122,6 +124,73 @@ def test_line_separator_inside_a_token_is_kept_literally():
 def test_final_sentence_without_blank_line_is_kept():
     parsed = parse_conll("# id last\tdomain=en\nOttawa _ _ B-HumanSettlement")
     assert [sentence.sample_id for sentence in parsed.sentences] == ["last"]
+
+
+def test_a_token_with_spaces_stays_one_token_with_exact_offsets():
+    parsed = parse_conll(
+        "# id s1\tdomain=en\nNew York _ _ B-HumanSettlement\nRome _ _ O\n"
+    )
+    sentence = parsed.sentences[0]
+    assert parsed.invalid == ()
+    assert sentence.tokens == ("New York", "Rome")
+    assert sentence.text == "New York Rome"
+    assert sentence.offsets == ((0, 8), (9, 13))
+    assert sentence.location_spans() == {(0, 8)}
+
+
+def test_spaced_tokens_continue_an_entity_across_their_spaces():
+    parsed = parse_conll(
+        "# id s2\tdomain=en\n"
+        "New York _ _ B-HumanSettlement\n"
+        "City _ _ I-HumanSettlement\n"
+    )
+    sentence = parsed.sentences[0]
+    assert sentence.text == "New York City"
+    assert sentence.location_spans() == {(0, 13)}
+
+
+def test_a_token_that_ends_in_an_underscore_keeps_it():
+    parsed = parse_conll("# id s3\tdomain=en\nMr _ _ _ O\n")
+    assert parsed.sentences[0].tokens == ("Mr _",)
+
+
+@pytest.mark.parametrize(
+    ("line", "reason"),
+    [
+        (
+            "New York _ _ B-HumanSettlement\textra",
+            "wrong column count: expected 4, found 6",
+        ),
+        ("Lima x x B-HumanSettlement", "invalid separator columns"),
+    ],
+)
+def test_token_lines_with_bad_columns_are_invalid(line, reason):
+    parsed = parse_conll(f"# id bad\tdomain=en\n{line}\n")
+    assert [item.reason for item in parsed.invalid] == [reason]
+
+
+def test_a_sample_id_with_spaces_is_kept_whole():
+    parsed = parse_conll("# id sample one 2\tdomain=en\nRome _ _ O\n")
+    assert [sentence.sample_id for sentence in parsed.sentences] == ["sample one 2"]
+
+
+def test_sample_id_keeps_its_leading_spaces_and_trailing_spaces_after_the_domain_are_ignored():
+    parsed = parse_conll("# id  x \tdomain=en  \nRome _ _ O\n")
+    assert [sentence.sample_id for sentence in parsed.sentences] == [" x"]
+
+
+@pytest.mark.parametrize(
+    ("header", "sample_id", "reason"),
+    [
+        ("# id \tdomain=en", None, "missing sample id"),
+        ("# id x\tdomain=", "x", "missing domain"),
+    ],
+)
+def test_header_defects_are_reported_with_their_sample_id(header, sample_id, reason):
+    parsed = parse_conll(f"{header}\nRome _ _ O\n")
+    assert [(item.sample_id, item.reason) for item in parsed.invalid] == [
+        (sample_id, reason)
+    ]
 
 
 INVALID_LINES = [

@@ -58,7 +58,7 @@ The policy is a proposal for owner review. Changing it changes the configuration
 
 The release has no original whitespace. Each sentence's text is its tokens joined with one space. Offsets are half-open Python code-point spans into that text. Every system must read the same reconstructed text. Code points keep Devanagari combining marks and astral emoji as the Python standard counts them.
 
-Lines are split on `\n` only. A `\r` before a line break is removed. A leading byte-order mark is removed. Tokens may contain Unicode line separators or no-break spaces. A no-break space is not a column separator, so a line with one counts as a wrong column count.
+Sample ids and tokens may contain spaces in the noisy release. The domain is the final field of the `# id` line, and a token is the text before the last ` _ _` of its line. Lines are split on `\n` only. A `\r` before a line break is removed. A leading byte-order mark is removed. Tokens may contain Unicode line separators or no-break spaces. A no-break space is not a column separator, so a line with one counts as a wrong column count.
 
 ## Invalid records
 
@@ -67,7 +67,7 @@ Every sentence block is a record. It is either a valid sentence or an invalid re
 Reasons:
 
 - `missing sentence header`, for tokens with no `# id` line.
-- `missing sample id`, `missing domain`, `malformed header`.
+- `missing sample id`, `missing domain`.
 - `duplicate sample id`.
 - `domain mismatch: expected X, found Y`, when the expected language is given.
 - `empty sentence`.

@@ -1,10 +1,12 @@
 """Parse MultiCoNER II CoNLL-style sentences into exact character spans.
 
 Each sentence starts with ``# id <sample-id>\\tdomain=<code>``, has one
-``token _ _ TAG`` line per token, and ends at a blank line. Spans are Python
-code-point offsets into the text made by joining the tokens with one space,
-because the release carries no original whitespace. Malformed sentences are
-returned as ``InvalidRecord`` values and counted. They are never dropped.
+``token _ _ TAG`` line per token, and ends at a blank line. The noisy release
+has spaces inside some sample ids and tokens, so the domain is the final header
+field and a token is the text before the last `` _ _`` of its line. Spans are
+Python code-point offsets into the text made by joining the tokens with one
+space, because the release carries no original whitespace. Malformed sentences
+are returned as ``InvalidRecord`` values and counted. They are never dropped.
 """
 
 from __future__ import annotations
@@ -18,6 +20,9 @@ from scripts.multiconer_benchmark.label_policy import KNOWN_LABELS, label_for
 
 Span = tuple[int, int]
 _HEADER_PREFIXES = ("# id ", "# id\t")
+_HEADER_TAIL = re.compile(r"(?P<sample_id>.*?)[ \t]+(?P<terminal>\S+)")
+_DOMAIN_PREFIX = "domain="
+_BLANK_COLUMNS = " _ _"
 _TAG = re.compile(r"^([BI])-(.+)$")
 _COLUMN_SPLIT = re.compile(r"[ \t]+")
 
@@ -157,23 +162,25 @@ def _read_header(
     number: int, header: str, expected_domain: str | None, seen_ids: set[str]
 ) -> tuple[str, str] | InvalidRecord:
     """Return the sample id and domain, or the first header defect."""
-    fields = header.split()
-    if len(fields) < 3:
+    # Both header prefixes are five characters long. Trailing spaces are not part of the header.
+    body = header[5:].rstrip(" \t")
+    tail = _HEADER_TAIL.fullmatch(body)
+    if tail is None:
+        sample_id, domain = body, None
+    else:
+        sample_id, domain = tail["sample_id"], _domain_of(tail["terminal"])
+    if not sample_id.strip(" \t"):
         return InvalidRecord(number, None, "missing sample id")
-    sample_id = fields[2]
-    if len(fields) > 4:
-        return InvalidRecord(number, sample_id, "malformed header")
-    domain = _domain_of(fields)
     if domain is None:
         return InvalidRecord(number, sample_id, "missing domain")
     return _admit_header(number, sample_id, domain, expected_domain, seen_ids)
 
 
-def _domain_of(fields: list[str]) -> str | None:
-    """Return the domain code of a header, or None when it is absent or empty."""
-    if len(fields) < 4 or not fields[3].startswith("domain="):
+def _domain_of(terminal: str) -> str | None:
+    """Return the domain code of the final header field, or None when absent or empty."""
+    if not terminal.startswith(_DOMAIN_PREFIX):
         return None
-    return fields[3][len("domain=") :] or None
+    return terminal[len(_DOMAIN_PREFIX) :] or None
 
 
 def _admit_header(
@@ -226,14 +233,25 @@ def _token_columns(
     number: int, line: str, sample_id: str
 ) -> tuple[str, str] | InvalidRecord:
     """Return the token and tag of one line, or the column defect."""
-    columns = _COLUMN_SPLIT.split(line.strip(" \t"))
+    stripped = line.strip(" \t")
+    columns = _COLUMN_SPLIT.split(stripped)
+    if len(columns) == 4 and columns[1] == columns[2] == "_":
+        return columns[0], columns[3]
+    spaced = _spaced_token(stripped)
+    if spaced is not None:
+        return spaced
     if len(columns) != 4:
         reason = f"wrong column count: expected 4, found {len(columns)}"
         return InvalidRecord(number, sample_id, reason)
-    token, left, right, tag = columns
-    if left != "_" or right != "_":
-        return InvalidRecord(number, sample_id, "invalid separator columns")
-    return token, tag
+    return InvalidRecord(number, sample_id, "invalid separator columns")
+
+
+def _spaced_token(line: str) -> tuple[str, str] | None:
+    """Split a line whose token holds spaces, at the separator before its tag."""
+    head, _, tag = line.rpartition(" ")
+    if not head.endswith(_BLANK_COLUMNS) or _COLUMN_SPLIT.search(tag):
+        return None
+    return head[: -len(_BLANK_COLUMNS)], tag
 
 
 def _check_tag(tag: str, previous: str | None) -> tuple[str | None, str | None]:
