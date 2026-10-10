@@ -4,27 +4,27 @@ from fastapi.responses import JSONResponse
 from geoparser.annotator.models.api import BaseResponse
 
 
-class SessionNotFoundException(Exception):  # noqa: N818
+class SessionNotFoundException(Exception):  # noqa: N818 - public name; renaming to *Error breaks importers before the next major release
     pass
 
 
-class SessionSettingsNotFoundException(Exception):  # noqa: N818
+class SessionSettingsNotFoundException(Exception):  # noqa: N818 - public name; renaming to *Error breaks importers before the next major release
     pass
 
 
-class DocumentNotFoundException(Exception):  # noqa: N818
+class DocumentNotFoundException(Exception):  # noqa: N818 - public name; renaming to *Error breaks importers before the next major release
     pass
 
 
-class ToponymNotFoundException(Exception):  # noqa: N818
+class ToponymNotFoundException(Exception):  # noqa: N818 - public name; renaming to *Error breaks importers before the next major release
     pass
 
 
-class ToponymOverlapException(Exception):  # noqa: N818
+class ToponymOverlapException(Exception):  # noqa: N818 - public name; renaming to *Error breaks importers before the next major release
     pass
 
 
-class InvalidUploadException(Exception):  # noqa: N818 - matches the annotator's other *Exception names
+class InvalidUploadException(Exception):  # noqa: N818 - public name; renaming to *Error breaks importers before the next major release
     """An uploaded or legacy file cannot be decoded or validated."""
 
 
