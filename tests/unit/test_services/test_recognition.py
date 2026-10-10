@@ -543,7 +543,7 @@ class TestRecognitionBatchStatusQueries:
 class TestRecognitionRowShapes:
     """The rows a recognition batch stages carry exactly the model's columns."""
 
-    def test_reference_row_has_the_reference_columns_and_an_id(
+    def test_reference_row_has_exactly_the_reference_columns(
         self, mock_spacy_recognizer
     ):
         """A reference row is a plain mapping of its columns plus a new UUID."""
@@ -565,14 +565,40 @@ class TestRecognitionRowShapes:
             "recognizer_id",
         }
         assert isinstance(row["id"], uuid.UUID)
+
+    def test_reference_row_carries_the_span_and_its_owners(self, mock_spacy_recognizer):
+        """The span, its cut text, and the document and recognizer it belongs to."""
+        # Arrange
+        document = SimpleNamespace(id=uuid.uuid4(), text="Paris Berlin")
+        service = RecognitionService(mock_spacy_recognizer)
+
+        # Act
+        row = service._create_reference_record(cast(Any, document), 0, 5, "rec")
+
+        # Assert
         assert (row["start"], row["end"], row["text"]) == (0, 5, "Paris")
         assert row["document_id"] == document.id
         assert row["recognizer_id"] == "rec"
 
-    def test_recognition_row_has_the_recognition_columns_and_an_id(
+    def test_recognition_row_has_exactly_the_recognition_columns(
         self, mock_spacy_recognizer
     ):
         """A processing marker is a plain mapping of its columns plus a new UUID."""
+        # Arrange
+        service = RecognitionService(mock_spacy_recognizer)
+
+        # Act
+        row = service._create_recognition_record(uuid.uuid4(), "rec")
+
+        # Assert
+        assert isinstance(row, dict)
+        assert set(row) == {"id", "document_id", "recognizer_id"}
+        assert isinstance(row["id"], uuid.UUID)
+
+    def test_recognition_row_points_at_its_document_and_recognizer(
+        self, mock_spacy_recognizer
+    ):
+        """The marker records which document and which recognizer it refers to."""
         # Arrange
         service = RecognitionService(mock_spacy_recognizer)
         document_id = uuid.uuid4()
@@ -581,9 +607,6 @@ class TestRecognitionRowShapes:
         row = service._create_recognition_record(document_id, "rec")
 
         # Assert
-        assert isinstance(row, dict)
-        assert set(row) == {"id", "document_id", "recognizer_id"}
-        assert isinstance(row["id"], uuid.UUID)
         assert row["document_id"] == document_id
         assert row["recognizer_id"] == "rec"
 
