@@ -17,7 +17,6 @@ imports nothing from the rest of the package or the machine learning stack.
 from __future__ import annotations
 
 import math
-import typing as t
 from collections.abc import Sequence
 
 # Longest ending tried when an exact search misses. Three characters covers
@@ -31,18 +30,19 @@ MIN_STEM = 3
 PRIOR_SCALE = 10.0
 
 
-def population_prior(population: t.Any) -> float:
+def population_prior(population: float | None) -> float:
     """
     Return a candidate's population prior, in [0, 1).
 
     Args:
-        population: The gazetteer's population value, possibly missing
+        population: The gazetteer's population value, or None when it is unknown
 
     Returns:
         log10(1 + population) / PRIOR_SCALE, or 0 when it is unknown
     """
     try:
-        value = float(population)
+        # float() raises TypeError for None, which the handler maps to 0 (unknown).
+        value = float(population)  # ty: ignore[invalid-argument-type]
     except (TypeError, ValueError):
         return 0.0
     # pragma: no mutate start - at 0 both branches give log10(1) = 0, so
@@ -54,7 +54,7 @@ def population_prior(population: t.Any) -> float:
 
 
 def combined_scores(
-    similarities: Sequence[float], populations: Sequence[t.Any], weight: float
+    similarities: Sequence[float], populations: Sequence[float | None], weight: float
 ) -> list[float]:
     """
     Return each candidate's similarity plus its weighted population prior.
