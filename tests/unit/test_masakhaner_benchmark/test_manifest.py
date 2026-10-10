@@ -73,6 +73,24 @@ def test_covered_configurations_record_the_readme_split_counts(
         assert row["files"]["test"]["size_bytes"] == 358507
 
 
+@pytest.mark.parametrize(
+    ("config", "counts"),
+    [
+        # Swapping these two rows leaves the totals unchanged, so pin each one.
+        ("pcm", (5646, 806, 1294)),
+        ("nya", (6250, 893, 1785)),
+    ],
+)
+def test_pidgin_and_chichewa_counts_are_not_swapped(config, counts):
+    row = _language(read_manifest(), config)
+
+    assert (
+        row["readme_counts"]["train"],
+        row["readme_counts"]["validation"],
+        row["readme_counts"]["test"],
+    ) == counts
+
+
 def test_all_configurations_together_match_the_readme_totals():
     rows = read_manifest()["languages"]
     totals = {

@@ -1283,9 +1283,9 @@
       "iso639_1": "ny",
       "name": "Chichewa",
       "readme_counts": {
-        "train": 5646,
-        "validation": 806,
-        "test": 1294
+        "train": 6250,
+        "validation": 893,
+        "test": 1785
       },
       "files": {
         "train": {
@@ -1311,9 +1311,9 @@
       "iso639_1": null,
       "name": "Nigerian Pidgin",
       "readme_counts": {
-        "train": 6250,
-        "validation": 893,
-        "test": 1785
+        "train": 5646,
+        "validation": 806,
+        "test": 1294
       },
       "files": {
         "train": {
