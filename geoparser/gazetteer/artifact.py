@@ -357,7 +357,7 @@ class GazetteerArtifact:
                 SELECT feature_id, min(score) AS score
                 FROM matched
                 GROUP BY feature_id
-                ORDER BY score ASC
+                ORDER BY score ASC, feature_id ASC
                 LIMIT ?
             ),
             tiered AS (

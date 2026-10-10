@@ -89,6 +89,28 @@ class TestGazetteerSearch:
         assert len(ids) == 5
         assert [feature.id for feature in cut] == ids[:2]
 
+    def test_tied_scores_at_the_limit_keep_the_lowest_feature_ids(self, make_artifact):
+        """Equal scores at the cut are broken by feature id, so the kept set is fixed."""
+        make_artifact(
+            features=[
+                {
+                    "identifier": str(index),
+                    "source": "city",
+                    "data": {"name": "Springfield Town"},
+                    "names": ["Springfield Town"],
+                }
+                for index in range(1, 6)
+            ]
+        )
+        gazetteer = Gazetteer("testgaz")
+
+        everything = gazetteer.search("Springfield", method="phrase", tiers=1)
+        cut = gazetteer.search("Springfield", method="phrase", limit=2, tiers=1)
+
+        ids = sorted(feature.id for feature in everything)
+        assert len(ids) == 5
+        assert sorted(feature.id for feature in cut) == ids[:2]
+
     def test_search_phrase_matches_names_containing_query(self, make_artifact):
         """Phrase search finds names containing the query as a phrase."""
         make_artifact()
