@@ -8,6 +8,8 @@ checkpoints of two corpora must never be mistaken for one another.
 import argparse
 import os
 
+import pytest
+
 from scripts.benchmark import __main__ as benchmark_cli
 from scripts.benchmark import pipelines, runner
 from scripts.benchmark.__main__ import build_parser, corpus_output_dir
@@ -217,7 +219,7 @@ def test_corpus_report_writer_emits_markdown_and_json(tmp_path):
 def _run_default_corpus_main(monkeypatch, tmp_path, capsys):
     """Run the default corpus path with loading and model scoring stubbed."""
     gold = GoldSpan(0, 4, "city", 47.0, 8.0)
-    second_gold = GoldSpan(5, 8, "town", 47.1, 8.1)
+    second_gold = GoldSpan(5, 9, "town", 47.1, 8.1)
     loaded = LoadedCorpus(
         "geovirus", "en", [Document("doc", "city town", (gold, second_gold))], "digest"
     )
@@ -305,3 +307,68 @@ def test_main_expands_all_corpora_once_and_preserves_database_override(
     assert benchmark_cli.main(["--output-dir", str(tmp_path), "--corpus", "all"]) == 0
     assert calls == ["alpha", "beta"]
     assert os.environ["GEOPARSER_DB_PATH"] == "existing.sqlite"
+
+
+def _malformed_corpus() -> LoadedCorpus:
+    """A corpus whose one gold span has a latitude no place on Earth has."""
+    bad = GoldSpan(0, 4, "city", 123.0, 8.0)
+    return LoadedCorpus(
+        "geovirus", "en", [Document("doc", "city town", (bad,))], "digest"
+    )
+
+
+class TestCorpusChecksGate:
+    """A corpus the offline checks reject is never scored."""
+
+    def test_clean_corpus_passes_the_gate(self):
+        """Test that a corpus without problems is not rejected."""
+        clean = LoadedCorpus(
+            "fixture",
+            "en",
+            [Document("doc", "city", (GoldSpan(0, 4, "city", 47.0, 8.0),))],
+            "digest",
+        )
+
+        benchmark_cli.require_clean_corpus(clean)
+
+    def test_malformed_corpus_is_rejected_naming_the_corpus_and_problem(self):
+        """Test that the rejection says which corpus failed and why."""
+        with pytest.raises(benchmark_cli.CorpusRejectedError) as raised:
+            benchmark_cli.require_clean_corpus(_malformed_corpus())
+
+        message = str(raised.value)
+        assert message.startswith("geovirus rejected by corpus checks")
+        assert "coordinate in doc" in message
+
+    def test_malformed_corpus_stops_the_run_before_any_model_is_called(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """Test that a rejected corpus fails the run and no phase builds a model."""
+        phase_calls = []
+        monkeypatch.setattr(benchmark_cli.pipelines, "resolve_device", lambda v: v)
+        monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda v: v)
+        monkeypatch.setattr(
+            benchmark_cli.provenance, "source_commit", lambda root: "commit"
+        )
+        monkeypatch.setattr(benchmark_cli.provenance, "environment", lambda job: {})
+        monkeypatch.setattr(
+            benchmark_cli.corpora,
+            "load",
+            lambda name, folder, *, limit: _malformed_corpus(),
+        )
+        monkeypatch.setattr(
+            benchmark_cli.runner,
+            "run_phase",
+            lambda *args, **kwargs: phase_calls.append(args) or {},
+        )
+        monkeypatch.delenv("GEOPARSER_DB_PATH", raising=False)
+
+        exit_code = benchmark_cli.main(
+            ["--output-dir", str(tmp_path), "--device", "cpu"]
+        )
+
+        assert exit_code == 1
+        assert phase_calls == []
+        assert not (tmp_path / "geovirus" / "benchmark-report.md").exists()
+        assert not (tmp_path / "summary.json").exists()
+        assert "rejected by corpus checks, no model was run" in capsys.readouterr().err
