@@ -107,11 +107,34 @@ jobs:
           restore-keys: |
             huggingface-${{ runner.os }}-
 
+      # The UniTopRank ranker test runs only where this checkout exists. One
+      # Linux cell fetches the pinned commit; pins.py then checks every file by
+      # blob ID before anything is imported, so the clone itself is not trusted.
+      - name: Fetch the pinned UniTopRank checkout
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        env:
+          UNITORANK_REPOSITORY: https://gitlab.com/dlr-dw/UniTopRank
+          UNITORANK_COMMIT: 346deb166f12b0c97c8c0f9759b593ff178ceafd
+        run: |
+          clone="$RUNNER_TEMP/UniTopRank"
+          for delay in 0 2 4 8 16; do
+            sleep "$delay"
+            rm -rf "$clone"
+            if git clone --quiet --filter=blob:none --no-checkout "$UNITORANK_REPOSITORY" "$clone" \
+              && git -C "$clone" checkout --quiet --detach "$UNITORANK_COMMIT"; then
+              exit 0
+            fi
+          done
+          echo "::error::Could not fetch UniTopRank at $UNITORANK_COMMIT" >&2
+          exit 1
+
       - name: Run pytest
         # Run the opt-in model integration tests in one Linux cell so their
-        # assertions participate in the combined strict CRAP report.
+        # assertions participate in the combined strict CRAP report. The same
+        # cell runs the UniTopRank ranker test against the fetched checkout.
         env:
           GEOPARSER_TEST_REMOTE_MODELS: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && '1' || '' }}
+          UNITORANK_CHECKOUT: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && format('{0}/UniTopRank', runner.temp) || '' }}
         run: uv run --no-sync pytest -v
 
       # The opt-in benchmark suite includes deterministic operation-count

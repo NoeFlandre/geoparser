@@ -119,25 +119,40 @@ def _to_entry(candidate: Candidate, result: CandidateSet) -> dict[str, t.Any] | 
     if coordinates is None:
         result.dropped["no_coordinates"] += 1
         return None
-    levels = [
-        level.strip() for level in candidate.admin_path if level and level.strip()
-    ]
-    if not candidate.admin_path:
-        result.missing["admin_path"] += 1
-    result.missing["admin_level"] += len(candidate.admin_path) - len(levels)
-    if not candidate.feature_code or not candidate.feature_code.strip():
-        result.missing["feature_code"] += 1
+    levels = _admin_levels(candidate.admin_path, result)
+    feature_code = _feature_code(candidate.feature_code, result)
     return {
         "address": ", ".join([name, *levels]),
         "lat": coordinates[0],
         "lon": coordinates[1],
         "name": name,
-        "alt_names": sorted(
-            {alias.strip() for alias in candidate.alternate_names if alias.strip()}
-        ),
+        "alt_names": _alternate_names(candidate.alternate_names),
         "population": _population(candidate.population, result),
-        "admin_level": (candidate.feature_code or "").strip(),
+        "admin_level": feature_code,
     }
+
+
+def _admin_levels(
+    admin_path: tuple[str | None, ...], result: CandidateSet
+) -> list[str]:
+    """Return the usable administrative levels, counting each missing one."""
+    levels = [level.strip() for level in admin_path if level and level.strip()]
+    if not admin_path:
+        result.missing["admin_path"] += 1
+    result.missing["admin_level"] += len(admin_path) - len(levels)
+    return levels
+
+
+def _feature_code(feature_code: str | None, result: CandidateSet) -> str:
+    """Return the stripped feature code, counting a missing or blank one."""
+    if not feature_code or not feature_code.strip():
+        result.missing["feature_code"] += 1
+    return (feature_code or "").strip()
+
+
+def _alternate_names(names: tuple[str, ...]) -> list[str]:
+    """Return the non-blank alternate names, stripped, deduplicated and sorted."""
+    return sorted({alias.strip() for alias in names if alias.strip()})
 
 
 def _coordinates(
@@ -147,11 +162,14 @@ def _coordinates(
     if latitude is None or longitude is None:
         return None
     lat, lon = float(latitude), float(longitude)
-    if not (math.isfinite(lat) and math.isfinite(lon)):
-        return None
-    if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
-        return None
-    return lat, lon
+    if _within(lat, 90.0) and _within(lon, 180.0):
+        return lat, lon
+    return None
+
+
+def _within(value: float, limit: float) -> bool:
+    """Whether a finite value lies in the closed interval [-limit, limit]."""
+    return math.isfinite(value) and -limit <= value <= limit
 
 
 def _population(value: int | float | None, result: CandidateSet) -> int:

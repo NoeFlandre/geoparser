@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import importlib.util
 import sys
 import typing as t
 from pathlib import Path
@@ -97,7 +98,8 @@ def load_rank_toponyms(checkout: Path) -> tuple[t.Callable[..., t.Any], t.Any]:
 
     Raises:
         UpstreamMismatchError: If the checkout differs from the pin, or if
-            ``unitorank`` was already imported from another location
+            ``unitorank`` resolves outside the checkout. The location is checked
+            before anything is imported, so no foreign code runs.
     """
     problems = verify_checkout(checkout)
     if problems:
@@ -106,9 +108,25 @@ def load_rank_toponyms(checkout: Path) -> tuple[t.Callable[..., t.Any], t.Any]:
     root = checkout.resolve()
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
-    ranker = t.cast(t.Any, importlib.import_module("unitorank.ranker"))
-    loaded = Path(sys.modules["unitorank"].__file__ or "").resolve()
-    if not loaded.is_relative_to(root):
-        message = f"unitorank was imported from {loaded}, not {root}"
+    origin = _unitorank_origin()
+    if origin is None or not origin.is_relative_to(root):
+        message = f"unitorank is imported from {origin}, not {root}"
         raise UpstreamMismatchError(message)
+    ranker = t.cast(t.Any, importlib.import_module("unitorank.ranker"))
     return ranker.rank_toponyms, ranker.RankerConfig
+
+
+def _unitorank_origin() -> Path | None:
+    """
+    Return the file the top-level unitorank package comes from, without importing it.
+
+    An already imported package is reported from its ``__file__``. Otherwise the
+    import system only searches for the package; its ``__init__`` does not run.
+    """
+    loaded = sys.modules.get("unitorank")
+    if loaded is not None:
+        origin = getattr(loaded, "__file__", None)
+    else:
+        spec = importlib.util.find_spec("unitorank")
+        origin = spec.origin if spec is not None else None
+    return None if origin is None else Path(origin).resolve()

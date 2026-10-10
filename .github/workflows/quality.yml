@@ -82,12 +82,32 @@ jobs:
           restore-keys: |
             huggingface-${{ runner.os }}-
 
+      # The CRAP check scores the UniTopRank ranker test, which needs the
+      # pinned upstream checkout. pins.py verifies it by blob ID before import.
+      - name: Fetch the pinned UniTopRank checkout
+        env:
+          UNITORANK_REPOSITORY: https://gitlab.com/dlr-dw/UniTopRank
+          UNITORANK_COMMIT: 346deb166f12b0c97c8c0f9759b593ff178ceafd
+        run: |
+          clone="$RUNNER_TEMP/UniTopRank"
+          for delay in 0 2 4 8 16; do
+            sleep "$delay"
+            rm -rf "$clone"
+            if git clone --quiet --filter=blob:none --no-checkout "$UNITORANK_REPOSITORY" "$clone" \
+              && git -C "$clone" checkout --quiet --detach "$UNITORANK_COMMIT"; then
+              exit 0
+            fi
+          done
+          echo "::error::Could not fetch UniTopRank at $UNITORANK_COMMIT" >&2
+          exit 1
+
       - name: Run the complete deterministic quality gauntlet
         env:
           # The PR CRAP check measures integration test functions too. Execute
           # their real-model assertions on this bounded, single CPU runner.
           GEOPARSER_TEST_REMOTE_MODELS: '1'
           HYPOTHESIS_PROFILE: ${{ github.event_name == 'schedule' && 'nightly' || 'ci' }}
+          UNITORANK_CHECKOUT: ${{ runner.temp }}/UniTopRank
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
             uv run --no-sync python scripts/quality_gauntlet.py
