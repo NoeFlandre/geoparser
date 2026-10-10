@@ -43,6 +43,11 @@
       "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
     }
   },
+  "retrieval": {
+    "max_tiers": 3,
+    "search_methods": ["exact", "phrase", "partial", "fuzzy"],
+    "candidate_limit": 10000
+  },
   "models": {
     "geo-minilm": {
       "identifier": "dguzh/geo-all-MiniLM-L6-v2",

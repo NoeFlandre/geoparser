@@ -68,6 +68,11 @@ def plan_payload():
             "token_limit": 256,
             "tokenizer": artifact("tokenizer-fixture", "7" * 40, "8"),
         },
+        "retrieval": {
+            "max_tiers": 3,
+            "search_methods": ["exact", "phrase", "partial", "fuzzy"],
+            "candidate_limit": 10000,
+        },
         "models": {
             model.key: artifact(model.repository, model.revision, str(index + 3))
             for index, model in enumerate(MODELS)
@@ -511,6 +516,35 @@ def test_the_expanded_inventory_round_trips_through_the_shared_validator():
     reparsed = Experiment.model_validate_json(experiment.model_dump_json())
 
     assert reparsed == experiment
+
+
+@pytest.mark.parametrize(
+    ("setting", "value"),
+    [
+        ("max_tiers", 2),
+        ("candidate_limit", 5000),
+        ("search_methods", ["phrase", "exact", "partial", "fuzzy"]),
+    ],
+)
+def test_plans_differing_only_in_a_retrieval_setting_get_different_digests(
+    setting, value
+):
+    base = build_experiment(valid_plan())
+    payload = plan_payload()
+    payload["retrieval"][setting] = value
+    changed = build_experiment(FreezePlan.model_validate(payload))
+
+    assert base.provenance_digest(base.configurations[0]) != changed.provenance_digest(
+        changed.configurations[0]
+    )
+
+
+def test_a_search_method_listed_twice_is_refused():
+    payload = plan_payload()
+    payload["retrieval"]["search_methods"] = ["exact", "exact"]
+
+    with pytest.raises(ValidationError, match="listed once"):
+        FreezePlan.model_validate(payload)
 
 
 def test_an_embedding_threshold_without_a_model_key_is_refused():

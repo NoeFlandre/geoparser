@@ -14,6 +14,7 @@ from typing import Annotated, Literal, get_args
 
 from pydantic import Field, model_validator
 
+from geoparser.gazetteer.artifact import SearchMethod
 from geoparser.gazetteer.description import GAZETTEER_ATTRIBUTE_MAP
 from scripts.benchmark_protocol.schema import (
     Artifact,
@@ -48,6 +49,9 @@ _DEFAULT_LABEL_MAPPING: dict[str, Literal["LOC", "ignore"]] = {
     "LOC": "LOC",
 }
 DESCRIPTION_FUNCTION = "geoparser.gazetteer.description.describe_feature"
+# The gazetteer search orders candidates by ascending score, then feature id. That
+# rule is library code, so it is recorded by name rather than taken as a plan input.
+CANDIDATE_ORDER = "score_ascending_then_feature_id"
 PolicyName = Literal["similarity", "population", "population_only"]
 Origin = Literal["development_calibrated", "historical", "structural"]
 
@@ -67,6 +71,14 @@ class ContextPlan(Contract):
 
     token_limit: Positive
     tokenizer: Artifact
+
+
+class RetrievalPlan(Contract):
+    """How candidates are retrieved, frozen identically for every model."""
+
+    max_tiers: Positive
+    search_methods: Annotated[list[SearchMethod], Field(min_length=1)]
+    candidate_limit: Positive
 
 
 class ThresholdRecord(Contract):
@@ -133,6 +145,7 @@ class FreezePlan(Contract):
     protocol: Protocol
     gazetteer: Artifact
     context: ContextPlan
+    retrieval: RetrievalPlan
     models: dict[Text, Artifact]
     reviewed_code: dict[Text, Annotated[list[ReviewedCode], Field(min_length=1)]] = (
         Field(default_factory=dict)
@@ -173,6 +186,11 @@ class FreezePlan(Contract):
         require(
             set(self.reviewed_code) <= {model.key for model in MODELS},
             "reviewed code names a model outside the registry",
+        )
+        require(
+            len(set(self.retrieval.search_methods))
+            == len(self.retrieval.search_methods),
+            "each search method is listed once, in the order the resolver tries them",
         )
         return self
 
@@ -272,6 +290,7 @@ def _parameters(
         "calibration_sha256": record.calibration_sha256,
         "context_token_limit": plan.context.token_limit,
         "context_tokenizer": plan.context.tokenizer.model_dump(mode="json"),
+        "retrieval": _retrieval_parameters(plan.retrieval),
         "candidate_description": DESCRIPTION_FUNCTION,
         "attribute_map": dict(GAZETTEER_ATTRIBUTE_MAP[plan.gazetteer.identifier]),
         "model": None,
@@ -279,6 +298,16 @@ def _parameters(
     if model is not None:
         parameters.update(_model_parameters(model))
     return parameters
+
+
+def _retrieval_parameters(retrieval: RetrievalPlan) -> dict[str, object]:
+    """The retrieval recipe that decides which candidates reach each decision."""
+    return {
+        "max_tiers": retrieval.max_tiers,
+        "search_methods": list(retrieval.search_methods),
+        "candidate_limit": retrieval.candidate_limit,
+        "candidate_order": CANDIDATE_ORDER,
+    }
 
 
 def _weight(record: ThresholdRecord) -> float | None:
