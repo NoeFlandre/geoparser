@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -58,8 +59,13 @@ class NativePipeline:
 
     @property
     def install_command(self) -> str:
-        """Install the exact pinned wheel; no index search or resolver fallback."""
-        return f"pip install {self.wheel_url}"
+        """Install the exact pinned wheel plus its recorded tokenizer requirements.
+
+        The model is named by its release URL, so no index search selects it.
+        Requirements are shell-quoted because specifiers such as ``>=`` are
+        shell operators when left bare.
+        """
+        return shlex.join(["pip", "install", self.wheel_url, *self.extra_requirements])
 
     def harmonized_label(self, label: str) -> str | None:
         """Return the WikiANN class for a native label, or None when dropped."""

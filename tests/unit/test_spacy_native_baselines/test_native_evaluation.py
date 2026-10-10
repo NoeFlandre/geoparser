@@ -141,6 +141,22 @@ def test_batches_are_bounded_by_batch_size(roster):
     assert [len(batch) for batch in german.seen] == [2, 2, 1]
 
 
+def test_malformed_gold_tags_are_counted_for_matched_and_transfer_scores(roster):
+    malformed = Example(
+        "de", "Berlin liegt.", frozenset({(0, 6)}), malformed_location_tags=2
+    )
+
+    result = evaluate_baselines(
+        {"de": (malformed,)},
+        {"de": FakeRecognizer({})},
+        FakeRecognizer({"Berlin liegt.": {(0, 6)}}),
+        roster,
+    )
+
+    assert result["matched"]["de"]["malformed_gold_tags"] == 2
+    assert result["transfer"]["de"]["malformed_gold_tags"] == 2
+
+
 def test_macro_scores_average_languages_with_equal_weight(roster, examples):
     german = FakeRecognizer({"Berlin liegt.": {(0, 6)}})
 

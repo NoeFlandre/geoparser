@@ -101,7 +101,9 @@ mappings before any result is reported.
 
 `scripts/spacy_native_baselines/loading.py` never downloads a pipeline. A
 missing or differently versioned package raises `MissingPipelineError`, and the
-message names the pinned wheel URL to install. After loading, the NER labels must
+message names the pinned wheel URL to install, with the tokenizer requirements
+that the pipeline records (`sudachipy` and `sudachidict_core` for Japanese,
+`natto-py` for Korean). After loading, the NER labels must
 equal the roster's label set exactly, or `LabelSchemeError` is raised. Only the
 `ner` component and its `tok2vec` are kept.
 

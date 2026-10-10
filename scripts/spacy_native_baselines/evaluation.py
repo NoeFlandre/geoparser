@@ -41,6 +41,7 @@ def _score(
             raise ValueError(message)
         for example, spans in zip(batch, predictions, strict=True):
             counts.add(example.gold_spans, spans, text_length=len(example.text))
+            counts.malformed_gold_tags += example.malformed_location_tags
     return counts.scores()
 
 

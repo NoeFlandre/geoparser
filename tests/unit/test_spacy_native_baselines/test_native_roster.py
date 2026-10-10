@@ -119,6 +119,24 @@ def test_japanese_pipeline_records_its_tokenizer_requirements(roster):
     assert "sudachidict_core>=20211220" in roster.pipelines["ja"].extra_requirements
 
 
+@pytest.mark.parametrize(
+    ("code", "tokenizer_arguments"),
+    [
+        ("de", ""),
+        ("ja", " 'sudachipy!=0.6.1,>=0.5.2' 'sudachidict_core>=20211220'"),
+        ("ko", " 'natto-py>=0.9.0'"),
+    ],
+)
+def test_install_command_adds_the_recorded_tokenizer_requirements(
+    roster, code, tokenizer_arguments
+):
+    pipeline = roster.pipelines[code]
+
+    assert pipeline.install_command == (
+        f"pip install {pipeline.wheel_url}{tokenizer_arguments}"
+    )
+
+
 def test_configuration_id_is_deterministic_for_equal_inputs(roster):
     pipeline = roster.pipelines["de"]
 

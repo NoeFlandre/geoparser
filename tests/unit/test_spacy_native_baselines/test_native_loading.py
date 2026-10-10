@@ -55,6 +55,19 @@ def test_missing_package_names_the_pinned_release_and_never_downloads(
     assert "not" in message.lower()
 
 
+def test_missing_japanese_pipeline_guidance_names_its_tokenizer_requirements(
+    no_download,
+):
+    japanese = load_roster().pipelines["ja"]
+
+    with pytest.raises(MissingPipelineError) as raised:
+        check_installed(japanese, version_lookup=lambda package: None)
+
+    message = str(raised.value)
+    assert japanese.wheel_url in message
+    assert "'sudachidict_core>=20211220'" in message
+
+
 def test_version_mismatch_names_both_installed_and_pinned_versions(german, no_download):
     with pytest.raises(MissingPipelineError) as raised:
         check_installed(german, version_lookup=lambda package: "3.7.0")
