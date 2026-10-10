@@ -356,6 +356,31 @@ def test_a_recognition_task_is_refused():
         FreezePlan.model_validate(payload)
 
 
+@pytest.mark.parametrize(
+    "selection",
+    [
+        {"stage": "final", "split": "test", "selection_sha256": "e" * 64},
+        {
+            "stage": "screening",
+            "split": "development",
+            "threshold_selection": "fixed_before_evaluation",
+        },
+        {
+            "stage": "final",
+            "split": "test",
+            "threshold_selection": "fixed_before_evaluation",
+            "selection_sha256": "e" * 64,
+        },
+    ],
+)
+def test_a_plan_that_is_not_development_screening_is_refused(selection):
+    payload = plan_payload()
+    payload["protocol"].update(selection)
+
+    with pytest.raises(ValidationError, match="development screening only"):
+        FreezePlan.model_validate(payload)
+
+
 def test_a_weight_artifact_that_differs_from_the_registry_pin_is_refused():
     payload = plan_payload()
     payload["models"]["geo-minilm"]["revision"] = "0" * 40

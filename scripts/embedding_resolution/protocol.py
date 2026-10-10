@@ -149,6 +149,13 @@ class FreezePlan(Contract):
             "embedding comparison plans must use the gold_span_resolution task",
         )
         require(
+            self.protocol.stage == "screening"
+            and self.protocol.split == "development"
+            and self.protocol.threshold_selection == "development",
+            "embedding comparison plans are development screening only: stage "
+            "screening, split development, development threshold selection",
+        )
+        require(
             self.gazetteer.identifier in GAZETTEER_ATTRIBUTE_MAP,
             "gazetteer has no attribute map for candidate descriptions",
         )
