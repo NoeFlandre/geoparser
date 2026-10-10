@@ -18,11 +18,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from scripts._cli import EXIT_OK
 from scripts._io import PROJECT_ROOT
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import corpora, corpus, pipelines, provenance, report, runner
@@ -296,8 +296,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             encoding="utf-8",
         )
     print(report.render_summary(rows))
-    return 0
+    return EXIT_OK
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

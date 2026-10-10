@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from scripts._cli import EXIT_ERROR, EXIT_OK
 from scripts.uner_benchmark.inventory import (
     Dataset,
     Split,
@@ -101,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(str(error))
     print(json.dumps(report, ensure_ascii=False, indent=2))
     failed = any(source["status"] == "failed" for source in report["local_sources"])
-    return 2 if failed or not report["selected_configurations"] else 0
+    return EXIT_ERROR if failed or not report["selected_configurations"] else EXIT_OK
 
 
 if __name__ == "__main__":

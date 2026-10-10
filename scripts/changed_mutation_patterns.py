@@ -121,13 +121,19 @@ def _print_selection(paths: list[str]) -> None:
         print("\n".join(patterns))
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """Return the argument parser for the base and head revisions."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("base")
     parser.add_argument("head")
-    args = parser.parse_args()
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     _print_selection(changed_paths(args.base, args.head))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

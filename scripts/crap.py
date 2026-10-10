@@ -241,6 +241,15 @@ def collect(root: Path, data_file: Path) -> list[Score]:
     return sorted(scores, key=lambda score: score.crap, reverse=True)
 
 
+def build_parser() -> argparse.ArgumentParser:
+    """Return the argument parser for the CRAP threshold and report size."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--max-crap", type=float, required=True)
+    parser.add_argument("--data-file", type=Path, default=Path(".coverage"))
+    parser.add_argument("--top", type=int, default=15)
+    return parser
+
+
 def main(argv: list[str] | None = None) -> int:
     """
     Report the worst CRAP scores and fail if any breaches the threshold.
@@ -251,11 +260,7 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Process exit code: 0 when every function is within the threshold.
     """
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--max-crap", type=float, required=True)
-    parser.add_argument("--data-file", type=Path, default=Path(".coverage"))
-    parser.add_argument("--top", type=int, default=15)
-    args = parser.parse_args(argv)
+    args = build_parser().parse_args(argv)
 
     root = Path.cwd().resolve()
     if not args.data_file.exists():
