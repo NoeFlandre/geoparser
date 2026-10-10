@@ -36,6 +36,17 @@ class _TrailingStageOptions:
     demo_docker_tag: str
 
 
+@dataclass(frozen=True)
+class StageSwitches:
+    """The choices that decide which optional quality stages a run includes."""
+
+    include_baseline: bool = False
+    skip_mutation: bool = False
+    skip_docker: bool = False
+    offline: bool = False
+    docker_tag: str = "geoparser:quality-check"
+
+
 def _uv(*arguments: str) -> Command:
     return ("uv", "run", "--no-sync", "--offline", *arguments)
 
@@ -48,27 +59,23 @@ _PACKAGE_COVERAGE_COMMAND = _uv(
 )
 
 
-def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI flags
+def build_stages(
     root: Path,
     artifact_dir: Path,
-    *,
-    include_baseline: bool = False,
-    skip_mutation: bool = False,
-    skip_docker: bool = False,
-    offline: bool = False,
-    docker_tag: str = "geoparser:quality-check",
+    switches: StageSwitches | None = None,
 ) -> list[Stage]:
     """Build the ordered quality stages for a repository checkout."""
+    switches = StageSwitches() if switches is None else switches
     root = root.resolve()
     artifact_dir = artifact_dir.resolve()
     coverage_report = artifact_dir / "coverage-html"
     coverage_data = artifact_dir / ".coverage"
     lock_command = (
         ("uv", "lock", "--check-exists", "--offline")
-        if offline
+        if switches.offline
         else ("uv", "lock", "--check")
     )
-    demo_docker_tag = f"{docker_tag}-demo"
+    demo_docker_tag = f"{switches.docker_tag}-demo"
 
     stages = [
         Stage(
@@ -165,11 +172,11 @@ def build_stages(  # noqa: PLR0913 - keyword-only switches mirroring the CLI fla
         root,
         _TrailingStageOptions(
             artifact_dir=artifact_dir,
-            include_baseline=include_baseline,
-            skip_mutation=skip_mutation,
-            skip_docker=skip_docker,
-            offline=offline,
-            docker_tag=docker_tag,
+            include_baseline=switches.include_baseline,
+            skip_mutation=switches.skip_mutation,
+            skip_docker=switches.skip_docker,
+            offline=switches.offline,
+            docker_tag=switches.docker_tag,
             demo_docker_tag=demo_docker_tag,
         ),
     )
@@ -349,11 +356,13 @@ def main(argv: list[str] | None = None) -> int:
         stages = build_stages(
             root,
             artifact_dir,
-            include_baseline=args.include_baseline,
-            skip_mutation=args.skip_mutation,
-            skip_docker=args.skip_docker,
-            offline=args.offline,
-            docker_tag=docker_tag,
+            StageSwitches(
+                include_baseline=args.include_baseline,
+                skip_mutation=args.skip_mutation,
+                skip_docker=args.skip_docker,
+                offline=args.offline,
+                docker_tag=docker_tag,
+            ),
         )
         try:
             with _mutation_output_link(root, artifact_dir):
