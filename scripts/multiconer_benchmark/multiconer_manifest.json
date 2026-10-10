@@ -1,0 +1,461 @@
+{
+  "schema_version": "1.0",
+  "dataset": {
+    "id": "MultiCoNER/multiconer_v2",
+    "revision": "4be2d62c912977ee26ed14d2553a4fe17ca3d980",
+    "revision_date": "2023-07-06T18:37:15Z",
+    "url": "https://huggingface.co/datasets/MultiCoNER/multiconer_v2/tree/4be2d62c912977ee26ed14d2553a4fe17ca3d980",
+    "origin": "Hugging Face mirror of the SemEval-2023 Task 2 (MultiCoNER II) release",
+    "official_homepage": "https://multiconer.github.io/dataset"
+  },
+  "license": {
+    "spdx": "CC-BY-4.0",
+    "evidence": "README.md front matter at the pinned revision (git blob 835d683a7cd2f41d6999d1aba7853cf6901c38bf)"
+  },
+  "verification": {
+    "method": "Metadata only: the Hub tree at the pinned revision, git blob ids of README.md and multiconer_v2.py, and the dataset-viewer row counts. No data file was downloaded.",
+    "readme_git_blob_sha1": "835d683a7cd2f41d6999d1aba7853cf6901c38bf",
+    "loader_git_blob_sha1": "e2e73720d48500b5d5509d25979db567c3a413e3",
+    "split_counts_cross_check": "Official per-split sentence counts sum to the dataset-viewer num_rows for every per-language configuration."
+  },
+  "format": {
+    "layout": "CoNLL-like; one sentence per block",
+    "header": "# id <sentence-id>\\tdomain=<language-code>",
+    "token_line": "<token> _ _ <BIO-tag>",
+    "sentence_separator": "blank line",
+    "tag_scheme": "BIO"
+  },
+  "selection": {
+    "target_language_source": "scripts/panx_benchmark/target_languages.json (85 codes)",
+    "intersection_rule": "Dataset languages whose code is in the 85-code inventory; the MULTI configuration is not a language and is excluded.",
+    "split_rule": "Each split file is parsed and scored separately; splits are never merged."
+  },
+  "excluded_configurations": {
+    "multi": {
+      "config": "Multilingual (MULTI)",
+      "reason": "Aggregate configuration rather than a language. Its relation to the per-language configurations is not verified from metadata.",
+      "viewer_num_rows": 538387,
+      "splits": {
+        "train": 170824,
+        "dev": 8895,
+        "test": 358668
+      },
+      "split_files_in_tree": [
+        "MULTI-Multilingual/multi_train.conll",
+        "MULTI-Multilingual/multi_dev.conll",
+        "MULTI-Multilingual/multi_test.conll"
+      ],
+      "split_files_note": "These three files are in the dataset tree at the pinned revision. They are not pinned with sizes or digests here, and they are never scored."
+    }
+  },
+  "clean_noisy_breakdown": {
+    "supported_by_release": false,
+    "reason": "The header carries only the sentence id and the domain code. No per-sentence corruption flag or separate noisy test file is listed at the pinned revision."
+  },
+  "languages": {
+    "bn": {
+      "name": "Bangla",
+      "dataset_config": "Bangla (BN)",
+      "splits": {
+        "train": 9708,
+        "dev": 507,
+        "test": 19859
+      },
+      "viewer_num_rows": 30074,
+      "files": {
+        "train": {
+          "path": "BN-Bangla/bn_train.conll",
+          "bytes": 3818156,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "10ab0b99f18ff66ceb931df775a130bd6c03a2e7",
+          "sha256": null
+        },
+        "dev": {
+          "path": "BN-Bangla/bn_dev.conll",
+          "bytes": 199049,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "091216fc827c011aa307ab5dc9ba33da7652ca84",
+          "sha256": null
+        },
+        "test": {
+          "path": "BN-Bangla/bn_test.conll",
+          "bytes": 7306671,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "f76dc9355ca0336fefd724b7dd004475d04091bc",
+          "sha256": null
+        }
+      }
+    },
+    "de": {
+      "name": "German",
+      "dataset_config": "German (DE)",
+      "splits": {
+        "train": 9785,
+        "dev": 512,
+        "test": 20145
+      },
+      "viewer_num_rows": 30442,
+      "files": {
+        "train": {
+          "path": "DE-German/de_train.conll",
+          "bytes": 2693495,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "f639811a3f67a850ac86dab6ed9662f7d5ff1ff6",
+          "sha256": null
+        },
+        "dev": {
+          "path": "DE-German/de_dev.conll",
+          "bytes": 138318,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "b10a805dc3045dd2645a3cbe244282dfe0ae05ad",
+          "sha256": null
+        },
+        "test": {
+          "path": "DE-German/de_test.conll",
+          "bytes": 5066953,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "27f1690d280a7899b6b1aaff79a31d29d5f94627",
+          "sha256": null
+        }
+      }
+    },
+    "en": {
+      "name": "English",
+      "dataset_config": "English (EN)",
+      "splits": {
+        "train": 16778,
+        "dev": 871,
+        "test": 249980
+      },
+      "viewer_num_rows": 267629,
+      "files": {
+        "train": {
+          "path": "EN-English/en_train.conll",
+          "bytes": 4348311,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "f0fa00397bb6d780ae66938c7f0ae61c89d9e39e",
+          "sha256": null
+        },
+        "dev": {
+          "path": "EN-English/en_dev.conll",
+          "bytes": 227151,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "86e747ca6baf06bf6574024dfb6a19b4051591a1",
+          "sha256": null
+        },
+        "test": {
+          "path": "EN-English/en_test.conll",
+          "bytes": 62002874,
+          "digest_algorithm": "sha256",
+          "digest": "be7e85f1542a9643de5f01cc99465ec0cb9d96a20bdc3c58418d391e194aff9a",
+          "sha256": "be7e85f1542a9643de5f01cc99465ec0cb9d96a20bdc3c58418d391e194aff9a"
+        }
+      }
+    },
+    "es": {
+      "name": "Spanish",
+      "dataset_config": "Spanish (ES)",
+      "splits": {
+        "train": 16453,
+        "dev": 854,
+        "test": 246900
+      },
+      "viewer_num_rows": 264207,
+      "files": {
+        "train": {
+          "path": "ES-Spanish/es_train.conll",
+          "bytes": 4430590,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "fc3b7b7702f4ebed62c23f347588b8a9887a3bd8",
+          "sha256": null
+        },
+        "dev": {
+          "path": "ES-Spanish/es_dev.conll",
+          "bytes": 228474,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "30622a608868eb058f49dc786a559b80ec0fc3cf",
+          "sha256": null
+        },
+        "test": {
+          "path": "ES-Spanish/es_test.conll",
+          "bytes": 63543202,
+          "digest_algorithm": "sha256",
+          "digest": "1488f0abec5b64b660a2df06e310c19472cc81c0403517d286bb238d293bc7e1",
+          "sha256": "1488f0abec5b64b660a2df06e310c19472cc81c0403517d286bb238d293bc7e1"
+        }
+      }
+    },
+    "fa": {
+      "name": "Farsi",
+      "dataset_config": "Farsi (FA)",
+      "splits": {
+        "train": 16321,
+        "dev": 855,
+        "test": 219168
+      },
+      "viewer_num_rows": 236344,
+      "files": {
+        "train": {
+          "path": "FA-Farsi/fa_train.conll",
+          "bytes": 5466230,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "434dcd0a988a701143aeebc6f61b07953ca67657",
+          "sha256": null
+        },
+        "dev": {
+          "path": "FA-Farsi/fa_dev.conll",
+          "bytes": 294271,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "967ac4e257d87fb46b5c00c3d23ab56db3fda2a6",
+          "sha256": null
+        },
+        "test": {
+          "path": "FA-Farsi/fa_test.conll",
+          "bytes": 70064629,
+          "digest_algorithm": "sha256",
+          "digest": "988a8c668a6ee2f43bd8617251054111d894b65e8c7b156393ab0160fcc9deaf",
+          "sha256": "988a8c668a6ee2f43bd8617251054111d894b65e8c7b156393ab0160fcc9deaf"
+        }
+      }
+    },
+    "fr": {
+      "name": "French",
+      "dataset_config": "French (FR)",
+      "splits": {
+        "train": 16548,
+        "dev": 857,
+        "test": 249786
+      },
+      "viewer_num_rows": 267191,
+      "files": {
+        "train": {
+          "path": "FR-French/fr_train.conll",
+          "bytes": 4268589,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "8165f1228f08a63a404969580267c31cbb2d7f64",
+          "sha256": null
+        },
+        "dev": {
+          "path": "FR-French/fr_dev.conll",
+          "bytes": 223574,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "3e11d384c33a5a358331543a990833c6fb300808",
+          "sha256": null
+        },
+        "test": {
+          "path": "FR-French/fr_test.conll",
+          "bytes": 61658337,
+          "digest_algorithm": "sha256",
+          "digest": "03fec2497e15e92fbcbd211faf926f7ef10b6d08853a7dc64f9cc7d6174f3d78",
+          "sha256": "03fec2497e15e92fbcbd211faf926f7ef10b6d08853a7dc64f9cc7d6174f3d78"
+        }
+      }
+    },
+    "hi": {
+      "name": "Hindi",
+      "dataset_config": "Hindi (HI)",
+      "splits": {
+        "train": 9632,
+        "dev": 514,
+        "test": 18399
+      },
+      "viewer_num_rows": 28545,
+      "files": {
+        "train": {
+          "path": "HI-Hindi/hi_train.conll",
+          "bytes": 3852637,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "9577f61c77f16833fb74f308731e01816f932783",
+          "sha256": null
+        },
+        "dev": {
+          "path": "HI-Hindi/hi_dev.conll",
+          "bytes": 207547,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "8d01b9240415a87f0fc63b201ef0388d63206047",
+          "sha256": null
+        },
+        "test": {
+          "path": "HI-Hindi/hi_test.conll",
+          "bytes": 6954838,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "ea33b157033979dd7ba8c9ca3e62e68f3d96e5f3",
+          "sha256": null
+        }
+      }
+    },
+    "it": {
+      "name": "Italian",
+      "dataset_config": "Italian (IT)",
+      "splits": {
+        "train": 16579,
+        "dev": 858,
+        "test": 247881
+      },
+      "viewer_num_rows": 265318,
+      "files": {
+        "train": {
+          "path": "IT-Italian/it_train.conll",
+          "bytes": 4234654,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "55a5e424cab12d5aba7c000688e50f245b252c89",
+          "sha256": null
+        },
+        "dev": {
+          "path": "IT-Italian/it_dev.conll",
+          "bytes": 220058,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "45b98fdb4e45e3cb710ba3f1beecba6fdd4dd279",
+          "sha256": null
+        },
+        "test": {
+          "path": "IT-Italian/it_test.conll",
+          "bytes": 60515006,
+          "digest_algorithm": "sha256",
+          "digest": "a8062ea808ae63512eee3090cd64be8cbbf8f6537241e37e5a27a45a47f2ed5e",
+          "sha256": "a8062ea808ae63512eee3090cd64be8cbbf8f6537241e37e5a27a45a47f2ed5e"
+        }
+      }
+    },
+    "pt": {
+      "name": "Portuguese",
+      "dataset_config": "Portuguese (PT)",
+      "splits": {
+        "train": 16469,
+        "dev": 854,
+        "test": 229490
+      },
+      "viewer_num_rows": 246813,
+      "files": {
+        "train": {
+          "path": "PT-Portuguese/pt_train.conll",
+          "bytes": 4396298,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "0876d15c540775304816614c06ba54a53deb5038",
+          "sha256": null
+        },
+        "dev": {
+          "path": "PT-Portuguese/pt_dev.conll",
+          "bytes": 226036,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "2306a4a4a767a887e9acfc17bad25360042b50b4",
+          "sha256": null
+        },
+        "test": {
+          "path": "PT-Portuguese/pt_test.conll",
+          "bytes": 58708812,
+          "digest_algorithm": "sha256",
+          "digest": "0558264d36d5def1d38e795886e89296006ae1f4e6aef6c83ac4f170bb32c81d",
+          "sha256": "0558264d36d5def1d38e795886e89296006ae1f4e6aef6c83ac4f170bb32c81d"
+        }
+      }
+    },
+    "sv": {
+      "name": "Swedish",
+      "dataset_config": "Swedish (SV)",
+      "splits": {
+        "train": 16363,
+        "dev": 856,
+        "test": 231190
+      },
+      "viewer_num_rows": 248409,
+      "files": {
+        "train": {
+          "path": "SV-Swedish/sv_train.conll",
+          "bytes": 3894803,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "17d7b8365be97d30e8d9481e6b6589fb9ca84c94",
+          "sha256": null
+        },
+        "dev": {
+          "path": "SV-Swedish/sv_dev.conll",
+          "bytes": 205982,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "ce28a37b5ce837f7bb267888aa3e5ea0aa885f8c",
+          "sha256": null
+        },
+        "test": {
+          "path": "SV-Swedish/sv_test.conll",
+          "bytes": 52211671,
+          "digest_algorithm": "sha256",
+          "digest": "45e2796e2b887ed7eb938bac112b08c56d14fdd351224fdc77de5edf07175a5c",
+          "sha256": "45e2796e2b887ed7eb938bac112b08c56d14fdd351224fdc77de5edf07175a5c"
+        }
+      }
+    },
+    "uk": {
+      "name": "Ukrainian",
+      "dataset_config": "Ukrainian (UK)",
+      "splits": {
+        "train": 16429,
+        "dev": 851,
+        "test": 238296
+      },
+      "viewer_num_rows": 255576,
+      "files": {
+        "train": {
+          "path": "UK-Ukrainian/uk_train.conll",
+          "bytes": 4989211,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "ae6d53f557dedd90b8f697af5f1ada452ecc9583",
+          "sha256": null
+        },
+        "dev": {
+          "path": "UK-Ukrainian/uk_dev.conll",
+          "bytes": 256472,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "8d8689f8ee47d90c5e2fd61ef4d2bd2dccbe0260",
+          "sha256": null
+        },
+        "test": {
+          "path": "UK-Ukrainian/uk_test.conll",
+          "bytes": 69298776,
+          "digest_algorithm": "sha256",
+          "digest": "1e9791a468e9eba71f1657a4f00a4a022cd8457c5398b03c48d20002398faf1e",
+          "sha256": "1e9791a468e9eba71f1657a4f00a4a022cd8457c5398b03c48d20002398faf1e"
+        }
+      }
+    },
+    "zh": {
+      "name": "Chinese",
+      "dataset_config": "Chinese (ZH)",
+      "splits": {
+        "train": 9759,
+        "dev": 506,
+        "test": 20265
+      },
+      "viewer_num_rows": 30530,
+      "files": {
+        "train": {
+          "path": "ZH-Chinese/zh_train.conll",
+          "bytes": 3740743,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "2ccc1746d7cb2d891a239d4d9824bf87be14f9e7",
+          "sha256": null
+        },
+        "dev": {
+          "path": "ZH-Chinese/zh_dev.conll",
+          "bytes": 195256,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "56644ebd80af31d953d56887ef5a84c0a8809704",
+          "sha256": null
+        },
+        "test": {
+          "path": "ZH-Chinese/zh_test.conll",
+          "bytes": 7196434,
+          "digest_algorithm": "git-blob-sha1",
+          "digest": "8a7f5fd75270049d4ded11f841b53324b36da81a",
+          "sha256": null
+        }
+      }
+    }
+  },
+  "gaps": [
+    "Test-file gold tags are not verified: the loader reads ner_tags from test files, but the metadata does not state whether test labels are gold.",
+    "sha256 is unknown for the four non-LFS test files (bn, de, hi, zh); only the git blob SHA-1 is available without downloading.",
+    "Training and dev bytes are not hashed for sha256, because only git blob SHA-1 values are available for non-LFS files.",
+    "Gold span counts per language are unknown without parsing the data, so Configuration.gold_spans cannot be filled.",
+    "Label inventory differs between the README and the loader; see label_policy.py. Confirm against the bytes before a run.",
+    "Original whitespace is not in the format; the reconstructed text joins tokens with single spaces."
+  ]
+}
