@@ -109,7 +109,10 @@ pipeline records (`sudachipy` and `sudachidict_core` for Japanese, `natto-py`
 for Korean, `spacy-pkuseg` for Chinese). Before loading, each recorded tokenizer
 requirement is checked against the installed release. A missing tokenizer, or
 one outside its specifier, raises `TokenizerRequirementError` and nothing is
-loaded. After loading, the NER labels must
+loaded. The pipeline's installed distribution must also come from its roster
+wheel with the recorded digest: `load_pipeline` reads pip's `direct_url.json`
+record and raises `ProvenanceError` for any other URL, an sdist, or a different
+digest. After loading, the NER labels must
 equal the roster's label set exactly, or `LabelSchemeError` is raised. Only the
 `ner` component and its `tok2vec` are kept.
 
@@ -165,6 +168,11 @@ Not verified, and recorded as gaps:
 - The licenses have not been checked against the 3.8.0 wheels. The Hub cards
   describe 3.7.x content.
 - The Korean system dependency (`mecab`) is not verified.
+- `pyproject.toml` preinstalls `en_core_web_sm` 3.8.0 from its `.tar.gz` release
+  asset, not from the roster's hashed `.whl`. `load_pipeline` therefore refuses
+  the English control in the current project environment with
+  `ProvenanceError`. Aligning the dependency with the roster wheel is an owner
+  decision; the check is not relaxed to accept the sdist.
 - No Hub revision is pinned, because the Hub main describes 3.7.x content.
 
 Not done in this phase: no model run, no inference, no compute benchmark, no

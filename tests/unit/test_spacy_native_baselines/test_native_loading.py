@@ -9,11 +9,14 @@ from spacy.pipeline import EntityRecognizer
 from scripts.spacy_native_baselines.loading import (
     LabelSchemeError,
     MissingPipelineError,
+    ProvenanceError,
     SpacyRuntimeError,
     TokenizerRequirementError,
     check_installed,
+    check_provenance,
     check_spacy_runtime,
     check_tokenizers,
+    installed_direct_url,
     installed_version,
     load_pipeline,
     requirement_name,
@@ -93,7 +96,9 @@ def test_installed_version_reads_the_distribution_metadata_or_none():
     assert installed_version("geoparser-no-such-distribution") is None
 
 
-@pytest.mark.parametrize("found", ["3.8.0", "3.8.16", "3.8.0.post1", "3.8.1rc1"])
+@pytest.mark.parametrize(
+    "found", ["3.8.0", "3.8.16", "3.8.0.post1", "3.8.1rc1", "3.8.16+vendor.1"]
+)
 def test_spacy_runtime_inside_the_roster_range_passes(found, no_download):
     check_spacy_runtime(version_lookup=lambda package: found)
 
@@ -135,12 +140,21 @@ def test_loader_is_not_called_when_the_package_is_missing(german, no_download):
         load_pipeline(german, loader=loader, version_lookup=lambda package: None)
 
 
+def _roster_wheel_record(pipeline):
+    """The PEP 610 record pip writes for an install from the roster wheel."""
+    return {
+        "url": pipeline.wheel_url,
+        "archive_info": {"hash": f"sha256={pipeline.sha256}"},
+    }
+
+
 def test_loaded_pipeline_must_expose_exactly_the_roster_ner_labels(german):
     with pytest.raises(LabelSchemeError, match="MISC"):
         load_pipeline(
             german,
             loader=lambda name: _blank_with_ner(["LOC", "PER"]),
             version_lookup=lambda package: "3.8.0",
+            direct_url_lookup=lambda package: _roster_wheel_record(german),
         )
 
 
@@ -156,10 +170,61 @@ def test_loaded_pipeline_keeps_only_ner_and_its_tok2vec_listener(german):
         german,
         loader=lambda name: nlp,
         version_lookup=lambda package: "3.8.0",
+        direct_url_lookup=lambda package: _roster_wheel_record(german),
     )
 
     assert "tagger" not in loaded.pipe_names
     assert "ner" in loaded.pipe_names
+
+
+def test_installed_from_the_roster_wheel_passes_provenance(german):
+    assert (
+        check_provenance(
+            german, direct_url_lookup=lambda package: _roster_wheel_record(german)
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "record",
+    [
+        None,
+        {"url": "https://example.test/en_core_web_sm-3.8.0.tar.gz", "archive_info": {}},
+        {"url": "https://example.test/x.whl", "archive_info": {"hash": "sha256=0"}},
+    ],
+)
+def test_installed_from_anything_but_the_roster_wheel_is_refused(record, german):
+    with pytest.raises(ProvenanceError, match="roster wheel"):
+        check_provenance(german, direct_url_lookup=lambda package: record)
+
+
+def test_load_pipeline_refuses_an_sdist_install_before_loading(german):
+    pyproject_sdist = {
+        "url": "https://github.com/explosion/spacy-models/releases/download/"
+        "de_core_news_sm-3.8.0/de_core_news_sm-3.8.0.tar.gz",
+        "archive_info": {},
+    }
+
+    def loader(name):
+        message = "loader must not run for an sdist install"
+        raise AssertionError(message)
+
+    with pytest.raises(ProvenanceError):
+        load_pipeline(
+            german,
+            loader=loader,
+            version_lookup=lambda package: "3.8.0",
+            direct_url_lookup=lambda package: pyproject_sdist,
+        )
+
+
+def test_installed_direct_url_is_none_for_an_absent_distribution():
+    assert installed_direct_url("geoparser-no-such-distribution") is None
+
+
+def test_installed_direct_url_is_none_for_an_index_install():
+    assert installed_direct_url("pytest") is None
 
 
 @pytest.mark.parametrize(
@@ -235,6 +300,7 @@ JAPANESE_VERSIONS = {
         ("natto-py>=0.9.0", "1.0.1", True),
         ("sudachipy>=0.5.2,", "0.6.9", True),
         ("natto-py>=0.9.0", "1.0rc1", False),
+        ("natto-py>=0.9.0", "1.0.1+cpu", True),
     ],
 )
 def test_requirement_is_satisfied_only_inside_its_specifier(
