@@ -3,10 +3,7 @@ import json
 from abc import ABC
 
 
-# B024: a deliberate marker base. The behavioural contract (`predict`) is
-# abstract on Recognizer and Resolver, which is where it can be stated
-# precisely; Module only carries the shared config/identity machinery.
-class Module(ABC):  # noqa: B024
+class Module(ABC):  # noqa: B024 - marker base; the abstract predict contract lives on Recognizer and Resolver
     """
     Abstract base class for any geoparser module.
 
