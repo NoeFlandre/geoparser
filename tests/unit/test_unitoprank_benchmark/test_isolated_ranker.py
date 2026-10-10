@@ -3,6 +3,7 @@
 import importlib.metadata
 import io
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import pytest
 
 from scripts.unitoprank_benchmark import isolated_ranker
 from scripts.unitoprank_benchmark.isolated_ranker import (
+    REPOSITORY_ROOT,
     REQUIREMENTS,
     installed_mismatches,
     rank_in_reviewed_environment,
@@ -22,6 +24,35 @@ REVIEWED = {"numpy": "2.4.2", "rapidfuzz": "3.14.3", "requests": "2.32.5"}
 
 def test_the_requirements_file_is_byte_identical_to_the_reviewed_upstream_file():
     assert git_blob_id(REQUIREMENTS.read_bytes()) == REVIEWED_BLOBS["requirements.txt"]
+
+
+def test_the_requirements_file_keeps_its_bytes_in_an_autocrlf_checkout(tmp_path: Path):
+    """A Windows checkout with autocrlf must still hold the reviewed LF bytes."""
+    relative = REQUIREMENTS.resolve().relative_to(REPOSITORY_ROOT).as_posix()
+    source = tmp_path / "source"
+    for name in (relative, ".gitattributes"):
+        target = source / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((REPOSITORY_ROOT / name).read_bytes())
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    commands = (
+        ("init",),
+        ("-c", "core.autocrlf=false", "add", "."),
+        (
+            "-c",
+            "core.autocrlf=true",
+            "checkout-index",
+            "--all",
+            f"--prefix={checkout.as_posix()}/",
+        ),
+    )
+    for command in commands:
+        subprocess.run(["git", *command], cwd=source, capture_output=True, check=True)
+    assert (
+        git_blob_id((checkout / relative).read_bytes())
+        == (REVIEWED_BLOBS["requirements.txt"])
+    )
 
 
 def test_the_requirements_file_pins_the_three_reviewed_packages():

@@ -1,5 +1,6 @@
 """The pin, the blob-ID check, and the refusal to import an unverified checkout."""
 
+import importlib.machinery
 import re
 import sys
 import types
@@ -69,7 +70,8 @@ def test_missing_and_changed_files_are_each_reported(tmp_path: Path):
     "extra",
     [
         "rapidfuzz.py",
-        "rapidfuzz.cpython-312-x86_64-linux-gnu.so",
+        # The extension suffix this interpreter imports: a CPython Linux suffix is not importable on Windows.
+        "rapidfuzz" + importlib.machinery.EXTENSION_SUFFIXES[0],
         "__pycache__/ranker.cpython-312.pyc",
         "unitorank/extra.py",
     ],
