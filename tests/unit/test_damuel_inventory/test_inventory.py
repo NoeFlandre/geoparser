@@ -13,6 +13,7 @@ from pydantic import ValidationError
 
 from scripts.damuel_inventory import __main__ as cli
 from scripts.damuel_inventory.inventory import (
+    PINNED_TEXT_LANGUAGES,
     RELEASE_PATH,
     Release,
     coverage,
@@ -231,6 +232,24 @@ def test_missing_text_archive_is_rejected():
     )
     del payload["files"][text_index]
     with pytest.raises(ValidationError, match="53 text archives"):
+        Release.model_validate(payload)
+
+
+def test_pinned_language_set_matches_the_hand_written_oracle():
+    assert frozenset(COVERED | RELEASE_ONLY) == PINNED_TEXT_LANGUAGES
+
+
+def test_archive_swapped_for_a_well_formed_one_is_rejected_at_the_same_count():
+    payload = release_payload()
+    entry = next(
+        entry
+        for entry in payload["files"]
+        if entry["kind"] == "text" and entry["language"] == "en"
+    )
+    entry["language"] = "xx"
+    entry["file"] = "damuel_1.0_xx.tar"
+    assert sum(1 for f in payload["files"] if f["kind"] == "text") == 53
+    with pytest.raises(ValidationError, match=r"missing \['en'\], unexpected \['xx'\]"):
         Release.model_validate(payload)
 
 

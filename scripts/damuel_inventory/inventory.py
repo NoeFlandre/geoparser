@@ -17,7 +17,65 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validat
 from scripts.panx_benchmark.data import target_languages
 
 RELEASE_PATH = Path(__file__).with_name("damuel_1_0_release.json")
-EXPECTED_TEXT_LANGUAGES = 53
+# The 53 text-archive languages of DaMuEL 1.0 as listed on the public LINDAT
+# record (snapshot retrieved 2026-10-09). The record must list exactly this set.
+PINNED_TEXT_LANGUAGES: frozenset[str] = frozenset(
+    [
+        "af",
+        "ar",
+        "be",
+        "bg",
+        "ca",
+        "cs",
+        "da",
+        "de",
+        "el",
+        "en",
+        "es",
+        "et",
+        "eu",
+        "fa",
+        "fi",
+        "fr",
+        "ga",
+        "gd",
+        "gl",
+        "he",
+        "hi",
+        "hr",
+        "hu",
+        "hy",
+        "id",
+        "it",
+        "ja",
+        "ko",
+        "la",
+        "lt",
+        "lv",
+        "mr",
+        "mt",
+        "nl",
+        "nn",
+        "pl",
+        "pt",
+        "ro",
+        "ru",
+        "se",
+        "sk",
+        "sl",
+        "sr",
+        "sv",
+        "ta",
+        "te",
+        "tr",
+        "ug",
+        "uk",
+        "ur",
+        "vi",
+        "wo",
+        "zh",
+    ]
+)
 
 
 def _calendar_day(value: str) -> str:
@@ -127,11 +185,24 @@ def _require_one_knowledge_base(files: list[ReleaseFile]) -> None:
         raise ValueError(message)
 
 
-def _require_text_archive_count(files: list[ReleaseFile]) -> None:
-    """Reject a release that does not list one text archive per expected language."""
-    languages = [entry.language for entry in files if entry.kind == "text"]
-    if len(languages) != EXPECTED_TEXT_LANGUAGES:
-        message = "the release must list 53 text archives"
+def _require_pinned_text_languages(files: list[ReleaseFile]) -> None:
+    """Reject a release whose text languages differ from the pinned set.
+
+    Comparing the set, not its size, also rejects a record that swaps an
+    official archive for another well-formed one, such as ``damuel_1.0_xx.tar``.
+    """
+    languages = {
+        entry.language
+        for entry in files
+        if entry.kind == "text" and entry.language is not None
+    }
+    if languages != PINNED_TEXT_LANGUAGES:
+        missing = sorted(PINNED_TEXT_LANGUAGES - languages)
+        unexpected = sorted(languages - PINNED_TEXT_LANGUAGES)
+        message = (
+            "the release must list the pinned 53 text archives; "
+            f"missing {missing}, unexpected {unexpected}"
+        )
         raise ValueError(message)
 
 
@@ -155,7 +226,7 @@ class Release(Contract):
         """Require one knowledge base and one text archive per language."""
         _require_unique_archives(self.files)
         _require_one_knowledge_base(self.files)
-        _require_text_archive_count(self.files)
+        _require_pinned_text_languages(self.files)
         return self
 
     def text_languages(self) -> tuple[str, ...]:
