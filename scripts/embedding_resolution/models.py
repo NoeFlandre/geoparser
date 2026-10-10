@@ -180,10 +180,12 @@ class HistoricalSetting:
     """A threshold used before #163, labelled with where it came from.
 
     Historical values were chosen on other models and other score scales, so
-    they are only ever recorded against the model that used them.
+    each setting is only ever recorded against the model and the embedding policy
+    that used it.
     """
 
     model: str
+    policy: Literal["similarity", "population"]
     min_similarity: float
     origin: str
 
@@ -191,34 +193,55 @@ class HistoricalSetting:
 HISTORICAL_SETTINGS: tuple[HistoricalSetting, ...] = (
     HistoricalSetting(
         model="geo-minilm",
+        policy="similarity",
         min_similarity=0.6,
         origin=(
             "SentenceTransformerResolver constructor default (min_similarity=0.6 "
-            "in geoparser/modules/resolvers/sentencetransformer.py); never calibrated"
+            "in geoparser/modules/resolvers/sentencetransformer.py); no population "
+            "prior; never calibrated"
         ),
     ),
     HistoricalSetting(
         model="geo-minilm",
+        policy="similarity",
         min_similarity=0.0,
         origin=(
-            "benchmark CLI default; the 2026-09-23 prior, hybrid and multilingual "
-            "evidence runs used 0.0 with the MiniLM encoder"
+            "benchmark CLI default; the 2026-09-23 hybrid evidence runs, which use "
+            "the similarity ranking with no population prior, used 0.0 with the "
+            "MiniLM encoder"
+        ),
+    ),
+    HistoricalSetting(
+        model="geo-minilm",
+        policy="population",
+        min_similarity=0.0,
+        origin=(
+            "benchmark CLI default; the 2026-09-23 prior evidence runs, which use "
+            "population weight 0.3, used 0.0 with the MiniLM encoder"
         ),
     ),
 )
 
 
-def historical_setting(model: str, min_similarity: float) -> HistoricalSetting | None:
-    """Return the registered historical setting for a model and value, if any.
+def historical_setting(
+    model: str, policy: str, min_similarity: float
+) -> HistoricalSetting | None:
+    """Return the registered historical setting for a model, policy and value, if any.
 
     Args:
         model: A registry key
+        policy: The embedding policy, ``similarity`` or ``population``
         min_similarity: The threshold to look up
 
     Returns:
         The matching setting, or None when the value was never used for that model
+        under that policy
     """
     for setting in HISTORICAL_SETTINGS:
-        if setting.model == model and setting.min_similarity == min_similarity:
+        if (
+            setting.model == model
+            and setting.policy == policy
+            and setting.min_similarity == min_similarity
+        ):
             return setting
     return None

@@ -122,8 +122,8 @@ class ThresholdRecord(Contract):
             "a historical setting has no development calibration digest",
         )
         require(
-            historical_setting(model, self.min_similarity) is not None,
-            "historical threshold is not registered for this model",
+            historical_setting(model, self.policy, self.min_similarity) is not None,
+            "historical threshold is not registered for this model and policy",
         )
 
 

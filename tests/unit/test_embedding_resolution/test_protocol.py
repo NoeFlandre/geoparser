@@ -240,7 +240,10 @@ def test_a_historical_row_relabelled_as_population_cannot_fill_that_cell():
     historical = next(
         record for record in payload["thresholds"] if record["origin"] == "historical"
     )
+    # 0.0 is the registered historical population setting, so the record itself is
+    # accepted and only the missing calibrated cell can refuse the plan.
     historical["policy"] = "population"
+    historical["min_similarity"] = 0.0
 
     with pytest.raises(ValidationError, match="every registered model"):
         FreezePlan.model_validate(payload)
@@ -329,6 +332,16 @@ def test_a_historical_value_is_only_accepted_for_the_model_that_used_it():
     )
 
     with pytest.raises(ValidationError, match="not registered for this model"):
+        FreezePlan.model_validate(payload)
+
+
+def test_a_historical_value_is_refused_under_a_policy_that_never_used_it():
+    payload = plan_payload()
+    payload["thresholds"][1]["policy"] = "population"
+
+    with pytest.raises(
+        ValidationError, match="not registered for this model and policy"
+    ):
         FreezePlan.model_validate(payload)
 
 

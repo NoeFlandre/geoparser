@@ -119,18 +119,27 @@ def test_prompt_returns_the_text_for_each_role():
 
 
 def test_historical_zero_six_is_recorded_only_for_the_model_that_used_it():
-    assert historical_setting("geo-minilm", 0.6) is not None
-    assert historical_setting("jina-v5-text-small", 0.6) is None
-    assert historical_setting("bge-m3", 0.6) is None
+    assert historical_setting("geo-minilm", "similarity", 0.6) is not None
+    assert historical_setting("jina-v5-text-small", "similarity", 0.6) is None
+    assert historical_setting("bge-m3", "similarity", 0.6) is None
 
 
-def test_historical_settings_are_labelled_with_their_origin():
-    assert {(s.model, s.min_similarity) for s in HISTORICAL_SETTINGS} == {
-        ("geo-minilm", 0.6),
-        ("geo-minilm", 0.0),
+def test_a_historical_value_is_refused_under_a_policy_that_never_used_it():
+    assert historical_setting("geo-minilm", "population", 0.6) is None
+    assert historical_setting("geo-minilm", "population", 0.0) is not None
+
+
+def test_historical_settings_are_labelled_with_their_policy_and_origin():
+    assert {
+        (setting.model, setting.policy, setting.min_similarity)
+        for setting in HISTORICAL_SETTINGS
+    } == {
+        ("geo-minilm", "similarity", 0.6),
+        ("geo-minilm", "similarity", 0.0),
+        ("geo-minilm", "population", 0.0),
     }
     assert all(setting.origin for setting in HISTORICAL_SETTINGS)
 
 
 def test_an_uncalibrated_value_is_not_a_historical_setting():
-    assert historical_setting("geo-minilm", 0.5) is None
+    assert historical_setting("geo-minilm", "similarity", 0.5) is None
