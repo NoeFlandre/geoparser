@@ -18,7 +18,14 @@ from scripts.panx_benchmark.data import target_languages
 ROSTER_PATH = Path(__file__).with_name("roster.json")
 ROSTER_FORMAT = "spacy-native-baseline-roster-v1"
 MODEL_VERSION = "3.8.0"
-SPACY_RUNTIME = ">=3.8.0,<3.9.0"
+SPACY_RUNTIME_MIN = (3, 8, 0)
+SPACY_RUNTIME_BELOW = (3, 9, 0)  # exclusive upper bound
+SPACY_RUNTIME = (
+    ">="
+    + ".".join(str(part) for part in SPACY_RUNTIME_MIN)
+    + ",<"
+    + ".".join(str(part) for part in SPACY_RUNTIME_BELOW)
+)
 ENGLISH_CONTROL_LANGUAGE = "en"
 LOCATION_CLASS = "LOC"
 Status = Literal["native", "unsupported"]

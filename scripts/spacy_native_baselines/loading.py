@@ -8,16 +8,22 @@ cannot silently fetch a model.
 from __future__ import annotations
 
 import importlib.metadata
+import re
 from collections.abc import Callable
 from typing import Any
 
 import spacy
-from packaging.specifiers import SpecifierSet
 
-from scripts.spacy_native_baselines.roster import SPACY_RUNTIME, NativePipeline
+from scripts.spacy_native_baselines.roster import (
+    SPACY_RUNTIME,
+    SPACY_RUNTIME_BELOW,
+    SPACY_RUNTIME_MIN,
+    NativePipeline,
+)
 
 KEPT_COMPONENTS = frozenset({"ner", "tok2vec"})
 SPACY_PACKAGE = "spacy"
+_RELEASE = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?")
 
 
 class MissingPipelineError(RuntimeError):
@@ -62,6 +68,14 @@ def check_installed(
         raise MissingPipelineError(message)
 
 
+def _release(version: str) -> tuple[int, ...] | None:
+    """Return the leading major.minor.patch of a version string, or None."""
+    match = _RELEASE.match(version)
+    if match is None:
+        return None
+    return tuple(int(part) for part in match.groups(default="0"))
+
+
 def check_spacy_runtime(
     *,
     version_lookup: Callable[[str], str | None] = installed_version,
@@ -78,7 +92,8 @@ def check_spacy_runtime(
             f"{SPACY_RUNTIME}."
         )
         raise SpacyRuntimeError(message)
-    if not SpecifierSet(SPACY_RUNTIME).contains(found):
+    release = _release(found)
+    if release is None or not SPACY_RUNTIME_MIN <= release < SPACY_RUNTIME_BELOW:
         message = (
             f"spaCy {found} is installed, but the roster pins the runtime range "
             f"{SPACY_RUNTIME}."
