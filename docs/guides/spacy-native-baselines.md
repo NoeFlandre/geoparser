@@ -8,8 +8,9 @@ English pipeline.
 
 Only the roster, routing, label harmonization, loading guards and matched-versus-transfer
 scoring are implemented. No pipeline has been installed or run, and no quality,
-speed or memory result exists yet. The 23 selected wheels were downloaded once to
-record their sha256 digests, then deleted.
+speed or memory result exists yet. `roster.json` records that the 23 selected
+wheels were downloaded once to take their sha256 digests, then deleted; see the
+gaps below.
 
 ## Roster
 
@@ -144,17 +145,20 @@ Verified:
 - Native and unsupported status for all 85 codes, from the compatibility list.
 - Release tags, wheel names and byte sizes for the 23 selected 3.8.0 packages,
   from the GitHub release API.
-- sha256 digests for the same 23 wheels. Each wheel was downloaded once, hashed,
-  checked against its byte size and its NER labels in `meta.json`, and then
-  deleted.
 - Hub license values and model-card NER label sets for the same package names.
 - The installed spaCy 3.8.16 extras that declare the Japanese tokenizer
   dependencies (`sudachipy`, `sudachidict_core`) and the Korean `natto-py` extra.
 
 Not verified, and recorded as gaps:
 
+- The sha256 digests for the 23 selected wheels are recorded in
+  `roster.json` (`verification.sha256_note`): each wheel was downloaded once,
+  hashed, checked against its byte size and its NER labels in `meta.json`, and
+  then deleted. That record was written with commit 893ab8a. It has not been
+  re-checked, except that the zh wheel's digest and size match its release URL.
 - The GitHub release API reports no digest for these assets. The sha256 values
-  come only from the one-time download above, so no published digest confirms them.
+  come only from the one-time download recorded above, so no published digest
+  confirms them.
 - The licenses have not been checked against the 3.8.0 wheels. The Hub cards
   describe 3.7.x content.
 - The Korean system dependency (`mecab`) is not verified.
