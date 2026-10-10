@@ -601,10 +601,7 @@ class TestRecognitionRowShapes:
         )
 
         # Assert
-        assert [row["text"] for row in reference_rows if row is not None] == [
-            "Paris",
-            "Berlin",
-        ]
+        assert [row["text"] for row in reference_rows] == ["Paris", "Berlin"]
         assert all(isinstance(row, dict) for row in reference_rows)
         assert isinstance(marker, dict)
         assert marker["document_id"] == document.id

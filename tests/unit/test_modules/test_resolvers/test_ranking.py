@@ -37,7 +37,8 @@ class TestPopulationPrior:
 
     def test_ignores_unparsable_values(self):
         """A malformed population is treated as unknown."""
-        assert population_prior("n/a") == 0.0
+        # Gazetteer records are untyped JSON, so a string is passed on purpose.
+        assert population_prior("n/a") == 0.0  # ty: ignore[invalid-argument-type]
         assert population_prior(-5) == 0.0
 
 
