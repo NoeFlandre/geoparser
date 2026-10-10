@@ -136,19 +136,25 @@ def location_spans(
     open_span: Span | None = None
     malformed = 0
     for tag, (start, end) in zip(tags, offsets, strict=True):
-        if tag == LOCATION_INSIDE and open_span is not None:
+        if open_span is not None and tag == LOCATION_INSIDE:
             open_span = (open_span[0], end)
             continue
-        if open_span is not None:
-            spans.add(open_span)
-            open_span = None
+        spans |= _closed_span(open_span)
         if tag == LOCATION_INSIDE:
             malformed += 1
-        if tag in (LOCATION_BEGIN, LOCATION_INSIDE):
-            open_span = (start, end)
-    if open_span is not None:
-        spans.add(open_span)
+        open_span = _opened_span(tag, start, end)
+    spans |= _closed_span(open_span)
     return spans, malformed
+
+
+def _closed_span(open_span: Span | None) -> set[Span]:
+    """Return the open span as a one-item set, or nothing when no span is open."""
+    return set() if open_span is None else {open_span}
+
+
+def _opened_span(tag: str, start: int, end: int) -> Span | None:
+    """Start a span at a begin or inside tag. Any other tag opens nothing."""
+    return (start, end) if tag in (LOCATION_BEGIN, LOCATION_INSIDE) else None
 
 
 def example_from_sentence(language: str, sentence: Sentence) -> Example:

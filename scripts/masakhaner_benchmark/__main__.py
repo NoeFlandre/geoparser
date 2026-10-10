@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 from scripts.masakhaner_benchmark.manifest import read_manifest
 from scripts.masakhaner_benchmark.pins import OK, check_directory
@@ -51,16 +52,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
     manifest = read_manifest()
     if arguments.command == "inventory":
-        output_dir = arguments.output_dir or (
-            Path("benchmark-evidence")
-            / "masakhaner"
-            / f"inventory-{manifest['retrieved_on']}"
-        )
-        json_path, markdown_path = write_report(output_dir, manifest)
-        print(f"Wrote {markdown_path}")
-        print(f"Wrote {json_path}")
-        return 0
-    rows = check_directory(arguments.data_dir, manifest["languages"])
+        return _write_inventory(arguments.output_dir, manifest)
+    return _verify(arguments.data_dir, manifest)
+
+
+def _write_inventory(output_dir: Path | None, manifest: dict[str, Any]) -> int:
+    """Write the inventory report and name the two files it produced."""
+    target = output_dir or (
+        Path("benchmark-evidence")
+        / "masakhaner"
+        / f"inventory-{manifest['retrieved_on']}"
+    )
+    json_path, markdown_path = write_report(target, manifest)
+    print(f"Wrote {markdown_path}")
+    print(f"Wrote {json_path}")
+    return 0
+
+
+def _verify(data_dir: Path, manifest: dict[str, Any]) -> int:
+    """Check the local split files and report each one. Any failure exits 1."""
+    rows = check_directory(data_dir, manifest["languages"])
     for row in rows:
         print(f"{row['status']:<8} {row['config']} {row['split']} {row['local_path']}")
     return 0 if all(row["status"] == OK for row in rows) else 1

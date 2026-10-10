@@ -31,12 +31,14 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
         message = "Unsupported MasakhaNER manifest schema version"
         raise ValueError(message)
     dataset = manifest["dataset"]
-    if not _HEX_40.match(dataset["huggingface_revision"]):
-        message = "The Hugging Face revision must be a 40-character commit id"
-        raise ValueError(message)
-    if not _HEX_40.match(dataset["github_commit"]):
-        message = "The GitHub commit must be a 40-character commit id"
-        raise ValueError(message)
+    _check_commit_id(
+        dataset["huggingface_revision"],
+        "The Hugging Face revision must be a 40-character commit id",
+    )
+    _check_commit_id(
+        dataset["github_commit"],
+        "The GitHub commit must be a 40-character commit id",
+    )
     if manifest["label_names"] != list(LABEL_NAMES):
         message = "The manifest label names differ from the parser's label set"
         raise ValueError(message)
@@ -44,10 +46,21 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     if len(languages) != 20:
         message = "The MasakhaNER 2.0 manifest must list 20 configurations"
         raise ValueError(message)
-    _check_unique(languages, "config")
-    _check_unique([row for row in languages if row["iso639_1"]], "iso639_1")
+    _check_identifiers(languages)
     for row in languages:
         _validate_language(row, dataset)
+
+
+def _check_commit_id(value: str, message: str) -> None:
+    """Reject a revision or commit that is not a full 40-character git id."""
+    if not _HEX_40.match(value):
+        raise ValueError(message)
+
+
+def _check_identifiers(languages: list[dict[str, Any]]) -> None:
+    """Reject duplicate configurations and duplicate ISO 639-1 codes."""
+    _check_unique(languages, "config")
+    _check_unique([row for row in languages if row["iso639_1"]], "iso639_1")
 
 
 def _check_unique(rows: list[dict[str, Any]], key: str) -> None:
@@ -67,12 +80,17 @@ def _validate_language(row: dict[str, Any], dataset: dict[str, Any]) -> None:
         message = f"{row['config']} must pin train, validation and test files"
         raise ValueError(message)
     for split, pin in row["files"].items():
-        expected_path = (
-            f"{dataset['data_root']}/{row['config']}/{dataset['split_files'][split]}"
-        )
-        if pin["path"] != expected_path:
-            message = f"{row['config']} {split} is pinned to an unexpected path"
-            raise ValueError(message)
-        if not _HEX_40.match(pin["git_blob_sha"]) or pin["size_bytes"] <= 0:
-            message = f"{row['config']} {split} has an invalid blob pin"
-            raise ValueError(message)
+        _validate_pin(row["config"], split, pin, dataset)
+
+
+def _validate_pin(
+    config: str, split: str, pin: dict[str, Any], dataset: dict[str, Any]
+) -> None:
+    """Check that one split file is pinned to its expected path and a git id."""
+    expected_path = f"{dataset['data_root']}/{config}/{dataset['split_files'][split]}"
+    if pin["path"] != expected_path:
+        message = f"{config} {split} is pinned to an unexpected path"
+        raise ValueError(message)
+    if not _HEX_40.match(pin["git_blob_sha"]) or pin["size_bytes"] <= 0:
+        message = f"{config} {split} has an invalid blob pin"
+        raise ValueError(message)

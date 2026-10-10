@@ -81,16 +81,8 @@ def bootstrap_f1_interval(
 
     The same counts, seed and resample count always give the same interval.
     """
-    if not counts:
-        message = "A bootstrap interval needs at least one scored sentence"
-        raise ValueError(message)
-    if resamples < 1:
-        message = "The bootstrap needs at least one resample"
-        raise ValueError(message)
-    if not 0 < confidence < 1:
-        message = "The confidence level must lie strictly between 0 and 1"
-        raise ValueError(message)
-    rng = random.Random(seed)  # noqa: S311
+    _check_bootstrap_settings(counts, resamples, confidence)
+    rng = random.Random(seed)  # noqa: S311 - seeded statistical resampling, not security
     size = len(counts)
     values = sorted(
         micro_scores(counts[rng.randrange(size)] for _ in range(size)).f1
@@ -100,3 +92,18 @@ def bootstrap_f1_interval(
     low = values[int(tail * (resamples - 1))]
     high = values[int((1 - tail) * (resamples - 1))]
     return low, high
+
+
+def _check_bootstrap_settings(
+    counts: Sequence[SentenceCounts], resamples: int, confidence: float
+) -> None:
+    """Reject settings that cannot give a percentile interval."""
+    if not counts:
+        message = "A bootstrap interval needs at least one scored sentence"
+        raise ValueError(message)
+    if resamples < 1:
+        message = "The bootstrap needs at least one resample"
+        raise ValueError(message)
+    if not 0 < confidence < 1:
+        message = "The confidence level must lie strictly between 0 and 1"
+        raise ValueError(message)

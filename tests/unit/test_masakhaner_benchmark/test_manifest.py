@@ -148,3 +148,39 @@ def test_a_blob_pin_that_is_not_a_git_id_is_rejected(manifest):
 
     with pytest.raises(ValueError, match="invalid blob pin"):
         validate_manifest(manifest)
+
+
+def test_a_malformed_github_commit_is_rejected(manifest):
+    manifest["dataset"]["github_commit"] = "master"
+
+    with pytest.raises(ValueError, match="GitHub commit must be"):
+        validate_manifest(manifest)
+
+
+def test_the_manifest_must_list_twenty_configurations(manifest):
+    manifest["languages"] = manifest["languages"][:-1]
+
+    with pytest.raises(ValueError, match="must list 20 configurations"):
+        validate_manifest(manifest)
+
+
+def test_a_configuration_must_record_all_three_split_counts(manifest):
+    del _language(manifest, "hau")["readme_counts"]["test"]
+
+    with pytest.raises(ValueError, match="must record train, validation and test"):
+        validate_manifest(manifest)
+
+
+def test_a_configuration_must_pin_all_three_split_files(manifest):
+    del _language(manifest, "hau")["files"]["test"]
+
+    with pytest.raises(ValueError, match="must pin train, validation and test"):
+        validate_manifest(manifest)
+
+
+def test_a_manifest_file_must_hold_a_json_object(tmp_path):
+    path = tmp_path / "manifest.json"
+    path.write_text("[]", encoding="utf-8")
+
+    with pytest.raises(TypeError, match="Expected a JSON object"):
+        read_manifest(path)

@@ -24,6 +24,14 @@ def summary(manifest, rows):
     return coverage_summary(manifest, rows)
 
 
+def _target(rows, code):
+    return next(row for row in rows if row["code"] == code)
+
+
+def _excluded(summary):
+    return {row["config"]: row for row in summary["excluded_configurations"]}
+
+
 def test_the_target_table_has_one_row_per_canonical_code(rows):
     assert len(rows) == 85
     assert len({row["code"] for row in rows}) == 85
@@ -40,7 +48,7 @@ def test_the_included_configurations_are_the_five_matching_iso_codes(summary):
 
 
 def test_amharic_is_a_target_that_masakhaner_2_0_does_not_cover(rows):
-    amharic = next(row for row in rows if row["code"] == "am")
+    amharic = _target(rows, "am")
 
     assert amharic["status"] == "missing"
     assert amharic["masakhaner_config"] is None
@@ -53,7 +61,7 @@ def test_hausa_xhosa_and_zulu_fill_the_wikiann_gap(summary):
 
 
 def test_a_covered_row_carries_its_readme_counts(rows):
-    hausa = next(row for row in rows if row["code"] == "ha")
+    hausa = _target(rows, "ha")
 
     assert hausa["status"] == "covered"
     assert hausa["masakhaner_config"] == "hau"
@@ -69,10 +77,13 @@ def test_covered_example_totals_are_summed_per_split(summary):
     }
 
 
-def test_fifteen_configurations_are_excluded_with_a_reason(summary):
-    excluded = {row["config"]: row for row in summary["excluded_configurations"]}
+def test_fifteen_configurations_are_excluded(summary):
+    assert len(_excluded(summary)) == 15
 
-    assert len(excluded) == 15
+
+def test_excluded_configurations_carry_their_reason(summary):
+    excluded = _excluded(summary)
+
     assert (
         excluded["bbj"]["reason"]
         == "no ISO 639-1 code, so it cannot match the target list"

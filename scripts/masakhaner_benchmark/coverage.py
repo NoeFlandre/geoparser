@@ -17,20 +17,24 @@ def coverage_rows(manifest: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Return one row per canonical target code with its MasakhaNER status."""
     by_code = {row["iso639_1"]: row for row in manifest["languages"] if row["iso639_1"]}
     wikiann_missing = set(split_manifest()["missing_target_languages"])
-    rows: list[dict[str, Any]] = []
-    for code in target_languages():
-        row = by_code.get(code)
-        rows.append(
-            {
-                "code": code,
-                "status": "covered" if row else "missing",
-                "masakhaner_config": row["config"] if row else None,
-                "wikiann_test_missing": code in wikiann_missing,
-                "fills_wikiann_gap": row is not None and code in wikiann_missing,
-                "readme_counts": row["readme_counts"] if row else None,
-            }
-        )
-    return rows
+    return [
+        _target_row(code, by_code.get(code), wikiann_missing)
+        for code in target_languages()
+    ]
+
+
+def _target_row(
+    code: str, row: Mapping[str, Any] | None, wikiann_missing: set[str]
+) -> dict[str, Any]:
+    """Describe one canonical target and the MasakhaNER configuration that covers it."""
+    return {
+        "code": code,
+        "status": "covered" if row else "missing",
+        "masakhaner_config": row["config"] if row else None,
+        "wikiann_test_missing": code in wikiann_missing,
+        "fills_wikiann_gap": row is not None and code in wikiann_missing,
+        "readme_counts": row["readme_counts"] if row else None,
+    }
 
 
 def excluded_configurations(
@@ -61,24 +65,44 @@ def coverage_summary(
     manifest: Mapping[str, Any], rows: Sequence[Mapping[str, Any]]
 ) -> dict[str, Any]:
     """Count the covered and missing targets and the included configurations."""
-    covered = [row for row in rows if row["status"] == "covered"]
-    missing = [row for row in rows if row["status"] == "missing"]
+    covered = _with_status(rows, "covered")
+    missing = _with_status(rows, "missing")
     included = [row["masakhaner_config"] for row in covered]
-    filled = [row["code"] for row in rows if row["fills_wikiann_gap"]]
-    wikiann_gap = [row["code"] for row in rows if row["wikiann_test_missing"]]
     return {
         "canonical_target_languages": len(rows),
         "covered_targets": len(covered),
         "missing_targets": len(missing),
-        "covered_codes": [row["code"] for row in covered],
-        "missing_codes": [row["code"] for row in missing],
+        "covered_codes": _codes(covered),
+        "missing_codes": _codes(missing),
         "masakhaner_configurations": len(manifest["languages"]),
         "included_configurations": included,
         "excluded_configurations": excluded_configurations(manifest, included),
-        "wikiann_missing_targets": wikiann_gap,
-        "wikiann_gaps_filled": filled,
-        "examples_by_split": {
-            split: sum(row["readme_counts"][split] for row in covered)
-            for split in ("train", "validation", "test")
-        },
+        "wikiann_missing_targets": _codes(_flagged(rows, "wikiann_test_missing")),
+        "wikiann_gaps_filled": _codes(_flagged(rows, "fills_wikiann_gap")),
+        "examples_by_split": _examples_by_split(covered),
+    }
+
+
+def _with_status(
+    rows: Sequence[Mapping[str, Any]], status: str
+) -> list[Mapping[str, Any]]:
+    """Return the target rows that carry one status."""
+    return [row for row in rows if row["status"] == status]
+
+
+def _flagged(rows: Sequence[Mapping[str, Any]], flag: str) -> list[Mapping[str, Any]]:
+    """Return the target rows whose named flag is set."""
+    return [row for row in rows if row[flag]]
+
+
+def _codes(rows: Sequence[Mapping[str, Any]]) -> list[str]:
+    """Return the target codes of the given rows, in order."""
+    return [row["code"] for row in rows]
+
+
+def _examples_by_split(covered: Sequence[Mapping[str, Any]]) -> dict[str, int]:
+    """Sum the README example counts of the covered configurations per split."""
+    return {
+        split: sum(row["readme_counts"][split] for row in covered)
+        for split in ("train", "validation", "test")
     }

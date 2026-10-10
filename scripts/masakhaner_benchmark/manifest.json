@@ -15,7 +15,7 @@
     "github_commit": "ba5843cd08aa491d5f96a5e809e71eb9ec461391",
     "github_commit_date": "2025-10-15T20:37:20Z",
     "data_root": "MasakhaNER2.0/data",
-    "data_source_note": "The Hugging Face loader downloads each split from the raw GitHub main branch, not from a pinned commit. The git blob ids below pin the content of each file at the recorded GitHub commit.",
+    "data_source_note": "The Hugging Face loader downloads each split from the raw GitHub main branch, not from a pinned commit. The git blob ids below were read from the GitHub git tree at the recorded commit. No split file was downloaded, so no file's content was checked against its id.",
     "split_files": {
       "train": "train.txt",
       "validation": "dev.txt",
@@ -646,7 +646,7 @@
     "unverified": [
       "Example counts are taken from the README tables; they were not checked against the split files, which were not downloaded.",
       "The Hugging Face loader fetches data from the raw GitHub main branch, so a later main commit can change the files. Check each file against its git blob id before use.",
-      "The Hugging Face dataset commit pins the loader script and README only; the data files are pinned by GitHub blob id."
+      "The Hugging Face dataset commit pins the loader script and README only. The data file ids come from the GitHub git tree listing, and no data file was downloaded to check them against."
     ]
   }
 }
