@@ -25,6 +25,7 @@ DUPLICATE_SPAN = "duplicate_span"
 OVERLAPPING_SPAN = "overlapping_span"
 MISSING_GOLD = "missing_gold"
 SOURCE_COUNT = "source_count"
+EMPTY_CORPUS = "empty_corpus"
 
 MAX_LATITUDE = 90.0
 MAX_LONGITUDE = 180.0
@@ -155,6 +156,15 @@ def _source_count_problems(
     return found
 
 
+def _emptiness_problems(documents: int, gold_spans: int) -> list[Problem]:
+    """Reject a corpus with nothing to score, so an empty load is never a pass."""
+    if documents == 0:
+        return [Problem(EMPTY_CORPUS, CORPUS, "no documents")]
+    if gold_spans == 0:
+        return [Problem(EMPTY_CORPUS, CORPUS, "no gold spans")]
+    return []
+
+
 def check_corpus(
     documents: Iterable[Document],
     *,
@@ -165,7 +175,9 @@ def check_corpus(
     Check every document of a corpus and its totals against the source.
 
     Totals are compared only when the source publishes them, so a corpus
-    without a published count is never reported as wrong.
+    without a published count is never reported as wrong. A corpus with no
+    documents, or with no gold spans at all, is always a problem: it has
+    nothing to score, and a run over it would only write an empty report.
 
     Args:
         documents: The parsed documents, in corpus order
@@ -180,6 +192,7 @@ def check_corpus(
         problem for document in loaded for problem in document_problems(document)
     ]
     gold_spans = sum(len(document.gold) for document in loaded)
+    problems.extend(_emptiness_problems(len(loaded), gold_spans))
     problems.extend(
         _source_count_problems(
             len(loaded), gold_spans, expected_documents, expected_gold

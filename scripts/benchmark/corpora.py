@@ -14,13 +14,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from scripts.benchmark import corpus
 from scripts.benchmark.corpus import Document
 from scripts.benchmark.hipe import hipe_qids, parse_hipe
-from scripts.benchmark.newsli import parse_newsli
+from scripts.benchmark.newsli import MAX_DOCUMENTS, parse_newsli
 from scripts.benchmark.wikidata import load_coordinates
 
 HIPE_BASE_URL = (
@@ -35,17 +35,41 @@ NEWSLI = "newsli"
 # serves every language, so it is cached once beside the corpus folders.
 NEWSLI_URL = "https://ndownloader.figshare.com/files/59465342"
 NEWSLI_RELEASE = "unitoprank-data.zip"
-NEWSLI_LANGUAGES = ("ar", "de", "es", "fa", "ja", "pl", "ro", "sr", "ta", "tr", "uk")
+# Text files per NewsLi language in the release, as the inventory snapshot
+# records them. Each text file is one article, so a full load is expected to
+# hold one document per file. An article that yields no aligned gold span is
+# then reported as a source-count problem. The release has not been read for
+# this check, so the per-language counts of aligned articles are unverified.
+NEWSLI_TEXT_FILES = {
+    "ar": 757,
+    "de": 13174,
+    "es": 8054,
+    "fa": 85,
+    "ja": 2868,
+    "pl": 321,
+    "ro": 241,
+    "sr": 13950,
+    "ta": 873,
+    "tr": 805,
+    "uk": 282,
+}
+NEWSLI_LANGUAGES = tuple(NEWSLI_TEXT_FILES)
+# GeoVirus holds 229 articles and 2167 gold toponyms. Both figures are recorded
+# in this repository, and a parse of the upstream file matched them on 2026-10-10.
+GEOVIRUS_DOCUMENTS = 229
+GEOVIRUS_GOLD_SPANS = 2167
 
 
 @dataclass(frozen=True)
 class CorpusSpec:
-    """Where a corpus comes from and how to read it."""
+    """Where a corpus comes from, how to read it, and the totals it should hold."""
 
     name: str
     language: str
     url: str
     kind: str
+    documents: int | None = None
+    gold_spans: int | None = None
 
     @property
     def filename(self) -> str:
@@ -61,6 +85,8 @@ class LoadedCorpus:
     language: str
     documents: list[Document]
     digest: str
+    expected_documents: int | None = None
+    expected_gold: int | None = None
 
 
 def _hipe(dataset: str, language: str) -> CorpusSpec:
@@ -79,7 +105,14 @@ def _hipe(dataset: str, language: str) -> CorpusSpec:
 CORPORA: dict[str, CorpusSpec] = {
     spec.name: spec
     for spec in (
-        CorpusSpec(GEOVIRUS, "en", corpus.CORPUS_URL, GEOVIRUS),
+        CorpusSpec(
+            GEOVIRUS,
+            "en",
+            corpus.CORPUS_URL,
+            GEOVIRUS,
+            documents=GEOVIRUS_DOCUMENTS,
+            gold_spans=GEOVIRUS_GOLD_SPANS,
+        ),
         _hipe("hipe2020", "de"),
         _hipe("hipe2020", "fr"),
         _hipe("hipe2020", "en"),
@@ -89,12 +122,51 @@ CORPORA: dict[str, CorpusSpec] = {
         _hipe("newseye", "sv"),
         _hipe("topres19th", "en"),
         *(
-            CorpusSpec(f"newsli-{language}", language, NEWSLI_URL, NEWSLI)
+            CorpusSpec(
+                f"newsli-{language}",
+                language,
+                NEWSLI_URL,
+                NEWSLI,
+                documents=NEWSLI_TEXT_FILES[language],
+            )
             for language in NEWSLI_LANGUAGES
         ),
     )
 }
 DEFAULT = (GEOVIRUS,)
+
+
+def expected_totals(
+    spec: CorpusSpec, limit: int | None
+) -> tuple[int | None, int | None]:
+    """
+    Return the document and gold totals a load of one corpus must hold.
+
+    A full load holds what the source publishes. A capped load holds its cap in
+    documents: NewsLi keeps MAX_DOCUMENTS articles per language, and ``limit``
+    keeps the first N. The gold total of a capped load is not known in advance,
+    so it is None and is not compared. A corpus whose source publishes no total
+    gives None for both, and the gate reports that it was not compared.
+
+    Args:
+        spec: The registered corpus
+        limit: The ``--limit`` of the run, if any
+
+    Returns:
+        The expected document count and gold span count, each None when not compared
+    """
+    if spec.documents is None:
+        return None, None
+    caps = [cap for cap in (_harness_cap(spec), limit) if cap is not None]
+    cap = min(caps, default=None)
+    if cap is None or cap >= spec.documents:
+        return spec.documents, spec.gold_spans
+    return cap, None
+
+
+def _harness_cap(spec: CorpusSpec) -> int | None:
+    """Return the cap the harness itself applies to a corpus, if it has one."""
+    return MAX_DOCUMENTS if spec.kind == NEWSLI else None
 
 
 def load(
@@ -114,12 +186,24 @@ def load(
         coordinate_cache: The Wikidata coordinate cache for HIPE corpora
 
     Returns:
-        The corpus, parsed
+        The corpus, parsed, with the totals it is expected to hold
 
     Raises:
         KeyError: When the name is not registered
     """
     spec = CORPORA[name]
+    loaded = _load_parsed(spec, cache_dir, limit, coordinate_cache)
+    documents, gold = expected_totals(spec, limit)
+    return replace(loaded, expected_documents=documents, expected_gold=gold)
+
+
+def _load_parsed(
+    spec: CorpusSpec,
+    cache_dir: Path,
+    limit: int | None,
+    coordinate_cache: Path,
+) -> LoadedCorpus:
+    """Download and parse one corpus, before its expected totals are attached."""
     if spec.kind == NEWSLI:
         return _load_newsli(spec, cache_dir, limit)
     path = corpus.download_corpus(cache_dir / spec.filename, url=spec.url)

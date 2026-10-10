@@ -168,7 +168,10 @@ class TestMissingGold:
         """Missing gold is a problem, and it is counted as a document."""
         report = corpus_checks.check_corpus([_document()])
 
-        assert _kinds(report) == [corpus_checks.MISSING_GOLD]
+        assert _kinds(report) == [
+            corpus_checks.MISSING_GOLD,
+            corpus_checks.EMPTY_CORPUS,
+        ]
         assert report.documents == 1
         assert report.gold_spans == 0
 
@@ -217,8 +220,28 @@ class TestSourceCounts:
         assert "1 documents loaded, source publishes 2" in report.problems[0].detail
         assert "1 gold spans loaded, source publishes 3" in report.problems[1].detail
 
-    def test_an_empty_corpus_has_no_documents_and_no_gold(self):
-        """An empty source reads as zero, not as an error."""
+    def test_an_empty_corpus_is_a_problem_not_a_clean_report(self):
+        """Zero documents has nothing to score, so it can never pass the gate."""
         report = corpus_checks.check_corpus([])
 
-        assert (report.documents, report.gold_spans, report.clean) == (0, 0, True)
+        assert (report.documents, report.gold_spans, report.clean) == (0, 0, False)
+        assert [(p.kind, p.detail) for p in report.problems] == [
+            (corpus_checks.EMPTY_CORPUS, "no documents")
+        ]
+
+    def test_documents_without_any_gold_span_are_an_empty_corpus(self):
+        """Every document lacking gold is reported, and the corpus is empty too."""
+        report = corpus_checks.check_corpus(
+            [Document("doc-1", TEXT, ()), Document("doc-2", TEXT, ())]
+        )
+
+        assert report.gold_spans == 0
+        assert report.count(corpus_checks.MISSING_GOLD) == 2
+        assert report.count(corpus_checks.EMPTY_CORPUS) == 1
+        assert corpus_checks.EMPTY_CORPUS in _kinds(report)
+
+    def test_a_corpus_with_gold_is_not_empty(self):
+        """One gold span anywhere is enough to leave the empty-corpus check."""
+        report = corpus_checks.check_corpus([_document(PARIS)])
+
+        assert corpus_checks.EMPTY_CORPUS not in _kinds(report)

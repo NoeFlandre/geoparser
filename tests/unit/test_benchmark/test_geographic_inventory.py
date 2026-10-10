@@ -183,6 +183,15 @@ class TestNewsliAgreement:
             assert row["status"] == "registered"
             assert row["registered_as"] == f"newsli-{language}"
 
+    def test_the_published_newsli_totals_are_the_folder_text_file_counts(self, folders):
+        """The document totals the gate checks NewsLi against are the inventoried counts."""
+        counted = {
+            language: folders[f"{language}_geotoponyms"]["text_files"]
+            for language in NEWSLI_LANGUAGES
+        }
+
+        assert counted == corpora.NEWSLI_TEXT_FILES
+
 
 class TestToporesolve:
     """TopoResolve is pinned, and it stays excluded while it has no licence."""

@@ -119,6 +119,24 @@ def corpus_output_dir(output_dir: Path, name: str) -> Path:
     return output_dir / name
 
 
+def totals_note(loaded: corpora.LoadedCorpus) -> str:
+    """Say which source totals a run was compared with, and which it was not."""
+    totals = {
+        "documents": loaded.expected_documents,
+        "gold spans": loaded.expected_gold,
+    }
+    compared = [
+        f"{value} {label}" for label, value in totals.items() if value is not None
+    ]
+    skipped = [label for label, value in totals.items() if value is None]
+    if not compared:
+        return f"{loaded.name}: no source totals to compare with, so none were checked"
+    note = f"{loaded.name}: compared with source totals of {', '.join(compared)}"
+    if skipped:
+        note += f"; not compared: {', '.join(skipped)}"
+    return note
+
+
 def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:
     """
     Stop before any model runs when the corpus fails its offline checks.
@@ -129,8 +147,13 @@ def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:
     Raises:
         CorpusRejectedError: If any check found a problem in the corpus
     """
-    found = corpus_checks.check_corpus(loaded.documents)
+    found = corpus_checks.check_corpus(
+        loaded.documents,
+        expected_documents=loaded.expected_documents,
+        expected_gold=loaded.expected_gold,
+    )
     if found.clean:
+        print(totals_note(loaded))
         return
     shown = "; ".join(
         f"{problem.kind} in {problem.document}: {problem.detail}"

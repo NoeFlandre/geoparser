@@ -11,7 +11,7 @@ import os
 import pytest
 
 from scripts.benchmark import __main__ as benchmark_cli
-from scripts.benchmark import pipelines, runner
+from scripts.benchmark import corpora, pipelines, runner
 from scripts.benchmark.__main__ import build_parser, corpus_output_dir
 from scripts.benchmark.corpora import LoadedCorpus
 from scripts.benchmark.corpus import Document, GoldSpan
@@ -285,7 +285,8 @@ def test_main_reports_provenance_and_corpus_summary(monkeypatch, tmp_path, capsy
 def test_main_expands_all_corpora_once_and_preserves_database_override(
     monkeypatch, tmp_path
 ):
-    loaded = LoadedCorpus("fixture", "en", [], "digest")
+    gold = GoldSpan(0, 4, "city", 47.0, 8.0)
+    loaded = LoadedCorpus("fixture", "en", [Document("doc", "city", (gold,))], "digest")
     calls = []
     monkeypatch.setattr(benchmark_cli.pipelines, "resolve_device", lambda value: value)
     monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda value: value)
@@ -372,3 +373,123 @@ class TestCorpusChecksGate:
         assert not (tmp_path / "geovirus" / "benchmark-report.md").exists()
         assert not (tmp_path / "summary.json").exists()
         assert "rejected by corpus checks, no model was run" in capsys.readouterr().err
+
+
+def test_a_corpus_with_no_documents_is_rejected_before_any_model_runs():
+    """An empty load is never written up as a successful benchmark."""
+    with pytest.raises(benchmark_cli.CorpusRejectedError) as raised:
+        benchmark_cli.require_clean_corpus(LoadedCorpus("fixture", "en", [], "digest"))
+
+    assert "empty_corpus in corpus: no documents" in str(raised.value)
+
+
+def test_a_corpus_with_no_gold_spans_is_rejected_before_any_model_runs():
+    """Documents with no gold give nothing to score, so the run is refused."""
+    no_gold = LoadedCorpus("fixture", "en", [Document("doc", "city", ())], "digest")
+
+    with pytest.raises(benchmark_cli.CorpusRejectedError) as raised:
+        benchmark_cli.require_clean_corpus(no_gold)
+
+    assert "empty_corpus in corpus: no gold spans" in str(raised.value)
+
+
+GEOVIRUS_ARTICLES = 229
+GEOVIRUS_GOLD_SPANS = 2167
+
+
+def corpus_gold(loaded: LoadedCorpus) -> int:
+    """The number of gold spans a loaded corpus holds."""
+    return sum(len(document.gold) for document in loaded.documents)
+
+
+def _geovirus_article(index: int) -> str:
+    """One well-formed article; the first 106 hold ten toponyms, the rest nine."""
+    names = [f"Place{number}" for number in range(10 if index < 106 else 9)]
+    locations = []
+    start = 0
+    for name in names:
+        # The corpus records each offset one character further along, so the
+        # written start is one more than the true position of the name.
+        locations.append(
+            f"<location><name>{name}</name><start>{start + 1}</start>"
+            f"<end>{start + 1 + len(name)}</end>"
+            "<lat>10.0</lat><lon>20.0</lon></location>"
+        )
+        start += len(name) + 1
+    return (
+        f"<article><text>{' '.join(names)}</text>"
+        f"<locations>{''.join(locations)}</locations></article>"
+    )
+
+
+def _write_geovirus(folder, articles: int) -> None:
+    """Write a GeoVirus file holding the first `articles` articles of the source."""
+    folder.mkdir(parents=True, exist_ok=True)
+    body = "".join(_geovirus_article(index) for index in range(articles))
+    (folder / "GeoVirus.xml").write_text(
+        f"<articles>{body}</articles>", encoding="utf-8"
+    )
+
+
+class TestSourceTotalsGate:
+    """A GeoVirus file that is not the whole source is refused, not benchmarked."""
+
+    def test_the_complete_source_is_compared_and_accepted(self, tmp_path, capsys):
+        """229 articles and 2167 toponyms match the source, so the run goes ahead."""
+        _write_geovirus(tmp_path, GEOVIRUS_ARTICLES)
+        loaded = corpora.load("geovirus", tmp_path)
+
+        benchmark_cli.require_clean_corpus(loaded)
+
+        assert (len(loaded.documents), corpus_gold(loaded)) == (
+            GEOVIRUS_ARTICLES,
+            GEOVIRUS_GOLD_SPANS,
+        )
+        assert (
+            "compared with source totals of 229 documents, 2167 gold spans"
+            in capsys.readouterr().out
+        )
+
+    def test_a_capped_run_is_compared_on_documents_and_says_gold_is_not(
+        self, tmp_path, capsys
+    ):
+        """With --limit the document cap is checked, and the skipped gold total is named."""
+        _write_geovirus(tmp_path, GEOVIRUS_ARTICLES)
+        loaded = corpora.load("geovirus", tmp_path, limit=9)
+
+        benchmark_cli.require_clean_corpus(loaded)
+
+        assert len(loaded.documents) == 9
+        assert (
+            "compared with source totals of 9 documents; not compared: gold spans"
+            in capsys.readouterr().out
+        )
+
+    @pytest.mark.parametrize("articles", [228, 0])
+    def test_a_truncated_or_empty_source_stops_the_run_before_any_model(
+        self, monkeypatch, tmp_path, capsys, articles
+    ):
+        """A well-formed file with 228 articles, or none, is refused end to end."""
+        phase_calls = []
+        monkeypatch.setattr(benchmark_cli.pipelines, "resolve_device", lambda v: v)
+        monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda v: v)
+        monkeypatch.setattr(
+            benchmark_cli.provenance, "source_commit", lambda root: "commit"
+        )
+        monkeypatch.setattr(benchmark_cli.provenance, "environment", lambda job: {})
+        monkeypatch.setattr(
+            benchmark_cli.runner,
+            "run_phase",
+            lambda *args, **kwargs: phase_calls.append(args) or {},
+        )
+        monkeypatch.delenv("GEOPARSER_DB_PATH", raising=False)
+        _write_geovirus(tmp_path / "geovirus", articles)
+
+        exit_code = benchmark_cli.main(
+            ["--output-dir", str(tmp_path), "--device", "cpu"]
+        )
+
+        assert exit_code == 1
+        assert phase_calls == []
+        assert not (tmp_path / "geovirus" / "benchmark-report.md").exists()
+        assert "source_count" in capsys.readouterr().err
