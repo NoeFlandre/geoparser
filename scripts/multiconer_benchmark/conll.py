@@ -9,7 +9,9 @@ returned as ``InvalidRecord`` values and counted. They are never dropped.
 
 from __future__ import annotations
 
+import io
 import re
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 
 from scripts.multiconer_benchmark.label_policy import KNOWN_LABELS, label_for
@@ -101,7 +103,8 @@ def parse_conll(text: str, *, expected_domain: str | None = None) -> ParsedSourc
     sentences: list[Sentence] = []
     invalid: list[InvalidRecord] = []
     seen_ids: set[str] = set()
-    for block in _blocks(body.split("\n")):
+    # Blocks stream from the text one at a time, so each raw block can be freed after parsing.
+    for block in _blocks(io.StringIO(body)):
         outcome = _parse_block(block, expected_domain, seen_ids)
         if isinstance(outcome, Sentence):
             sentences.append(outcome)
@@ -110,31 +113,26 @@ def parse_conll(text: str, *, expected_domain: str | None = None) -> ParsedSourc
     return ParsedSource(tuple(sentences), tuple(invalid))
 
 
-def _blocks(lines: list[str]) -> list[_Block]:
+def _blocks(lines: Iterable[str]) -> Iterator[_Block]:
     """Group lines into blocks; a blank line or a new header closes a block."""
-    blocks: list[_Block] = []
     current: _Block | None = None
     for number, raw in enumerate(lines, start=1):
-        line = raw.removesuffix("\r")
+        line = raw.removesuffix("\n").removesuffix("\r")
         if not line.strip(" \t"):
-            _close(blocks, current)
+            if current is not None:
+                yield current
             current = None
             continue
         if line.startswith(_HEADER_PREFIXES):
-            _close(blocks, current)
+            if current is not None:
+                yield current
             current = _Block(header=(number, line))
             continue
         if current is None:
             current = _Block()
         current.tokens.append((number, line))
-    _close(blocks, current)
-    return blocks
-
-
-def _close(blocks: list[_Block], current: _Block | None) -> None:
-    """Keep the open block, if there is one."""
     if current is not None:
-        blocks.append(current)
+        yield current
 
 
 def _parse_block(
