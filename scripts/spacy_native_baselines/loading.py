@@ -8,6 +8,7 @@ cannot silently fetch a model.
 from __future__ import annotations
 
 import importlib.metadata
+import operator
 import re
 from collections.abc import Callable
 from typing import Any
@@ -31,6 +32,16 @@ _VERSION = re.compile(
     r"(?P<post>\.post\d+)?"
     r"(?P<dev>\.dev\d+)?"
 )
+_SPECIFIER_TERM = re.compile(r"(>=|<=|==|!=|>|<)(\d+(?:\.\d+)*)")
+_INSTALLED_RELEASE = re.compile(r"\d+(?:\.\d+)*")
+_OPERATORS: dict[str, Callable[[Any, Any], bool]] = {
+    ">=": operator.ge,
+    "<=": operator.le,
+    "==": operator.eq,
+    "!=": operator.ne,
+    ">": operator.gt,
+    "<": operator.lt,
+}
 
 
 class MissingPipelineError(RuntimeError):
@@ -39,6 +50,10 @@ class MissingPipelineError(RuntimeError):
 
 class SpacyRuntimeError(RuntimeError):
     """The installed spaCy runtime is outside the roster's pinned range."""
+
+
+class TokenizerRequirementError(RuntimeError):
+    """A recorded tokenizer dependency is missing or outside its specifier."""
 
 
 class LabelSchemeError(RuntimeError):
@@ -167,6 +182,7 @@ def load_pipeline(
     """Return the pinned pipeline with only its NER path kept."""
     check_installed(pipeline, version_lookup=version_lookup)
     check_spacy_runtime(version_lookup=version_lookup)
+    check_tokenizers(pipeline, version_lookup=version_lookup)
     nlp = loader(pipeline.package)
     check_label_scheme(nlp, pipeline)
     _keep_only_ner(nlp)
@@ -180,6 +196,70 @@ def requirement_name(requirement: str) -> str:
         message = f"Cannot read a distribution name from {requirement!r}."
         raise ValueError(message)
     return match.group(0)
+
+
+def _release_numbers(text: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in text.split("."))
+
+
+def _specifier_terms(requirement: str) -> list[tuple[str, tuple[int, ...]]]:
+    """Return the (operator, release) terms of a requirement, refusing others."""
+    constraints = requirement[len(requirement_name(requirement)) :]
+    terms: list[tuple[str, tuple[int, ...]]] = []
+    for part in constraints.split(","):
+        term = part.strip()
+        if not term:
+            continue
+        match = _SPECIFIER_TERM.fullmatch(term)
+        if match is None:
+            message = f"Unsupported specifier {term!r} in {requirement!r}."
+            raise ValueError(message)
+        terms.append((match.group(1), _release_numbers(match.group(2))))
+    return terms
+
+
+def requirement_satisfied(requirement: str, installed: str) -> bool:
+    """Return True when the installed release satisfies every term of a requirement.
+
+    Terms compare plain release numbers with zero padding. An installed version
+    that is not a plain release, such as 1.0rc1, never satisfies a requirement.
+    """
+    terms = _specifier_terms(requirement)
+    if _INSTALLED_RELEASE.fullmatch(installed) is None:
+        return False
+    version = _release_numbers(installed)
+    for operation, bound in terms:
+        width = max(len(version), len(bound))
+        left = version + (0,) * (width - len(version))
+        right = bound + (0,) * (width - len(bound))
+        if not _OPERATORS[operation](left, right):
+            return False
+    return True
+
+
+def check_tokenizers(
+    pipeline: NativePipeline,
+    *,
+    version_lookup: Callable[[str], str | None] = installed_version,
+) -> None:
+    """Require each recorded tokenizer dependency to be installed within its specifier.
+
+    The roster's tokenizer specifiers are open-ended, so a release outside them
+    can tokenize differently or fail to load. This check runs before the
+    pipeline is loaded.
+    """
+    for requirement in pipeline.extra_requirements:
+        name = requirement_name(requirement)
+        found = version_lookup(name)
+        if found is None:
+            message = f"{name} is not installed. Install `{pipeline.install_command}`."
+            raise TokenizerRequirementError(message)
+        if not requirement_satisfied(requirement, found):
+            message = (
+                f"{name} {found} is installed, but the roster requires "
+                f"{requirement!r}. Install `{pipeline.install_command}`."
+            )
+            raise TokenizerRequirementError(message)
 
 
 def resolved_versions(

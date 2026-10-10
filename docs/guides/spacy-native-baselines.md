@@ -106,7 +106,10 @@ message names the pinned wheel URL to install. That URL carries the recorded
 SHA-256 digest as a fragment, which pip checks before installing, so a replaced
 release asset is refused. The message also lists the tokenizer requirements the
 pipeline records (`sudachipy` and `sudachidict_core` for Japanese, `natto-py`
-for Korean, `spacy-pkuseg` for Chinese). After loading, the NER labels must
+for Korean, `spacy-pkuseg` for Chinese). Before loading, each recorded tokenizer
+requirement is checked against the installed release. A missing tokenizer, or
+one outside its specifier, raises `TokenizerRequirementError` and nothing is
+loaded. After loading, the NER labels must
 equal the roster's label set exactly, or `LabelSchemeError` is raised. Only the
 `ner` component and its `tok2vec` are kept.
 
