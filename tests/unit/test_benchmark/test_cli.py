@@ -358,6 +358,32 @@ class TestCorpusChecksGate:
         assert not (tmp_path / "summary.json").exists()
         assert "rejected by corpus checks, no model was run" in capsys.readouterr().err
 
+    def test_a_duplicated_document_identifier_stops_the_run_before_any_scoring(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        """Two documents with one identifier would overwrite each other's predictions."""
+        first = Document("doc", "city", (GoldSpan(0, 4, "city", 47.0, 8.0),))
+        second = Document("doc", "town", (GoldSpan(0, 4, "town", 47.1, 8.1),))
+        _stub_run_environment(monkeypatch)
+        _stub_corpus_load(
+            monkeypatch, LoadedCorpus("fixture", "en", [first, second], "digest")
+        )
+        scored = []
+        monkeypatch.setattr(
+            benchmark_cli,
+            "_score_requested_pipelines",
+            lambda run: scored.append(run) or [],
+        )
+
+        exit_code = benchmark_cli.main(
+            ["--output-dir", str(tmp_path), "--device", "cpu"]
+        )
+
+        assert (exit_code, scored) == (1, [])
+        assert "duplicate_document in doc: identifier appears 2 times" in (
+            capsys.readouterr().err
+        )
+
 
 def test_a_corpus_with_no_documents_is_rejected_before_any_model_runs():
     """An empty load is never written up as a successful benchmark."""

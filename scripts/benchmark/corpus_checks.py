@@ -13,6 +13,7 @@ region check needs a geometry source that is pinned first.
 from __future__ import annotations
 
 import math
+from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -26,6 +27,7 @@ OVERLAPPING_SPAN = "overlapping_span"
 MISSING_GOLD = "missing_gold"
 SOURCE_COUNT = "source_count"
 EMPTY_CORPUS = "empty_corpus"
+DUPLICATE_DOCUMENT = "duplicate_document"
 
 MAX_LATITUDE = 90.0
 MAX_LONGITUDE = 180.0
@@ -156,6 +158,20 @@ def _source_count_problems(
     return found
 
 
+def _identifier_problems(documents: list[Document]) -> list[Problem]:
+    """Flag every identifier that more than one document carries.
+
+    The runner keys predictions and resumes completed work by identifier, so a
+    repeated one lets a later document overwrite an earlier one's predictions.
+    """
+    counts = Counter(document.identifier for document in documents)
+    return [
+        Problem(DUPLICATE_DOCUMENT, identifier, f"identifier appears {count} times")
+        for identifier, count in counts.items()
+        if count > 1
+    ]
+
+
 def _emptiness_problems(documents: int, gold_spans: int) -> list[Problem]:
     """Reject a corpus with nothing to score, so an empty load is never a pass."""
     if documents == 0:
@@ -192,6 +208,7 @@ def check_corpus(
         problem for document in loaded for problem in document_problems(document)
     ]
     gold_spans = sum(len(document.gold) for document in loaded)
+    problems.extend(_identifier_problems(loaded))
     problems.extend(_emptiness_problems(len(loaded), gold_spans))
     problems.extend(
         _source_count_problems(

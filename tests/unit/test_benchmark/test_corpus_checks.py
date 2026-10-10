@@ -245,3 +245,24 @@ class TestSourceCounts:
         report = corpus_checks.check_corpus([_document(PARIS)])
 
         assert corpus_checks.EMPTY_CORPUS not in _kinds(report)
+
+
+class TestDocumentIdentifiers:
+    """Each document needs its own identifier, or predictions overwrite one another."""
+
+    def test_distinct_identifiers_are_clean(self):
+        """Documents with different identifiers raise no duplicate problem."""
+        report = corpus_checks.check_corpus(
+            [Document("a", TEXT, (PARIS,)), Document("b", TEXT, (PARIS_AGAIN,))]
+        )
+
+        assert corpus_checks.DUPLICATE_DOCUMENT not in _kinds(report)
+
+    def test_a_repeated_identifier_is_one_problem_naming_its_count(self):
+        """Three documents under one identifier give one problem: it appears 3 times."""
+        report = corpus_checks.check_corpus(
+            [_document(PARIS), _document(VERSAILLES), _document(PARIS_AGAIN)]
+        )
+
+        assert report.count(corpus_checks.DUPLICATE_DOCUMENT) == 1
+        assert report.problems[-1].detail == "identifier appears 3 times"
