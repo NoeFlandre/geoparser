@@ -14,6 +14,13 @@ This file records all notable changes to GeoParser. The project follows
   the shared protocol contract, and reports every invalid record. It runs no
   model and downloads no data. Clean and noisy breakdowns are not supported by
   the release.
+
+- Add an offline adapter for the UniTopRank rule-based toponym ranker, pinned to
+  GitLab commit `346deb166f12b0c97c8c0f9759b593ff178ceafd` (Apache-2.0). It checks a
+  local checkout against 15 reviewed blob IDs before importing anything, maps gazetteer
+  candidates in a deterministic order and counts every drop and substitution, and
+  traces the ranker's top choice back to a gazetteer identifier. The held-out comparison
+  is not part of this change. See `docs/guides/unitoprank.md`.
 - Add offline contracts for comparing Qwen3-Reranker-0.6B and
   jina-reranker-v3.5 on identical frozen candidate lists. They pin both
   checkpoints and gate the custom code of the Jina checkpoint behind its
