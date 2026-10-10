@@ -1,0 +1,283 @@
+{
+  "purpose": "Bounded source-format inspection for the recognition adapter; not a model evaluation.",
+  "dataset_scope": "UNER v2 paper, 30 configurations, 29 official repositories",
+  "source_snapshot": "scripts/uner_benchmark/sources.json",
+  "bytes_per_source_limit": 8192,
+  "total_bytes_read": 245760,
+  "complete_sentences_checked": 643,
+  "truncation_policy": "Discard incomplete trailing UTF-8 and the final incomplete sentence. Preserve complete source sentence text without normalization.",
+  "coverage_limit": "This checks source prefixes only. The full corpus must pass checksum and parser validation before a model evaluation. Missing-license sources were inspected but remain ineligible for evaluation.",
+  "model_evaluation": "not_run",
+  "sources": [
+    {
+      "configuration": "ceb_gja",
+      "complete_prefix_sentences": 51,
+      "token_count": 347,
+      "location_count": 2,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "4de1bb1fc75c5fb7fe4e9c8ec167c5c3fa0da01efcd4c2e376456ef5ec04a179"
+    },
+    {
+      "configuration": "zh_gsdsimp",
+      "complete_prefix_sentences": 14,
+      "token_count": 357,
+      "location_count": 20,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "d046d5f72193a3d5875ad22bd356c4027b6b7d005cacb924fc4fd7e280ef8799"
+    },
+    {
+      "configuration": "zh_gsd",
+      "complete_prefix_sentences": 14,
+      "token_count": 357,
+      "location_count": 20,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "9fd3dcef3abee98a340407ba334cd6b07867953f0328dd597582e1b296a46c16"
+    },
+    {
+      "configuration": "zh_pud",
+      "complete_prefix_sentences": 17,
+      "token_count": 378,
+      "location_count": 6,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "8f34a56b224409abd7af24d5d63da4ba42ed5b70cffb1883b3d09109fd5e39da"
+    },
+    {
+      "configuration": "hr_set",
+      "complete_prefix_sentences": 13,
+      "token_count": 314,
+      "location_count": 27,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "41474bf85b9bb3b41b2de32ee08701302b7b3f5e44764cbe480e1d40e4e291f8"
+    },
+    {
+      "configuration": "cs_pud",
+      "complete_prefix_sentences": 17,
+      "token_count": 320,
+      "location_count": 7,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "e764b67f3baaf99e03112b341b723dd1d9e6af65b36a809ec06ce729db7d0504"
+    },
+    {
+      "configuration": "da_ddt",
+      "complete_prefix_sentences": 20,
+      "token_count": 316,
+      "location_count": 5,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "802613584cb1bac3c49e690be28514aab51b9a18419176d81042e9097ada827d"
+    },
+    {
+      "configuration": "en_ewt",
+      "complete_prefix_sentences": 36,
+      "token_count": 288,
+      "location_count": 10,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "6a7b8575d3d6ac607de803294ceb6f29f7f72c2f39ac2be46322c9c251813dcf"
+    },
+    {
+      "configuration": "en_pud",
+      "complete_prefix_sentences": 17,
+      "token_count": 368,
+      "location_count": 8,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "ddeb75f24cbf9e2295bd74dbaa8d3cf4d6e290bcb68d754493d3bb6976234e26"
+    },
+    {
+      "configuration": "de_pud",
+      "complete_prefix_sentences": 15,
+      "token_count": 340,
+      "location_count": 6,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "a79a1b02cf69f49959ccdf22c58dddbb87454bd3a5700160f0e7483f7ca9781f"
+    },
+    {
+      "configuration": "el_gdt",
+      "complete_prefix_sentences": 18,
+      "token_count": 239,
+      "location_count": 2,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "f90511a84bec93030ef972c8fff5404eb5a12d299fb6f3a3c8938922bfaf65a9"
+    },
+    {
+      "configuration": "he_htb",
+      "complete_prefix_sentences": 12,
+      "token_count": 298,
+      "location_count": 0,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "940398e88343dd3c756a7d4c837d871f06275760900ff6e76722055b1ce793a1"
+    },
+    {
+      "configuration": "id_pud",
+      "complete_prefix_sentences": 16,
+      "token_count": 333,
+      "location_count": 8,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "14a7ee52775f7a55e792a939fa65a9200eb17f9b800b4d085d32c89810ed1a6b"
+    },
+    {
+      "configuration": "ja_pud",
+      "complete_prefix_sentences": 11,
+      "token_count": 339,
+      "location_count": 6,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "a88f1c891633170b493a6df01d4401ceea203d760866d90afb13d7384967a032"
+    },
+    {
+      "configuration": "ko_pud",
+      "complete_prefix_sentences": 14,
+      "token_count": 290,
+      "location_count": 8,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "01e10b1ac949c262012bbe6203dd53491ff9befa8b5b9a6de48bed878b2d45ca"
+    },
+    {
+      "configuration": "qaf_arabizi",
+      "complete_prefix_sentences": 27,
+      "token_count": 362,
+      "location_count": 7,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "0c2241cc38beed6a7a2518656e91f292a8df9a041be1ee9f63e8412cbe76ca34"
+    },
+    {
+      "configuration": "nno_norne",
+      "complete_prefix_sentences": 37,
+      "token_count": 359,
+      "location_count": 1,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "8ed7a550a590f80768815d7dd9ace844d642c812aa8937df2d13745c1b336031"
+    },
+    {
+      "configuration": "nob_norne",
+      "complete_prefix_sentences": 21,
+      "token_count": 375,
+      "location_count": 4,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "1f82620b00f7090dffbffbdbe811b670622fde9cdac6af64f87bb2cb96f9cc81"
+    },
+    {
+      "configuration": "pt_bosque",
+      "complete_prefix_sentences": 24,
+      "token_count": 344,
+      "location_count": 10,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "f2eda778fe16792795ca9e7e056111183659f91fc19dea84017657f372a384f9"
+    },
+    {
+      "configuration": "pt_pud",
+      "complete_prefix_sentences": 14,
+      "token_count": 381,
+      "location_count": 5,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "1e1a0a35b724e1673f9eeb7820323328af4bd20c0bddbbf69665dc6ef0499318"
+    },
+    {
+      "configuration": "ro_legalnero",
+      "complete_prefix_sentences": 6,
+      "token_count": 317,
+      "location_count": 3,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "e6d984aeb40b5838fd70d12f5b2aa3f761a429a49600813ad612867a5774e9d0"
+    },
+    {
+      "configuration": "ru_pud",
+      "complete_prefix_sentences": 10,
+      "token_count": 226,
+      "location_count": 2,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "8d30e3b2bb412db34bb62b949b34b76fe63876801f0b7b324ee74ceaa695208b"
+    },
+    {
+      "configuration": "sr_set",
+      "complete_prefix_sentences": 13,
+      "token_count": 312,
+      "location_count": 26,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "b297d81adf0b376d41f883073552473d4ff8859898698cde293d4c4cf80fd534"
+    },
+    {
+      "configuration": "sk_snk",
+      "complete_prefix_sentences": 24,
+      "token_count": 326,
+      "location_count": 5,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "f6e90050e9b2ef0c37917092186a7fb91d2e0abb23861f764c7513dac1e36630"
+    },
+    {
+      "configuration": "sl_ssj",
+      "complete_prefix_sentences": 17,
+      "token_count": 338,
+      "location_count": 8,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "b420e0863f2e9d2004feaad62a18f76d7c559344af361486aa3acf2f3ddaed68"
+    },
+    {
+      "configuration": "sv_lines",
+      "complete_prefix_sentences": 28,
+      "token_count": 340,
+      "location_count": 0,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "799d7f11d0a99b4aa7623fdf010a40db371fb4eae3ad97a058b92c1f7f3f41d8"
+    },
+    {
+      "configuration": "sv_pud",
+      "complete_prefix_sentences": 16,
+      "token_count": 327,
+      "location_count": 6,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "ebec705568ec5bb7bcdead689606ac4abb6639903b9dee13d45af24e27628387"
+    },
+    {
+      "configuration": "sv_talbanken",
+      "complete_prefix_sentences": 29,
+      "token_count": 342,
+      "location_count": 1,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "245d6bd43fd28f65aea67f89fb5f81d803993f7fd543630b52913e100d8dc500"
+    },
+    {
+      "configuration": "tl_trg",
+      "complete_prefix_sentences": 60,
+      "token_count": 319,
+      "location_count": 3,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "cda75935e123f4fd696732aee8e95b4074ccd91794b49359d40b62356ee0d97f"
+    },
+    {
+      "configuration": "tl_ugnayan",
+      "complete_prefix_sentences": 32,
+      "token_count": 380,
+      "location_count": 0,
+      "status": "valid",
+      "bytes_read": 8192,
+      "prefix_sha256": "31984123fc346167b7d14d3a5de9a1188ee501c8de2fab169de9383301e58a1b"
+    }
+  ]
+}

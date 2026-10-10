@@ -1,4 +1,5 @@
 import typing as t
+from dataclasses import dataclass
 
 import spacy
 import spacy.tokens
@@ -30,6 +31,17 @@ if t.TYPE_CHECKING:
 # Throughput and display only: neither changes the embeddings that come back.
 _ENCODE_BATCH_SIZE = 32  # pragma: no mutate
 _SHOW_ENCODE_PROGRESS = True  # pragma: no mutate
+
+
+@dataclass(frozen=True)
+class _SearchState:
+    """The per-document lists that each search pass of one tier reads and fills."""
+
+    texts: list[str]
+    references: list[list[tuple[int, int]]]
+    contexts: list[list[str]]
+    candidates: list[list[list["Feature"]]]
+    results: list[list[tuple[str, str] | None]]
 
 
 class SentenceTransformerResolver(
@@ -319,14 +331,13 @@ class SentenceTransformerResolver(
             results: Per-reference referents, filled in place
             tiers: How far to expand the search on this pass
         """
+        state = _SearchState(texts, references, contexts, candidates, results)
         for method in self.SEARCH_METHODS:
             # The exact method cannot yield anything new once the search widens
             if method == "exact" and tiers > 1:
                 continue
 
-            self._search_once(
-                texts, references, contexts, candidates, results, method, tiers
-            )
+            self._search_once(state, method, tiers)
 
             if self._all_resolved(results):
                 # pragma: no mutate start - last statement of the loop with
@@ -350,13 +361,9 @@ class SentenceTransformerResolver(
         """
         return all(all(r is not None for r in doc_results) for doc_results in results)
 
-    def _search_once(  # noqa: PLR0913, PLR0917 - internal step taking each search setting of the resolver
+    def _search_once(
         self,
-        texts: list[str],
-        references: list[list[tuple[int, int]]],
-        contexts: list[list[str]],
-        candidates: list[list[list["Feature"]]],
-        results: list[list[tuple[str, str] | None]],
+        state: _SearchState,
         method: SearchMethod,
         tiers: int,
     ) -> None:
@@ -364,17 +371,23 @@ class SentenceTransformerResolver(
         Run one gather/embed/evaluate pass, updating candidates and results.
 
         Args:
-            texts: Document texts
-            references: Per-document reference spans
-            contexts: Per-reference context strings
-            candidates: Per-reference candidate features, extended in place
-            results: Per-reference referents, filled in place
+            state: The texts, spans, contexts, candidates and results of the
+                   resolution, with candidates extended and results filled in place
             method: Gazetteer search method for this pass
             tiers: How far to expand the search for this pass
         """
-        self._gather_candidates(texts, references, candidates, results, method, tiers)
-        self._embed_candidates(candidates, results)
-        self._evaluate_candidates(contexts, candidates, results, self.min_similarity)
+        self._gather_candidates(
+            state.texts,
+            state.references,
+            state.candidates,
+            state.results,
+            method,
+            tiers,
+        )
+        self._embed_candidates(state.candidates, state.results)
+        self._evaluate_candidates(
+            state.contexts, state.candidates, state.results, self.min_similarity
+        )
 
     def _extract_contexts(
         self, texts: list[str], references: list[list[tuple[int, int]]]

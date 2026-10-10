@@ -2,6 +2,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 from scripts.quality_gauntlet import (
+    StageSwitches,
     build_stages,
     cleanup_docker_image,
     main,
@@ -136,7 +137,8 @@ def test_diagnostic_baseline_uses_the_same_package_coverage_floor(
     tmp_path: Path,
 ) -> None:
     baseline = _named_stage(
-        build_stages(Path("/repo"), tmp_path, include_baseline=True), "baseline"
+        build_stages(Path("/repo"), tmp_path, StageSwitches(include_baseline=True)),
+        "baseline",
     )
 
     assert "--cov-fail-under=0" in baseline.commands[0]
@@ -206,14 +208,16 @@ def test_uv_quality_commands_do_not_resolve_network_dependencies(
 def test_offline_quality_mode_checks_for_a_lockfile_without_fetching(
     tmp_path: Path,
 ) -> None:
-    stages = build_stages(Path("/repo"), tmp_path, offline=True)
+    stages = build_stages(Path("/repo"), tmp_path, StageSwitches(offline=True))
 
     dependencies = next(stage for stage in stages if stage.name == "dependencies")
     assert ("uv", "lock", "--check-exists", "--offline") in dependencies.commands
 
 
 def test_offline_smoke_build_reuses_the_provisioned_backend(tmp_path: Path) -> None:
-    stages = build_stages(Path("/repo"), tmp_path, offline=True, skip_docker=True)
+    stages = build_stages(
+        Path("/repo"), tmp_path, StageSwitches(offline=True, skip_docker=True)
+    )
 
     smoke = next(stage for stage in stages if stage.name == "smoke")
     assert (
@@ -227,7 +231,9 @@ def test_offline_smoke_build_reuses_the_provisioned_backend(tmp_path: Path) -> N
 
 
 def test_quality_stages_can_skip_expensive_local_checks(tmp_path: Path) -> None:
-    stages = build_stages(Path("/repo"), tmp_path, skip_mutation=True, skip_docker=True)
+    stages = build_stages(
+        Path("/repo"), tmp_path, StageSwitches(skip_mutation=True, skip_docker=True)
+    )
 
     assert "mutation" not in {stage.name for stage in stages}
     smoke = next(stage for stage in stages if stage.name == "smoke")
@@ -242,7 +248,9 @@ def test_mutation_gate_uses_the_measured_no_tests_baseline(tmp_path: Path) -> No
 
 
 def _smoke_stage(tmp_path: Path):
-    stages = build_stages(Path("/repo"), tmp_path, docker_tag="geoparser:test")
+    stages = build_stages(
+        Path("/repo"), tmp_path, StageSwitches(docker_tag="geoparser:test")
+    )
     return next(stage for stage in stages if stage.name == "smoke")
 
 

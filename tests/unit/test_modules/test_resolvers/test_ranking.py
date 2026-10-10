@@ -37,7 +37,8 @@ class TestPopulationPrior:
 
     def test_ignores_unparsable_values(self):
         """A malformed population is treated as unknown."""
-        assert population_prior("n/a") == 0.0
+        # Gazetteer records are untyped JSON, so a string is passed on purpose.
+        assert population_prior("n/a") == 0.0  # ty: ignore[invalid-argument-type]
         assert population_prior(-5) == 0.0
 
 
@@ -60,6 +61,13 @@ class TestCombinedScores:
         scores = combined_scores([0.9, 0.4], [10, 1_000_000], 0.1)
 
         assert scores[0] > scores[1]
+
+    def test_a_missing_population_adds_no_boost(self):
+        """An unknown population contributes nothing; a known one still counts."""
+        scores = combined_scores([0.5, 0.4], [None, 1_000_000], 0.1)
+
+        assert scores[0] == 0.5
+        assert scores[1] > 0.4
 
 
 @pytest.mark.unit

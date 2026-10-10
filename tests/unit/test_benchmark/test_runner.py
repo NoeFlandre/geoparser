@@ -228,10 +228,12 @@ def test_run_phase_skips_models_when_every_document_is_checkpointed(
         [document()],
         state,
         tmp_path / "checkpoint.json",
-        device="cpu",
-        min_similarity=0.0,
-        chunk_size=1,
-        log=messages.append,
+        settings=runner.PhaseSettings(
+            device="cpu",
+            min_similarity=0.0,
+            chunk_size=1,
+            log=messages.append,
+        ),
     )
 
     assert (names, build_models.call_count, messages) == (
@@ -264,10 +266,12 @@ def test_run_phase_builds_models_and_runs_only_remaining_documents(
         documents,
         state,
         tmp_path / "checkpoint.json",
-        device="cpu",
-        min_similarity=0.2,
-        chunk_size=2,
-        log=messages.append,
+        settings=runner.PhaseSettings(
+            device="cpu",
+            min_similarity=0.2,
+            chunk_size=2,
+            log=messages.append,
+        ),
     )
 
     execution, remaining, models = run_chunks.call_args.args
