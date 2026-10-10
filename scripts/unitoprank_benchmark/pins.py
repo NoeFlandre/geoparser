@@ -88,7 +88,19 @@ def verify_checkout(
         if actual != expected:
             problems.append(f"changed: {relative} is {actual}, pinned {expected}")
     problems.extend(_unreviewed_modules(checkout, blobs))
+    problems.extend(f"symlink: {name}" for name in _symlinks(checkout))
     return problems
+
+
+def _symlinks(checkout: Path) -> list[str]:
+    """Return the sorted POSIX paths of symbolic links outside Git's metadata."""
+    names = (
+        path.relative_to(checkout).as_posix()
+        for path in checkout.rglob("*")
+        if path.is_symlink()
+    )
+    # A symlinked directory can hide importable files outside the listing above.
+    return sorted(name for name in names if not name.startswith(".git/"))
 
 
 def _unreviewed_modules(checkout: Path, blobs: t.Mapping[str, str]) -> list[str]:

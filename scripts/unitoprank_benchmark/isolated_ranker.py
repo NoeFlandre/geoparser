@@ -97,7 +97,8 @@ def rank_in_reviewed_environment(
             "-s",
             "-m",
             "scripts.unitoprank_benchmark.isolated_ranker",
-            str(checkout),
+            # The child runs from the repository root, so resolve the path here.
+            str(checkout.resolve()),
         ],
         input=json.dumps(request),
         capture_output=True,

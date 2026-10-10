@@ -195,3 +195,17 @@ def test_a_foreign_unitorank_is_refused_before_its_code_runs(
     with pytest.raises(UpstreamMismatchError, match="imported from"):
         load_rank_toponyms(checkout)
     assert not marker.exists()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="creating symlinks needs rights")
+def test_a_symlinked_directory_in_the_checkout_is_refused(tmp_path):
+    outside = tmp_path / "outside" / "rapidfuzz"
+    outside.mkdir(parents=True)
+    (outside / "__init__.py").write_text("RAISED = True\n", encoding="utf-8")
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    (checkout / "rapidfuzz").symlink_to(outside, target_is_directory=True)
+
+    problems = verify_checkout(checkout, blobs={})
+
+    assert "symlink: rapidfuzz" in problems
