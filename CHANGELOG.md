@@ -8,6 +8,17 @@ This file records all notable changes to GeoParser. The project follows
 
 ### Added
 
+- Add a pinned roster of native-language spaCy 3.8.0 baselines for the 85
+  target codes. It routes 23 codes to their official NER pipelines and records
+  the other 62 as unsupported. An unsupported code is never routed to the
+  English pipeline, and no model predicts it. Label harmonization to `LOC` is
+  explicit per language. The English cross-language control is reported
+  separately as transfer, on the non-English codes that have a native pipeline.
+  Each selected wheel was downloaded once to record its sha256 digest, then
+  deleted. Its byte size and NER labels were checked against it. GitHub exposes
+  no digest for these assets. The licenses come from the Hub model cards, which
+  describe spaCy 3.7.x content, so they are not checked against the wheels. No
+  pipeline has been installed or run.
 - Add offline contracts for comparing Qwen3-Reranker-0.6B and
   jina-reranker-v3.5 on identical frozen candidate lists. They pin both
   checkpoints and gate the custom code of the Jina checkpoint behind its

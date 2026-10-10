@@ -1,0 +1,214 @@
+"""Score native baselines on shared examples with matched and transfer kept apart.
+
+Three groups are reported and never merged:
+
+* ``matched``: a native pipeline scored on examples in its own language.
+* ``transfer``: the English cross-language control scored on every
+  non-English language that also has a matched native recognizer, so the
+  transfer group covers exactly the non-English languages of the matched group.
+  These are labelled transfer scores, not native results.
+* ``unsupported``: languages with no native pipeline. They are counted and
+  never predicted by any model, including the English control in either group.
+
+``matched_macro`` may include the native English score, which transfer never
+includes. ``paired_matched_macro`` averages matched scores over exactly the
+transfer languages, so it is the figure to compare with ``transfer_macro``.
+"""
+
+from __future__ import annotations
+
+import time
+from collections.abc import Mapping, Sequence
+from typing import Any, Protocol
+
+from scripts.panx_benchmark.data import Example
+from scripts.panx_benchmark.metrics import Counts, macro_scores
+from scripts.spacy_native_baselines.roster import (
+    ENGLISH_CONTROL_LANGUAGE,
+    NativePipeline,
+    Roster,
+)
+
+
+class BatchPredictor(Protocol):
+    """Predict place spans for an ordered batch of texts."""
+
+    def predict_batch(self, texts: list[str]) -> list[set[tuple[int, int]]]:
+        """Return one span set per input text."""
+
+
+def _batches(examples: Sequence[Example], batch_size: int) -> list[Sequence[Example]]:
+    return [
+        examples[start : start + batch_size]
+        for start in range(0, len(examples), batch_size)
+    ]
+
+
+def _warm_up(predictor: BatchPredictor, batches: list[Sequence[Example]]) -> None:
+    """Run one untimed batch, as the PAN-X runner does, before any timing starts.
+
+    One-time model and backend startup must not be charged to this predictor's
+    throughput, so the first batch is predicted once without being measured.
+    """
+    if batches:
+        predictor.predict_batch([example.text for example in batches[0]])
+
+
+def _score(
+    predictor: BatchPredictor,
+    examples: Sequence[Example],
+    batch_size: int,
+) -> dict[str, Any]:
+    counts = Counts()
+    batches = _batches(examples, batch_size)
+    _warm_up(predictor, batches)
+    for batch in batches:
+        started = time.perf_counter()
+        predictions = predictor.predict_batch([example.text for example in batch])
+        counts.elapsed_seconds += time.perf_counter() - started
+        if len(predictions) != len(batch):
+            message = "A predictor must return one span set per input text."
+            raise ValueError(message)
+        for example, spans in zip(batch, predictions, strict=True):
+            counts.add(example.gold_spans, spans, text_length=len(example.text))
+            counts.malformed_gold_tags += example.malformed_location_tags
+    return counts.scores()
+
+
+def _positive_batch_size(value: Any) -> int:
+    if type(value) is not int or value < 1:
+        message = "batch_size must be a positive integer."
+        raise ValueError(message)
+    return value
+
+
+def _check_example_languages(
+    examples_by_language: Mapping[str, Sequence[Example]],
+) -> None:
+    for language, examples in examples_by_language.items():
+        for example in examples:
+            if example.language != language:
+                message = (
+                    f"Example labelled {example.language!r} is filed under "
+                    f"{language!r}; each example must sit under its own language."
+                )
+                raise ValueError(message)
+
+
+def _check_recorded_pipeline(
+    language: str,
+    predictor: BatchPredictor,
+    pipeline: NativePipeline,
+) -> None:
+    """Require the predictor's recorded identity to match the routed pipeline."""
+    expected = {
+        "language": pipeline.language,
+        "package": pipeline.package,
+        "version": pipeline.version,
+        "place_label_map": dict(pipeline.place_label_map),
+    }
+    config = getattr(predictor, "config", None)
+    recorded = (
+        {key: config.get(key) for key in expected}
+        if isinstance(config, Mapping)
+        else None
+    )
+    if recorded != expected:
+        message = (
+            f"Predictor for {language!r} does not record its routed pipeline "
+            f"{pipeline.package!r} version {pipeline.version!r}."
+        )
+        raise ValueError(message)
+
+
+def _check_native_recognizers(
+    recognizers: Mapping[str, BatchPredictor],
+    roster: Roster,
+) -> None:
+    for language, recognizer in recognizers.items():
+        route = roster.route(language)
+        if route.pipeline is None:
+            message = (
+                f"Refusing to attach a recognizer to unsupported language "
+                f"{language!r}: {route.reason}"
+            )
+            raise ValueError(message)
+        _check_recorded_pipeline(language, recognizer, route.pipeline)
+
+
+def _matched_scores(
+    recognizers: Mapping[str, BatchPredictor],
+    examples_by_language: Mapping[str, Sequence[Example]],
+    batch_size: int,
+) -> dict[str, dict[str, Any]]:
+    return {
+        language: _score(
+            recognizers[language], examples_by_language[language], batch_size
+        )
+        for language in examples_by_language
+        if language in recognizers
+    }
+
+
+def _transfer_scores(
+    english_control: BatchPredictor | None,
+    examples_by_language: Mapping[str, Sequence[Example]],
+    recognizers: Mapping[str, BatchPredictor],
+    batch_size: int,
+) -> dict[str, dict[str, Any]]:
+    """Score transfer only where a matched recognizer exists, so groups pair up."""
+    if english_control is None:
+        return {}
+    return {
+        language: _score(english_control, examples, batch_size)
+        for language, examples in examples_by_language.items()
+        if language != ENGLISH_CONTROL_LANGUAGE and language in recognizers
+    }
+
+
+def _unsupported_counts(
+    examples_by_language: Mapping[str, Sequence[Example]],
+    roster: Roster,
+) -> dict[str, dict[str, Any]]:
+    unsupported: dict[str, dict[str, Any]] = {}
+    for language, examples in examples_by_language.items():
+        route = roster.route(language)
+        if route.pipeline is None:
+            unsupported[language] = {
+                "sentences": len(examples),
+                "reason": route.reason,
+            }
+    return unsupported
+
+
+def evaluate_baselines(
+    examples_by_language: Mapping[str, Sequence[Example]],
+    recognizers: Mapping[str, BatchPredictor],
+    english_control: BatchPredictor | None,
+    roster: Roster,
+    *,
+    batch_size: int = 8,
+) -> dict[str, Any]:
+    """Score every arm on the same examples and return the three groups."""
+    batch_size = _positive_batch_size(batch_size)
+    _check_example_languages(examples_by_language)
+    _check_native_recognizers(recognizers, roster)
+    if english_control is not None:
+        _check_recorded_pipeline(
+            ENGLISH_CONTROL_LANGUAGE, english_control, roster.english_control
+        )
+    matched = _matched_scores(recognizers, examples_by_language, batch_size)
+    transfer = _transfer_scores(
+        english_control, examples_by_language, recognizers, batch_size
+    )
+    paired = {
+        language: scores for language, scores in matched.items() if language in transfer
+    }
+    return {
+        "matched": matched,
+        "matched_macro": macro_scores(matched),
+        "paired_matched_macro": macro_scores(paired),
+        "transfer": transfer,
+        "transfer_macro": macro_scores(transfer),
+        "unsupported": _unsupported_counts(examples_by_language, roster),
+    }

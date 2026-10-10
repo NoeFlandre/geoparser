@@ -1,0 +1,1062 @@
+{
+  "format": "spacy-native-baseline-roster-v1",
+  "retrieved_on": "2026-10-09",
+  "target_languages_source": "scripts/panx_benchmark/target_languages.json",
+  "sources": {
+    "compatibility": "https://raw.githubusercontent.com/explosion/spacy-models/master/compatibility.json",
+    "release_api": "https://api.github.com/repos/explosion/spacy-models/releases/tags/<package>-3.8.0",
+    "model_cards": "https://huggingface.co/spacy/<package>"
+  },
+  "model_version": "3.8.0",
+  "spacy_runtime": ">=3.8.0,<3.9.0",
+  "verification": {
+    "wheels_downloaded": true,
+    "sha256_verified": true,
+    "sha256_note": "Wheels were downloaded once from the release URLs, hashed, checked against wheel_bytes and meta.json labels, then deleted. GitHub exposes no digest for these wheels.",
+    "license_and_label_source": "Hub model cards and Hub API cardData of the same package names; those describe spaCy 3.7.x content, not the 3.8.0 wheels",
+    "hub_revision_pin": "not recorded: Hub main describes 3.7.x content"
+  },
+  "english_control": {
+    "package": "en_core_web_sm",
+    "policy": "Scored only as a labelled cross-language transfer control on non-English examples; never reported as a native result and never used as a fallback for an unsupported language."
+  },
+  "code_mapping": {
+    "no": "nb",
+    "note": "target code no (Norwegian) uses the spaCy Norwegian Bokmal pipeline nb_core_news_sm; Nynorsk coverage is not claimed"
+  },
+  "excluded_packages": [
+    {
+      "package": "hr_core_news_sm",
+      "reason": "Croatian pipeline; hr is not in the 85-language target list"
+    },
+    {
+      "package": "xx_ent_wiki_sm",
+      "reason": "multilingual pipeline, not a native-language baseline; not selected or routed"
+    }
+  ],
+  "selection_policy": "one small (_sm) pipeline per native language; larger variants are listed but not selected",
+  "languages": {
+    "af": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "am": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "ar": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "az": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "be": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "bg": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "bn": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "ca": {
+      "status": "native",
+      "spacy_language": "ca",
+      "package": "ca_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "ca_core_news_sm-3.8.0",
+      "wheel": "ca_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 19566606,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/ca_core_news_sm-3.8.0/ca_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "e214211aa8da91c24ebdc453c2aa5f54fac09f44e01e65bcbdd3b0a5cb94d809",
+      "license": "gpl-3.0",
+      "ner_labels": [
+        "LOC",
+        "MISC",
+        "ORG",
+        "PER"
+      ],
+      "place_label_map": {
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "ca_core_news_lg",
+        "ca_core_news_md",
+        "ca_core_news_trf"
+      ]
+    },
+    "ceb": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "cs": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "cy": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "da": {
+      "status": "native",
+      "spacy_language": "da",
+      "package": "da_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "da_core_news_sm-3.8.0",
+      "wheel": "da_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 12378278,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/da_core_news_sm-3.8.0/da_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "8caeb4dc26f56de8abcf70399b202a0b2223d38664b1a59f1cb8db0000808bc9",
+      "license": "cc-by-sa-4.0",
+      "ner_labels": [
+        "LOC",
+        "MISC",
+        "ORG",
+        "PER"
+      ],
+      "place_label_map": {
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "da_core_news_lg",
+        "da_core_news_md",
+        "da_core_news_trf"
+      ]
+    },
+    "de": {
+      "status": "native",
+      "spacy_language": "de",
+      "package": "de_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "de_core_news_sm-3.8.0",
+      "wheel": "de_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 14639490,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "fec69fec52b1780f2d269d5af7582a5e28028738bd3190532459aeb473bfa3e7",
+      "license": "mit",
+      "ner_labels": [
+        "LOC",
+        "MISC",
+        "ORG",
+        "PER"
+      ],
+      "place_label_map": {
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "de_core_news_lg",
+        "de_core_news_md",
+        "de_dep_news_trf"
+      ]
+    },
+    "el": {
+      "status": "native",
+      "spacy_language": "el",
+      "package": "el_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "el_core_news_sm-3.8.0",
+      "wheel": "el_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 12607208,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/el_core_news_sm-3.8.0/el_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "18df59b7f099a20d6f7cc1f964a57408a4c1663b73b5110932c1ea24f66e3027",
+      "license": "cc-by-nc-sa-3.0",
+      "ner_labels": [
+        "EVENT",
+        "GPE",
+        "LOC",
+        "ORG",
+        "PERSON",
+        "PRODUCT"
+      ],
+      "place_label_map": {
+        "GPE": "LOC",
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "el_core_news_lg",
+        "el_core_news_md"
+      ]
+    },
+    "en": {
+      "status": "native",
+      "spacy_language": "en",
+      "package": "en_core_web_sm",
+      "version": "3.8.0",
+      "release_tag": "en_core_web_sm-3.8.0",
+      "wheel": "en_core_web_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 12806118,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+      "sha256": "1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85",
+      "license": "mit",
+      "ner_labels": [
+        "CARDINAL",
+        "DATE",
+        "EVENT",
+        "FAC",
+        "GPE",
+        "LANGUAGE",
+        "LAW",
+        "LOC",
+        "MONEY",
+        "NORP",
+        "ORDINAL",
+        "ORG",
+        "PERCENT",
+        "PERSON",
+        "PRODUCT",
+        "QUANTITY",
+        "TIME",
+        "WORK_OF_ART"
+      ],
+      "place_label_map": {
+        "FAC": "LOC",
+        "GPE": "LOC",
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "en_core_web_hftrf",
+        "en_core_web_lg",
+        "en_core_web_md",
+        "en_core_web_trf"
+      ],
+      "role": "matched native pipeline and english cross-language control"
+    },
+    "eo": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "es": {
+      "status": "native",
+      "spacy_language": "es",
+      "package": "es_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "es_core_news_sm-3.8.0",
+      "wheel": "es_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 12884212,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "e451a83d6df79b87e9eed0cb553f03e99e36a3bab18a7b79f0dcfd1fdf875e12",
+      "license": "gpl-3.0",
+      "ner_labels": [
+        "LOC",
+        "MISC",
+        "ORG",
+        "PER"
+      ],
+      "place_label_map": {
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "es_core_news_lg",
+        "es_core_news_md",
+        "es_dep_news_trf"
+      ]
+    },
+    "et": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "eu": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "fa": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "fi": {
+      "status": "native",
+      "spacy_language": "fi",
+      "package": "fi_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "fi_core_news_sm-3.8.0",
+      "wheel": "fi_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 14346621,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/fi_core_news_sm-3.8.0/fi_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "5b9bd1496f500c1fac98f5e6a5d3913aa502f188c094ecea191dc6b8a81f418d",
+      "license": "cc-by-sa-4.0",
+      "ner_labels": [
+        "CARDINAL",
+        "DATE",
+        "EVENT",
+        "FAC",
+        "GPE",
+        "LANGUAGE",
+        "LAW",
+        "LOC",
+        "MONEY",
+        "NORP",
+        "ORDINAL",
+        "ORG",
+        "PERCENT",
+        "PERSON",
+        "PRODUCT",
+        "QUANTITY",
+        "TIME",
+        "WORK_OF_ART"
+      ],
+      "place_label_map": {
+        "FAC": "LOC",
+        "GPE": "LOC",
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "fi_core_news_lg",
+        "fi_core_news_md"
+      ]
+    },
+    "fr": {
+      "status": "native",
+      "spacy_language": "fr",
+      "package": "fr_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "fr_core_news_sm-3.8.0",
+      "wheel": "fr_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 16271721,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.8.0/fr_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "7d6ad14cd5078e53147bfbf70fb9d433c6a3865b695fda2657140bbc59a27e29",
+      "license": "lgpl-lr",
+      "ner_labels": [
+        "LOC",
+        "MISC",
+        "ORG",
+        "PER"
+      ],
+      "place_label_map": {
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "fr_core_news_lg",
+        "fr_core_news_md",
+        "fr_dep_news_trf"
+      ]
+    },
+    "fy": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "ga": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "gd": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "gl": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "gu": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "ha": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "he": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "hi": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "hu": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "hy": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "id": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "ig": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "is": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "it": {
+      "status": "native",
+      "spacy_language": "it",
+      "package": "it_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "it_core_news_sm-3.8.0",
+      "wheel": "it_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 13030943,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/it_core_news_sm-3.8.0/it_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "3f617bf9a8ae0418953cf1fbf014e10272684c4229e882a7fd748b637d0100bf",
+      "license": "cc-by-nc-sa-3.0",
+      "ner_labels": [
+        "LOC",
+        "MISC",
+        "ORG",
+        "PER"
+      ],
+      "place_label_map": {
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "it_core_news_lg",
+        "it_core_news_md"
+      ]
+    },
+    "ja": {
+      "status": "native",
+      "spacy_language": "ja",
+      "package": "ja_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "ja_core_news_sm-3.8.0",
+      "wheel": "ja_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 12087517,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/ja_core_news_sm-3.8.0/ja_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "65693016b7cf33ffa845af3523a9c9b8d9aabae85dfc2e46731513a5e03def04",
+      "license": "cc-by-sa-4.0",
+      "ner_labels": [
+        "CARDINAL",
+        "DATE",
+        "EVENT",
+        "FAC",
+        "GPE",
+        "LANGUAGE",
+        "LAW",
+        "LOC",
+        "MONEY",
+        "MOVEMENT",
+        "NORP",
+        "ORDINAL",
+        "ORG",
+        "PERCENT",
+        "PERSON",
+        "PET_NAME",
+        "PHONE",
+        "PRODUCT",
+        "QUANTITY",
+        "TIME",
+        "TITLE_AFFIX",
+        "WORK_OF_ART"
+      ],
+      "place_label_map": {
+        "FAC": "LOC",
+        "GPE": "LOC",
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [
+        "sudachipy!=0.6.1,>=0.5.2",
+        "sudachidict_core>=20211220"
+      ],
+      "other_3_8_packages_not_selected": [
+        "ja_core_news_lg",
+        "ja_core_news_md",
+        "ja_core_news_trf"
+      ]
+    },
+    "jv": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "ka": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "kk": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "km": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "kn": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "ko": {
+      "status": "native",
+      "spacy_language": "ko",
+      "package": "ko_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "ko_core_news_sm-3.8.0",
+      "wheel": "ko_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 14704988,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/ko_core_news_sm-3.8.0/ko_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "15486b93a22ec8ee43f787390afdb4e2086851573eb12b69dd2c4f2a95b3e0a4",
+      "license": "cc-by-sa-4.0",
+      "ner_labels": [
+        "DT",
+        "LC",
+        "OG",
+        "PS",
+        "QT",
+        "TI"
+      ],
+      "place_label_map": {
+        "LC": "LOC"
+      },
+      "label_meaning_basis": "unverified_label_meaning",
+      "extra_requirements": [
+        "natto-py>=0.9.0"
+      ],
+      "other_3_8_packages_not_selected": [
+        "ko_core_news_lg",
+        "ko_core_news_md"
+      ]
+    },
+    "ku": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "ky": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "la": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "lt": {
+      "status": "native",
+      "spacy_language": "lt",
+      "package": "lt_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "lt_core_news_sm-3.8.0",
+      "wheel": "lt_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 13246100,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/lt_core_news_sm-3.8.0/lt_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "c1f709112fd01771c10fbd2fe7e01d9d65712c8bccd9171065a29f91c9dc151e",
+      "license": "cc-by-sa-4.0",
+      "ner_labels": [
+        "GPE",
+        "LOC",
+        "ORG",
+        "PERSON",
+        "PRODUCT",
+        "TIME"
+      ],
+      "place_label_map": {
+        "GPE": "LOC",
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "lt_core_news_lg",
+        "lt_core_news_md"
+      ]
+    },
+    "lv": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "mg": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "mk": {
+      "status": "native",
+      "spacy_language": "mk",
+      "package": "mk_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "mk_core_news_sm-3.8.0",
+      "wheel": "mk_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 18148992,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/mk_core_news_sm-3.8.0/mk_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "b6cf76608af1cf785523406b22e932fdc09a4d37c352d668a67639c446e29ad7",
+      "license": "cc-by-sa-4.0",
+      "ner_labels": [
+        "CARDINAL",
+        "DATE",
+        "EVENT",
+        "FAC",
+        "GPE",
+        "LANGUAGE",
+        "LAW",
+        "LOC",
+        "MONEY",
+        "NORP",
+        "ORDINAL",
+        "ORG",
+        "PERCENT",
+        "PERSON",
+        "PRODUCT",
+        "QUANTITY",
+        "TIME",
+        "WORK_OF_ART"
+      ],
+      "place_label_map": {
+        "FAC": "LOC",
+        "GPE": "LOC",
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "mk_core_news_lg",
+        "mk_core_news_md"
+      ]
+    },
+    "ml": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "mn": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "mr": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "ms": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "mt": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "my": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "ne": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "nl": {
+      "status": "native",
+      "spacy_language": "nl",
+      "package": "nl_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "nl_core_news_sm-3.8.0",
+      "wheel": "nl_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 12825227,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "a76978477821f213ca76a46c686df1b1d41462905d4868bc53eac086adca8b7e",
+      "license": "cc-by-sa-4.0",
+      "ner_labels": [
+        "CARDINAL",
+        "DATE",
+        "EVENT",
+        "FAC",
+        "GPE",
+        "LANGUAGE",
+        "LAW",
+        "LOC",
+        "MONEY",
+        "NORP",
+        "ORDINAL",
+        "ORG",
+        "PERCENT",
+        "PERSON",
+        "PRODUCT",
+        "QUANTITY",
+        "TIME",
+        "WORK_OF_ART"
+      ],
+      "place_label_map": {
+        "FAC": "LOC",
+        "GPE": "LOC",
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "nl_core_news_lg",
+        "nl_core_news_md"
+      ]
+    },
+    "no": {
+      "status": "native",
+      "spacy_language": "nb",
+      "package": "nb_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "nb_core_news_sm-3.8.0",
+      "wheel": "nb_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 12488349,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/nb_core_news_sm-3.8.0/nb_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "086f2cfcc1568b2ee49a2ab297f7910f2645ae6892f2d5d15d8b077f5d0bd773",
+      "license": "mit",
+      "ner_labels": [
+        "DRV",
+        "EVT",
+        "GPE_LOC",
+        "GPE_ORG",
+        "LOC",
+        "MISC",
+        "ORG",
+        "PER",
+        "PROD"
+      ],
+      "place_label_map": {
+        "GPE_LOC": "LOC",
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "inferred_from_label_name",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "nb_core_news_lg",
+        "nb_core_news_md"
+      ]
+    },
+    "pa": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "pl": {
+      "status": "native",
+      "spacy_language": "pl",
+      "package": "pl_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "pl_core_news_sm-3.8.0",
+      "wheel": "pl_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 20213213,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/pl_core_news_sm-3.8.0/pl_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "9b536db854b0cdb9132a74f68b392b8112ab6030f971bb03282462362a940dbb",
+      "license": "gpl-3.0",
+      "ner_labels": [
+        "date",
+        "geogName",
+        "orgName",
+        "persName",
+        "placeName",
+        "time"
+      ],
+      "place_label_map": {
+        "geogName": "LOC",
+        "placeName": "LOC"
+      },
+      "label_meaning_basis": "inferred_from_label_name",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "pl_core_news_lg",
+        "pl_core_news_md"
+      ]
+    },
+    "ps": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "pt": {
+      "status": "native",
+      "spacy_language": "pt",
+      "package": "pt_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "pt_core_news_sm-3.8.0",
+      "wheel": "pt_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 12985007,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.8.0/pt_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "c304fa04db3af73cd08a250feacf560506e15a2ec2469bd1b09f06847f6b455c",
+      "license": "cc-by-sa-4.0",
+      "ner_labels": [
+        "LOC",
+        "MISC",
+        "ORG",
+        "PER"
+      ],
+      "place_label_map": {
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "pt_core_news_lg",
+        "pt_core_news_md"
+      ]
+    },
+    "ro": {
+      "status": "native",
+      "spacy_language": "ro",
+      "package": "ro_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "ro_core_news_sm-3.8.0",
+      "wheel": "ro_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 12910222,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/ro_core_news_sm-3.8.0/ro_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "3cebfba2437131efe95345adcc7ea2131e4463915652df9099c577e618460cd9",
+      "license": "cc-by-sa-4.0",
+      "ner_labels": [
+        "DATETIME",
+        "EVENT",
+        "FACILITY",
+        "GPE",
+        "LANGUAGE",
+        "LOC",
+        "MONEY",
+        "NAT_REL_POL",
+        "NUMERIC_VALUE",
+        "ORDINAL",
+        "ORGANIZATION",
+        "PERIOD",
+        "PERSON",
+        "PRODUCT",
+        "QUANTITY",
+        "WORK_OF_ART"
+      ],
+      "place_label_map": {
+        "FACILITY": "LOC",
+        "GPE": "LOC",
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "inferred_from_label_name",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "ro_core_news_lg",
+        "ro_core_news_md"
+      ]
+    },
+    "ru": {
+      "status": "native",
+      "spacy_language": "ru",
+      "package": "ru_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "ru_core_news_sm-3.8.0",
+      "wheel": "ru_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 15259622,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.8.0/ru_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "69978d47b43e2c4f329bebdb155e8e9d3861bba1a58ba25551419dae7d7e07fc",
+      "license": "mit",
+      "ner_labels": [
+        "LOC",
+        "ORG",
+        "PER"
+      ],
+      "place_label_map": {
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "ru_core_news_lg",
+        "ru_core_news_md"
+      ]
+    },
+    "si": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "sk": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "sl": {
+      "status": "native",
+      "spacy_language": "sl",
+      "package": "sl_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "sl_core_news_sm-3.8.0",
+      "wheel": "sl_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 13643819,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/sl_core_news_sm-3.8.0/sl_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "d6d11f38c917d59b0fe52a15da09963bdc8011d2be288f75371e734065b6911c",
+      "license": "cc-by-sa-4.0",
+      "ner_labels": [
+        "DERIV_PER",
+        "LOC",
+        "MISC",
+        "ORG",
+        "PER"
+      ],
+      "place_label_map": {
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "sl_core_news_lg",
+        "sl_core_news_md",
+        "sl_core_news_trf"
+      ]
+    },
+    "sq": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "sr": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "sv": {
+      "status": "native",
+      "spacy_language": "sv",
+      "package": "sv_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "sv_core_news_sm-3.8.0",
+      "wheel": "sv_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 12741934,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/sv_core_news_sm-3.8.0/sv_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "be4929fb30523dca0b6672f999cdbf4d64f165419f1eed0014ca3a36599b8b4d",
+      "license": "cc-by-sa-4.0",
+      "ner_labels": [
+        "EVN",
+        "LOC",
+        "MSR",
+        "OBJ",
+        "ORG",
+        "PRS",
+        "TME",
+        "WRK"
+      ],
+      "place_label_map": {
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "sv_core_news_lg",
+        "sv_core_news_md"
+      ]
+    },
+    "ta": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "te": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "tg": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "th": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "tr": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "uk": {
+      "status": "native",
+      "spacy_language": "uk",
+      "package": "uk_core_news_sm",
+      "version": "3.8.0",
+      "release_tag": "uk_core_news_sm-3.8.0",
+      "wheel": "uk_core_news_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 14908659,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/uk_core_news_sm-3.8.0/uk_core_news_sm-3.8.0-py3-none-any.whl",
+      "sha256": "d20adb50b42c0dcfdedf4994dabcb96789a64983a9ab560d0c6c38a59e8efb58",
+      "license": "mit",
+      "ner_labels": [
+        "LOC",
+        "ORG",
+        "PER"
+      ],
+      "place_label_map": {
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [],
+      "other_3_8_packages_not_selected": [
+        "uk_core_news_lg",
+        "uk_core_news_md",
+        "uk_core_news_trf"
+      ]
+    },
+    "ur": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "uz": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "vi": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "xh": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "yi": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "yo": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    },
+    "zh": {
+      "status": "native",
+      "spacy_language": "zh",
+      "package": "zh_core_web_sm",
+      "version": "3.8.0",
+      "release_tag": "zh_core_web_sm-3.8.0",
+      "wheel": "zh_core_web_sm-3.8.0-py3-none-any.whl",
+      "wheel_bytes": 48515003,
+      "wheel_url": "https://github.com/explosion/spacy-models/releases/download/zh_core_web_sm-3.8.0/zh_core_web_sm-3.8.0-py3-none-any.whl",
+      "sha256": "7de3bd267176b9b2a8defb6997c1cd296da16c57b5e712f72ea44a51755421c8",
+      "license": "mit",
+      "ner_labels": [
+        "CARDINAL",
+        "DATE",
+        "EVENT",
+        "FAC",
+        "GPE",
+        "LANGUAGE",
+        "LAW",
+        "LOC",
+        "MONEY",
+        "NORP",
+        "ORDINAL",
+        "ORG",
+        "PERCENT",
+        "PERSON",
+        "PRODUCT",
+        "QUANTITY",
+        "TIME",
+        "WORK_OF_ART"
+      ],
+      "place_label_map": {
+        "FAC": "LOC",
+        "GPE": "LOC",
+        "LOC": "LOC"
+      },
+      "label_meaning_basis": "ontonotes_names",
+      "extra_requirements": [
+        "spacy-pkuseg>=1.0.0,<2.0.0"
+      ],
+      "other_3_8_packages_not_selected": [
+        "zh_core_web_lg",
+        "zh_core_web_md",
+        "zh_core_web_trf"
+      ]
+    },
+    "zu": {
+      "status": "unsupported",
+      "reason": "no official spaCy 3.8 NER pipeline for this code in the 3.8 compatibility list"
+    }
+  }
+}

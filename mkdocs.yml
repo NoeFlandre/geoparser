@@ -72,6 +72,7 @@ nav:
       - Offline Model Pilot: guides/model-pilot.md
       - Otter Recognition: guides/otter-recognition.md
       - Otter Source Review: guides/otter-source-review.md
+      - Native spaCy Baselines: guides/spacy-native-baselines.md
   - API Reference:
       - Geoparser: api/geoparser.md
       - Project: api/project.md
