@@ -98,9 +98,9 @@ def _execute_score_pipeline(monkeypatch, tmp_path):
         return state, ["schema changed"]
 
     def run_phase(
-        phase, pipeline_name, documents, checkpoint, checkpoint_path, **kwargs
+        phase, pipeline_name, documents, checkpoint, checkpoint_path, settings
     ):
-        phases.append((phase, pipeline_name, documents, checkpoint, kwargs))
+        phases.append((phase, pipeline_name, documents, checkpoint, settings))
         return {phase: f"model-{phase}"}
 
     expected = PipelineResult(name="swapped", device="cpu")
@@ -145,11 +145,9 @@ def test_score_pipeline_passes_similarity_and_execution_options(monkeypatch, tmp
 
     assert identity.min_similarity == run.arguments.min_similarity
     assert identity.limit == run.arguments.limit
-    assert phases[0][4] == {
-        "device": "cpu",
-        "min_similarity": 0.4,
-        "chunk_size": 3,
-    }
+    assert phases[0][4] == runner.PhaseSettings(
+        device="cpu", min_similarity=0.4, chunk_size=3
+    )
     assert phases[1][4] == phases[0][4]
 
 
