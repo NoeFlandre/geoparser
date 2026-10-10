@@ -2,6 +2,7 @@
 
 import math
 import typing as t
+from collections.abc import Mapping as _Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -96,8 +97,37 @@ class Annotation:
 Identity = tuple[str | None, int, int]
 
 
-def _location_coordinates(location: t.Any) -> tuple[float | None, float | None]:
+class _ResolvedLocation(t.Protocol):
+    """A place a toponym resolved to: its identifier and gazetteer record."""
+
+    @property
+    def identifier(self) -> str | None: ...
+
+    # Record values are JSON, so their type is left open here: the coordinate
+    # conversion in _location_coordinates is what checks them at runtime.
+    @property
+    def data(self) -> _Mapping[str, t.Any]: ...
+
+
+class _ParsedToponym(t.Protocol):
+    """A recognised toponym: its character span and the place it resolved to."""
+
+    @property
+    def start(self) -> int: ...
+
+    @property
+    def end(self) -> int: ...
+
+    @property
+    def location(self) -> _ResolvedLocation | None: ...
+
+
+def _location_coordinates(
+    location: _ResolvedLocation | None,
+) -> tuple[float | None, float | None]:
     """Return a resolved location's coordinates, when it has usable ones."""
+    if location is None:
+        return None, None
     try:
         return float(location.data["latitude"]), float(location.data["longitude"])
     except (AttributeError, KeyError, TypeError, ValueError):
@@ -105,7 +135,7 @@ def _location_coordinates(location: t.Any) -> tuple[float | None, float | None]:
 
 
 def toponym_annotation(
-    toponym: t.Any,
+    toponym: _ParsedToponym,
     document_id: str | None = None,
     *,
     with_coordinates: bool = False,
@@ -151,8 +181,11 @@ def _resolved_pairs(
     }
 
 
+_V = t.TypeVar("_V")
+
+
 def _record_unique(
-    seen: dict[Identity, t.Any], identity: Identity, value: t.Any, kind: str
+    seen: dict[Identity, _V], identity: Identity, value: _V, kind: str
 ) -> None:
     """Remember a span's value, rejecting a different one for the same span."""
     previous = seen.get(identity)

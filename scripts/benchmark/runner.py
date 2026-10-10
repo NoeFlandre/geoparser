@@ -38,6 +38,16 @@ class _PhaseExecution:
     log: t.Callable[[str], None]
 
 
+@dataclass(frozen=True)
+class PhaseSettings:
+    """How one benchmark phase runs: where, at what threshold, and how it reports."""
+
+    device: str
+    min_similarity: float
+    chunk_size: int
+    log: t.Callable[[str], None] = print
+
+
 def gold_annotations(documents: Sequence[Document]) -> list[t.Any]:
     """Return every gold span as an annotation carrying its coordinates."""
     from geoparser.evaluation import Annotation
@@ -109,17 +119,13 @@ def chunks(items: Sequence[t.Any], size: int) -> list[list[t.Any]]:
     return [list(items[start : start + size]) for start in range(0, len(items), size)]
 
 
-def run_phase(  # noqa: PLR0913 - benchmark entry point mirrors its CLI flags
+def run_phase(
     phase: str,
     pipeline: str,
     documents: Sequence[Document],
     state: ckpt.Checkpoint,
     checkpoint_path: Path,
-    *,
-    device: str,
-    min_similarity: float,
-    chunk_size: int,
-    log: t.Callable[[str], None] = print,
+    settings: PhaseSettings,
 ) -> dict[str, str]:
     """
     Run one phase over every document not already checkpointed.
@@ -130,10 +136,8 @@ def run_phase(  # noqa: PLR0913 - benchmark entry point mirrors its CLI flags
         documents: The whole corpus slice under test
         state: The checkpoint to read from and extend
         checkpoint_path: Where to persist the checkpoint
-        device: Where to place the models
-        min_similarity: Shared abstention threshold, for resolution
-        chunk_size: How many documents to process between saves
-        log: Where progress goes
+        settings: Device, shared abstention threshold for resolution, chunk
+            size between saves, and where progress goes
 
     Returns:
         The checkpoints the models loaded, for the report
@@ -141,12 +145,12 @@ def run_phase(  # noqa: PLR0913 - benchmark entry point mirrors its CLI flags
     done = state.completed(phase)
     remaining = [d for d in documents if d.identifier not in done]
     if not remaining:
-        log(f"  {pipeline}/{phase}: already complete ({len(done)} documents)")
+        settings.log(f"  {pipeline}/{phase}: already complete ({len(done)} documents)")
         return {}
 
-    log(
+    settings.log(
         f"  {pipeline}/{phase}: {len(remaining)} of {len(documents)} documents "
-        f"to do on {device}"
+        f"to do on {settings.device}"
     )
 
     # Model construction is inside the timer: loading a cross encoder is a
@@ -154,7 +158,10 @@ def run_phase(  # noqa: PLR0913 - benchmark entry point mirrors its CLI flags
     # slower one by minutes.
     loading_started = time.perf_counter()
     recognizer, resolver = _build_phase_models(
-        phase, pipeline, device=device, min_similarity=min_similarity
+        phase,
+        pipeline,
+        device=settings.device,
+        min_similarity=settings.min_similarity,
     )
     names = pipelines.model_names(recognizer, resolver)
     state.elapsed_seconds += time.perf_counter() - loading_started
@@ -164,9 +171,9 @@ def run_phase(  # noqa: PLR0913 - benchmark entry point mirrors its CLI flags
             documents,
             state,
             checkpoint_path,
-            device,
-            chunk_size,
-            log,
+            settings.device,
+            settings.chunk_size,
+            settings.log,
         ),
         remaining,
         (recognizer, resolver),
