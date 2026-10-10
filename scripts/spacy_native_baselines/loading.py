@@ -12,14 +12,20 @@ from collections.abc import Callable
 from typing import Any
 
 import spacy
+from packaging.specifiers import SpecifierSet
 
-from scripts.spacy_native_baselines.roster import NativePipeline
+from scripts.spacy_native_baselines.roster import SPACY_RUNTIME, NativePipeline
 
 KEPT_COMPONENTS = frozenset({"ner", "tok2vec"})
+SPACY_PACKAGE = "spacy"
 
 
 class MissingPipelineError(RuntimeError):
     """The pinned pipeline is absent or at a different version."""
+
+
+class SpacyRuntimeError(RuntimeError):
+    """The installed spaCy runtime is outside the roster's pinned range."""
 
 
 class LabelSchemeError(RuntimeError):
@@ -56,6 +62,30 @@ def check_installed(
         raise MissingPipelineError(message)
 
 
+def check_spacy_runtime(
+    *,
+    version_lookup: Callable[[str], str | None] = installed_version,
+) -> None:
+    """Require the installed spaCy runtime to lie in the roster's pinned range.
+
+    A model package names only its own release, so a spaCy runtime outside
+    the range the roster was verified against must be refused separately.
+    """
+    found = version_lookup(SPACY_PACKAGE)
+    if found is None:
+        message = (
+            f"spaCy is not installed. The roster pins the runtime range "
+            f"{SPACY_RUNTIME}."
+        )
+        raise SpacyRuntimeError(message)
+    if not SpecifierSet(SPACY_RUNTIME).contains(found):
+        message = (
+            f"spaCy {found} is installed, but the roster pins the runtime range "
+            f"{SPACY_RUNTIME}."
+        )
+        raise SpacyRuntimeError(message)
+
+
 def _keep_only_ner(nlp: Any) -> None:
     for name in [name for name in nlp.pipe_names if name not in KEPT_COMPONENTS]:
         nlp.remove_pipe(name)
@@ -86,6 +116,7 @@ def load_pipeline(
 ) -> Any:
     """Return the pinned pipeline with only its NER path kept."""
     check_installed(pipeline, version_lookup=version_lookup)
+    check_spacy_runtime(version_lookup=version_lookup)
     nlp = loader(pipeline.package)
     check_label_scheme(nlp, pipeline)
     _keep_only_ner(nlp)

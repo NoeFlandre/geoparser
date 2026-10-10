@@ -9,7 +9,9 @@ from spacy.pipeline import EntityRecognizer
 from scripts.spacy_native_baselines.loading import (
     LabelSchemeError,
     MissingPipelineError,
+    SpacyRuntimeError,
     check_installed,
+    check_spacy_runtime,
     installed_version,
     load_pipeline,
 )
@@ -83,6 +85,35 @@ def test_matching_installed_version_passes(german, no_download):
 def test_installed_version_reads_the_distribution_metadata_or_none():
     assert installed_version("spacy") == spacy.__version__
     assert installed_version("geoparser-no-such-distribution") is None
+
+
+def test_spacy_runtime_inside_the_roster_range_passes(no_download):
+    check_spacy_runtime(version_lookup=lambda package: "3.8.16")
+
+
+@pytest.mark.parametrize("found", ["3.7.1", "3.9.0", "4.0.0"])
+def test_spacy_runtime_outside_the_roster_range_is_refused(found, no_download):
+    with pytest.raises(SpacyRuntimeError) as raised:
+        check_spacy_runtime(version_lookup=lambda package: found)
+
+    assert found in str(raised.value)
+    assert ">=3.8.0,<3.9.0" in str(raised.value)
+
+
+def test_missing_spacy_runtime_is_refused(no_download):
+    with pytest.raises(SpacyRuntimeError, match="not installed"):
+        check_spacy_runtime(version_lookup=lambda package: None)
+
+
+def test_load_pipeline_refuses_a_spacy_runtime_outside_the_pin(german, no_download):
+    versions = {"de_core_news_sm": "3.8.0", "spacy": "3.9.0"}
+
+    def loader(name):
+        message = "loader must not run for an out-of-range spaCy runtime"
+        raise AssertionError(message)
+
+    with pytest.raises(SpacyRuntimeError, match=r"spaCy 3\.9\.0 is installed"):
+        load_pipeline(german, loader=loader, version_lookup=versions.get)
 
 
 def test_loader_is_not_called_when_the_package_is_missing(german, no_download):
