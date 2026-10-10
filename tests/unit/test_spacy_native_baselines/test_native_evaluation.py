@@ -217,6 +217,18 @@ def test_batch_size_must_be_a_positive_integer(roster, batch_size):
         )
 
 
+def test_an_example_must_sit_under_its_own_language_before_any_arm_runs(roster):
+    misfiled = {"de": (_example("en", "Berlin liegt.", {(0, 6)}),)}
+    german = _identify(FakeRecognizer({}), roster, "de")
+    control = _identify(FakeRecognizer({}), roster, "en")
+
+    with pytest.raises(ValueError, match="filed under 'de'"):
+        evaluate_baselines(misfiled, {"de": german}, control, roster)
+
+    assert german.seen == []
+    assert control.seen == []
+
+
 def test_predictor_time_is_recorded_and_drives_sentences_per_second(
     roster, monkeypatch
 ):

@@ -59,6 +59,19 @@ def _positive_batch_size(value: Any) -> int:
     return value
 
 
+def _check_example_languages(
+    examples_by_language: Mapping[str, Sequence[Example]],
+) -> None:
+    for language, examples in examples_by_language.items():
+        for example in examples:
+            if example.language != language:
+                message = (
+                    f"Example labelled {example.language!r} is filed under "
+                    f"{language!r}; each example must sit under its own language."
+                )
+                raise ValueError(message)
+
+
 def _has_native_pipeline(roster: Roster, language: str) -> bool:
     return roster.route(language).pipeline is not None
 
@@ -159,6 +172,7 @@ def evaluate_baselines(
 ) -> dict[str, Any]:
     """Score every arm on the same examples and return the three groups."""
     batch_size = _positive_batch_size(batch_size)
+    _check_example_languages(examples_by_language)
     _check_native_recognizers(recognizers, roster)
     if english_control is not None:
         _check_recorded_pipeline(
