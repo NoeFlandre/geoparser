@@ -14,6 +14,13 @@ This file records all notable changes to GeoParser. The project follows
   reviewed digest. They report gain, regressions, timing and memory against a
   no-reranker baseline. They load no model and run no inference.
 
+### Changed
+
+- Name the annotator's not-found, overlap, and invalid-upload exceptions with
+  an `Error` suffix, for example `SessionNotFoundError`. The old `...Exception`
+  names remain importable and refer to the same classes. Existing imports and
+  `except` clauses keep working.
+
 ### Fixed
 
 - Show a clear deprecation notice in `geoparser download --help`. It names the
