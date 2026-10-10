@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import typing as t
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Protocol
 
 import numpy as np
@@ -131,24 +132,64 @@ def _batches(items: list[str], size: int) -> list[list[str]]:
     return [items[start : start + size] for start in range(0, len(items), size)]
 
 
+def _pinned_snapshot(model: EmbeddingModel, path: str) -> Path:
+    """
+    Refuse a local snapshot unless it is a directory named by the pinned commit.
+
+    The Hub cache names each snapshot directory by its commit, so the name is the
+    offline evidence of the revision the files were fetched at. Digests of the
+    weights are a separate input and are not checked here.
+
+    Args:
+        model: The pinned model the snapshot must belong to
+        path: The local snapshot path returned by the download
+
+    Returns:
+        The snapshot path, as a ``Path``
+
+    Raises:
+        ValueError: If the path is not a directory or is named by another commit
+    """
+    snapshot = Path(path)
+    if not snapshot.is_dir() or snapshot.name != model.revision:
+        msg = (
+            f"{model.key}: snapshot {snapshot} is not a directory of the pinned "
+            f"commit {model.revision}."
+        )
+        raise ValueError(msg)
+    return snapshot
+
+
 class SentenceTransformerEncoder:
     """The one place that loads a checkpoint, and only when it is constructed."""
 
     def __init__(self, model: EmbeddingModel, *, device: str = "cpu") -> None:
         """
-        Load the pinned checkpoint at its revision.
+        Load the pinned checkpoint from a local snapshot of its commit.
+
+        Custom model code can reach nested parts of a checkpoint by hub id, and
+        those reads take no revision, so they resolve the mutable default branch.
+        Loading from the local snapshot directory keeps every nested read on the
+        pinned files.
 
         Args:
             model: The pinned model to load
             device: Torch device string, ``"cpu"`` for the comparison's CPU runs
+
+        Raises:
+            ValueError: If the snapshot is not a directory named by the pinned commit
         """
         # Deferred: importing torch is the expensive part of this module.
+        from huggingface_hub import snapshot_download
         from sentence_transformers import SentenceTransformer
 
+        snapshot = _pinned_snapshot(
+            model,
+            snapshot_download(repo_id=model.repository, revision=model.revision),
+        )
         self.model = model
         self._transformer = SentenceTransformer(
-            model.repository,
-            revision=model.revision,
+            str(snapshot),
             device=device,
             trust_remote_code=model.trust_remote_code,
         )

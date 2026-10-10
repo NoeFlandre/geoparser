@@ -4,6 +4,7 @@ import dataclasses
 import math
 from typing import Any, ClassVar
 
+import huggingface_hub
 import numpy as np
 import pytest
 import sentence_transformers
@@ -162,8 +163,29 @@ class FakeSentenceTransformer:
         return np.ones((len(texts), 1024))
 
 
+def hub_snapshot(root, repository, revision):
+    """The path the Hub cache uses for one commit of one repository."""
+    name = f"models--{repository.replace('/', '--')}"
+    return root / "hub" / name / "snapshots" / revision
+
+
 @pytest.fixture
-def fake_transformer(monkeypatch):
+def fake_hub(monkeypatch, tmp_path):
+    """Serve an empty local snapshot directory per request, laid out as the Hub cache."""
+    downloads = []
+
+    def snapshot_download(*, repo_id, revision):
+        downloads.append((repo_id, revision))
+        snapshot = hub_snapshot(tmp_path, repo_id, revision)
+        snapshot.mkdir(parents=True, exist_ok=True)
+        return str(snapshot)
+
+    monkeypatch.setattr(huggingface_hub, "snapshot_download", snapshot_download)
+    return downloads
+
+
+@pytest.fixture
+def fake_transformer(monkeypatch, fake_hub):
     FakeSentenceTransformer.instances = []
     monkeypatch.setattr(
         sentence_transformers, "SentenceTransformer", FakeSentenceTransformer
@@ -171,20 +193,47 @@ def fake_transformer(monkeypatch):
     return FakeSentenceTransformer
 
 
-def test_the_real_backend_loads_the_pinned_revision_and_its_remote_code(
-    fake_transformer,
+def test_the_real_backend_loads_the_pinned_commit_only_from_its_local_snapshot(
+    fake_transformer, fake_hub, tmp_path
 ):
     encoder = SentenceTransformerEncoder(JINA_V5_TEXT_SMALL)
 
+    assert fake_hub == [
+        (JINA_V5_TEXT_SMALL.repository, JINA_V5_TEXT_SMALL.revision),
+    ]
     (loaded,) = fake_transformer.instances
-    assert loaded.repository == "jinaai/jina-embeddings-v5-text-small"
-    assert loaded.kwargs == {
-        "revision": JINA_V5_TEXT_SMALL.revision,
-        "device": "cpu",
-        "trust_remote_code": True,
-    }
+    assert loaded.repository == str(
+        hub_snapshot(
+            tmp_path, JINA_V5_TEXT_SMALL.repository, JINA_V5_TEXT_SMALL.revision
+        )
+    )
+    assert loaded.kwargs == {"device": "cpu", "trust_remote_code": True}
     assert loaded.max_seq_length == JINA_V5_TEXT_SMALL.max_seq_length
     assert encoder.model is JINA_V5_TEXT_SMALL
+
+
+def test_a_snapshot_of_another_commit_is_refused_before_any_model_loads(
+    monkeypatch, tmp_path, fake_transformer
+):
+    main = tmp_path / "snapshots" / "main"
+    main.mkdir(parents=True)
+    monkeypatch.setattr(huggingface_hub, "snapshot_download", lambda **_: str(main))
+
+    with pytest.raises(ValueError, match="not a directory of the pinned commit"):
+        SentenceTransformerEncoder(JINA_V5_TEXT_SMALL)
+    assert fake_transformer.instances == []
+
+
+def test_a_snapshot_path_that_is_a_file_is_refused_before_any_model_loads(
+    monkeypatch, tmp_path, fake_transformer
+):
+    file = tmp_path / JINA_V5_TEXT_SMALL.revision
+    file.write_text("not a snapshot")
+    monkeypatch.setattr(huggingface_hub, "snapshot_download", lambda **_: str(file))
+
+    with pytest.raises(ValueError, match="not a directory of the pinned commit"):
+        SentenceTransformerEncoder(JINA_V5_TEXT_SMALL)
+    assert fake_transformer.instances == []
 
 
 def test_the_real_backend_passes_the_documented_task_and_prompt(fake_transformer):
