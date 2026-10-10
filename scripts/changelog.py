@@ -59,11 +59,16 @@ def _nonempty_notes(
     return notes
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the command line; building it reads and writes nothing."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tag", help="release tag, for example 0.6.0 or 0.6.0rc1")
     parser.add_argument("--changelog", type=Path, default=Path("CHANGELOG.md"))
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
 
     try:
         changelog = args.changelog.read_text(encoding="utf-8")

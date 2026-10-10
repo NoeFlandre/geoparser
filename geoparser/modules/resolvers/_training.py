@@ -17,6 +17,7 @@ from sentence_transformers.sentence_transformer.training_args import (
 from geoparser._logging import get_logger
 
 if t.TYPE_CHECKING:
+    from geoparser.gazetteer.artifact import SearchMethod
     from geoparser.gazetteer.feature import Feature
     from geoparser.gazetteer.gazetteer import Gazetteer
 
@@ -35,7 +36,7 @@ class TrainingMixin:
         def _extract_context(self, text: str, start: int, end: int) -> str: ...
 
         def _search_candidates(
-            self, name: str, method: str, tiers: int, limit: int = 10000
+            self, name: str, method: SearchMethod, tiers: int, limit: int = 10000
         ) -> tuple["Feature", ...]: ...
 
         def _candidate_description(self, candidate: "Feature") -> str: ...

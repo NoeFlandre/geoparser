@@ -5,10 +5,15 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import subprocess
+import sys
 from pathlib import Path, PurePosixPath
 
-import toml
 from mutmut.mutation.file_mutation import mutate_file_contents
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 
 def _excluded_paths() -> list[str]:
@@ -16,7 +21,7 @@ def _excluded_paths() -> list[str]:
     for parent in Path(__file__).resolve().parents:
         config_path = parent / "pyproject.toml"
         if config_path.is_file():
-            config = toml.loads(config_path.read_text(encoding="utf-8"))
+            config = tomllib.loads(config_path.read_text(encoding="utf-8"))
             return config.get("tool", {}).get("mutmut", {}).get("do_not_mutate", [])
     message = "Could not find pyproject.toml above changed_mutation_patterns.py"
     raise FileNotFoundError(message)

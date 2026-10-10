@@ -7,12 +7,23 @@ file) and exposes name search and identifier lookup over its features.
 
 from __future__ import annotations
 
+import typing as t
+
 from geoparser.gazetteer.artifact import (
     DEFAULT_SEARCH_LIMIT,
     GazetteerArtifact,
+    SearchMethod,
     artifact_path,
 )
 from geoparser.gazetteer.feature import Feature
+
+# The artifact query that answers each search method.
+_SEARCH_QUERIES: t.Final[dict[SearchMethod, str]] = {
+    "exact": "search_exact",
+    "phrase": "search_phrase",
+    "partial": "search_partial",
+    "fuzzy": "search_fuzzy",
+}
 
 
 def normalize_name(name: str) -> str:
@@ -63,7 +74,7 @@ class Gazetteer:
     def search(
         self,
         name: str,
-        method: str = "exact",
+        method: SearchMethod = "exact",
         limit: int = DEFAULT_SEARCH_LIMIT,
         tiers: int = 1,
     ) -> list[Feature]:
@@ -88,22 +99,15 @@ class Gazetteer:
         if not normalized_name:
             return []
 
-        method_map = {
-            "exact": lambda: self._artifact.search_exact(normalized_name, limit),
-            "phrase": lambda: self._artifact.search_phrase(
-                normalized_name, limit, tiers
-            ),
-            "partial": lambda: self._artifact.search_partial(
-                normalized_name, limit, tiers
-            ),
-            "fuzzy": lambda: self._artifact.search_fuzzy(normalized_name, limit, tiers),
-        }
-
-        if method not in method_map:
+        # Callers may pass any string at runtime, so check it against the table.
+        if method not in _SEARCH_QUERIES:
             msg = f"Unknown search method: {method}"
             raise ValueError(msg)
 
-        return method_map[method]()
+        query = getattr(self._artifact, _SEARCH_QUERIES[method])
+        if method == "exact":
+            return query(normalized_name, limit)
+        return query(normalized_name, limit, tiers)
 
     def find(self, identifier: str) -> Feature | None:
         """
