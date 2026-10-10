@@ -151,14 +151,25 @@ def load_rank_toponyms(checkout: Path) -> tuple[t.Callable[..., t.Any], t.Any]:
         message = "; ".join(problems)
         raise UpstreamMismatchError(message)
     root = checkout.resolve()
-    if str(root) not in sys.path:
-        sys.path.insert(0, str(root))
+    _place_first_on_path(root)
     origin = _unitorank_origin()
     if origin is None or not origin.is_relative_to(root):
         message = f"unitorank is imported from {origin}, not {root}"
         raise UpstreamMismatchError(message)
     ranker = _import_without_bytecode("unitorank.ranker")
     return ranker.rank_toponyms, ranker.RankerConfig
+
+
+def _place_first_on_path(directory: Path) -> None:
+    """
+    Put a directory first on sys.path, even when it is already on the path.
+
+    An absolute import in the pinned code, such as thread_weight_rank_algorithm_3_beam,
+    would otherwise resolve from an earlier entry. Every other entry that names the
+    directory, in any spelling, is removed before it is inserted at the front.
+    """
+    others = [entry for entry in sys.path if Path(entry).resolve() != directory]
+    sys.path[:] = [str(directory), *others]
 
 
 def _import_without_bytecode(name: str) -> t.Any:

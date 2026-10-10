@@ -181,10 +181,10 @@ def test_load_refuses_a_unitorank_imported_from_somewhere_else(
         load_rank_toponyms(checkout)
 
 
-def test_a_foreign_unitorank_is_refused_before_its_code_runs(
+def test_a_foreign_unitorank_earlier_on_the_path_never_runs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clean_upstream_modules
 ):
-    """A copy earlier on sys.path must be refused without running its __init__."""
+    """A copy earlier on sys.path must not run: the verified checkout is moved first."""
     checkout = _fake_checkout(tmp_path / "verified")
     foreign = _fake_checkout(tmp_path / "foreign")
     marker = tmp_path / "foreign-code-ran"
@@ -194,9 +194,43 @@ def test_a_foreign_unitorank_is_refused_before_its_code_runs(
     monkeypatch.syspath_prepend(str(checkout.resolve()))
     monkeypatch.syspath_prepend(str(foreign.resolve()))
     monkeypatch.setattr(pins, "verify_checkout", lambda _path: [])
-    with pytest.raises(UpstreamMismatchError, match="imported from"):
-        load_rank_toponyms(checkout)
+    load_rank_toponyms(checkout)
     assert not marker.exists()
+    assert sys.path[0] == str(checkout.resolve())
+    origin = sys.modules["unitorank"].__file__
+    assert origin is not None
+    assert origin.startswith(str(checkout.resolve()))
+
+
+def test_a_checkout_behind_another_directory_is_moved_to_the_front(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clean_upstream_modules
+):
+    """An absolute import in the pinned code must resolve from the checkout."""
+    checkout = _fake_checkout(tmp_path / "verified")
+    (checkout / "thread_weight_rank_algorithm_3_beam.py").write_text(
+        "SOURCE = 'verified'\n"
+    )
+    (checkout / "unitorank" / "ranker.py").write_text(
+        "from thread_weight_rank_algorithm_3_beam import SOURCE\n"
+        "class RankerConfig:\n    pass\n"
+        "def rank_toponyms(**kwargs):\n    return {'source': SOURCE}\n"
+    )
+    foreign = tmp_path / "foreign"
+    foreign.mkdir()
+    (foreign / "thread_weight_rank_algorithm_3_beam.py").write_text(
+        "SOURCE = 'foreign'\n"
+    )
+    # The checkout is already on the path, but behind the foreign directory.
+    monkeypatch.syspath_prepend(str(checkout.resolve()))
+    monkeypatch.syspath_prepend(str(foreign.resolve()))
+    monkeypatch.setattr(pins, "verify_checkout", lambda _path: [])
+    try:
+        rank_toponyms, _ = load_rank_toponyms(checkout)
+        assert rank_toponyms() == {"source": "verified"}
+        assert sys.path.count(str(checkout.resolve())) == 1
+        assert sys.path[0] == str(checkout.resolve())
+    finally:
+        sys.modules.pop("thread_weight_rank_algorithm_3_beam", None)
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="creating symlinks needs rights")
