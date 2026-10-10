@@ -76,10 +76,10 @@ Points to carry into any run:
 The issue requires a documented filter that separates physical places from people, organisations, metonymic references, and other non-place entities. It also rules out treating coordinates as sufficient. The schema does not settle which entities count as places, and this plan does not choose for you. The options are:
 
 - **A. Type only.** Keep mentions whose KB entity passes the type test below. This is cheap to apply. The class is coarse, and the audit has to test whether it admits non-physical or administrative entities.
-- **B. Wikidata classes plus coordinates.** Keep entities that pass the type test below, whose instance-of or subclass claims fall under a pinned list of place classes, and whose coordinates are present in the pinned snapshot. The list is human-reviewed, and the 2022-11-09 dump supplies the claims.
-- **C. Audited rule.** Start from A or B, then correct the rule on a stratified sample.
+- **B. Wikidata classes plus coordinates.** Keep entities that pass the type test below, whose instance-of or subclass claims fall under a pinned list of place classes (bucket 4), and whose gazetteer ID has coordinates in the pinned snapshot (bucket 6). The list is human-reviewed, and the 2022-11-09 dump supplies the claims.
+- **C. Audited rule.** Start from A or B, then correct the rule on a stratified sample. A correction to the KB-based rule is counted in bucket 4.
 
-**Type test (fixed for every option).** An entity passes when the string `LOC` is an element of its `named_entities.type` array. The test is membership, not equality with a one-element array, because the array can hold several classes. An entity that carries `LOC` together with other classes passes, so a place is not lost because its KB entry also carries another class. Mentions of such multi-typed entities are counted separately, so the audit can see how many of them admit an entity with another class. An entity with no `named_entities` block, or with an empty `type` array, does not pass.
+**Type test (fixed for every option, bucket 3).** An entity passes when the string `LOC` is an element of its `named_entities.type` array. The test is membership, not equality with a one-element array, because the array can hold several classes. An entity that carries `LOC` together with other classes passes, so a place is not lost because its KB entry also carries another class. Mentions of such multi-typed entities are counted separately, so the audit can see how many of them admit an entity with another class. An entity with no `named_entities` block, or with an empty `type` array, does not pass.
 
 Proposal, not decided: option B with an audit of a stratified sample. Decide these before any adapter exists:
 
@@ -99,25 +99,27 @@ Policy for mentions without a QID:
 
 - They are never typed, mapped, or guessed into the place set, and they are never dropped without a count.
 - They are reported as `no_qid`, per language and per `origin`, beside every denominator they leave out.
-- A valid prediction that overlaps one is neither a true positive nor a false positive. It is reported as `predicted_on_no_qid`, because its place status is unknown. Invalid outputs remain false positives.
+- A prediction is set aside only when all three hold: it is valid, its character span is exactly equal to the span of a `no_qid` mention, and no mention with a QID has that same span. A set-aside prediction is neither a true positive nor a false positive. It is reported as `predicted_on_no_qid`, because its place status is unknown. Set-aside predictions are excluded from the true-positive and false-positive counts and reported as their own count, per language.
+- Every other valid prediction is scored as usual. A prediction that only overlaps a `no_qid` span, including one that is wider, narrower, or shifted at a boundary, is a false positive unless its span exactly matches a gold span. Invalid outputs remain false positives.
 
-The buckets below are applied in this order. Each mention falls in exactly one bucket, so the counts sum to the total:
+The buckets below are applied in this order. Each mention falls in exactly one bucket, so the counts sum to the total. Every rejection has a bucket: buckets 1 and 2 are missing KB data, buckets 3 and 4 are rejections by the KB-based predicate, and buckets 5 to 7 are rejections by the gazetteer-based tests.
 
 1. `no_qid`: the link has no `qid`.
 2. `qid_not_in_kb`: the QID has no entry in the pinned KB snapshot, so it has no type.
 3. `not_place`: the entity fails the type test.
-4. `place_unmapped`: the QID has no gazetteer ID in the pinned mapping.
-5. `place_no_coordinates`: the gazetteer ID has no coordinates in the pinned snapshot.
-6. `granularity_mismatch`: the granularity rule, defined with the gazetteer, rejects the match.
-7. `eligible`: the remaining mentions.
+4. `filter_rejected`: the entity passes the type test but fails the rest of the selected KB-based predicate. Under option A this bucket is always empty. Under option B, the entity's instance-of or subclass claims fall outside the pinned place classes. Under option C, the audited correction excludes it. Any further test that option C adds needs its own named bucket in this list before the audit is run.
+5. `place_unmapped`: the QID has no gazetteer ID in the pinned mapping.
+6. `place_no_coordinates`: the gazetteer ID has no coordinates in the pinned snapshot. This is the only coordinate test. Option B's coordinate requirement is applied here, to the gazetteer ID.
+7. `granularity_mismatch`: the granularity rule, defined with the gazetteer, rejects the match.
+8. `eligible`: the remaining mentions.
 
-`place_multi_typed` is a sub-count of buckets 4 to 7: the mentions whose entity has `LOC` and at least one other class. Recognition gold is every mention in buckets 4 to 7, whether or not it maps, because recognition needs no gazetteer. Gold-span resolution scores its accuracy on bucket 7, and reports the counts of buckets 4 to 6 beside it, so the mentions that cannot be mapped stay visible. End-to-end uses only bucket 7, as the slice described in the evaluation design below.
+`place_multi_typed` is a sub-count of buckets 4 to 8: the mentions that pass the type test and whose entity has `LOC` and at least one other class. Recognition gold is the union of buckets 5 to 8, the mentions that pass the KB-based predicate, whether or not they map. The gazetteer only divides that union into buckets, so recognition gold does not depend on the mapping. Gold-span resolution scores its accuracy on bucket 8, and reports the counts of buckets 5 to 7 beside it, so the mentions that cannot be mapped stay visible. End-to-end uses only bucket 8, as the slice described in the evaluation design below.
 
 ## Evaluation design (proposal, not run)
 
 Keep the three tasks of the [public benchmark protocol](benchmark-protocol.md) separate, and record annotation quality as `silver`:
 
-- **Recognition.** Exact, deduplicated character spans. Gold is the place mentions in buckets 4 to 7 of the mention accounting. Invalid outputs count as false positives.
+- **Recognition.** Exact, deduplicated character spans. Gold is the place mentions in buckets 5 to 8 of the mention accounting. Invalid outputs count as false positives. A valid prediction on a `no_qid` span is set aside only under the rule in the mention accounting policy.
 - **Gold-span resolution.** Gold spans from the annotations are passed to the resolver. Report original (`wiki`) and expanded spans separately. Report exact-ID accuracy where a mapping exists, distance accuracy at 1 km, 10 km, and 50 km, abstention, and coverage. Keep the eligible denominators visible.
 - **End-to-end.** A true positive needs both the span and the canonical ID to match. Use a slice where every gold span has an eligible ID.
 
