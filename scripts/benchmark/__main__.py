@@ -25,9 +25,22 @@ from pathlib import Path
 
 from scripts._io import PROJECT_ROOT
 from scripts.benchmark import checkpoint as ckpt
-from scripts.benchmark import corpora, corpus, pipelines, provenance, report, runner
+from scripts.benchmark import (
+    corpora,
+    corpus,
+    corpus_checks,
+    pipelines,
+    provenance,
+    report,
+    runner,
+)
 
 REPOSITORY_ROOT = PROJECT_ROOT
+PROBLEMS_SHOWN = 5
+
+
+class CorpusRejectedError(Exception):
+    """A corpus failed its offline checks, so no model was run on it."""
 
 
 @dataclass(frozen=True)
@@ -106,6 +119,49 @@ def corpus_output_dir(output_dir: Path, name: str) -> Path:
     return output_dir / name
 
 
+def _total_note(label: str, value: int | None) -> str:
+    """Name one source total with the value it was compared with, or say it was not."""
+    if value is None:
+        return f"{label} not compared"
+    return f"{label} compared with {value}"
+
+
+def totals_note(loaded: corpora.LoadedCorpus) -> str:
+    """Say which source totals a run was compared with, and which it was not."""
+    documents = _total_note("documents", loaded.expected_documents)
+    gold = _total_note("gold spans", loaded.expected_gold)
+    return f"{loaded.name}: {documents}; {gold}"
+
+
+def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:
+    """
+    Stop before any model runs when the corpus fails its offline checks.
+
+    Args:
+        loaded: The corpus about to be scored
+
+    Raises:
+        CorpusRejectedError: If any check found a problem in the corpus
+    """
+    found = corpus_checks.check_corpus(
+        loaded.documents,
+        expected_documents=loaded.expected_documents,
+        expected_gold=loaded.expected_gold,
+    )
+    if found.clean:
+        print(totals_note(loaded))
+        return
+    shown = "; ".join(
+        f"{problem.kind} in {problem.document}: {problem.detail}"
+        for problem in found.problems[:PROBLEMS_SHOWN]
+    )
+    msg = (
+        f"{loaded.name} rejected by corpus checks, no model was run: "
+        f"{len(found.problems)} problems. {shown}"
+    )
+    raise CorpusRejectedError(msg)
+
+
 def run_corpus(
     loaded: corpora.LoadedCorpus,
     arguments: argparse.Namespace,
@@ -120,7 +176,11 @@ def run_corpus(
 
     Returns:
         One summary row per pipeline
+
+    Raises:
+        CorpusRejectedError: If the corpus fails its checks, before any model runs
     """
+    require_clean_corpus(loaded)
     documents = loaded.documents
     gold_count = corpus.gold_toponym_count(documents)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -283,9 +343,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     for name in dict.fromkeys(names):
         folder = corpus_output_dir(output_dir, name)
         loaded = corpora.load(name, folder, limit=arguments.limit)
-        rows += run_corpus(
-            loaded, arguments, folder, device=device, commit=commit, facts=facts
-        )
+        try:
+            rows += run_corpus(
+                loaded, arguments, folder, device=device, commit=commit, facts=facts
+            )
+        except CorpusRejectedError as error:
+            print(error, file=sys.stderr)
+            return 1
         (output_dir / "summary.md").write_text(
             report.render_summary(rows), encoding="utf-8"
         )

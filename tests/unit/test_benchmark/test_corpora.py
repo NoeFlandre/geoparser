@@ -128,3 +128,43 @@ class TestNewsliRegistry:
         assert loaded.language == "ro"
         assert [d.identifier for d in loaded.documents] == ["ro-1", "ro-2"]
         assert len(loaded.digest) == 16
+
+
+class TestExpectedTotals:
+    """What a load of each corpus must hold, given the caps that apply to it."""
+
+    @pytest.mark.parametrize(
+        ("name", "limit", "expected"),
+        [
+            ("geovirus", None, (229, 2167)),
+            ("geovirus", 500, (229, 2167)),
+            ("geovirus", 9, (9, None)),
+            ("newsli-de", None, (500, None)),
+            ("newsli-de", 40, (40, None)),
+            ("newsli-fa", None, (71, 326)),
+            ("newsli-fa", 10, (10, None)),
+            ("newsli-fa", 1000, (71, 326)),
+            ("newsli-pl", None, (186, 196)),
+            ("hipe2020-fr", None, (43, 800)),
+            ("hipe2020-fr", 5, (5, None)),
+            ("topres19th-en", None, (110, 880)),
+        ],
+    )
+    def test_a_full_load_holds_the_source_totals_and_a_capped_one_its_cap(
+        self, name, limit, expected
+    ):
+        """Full loads compare with the source; capped loads compare documents only."""
+        assert corpora.expected_totals(corpora.CORPORA[name], limit) == expected
+
+    def test_a_load_carries_its_expected_totals(self, tmp_path, monkeypatch):
+        """Test that the totals travel with the loaded corpus to the gate."""
+        from tests.unit.test_benchmark.test_newsli import write_release
+
+        release = write_release(tmp_path)
+        monkeypatch.setattr(
+            corpora.corpus, "download_corpus", lambda cache_path, *, url: release
+        )
+
+        loaded = corpora.load("newsli-ro", tmp_path / "newsli-ro")
+
+        assert (loaded.expected_documents, loaded.expected_gold) == (226, 385)
