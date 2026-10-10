@@ -5,9 +5,13 @@ import json
 from scripts.multiconer_benchmark.__main__ import main
 
 
-def test_dry_run_prints_the_pinned_inventory_without_network(capsys):
+def _dry_run_report(capsys) -> dict:
     assert main(["--manifest"]) == 0
-    report = json.loads(capsys.readouterr().out)
+    return json.loads(capsys.readouterr().out)
+
+
+def test_dry_run_prints_the_pinned_inventory_without_network(capsys):
+    report = _dry_run_report(capsys)
     assert report["dataset"]["revision"] == "4be2d62c912977ee26ed14d2553a4fe17ca3d980"
     assert report["languages"] == [
         "bn",
@@ -27,16 +31,24 @@ def test_dry_run_prints_the_pinned_inventory_without_network(capsys):
     assert report["gap_count"] == 6
 
 
-def test_clean_local_file_validates_with_exit_zero(tmp_path, capsys):
+def _validate_clean_file(tmp_path, capsys) -> dict:
     path = tmp_path / "en_test.conll"
     path.write_text(
         "# id one\tdomain=en\nParis _ _ B-HumanSettlement\n", encoding="utf-8"
     )
     assert main(["--validate-conll", str(path), "--language", "en"]) == 0
-    report = json.loads(capsys.readouterr().out)
+    return json.loads(capsys.readouterr().out)
+
+
+def test_clean_local_file_validates_with_exit_zero(tmp_path, capsys):
+    report = _validate_clean_file(tmp_path, capsys)
     assert report["records"] == 1
     assert report["valid"] == 1
     assert report["invalid"] == 0
+
+
+def test_clean_local_file_reports_its_location_spans(tmp_path, capsys):
+    report = _validate_clean_file(tmp_path, capsys)
     assert report["location_spans"] == 1
 
 

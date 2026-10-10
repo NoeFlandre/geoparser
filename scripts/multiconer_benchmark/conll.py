@@ -115,23 +115,26 @@ def _blocks(lines: list[str]) -> list[_Block]:
     blocks: list[_Block] = []
     current: _Block | None = None
     for number, raw in enumerate(lines, start=1):
-        line = raw[:-1] if raw.endswith("\r") else raw
+        line = raw.removesuffix("\r")
         if not line.strip(" \t"):
-            if current is not None:
-                blocks.append(current)
-                current = None
+            _close(blocks, current)
+            current = None
             continue
         if line.startswith(_HEADER_PREFIXES):
-            if current is not None:
-                blocks.append(current)
+            _close(blocks, current)
             current = _Block(header=(number, line))
             continue
         if current is None:
             current = _Block()
         current.tokens.append((number, line))
+    _close(blocks, current)
+    return blocks
+
+
+def _close(blocks: list[_Block], current: _Block | None) -> None:
+    """Keep the open block, if there is one."""
     if current is not None:
         blocks.append(current)
-    return blocks
 
 
 def _parse_block(
@@ -160,9 +163,27 @@ def _read_header(
     sample_id = fields[2]
     if len(fields) > 4:
         return InvalidRecord(number, sample_id, "malformed header")
-    if len(fields) < 4 or not fields[3].startswith("domain=") or fields[3] == "domain=":
+    domain = _domain_of(fields)
+    if domain is None:
         return InvalidRecord(number, sample_id, "missing domain")
-    domain = fields[3][len("domain=") :]
+    return _admit_header(number, sample_id, domain, expected_domain, seen_ids)
+
+
+def _domain_of(fields: list[str]) -> str | None:
+    """Return the domain code of a header, or None when it is absent or empty."""
+    if len(fields) < 4 or not fields[3].startswith("domain="):
+        return None
+    return fields[3][len("domain=") :] or None
+
+
+def _admit_header(
+    number: int,
+    sample_id: str,
+    domain: str,
+    expected_domain: str | None,
+    seen_ids: set[str],
+) -> tuple[str, str] | InvalidRecord:
+    """Reject a repeated sample id or a foreign domain; otherwise accept."""
     if sample_id in seen_ids:
         return InvalidRecord(number, sample_id, "duplicate sample id")
     seen_ids.add(sample_id)
@@ -180,13 +201,10 @@ def _sentence_from_tokens(
     tags: list[str] = []
     previous: str | None = None
     for number, line in lines:
-        columns = _COLUMN_SPLIT.split(line.strip(" \t"))
-        if len(columns) != 4:
-            reason = f"wrong column count: expected 4, found {len(columns)}"
-            return InvalidRecord(number, sample_id, reason)
-        token, left, right, tag = columns
-        if left != "_" or right != "_":
-            return InvalidRecord(number, sample_id, "invalid separator columns")
+        columns = _token_columns(number, line, sample_id)
+        if isinstance(columns, InvalidRecord):
+            return columns
+        token, tag = columns
         error, previous = _check_tag(tag, previous)
         if error is not None:
             return InvalidRecord(number, sample_id, error)
@@ -204,19 +222,42 @@ def _sentence_from_tokens(
     )
 
 
+def _token_columns(
+    number: int, line: str, sample_id: str
+) -> tuple[str, str] | InvalidRecord:
+    """Return the token and tag of one line, or the column defect."""
+    columns = _COLUMN_SPLIT.split(line.strip(" \t"))
+    if len(columns) != 4:
+        reason = f"wrong column count: expected 4, found {len(columns)}"
+        return InvalidRecord(number, sample_id, reason)
+    token, left, right, tag = columns
+    if left != "_" or right != "_":
+        return InvalidRecord(number, sample_id, "invalid separator columns")
+    return token, tag
+
+
 def _check_tag(tag: str, previous: str | None) -> tuple[str | None, str | None]:
     """Validate one BIO tag; return the error and the label it leaves open."""
     if tag == "O":
         return None, None
-    match = _TAG.match(tag)
-    if match is None:
-        return f"unknown tag format: {tag}", None
-    kind, label = match.group(1), match.group(2)
-    if label not in KNOWN_LABELS:
-        return f"unknown entity type: {label}", None
+    parsed = _parse_tag(tag)
+    if isinstance(parsed, str):
+        return parsed, None
+    kind, label = parsed
     if kind == "I" and previous != label:
         return "I- tag does not continue an entity", None
     return None, label
+
+
+def _parse_tag(tag: str) -> tuple[str, str] | str:
+    """Return the BIO kind and known label of a tag, or the error message."""
+    match = _TAG.match(tag)
+    if match is None:
+        return f"unknown tag format: {tag}"
+    label = match.group(2)
+    if label not in KNOWN_LABELS:
+        return f"unknown entity type: {label}"
+    return match.group(1), label
 
 
 def _offsets(tokens: list[str]) -> list[Span]:

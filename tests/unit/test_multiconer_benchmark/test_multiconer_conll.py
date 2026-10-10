@@ -104,13 +104,15 @@ def test_clean_fixture_has_no_invalid_records_and_counts_every_sentence():
     assert parsed.record_count == 6
 
 
-def test_crlf_bom_and_line_separator_inside_a_token_are_handled_literally():
+def test_crlf_and_bom_are_removed_before_parsing():
     text = "\ufeff# id c\tdomain=en\r\nParis _ _ B-HumanSettlement\r\n\r\n"
     parsed = parse_conll(text)
     assert parsed.invalid == ()
     assert parsed.sentences[0].tokens == ("Paris",)
     assert parsed.sentences[0].location_spans() == {(0, 5)}
 
+
+def test_line_separator_inside_a_token_is_kept_literally():
     separator = parse_conll(f"# id ls\tdomain=en\na{LINE_SEPARATOR}b _ _ O\n")
     assert separator.invalid == ()
     assert separator.sentences[0].tokens == (f"a{LINE_SEPARATOR}b",)
@@ -160,9 +162,13 @@ INVALID_LINES = [
 ]
 
 
-def test_every_invalid_record_is_counted_with_its_line_and_reason():
+def test_valid_sentences_survive_around_rejected_blocks():
     parsed = parse_conll("\n".join(INVALID_LINES))
     assert [sentence.sample_id for sentence in parsed.sentences] == ["ok-1", "last"]
+
+
+def test_every_invalid_record_is_counted_with_its_line_and_reason():
+    parsed = parse_conll("\n".join(INVALID_LINES))
     observed = [(item.line, item.sample_id, item.reason) for item in parsed.invalid]
     assert observed == [
         (4, None, "missing sentence header"),

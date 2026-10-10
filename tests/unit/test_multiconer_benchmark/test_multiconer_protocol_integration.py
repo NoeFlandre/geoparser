@@ -5,7 +5,7 @@ import hashlib
 import pytest
 from pydantic import ValidationError
 
-from scripts.benchmark_protocol.schema import Experiment
+from scripts.benchmark_protocol.schema import Experiment, RecognitionCounts
 from scripts.multiconer_benchmark.conll import parse_conll, require_no_invalid_records
 from scripts.multiconer_benchmark.label_policy import label_mapping
 from scripts.multiconer_benchmark.scoring import score_sentence, sum_counts
@@ -139,6 +139,7 @@ def _complete():
 def test_adapter_output_is_a_valid_protocol_inventory_and_completed_result():
     experiment = Experiment.model_validate(_complete())
     result = experiment.results[0]
+    assert isinstance(result.scores, RecognitionCounts)
     assert result.scores.gold_spans == 2
     assert result.scores.true_positive == 2
     assert result.scores.false_positive == 0

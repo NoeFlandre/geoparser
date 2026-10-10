@@ -39,7 +39,13 @@
         "train": 170824,
         "dev": 8895,
         "test": 358668
-      }
+      },
+      "split_files_in_tree": [
+        "MULTI-Multilingual/multi_train.conll",
+        "MULTI-Multilingual/multi_dev.conll",
+        "MULTI-Multilingual/multi_test.conll"
+      ],
+      "split_files_note": "These three files are in the dataset tree at the pinned revision. They are not pinned with sizes or digests here, and they are never scored."
     }
   },
   "clean_noisy_breakdown": {

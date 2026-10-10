@@ -25,12 +25,21 @@ _COUNT_FIELDS = (
 
 def _as_span(value: object, text_length: int) -> Span | None:
     """Return a valid half-open span, or None for any malformed output."""
+    pair = _int_pair(value)
+    if pair is None:
+        return None
+    start, end = pair
+    if not 0 <= start < end <= text_length:
+        return None
+    return (start, end)
+
+
+def _int_pair(value: object) -> Span | None:
+    """Return a two-element tuple or list of exact ints, or None."""
     if not isinstance(value, (tuple, list)) or len(value) != 2:
         return None
     start, end = value
     if type(start) is not int or type(end) is not int:
-        return None
-    if not 0 <= start < end <= text_length:
         return None
     return (start, end)
 

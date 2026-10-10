@@ -31,6 +31,12 @@ def intersection_languages(manifest: dict[str, Any]) -> tuple[str, ...]:
 
 def validate_manifest(payload: dict[str, Any]) -> None:
     """Check pins, counts and digest policy without touching the network."""
+    _validate_dataset(payload)
+    _validate_languages(payload["languages"])
+
+
+def _validate_dataset(payload: dict[str, Any]) -> None:
+    """Check the dataset identity, its commit pin and the license."""
     dataset = payload["dataset"]
     if dataset["id"] != DATASET_ID:
         message = "the manifest names a different dataset"
@@ -41,7 +47,10 @@ def validate_manifest(payload: dict[str, Any]) -> None:
     if payload["license"]["spdx"] != "CC-BY-4.0":
         message = "the pinned license is not CC-BY-4.0"
         raise ValueError(message)
-    languages = payload["languages"]
+
+
+def _validate_languages(languages: dict[str, Any]) -> None:
+    """Check the language inventory, then each language in turn."""
     if "multi" in languages:
         message = "the MULTI configuration is not a language and must be excluded"
         raise ValueError(message)
@@ -55,6 +64,14 @@ def validate_manifest(payload: dict[str, Any]) -> None:
 
 def _validate_language(code: str, language: dict[str, Any]) -> None:
     """Check one language's split counts, file paths and digest policy."""
+    _validate_split_counts(code, language)
+    folder = f"{code.upper()}-{language['name']}"
+    for split in _SPLITS:
+        _validate_file(code, split, folder, language["files"][split])
+
+
+def _validate_split_counts(code: str, language: dict[str, Any]) -> None:
+    """Check that the three split counts are integers that add up to the total."""
     splits = language["splits"]
     if set(splits) != set(_SPLITS) or any(type(v) is not int for v in splits.values()):
         message = f"{code} must record integer train, dev and test counts"
@@ -62,9 +79,6 @@ def _validate_language(code: str, language: dict[str, Any]) -> None:
     if sum(splits.values()) != language["viewer_num_rows"]:
         message = f"split counts for {code} do not match the dataset-viewer total"
         raise ValueError(message)
-    folder = f"{code.upper()}-{language['name']}"
-    for split in _SPLITS:
-        _validate_file(code, split, folder, language["files"][split])
 
 
 def _validate_file(code: str, split: str, folder: str, entry: dict[str, Any]) -> None:
@@ -76,20 +90,35 @@ def _validate_file(code: str, split: str, folder: str, entry: dict[str, Any]) ->
     if type(entry["bytes"]) is not int or entry["bytes"] <= 0:
         message = f"{expected} must record a positive byte size"
         raise ValueError(message)
+    _validate_digest(expected, entry)
+
+
+def _validate_digest(expected: str, entry: dict[str, Any]) -> None:
+    """Dispatch on the digest algorithm; an unknown algorithm is refused."""
     algorithm = entry["digest_algorithm"]
     if algorithm == "sha256":
-        if not _SHA256.fullmatch(entry["digest"]) or entry["sha256"] != entry["digest"]:
-            message = f"{expected} sha256 must equal its LFS digest"
-            raise ValueError(message)
+        _validate_lfs_digest(expected, entry)
     elif algorithm == "git-blob-sha1":
-        if not re.fullmatch(r"^[0-9a-f]{40}$", entry["digest"]):
-            message = f"{expected} git blob digest must be 40 hex characters"
-            raise ValueError(message)
-        if entry["sha256"] is not None:
-            message = f"{expected} is not LFS, so it must not claim a sha256"
-            raise ValueError(message)
+        _validate_git_blob_digest(expected, entry)
     else:
         message = f"{expected} uses an unknown digest algorithm: {algorithm}"
+        raise ValueError(message)
+
+
+def _validate_lfs_digest(expected: str, entry: dict[str, Any]) -> None:
+    """An LFS file must carry a sha256 digest that equals its LFS digest."""
+    if not _SHA256.fullmatch(entry["digest"]) or entry["sha256"] != entry["digest"]:
+        message = f"{expected} sha256 must equal its LFS digest"
+        raise ValueError(message)
+
+
+def _validate_git_blob_digest(expected: str, entry: dict[str, Any]) -> None:
+    """A plain git blob has a sha1 digest and must not claim a sha256."""
+    if not re.fullmatch(r"^[0-9a-f]{40}$", entry["digest"]):
+        message = f"{expected} git blob digest must be 40 hex characters"
+        raise ValueError(message)
+    if entry["sha256"] is not None:
+        message = f"{expected} is not LFS, so it must not claim a sha256"
         raise ValueError(message)
 
 

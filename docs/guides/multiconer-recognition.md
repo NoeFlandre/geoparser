@@ -22,7 +22,7 @@ The dataset has 12 languages. Each one is in the 85-code inventory in `scripts/p
 
 `bn`, `de`, `en`, `es`, `fa`, `fr`, `hi`, `it`, `pt`, `sv`, `uk`, `zh`.
 
-The `MULTI` configuration is an aggregate, not a language, so it is excluded. Its relation to the per-language files is not verified. Each split file is parsed on its own, and the splits are never merged.
+The `MULTI` configuration is an aggregate, not a language, so it is excluded. Its relation to the per-language files is not verified. The dataset tree also holds three `MULTI` split files, which are not pinned or scored here. The manifest pins the 36 per-language split files. Together with those three, the tree holds 39 `.conll` files. Each split file is parsed on its own, and the splits are never merged.
 
 | Code | Language | Train | Dev | Test | Total |
 | --- | --- | ---: | ---: | ---: | ---: |
