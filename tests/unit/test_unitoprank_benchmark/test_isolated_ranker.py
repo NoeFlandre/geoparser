@@ -149,3 +149,28 @@ def test_a_run_that_fails_in_its_interpreter_raises_with_the_reason(tmp_path: Pa
             candidates_by_toponym={},
             config={},
         )
+
+
+def test_a_shadow_module_on_pythonpath_is_not_imported_by_the_child(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """PYTHONPATH must not reach the child: sitecustomize runs before any version check."""
+    shadow = tmp_path / "shadow"
+    shadow.mkdir()
+    marker = tmp_path / "shadow-ran"
+    code = f"from pathlib import Path\nPath({str(marker)!r}).write_text('ran')\n"
+    (shadow / "sitecustomize.py").write_text(code)
+    (shadow / "rapidfuzz.py").write_text(code)
+    monkeypatch.setenv("PYTHONPATH", str(shadow))
+    # The child refuses to run here, so the call raises; what matters is that
+    # nothing from the shadow directory executed on the way.
+    with pytest.raises(RuntimeError, match="the reviewed ranker did not run"):
+        rank_in_reviewed_environment(
+            tmp_path / "checkout",
+            sys.executable,
+            text="",
+            toponyms=[],
+            candidates_by_toponym={},
+            config={},
+        )
+    assert not marker.exists()

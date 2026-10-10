@@ -25,6 +25,15 @@ from scripts.unitoprank_benchmark.pins import load_rank_toponyms
 
 REQUIREMENTS = Path(__file__).with_name("ranker-requirements.txt")
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+# Isolated mode (-I) ignores PYTHON* variables such as PYTHONPATH, and keeps the
+# working directory and the user site off sys.path, so nothing outside the
+# reviewed environment can shadow a package or run from site customisation. The
+# repository root is then added explicitly, as the first entry.
+CHILD_BOOTSTRAP = (
+    "import sys; sys.path.insert(0, sys.argv[1]); "
+    "from scripts.unitoprank_benchmark.isolated_ranker import main; "
+    "sys.exit(main(sys.argv[2:]))"
+)
 
 
 def reviewed_versions(text: str) -> dict[str, str]:
@@ -94,9 +103,10 @@ def rank_in_reviewed_environment(
     completed = subprocess.run(
         [
             str(python),
-            "-s",
-            "-m",
-            "scripts.unitoprank_benchmark.isolated_ranker",
+            "-I",
+            "-c",
+            CHILD_BOOTSTRAP,
+            str(REPOSITORY_ROOT),
             # The child runs from the repository root, so resolve the path here.
             str(checkout.resolve()),
         ],
