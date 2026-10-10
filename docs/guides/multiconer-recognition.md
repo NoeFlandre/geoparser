@@ -102,5 +102,5 @@ uv run python -m scripts.multiconer_benchmark --manifest
 Validate one local split file, after you have obtained it outside this phase. Exit status 2 means a read error or at least one invalid record:
 
 ```bash
-uv run python -m scripts.multiconer_benchmark --validate-conll path/to/en_test.conll --language en
+uv run python -m scripts.multiconer_benchmark --validate-conll path/to/en_test.conll --language en --split test
 ```

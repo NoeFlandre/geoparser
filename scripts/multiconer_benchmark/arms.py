@@ -2,7 +2,7 @@
 
 The arms and their pins are reused from ``scripts.panx_benchmark``. Nothing here
 loads a model. The support labels are the protocol vocabulary. An English-only
-arm on another language is an explicit ``unsupported`` outcome, never a zero.
+arm on another language is an explicit ``out_of_language_control`` outcome, never a zero.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from typing import Literal
 
 from scripts.panx_benchmark.constants import MODELS
 
-Support = Literal["documented", "transfer", "unspecified", "unsupported"]
+Support = Literal["documented", "transfer", "unspecified", "out_of_language_control"]
 _SPECS = {spec.key: spec for spec in MODELS}
 
 
@@ -28,5 +28,5 @@ def language_support(arm: str, language: str) -> Support:
     if language in spec.documented_languages:
         return "documented"
     if spec.documented_languages == ("en",):
-        return "unsupported"
+        return "out_of_language_control"
     return "transfer"

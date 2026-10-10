@@ -12,10 +12,10 @@ def test_arms_are_the_three_pinned_panx_models_in_order():
 @pytest.mark.parametrize(
     "language", ["bn", "de", "en", "es", "fa", "fr", "hi", "it", "pt", "sv", "uk", "zh"]
 )
-def test_english_only_spacy_is_documented_for_english_and_unsupported_elsewhere(
+def test_english_only_spacy_is_documented_for_english_and_a_control_elsewhere(
     language,
 ):
-    expected = "documented" if language == "en" else "unsupported"
+    expected = "documented" if language == "en" else "out_of_language_control"
     assert language_support("spacy_en", language) == expected
 
 
