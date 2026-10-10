@@ -35,7 +35,7 @@ def validate_manifest(payload: dict[str, Any]) -> None:
     _require_mapping(payload, "the manifest")
     _validate_dataset(payload)
     _validate_languages(payload["languages"])
-    if payload != _verified_release():
+    if _canonical(payload) != _canonical(_verified_release()):
         message = "the manifest differs from the verified release"
         raise ValueError(message)
 
@@ -51,6 +51,11 @@ def _require_mapping(value: Any, what: str) -> dict[str, Any]:
 def _verified_release() -> dict[str, Any]:
     """Return the checked-in manifest, which records the verified release."""
     return json.loads(DEFAULT_MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def _canonical(payload: Any) -> str:
+    """Serialize a manifest so JSON types count: false is not 0, and 1 is not 1.0."""
+    return json.dumps(payload, sort_keys=True)
 
 
 def _validate_dataset(payload: dict[str, Any]) -> None:

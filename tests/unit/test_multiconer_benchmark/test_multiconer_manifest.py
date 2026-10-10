@@ -157,6 +157,14 @@ def _mutated(change):
             lambda p: p["languages"]["en"]["files"]["test"].update(sha256="0" * 64),
             "LFS digest",
         ),
+        (
+            lambda p: p["clean_noisy_breakdown"].update(supported_by_release=0),
+            "verified release",
+        ),
+        (
+            lambda p: p["languages"]["en"].update(viewer_num_rows=267629.0),
+            "verified release",
+        ),
     ],
 )
 def test_manifest_rejects_each_inconsistent_pin(change, message):
