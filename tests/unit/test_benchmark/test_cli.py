@@ -18,6 +18,12 @@ from scripts.benchmark.corpus import Document, GoldSpan
 from scripts.benchmark.report import PipelineResult
 
 
+@pytest.fixture(autouse=True)
+def _accept_miniature_newsli_release(monkeypatch):
+    """These tests write miniature releases; the pin itself is tested in test_corpora."""
+    monkeypatch.setattr(corpora, "_check_newsli_release", lambda data, path: None)
+
+
 class TestCorpusOption:
     """Choosing which corpora to score."""
 

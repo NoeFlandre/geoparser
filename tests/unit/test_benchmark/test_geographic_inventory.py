@@ -108,6 +108,13 @@ class TestReleaseListing:
         assert data_file["bytes"] == 63356728
         assert HEX_MD5.match(data_file["md5"])
 
+    def test_the_loader_pins_the_snapshot_values(self, snapshot):
+        """The loader refuses any cached archive that differs from this record."""
+        data_file = snapshot["unitoprank"]["data_file"]
+
+        assert data_file["bytes"] == corpora.NEWSLI_RELEASE_BYTES
+        assert data_file["md5"] == corpora.NEWSLI_RELEASE_MD5
+
 
 class TestStatuses:
     """Every folder is classified, and registered folders point at registry keys."""

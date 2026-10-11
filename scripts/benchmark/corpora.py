@@ -35,6 +35,10 @@ NEWSLI = "newsli"
 # serves every language, so it is cached once beside the corpus folders.
 NEWSLI_URL = "https://ndownloader.figshare.com/files/59465342"
 NEWSLI_RELEASE = "unitoprank-data.zip"
+# The figshare file as published (data.zip, version 10). A cached copy must match
+# both values, or the load stops before any article is read.
+NEWSLI_RELEASE_BYTES = 63356728
+NEWSLI_RELEASE_MD5 = "8e6f82a0931cb909e6f18217e80ce1f3"
 # Totals per NewsLi language, as the checked-in report of the 2026-09-23 run
 # recorded them at commit bbb8a7b (benchmark-evidence/2026-09-23-newsli). A
 # document is an article the adapter keeps: its text file exists and its gold
@@ -254,10 +258,24 @@ def _load_parsed(
     )
 
 
+def _check_newsli_release(data: bytes, path: Path) -> None:
+    """Refuse a release that is not the pinned file, cached or freshly fetched."""
+    if (
+        len(data) != NEWSLI_RELEASE_BYTES
+        or hashlib.md5(data, usedforsecurity=False).hexdigest() != NEWSLI_RELEASE_MD5
+    ):
+        message = (
+            f"{path} is not the pinned UniTopRank release; delete it and load again"
+        )
+        raise ValueError(message)
+
+
 def _load_newsli(spec: CorpusSpec, cache_dir: Path, limit: int | None) -> LoadedCorpus:
     """Load one NewsLi language from the shared release zip."""
     release = corpus.download_corpus(cache_dir.parent / NEWSLI_RELEASE, url=spec.url)
-    digest = hashlib.sha256(release.read_bytes())
+    data = release.read_bytes()
+    _check_newsli_release(data, release)
+    digest = hashlib.sha256(data)
     digest.update(spec.language.encode())
     return LoadedCorpus(
         spec.name,
