@@ -573,8 +573,8 @@ def run_pilot(
     return write_report(report, output_dir)
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Parse command-line arguments and run the pilot."""
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the pilot's gazetteer, output, and cache options."""
     repository = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -600,7 +600,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Require offline Hugging Face loading from the configured cache.",
     )
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Parse command-line arguments and run the pilot."""
+    args = build_parser().parse_args(argv)
     json_path, markdown_path = run_pilot(
         config_path=args.config,
         output_dir=args.output_dir,

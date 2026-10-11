@@ -14,6 +14,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+from scripts._cli import EXIT_OK
 from scripts.panx_benchmark.checkpoint import require_clean_commit
 from scripts.panx_benchmark.constants import MODELS, ModelSpec
 from scripts.panx_benchmark.data import (
@@ -154,10 +155,10 @@ def _output_directory(arguments: argparse.Namespace) -> Path:
     return _default_output_dir()
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """Load test data, run the fixed CPU matrix and save local reports."""
     parser = build_parser()
-    arguments = parser.parse_args()
+    arguments = parser.parse_args(argv)
     _validate_limit(parser, arguments.limit_per_language)
     options = _run_options(parser, arguments)
     repository_commit = require_clean_commit(_commit_id())
@@ -182,7 +183,7 @@ def main() -> int:
     json_path, markdown_path = write_reports(output_dir, result)
     print(f"Wrote {markdown_path}")
     print(f"Wrote {json_path}")
-    return 0
+    return EXIT_OK
 
 
 if __name__ == "__main__":
