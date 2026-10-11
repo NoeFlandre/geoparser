@@ -17,11 +17,16 @@ from scripts.damuel_inventory.inventory import (
 )
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Report coverage only; never open a dataset archive or contact a host."""
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the command line; building the parser reads and writes nothing."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--release", type=Path, default=RELEASE_PATH)
-    arguments = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Report coverage only; never open a dataset archive or contact a host."""
+    arguments = build_parser().parse_args(argv)
     try:
         release = load_release(arguments.release)
     except (OSError, UnicodeError, ValidationError) as error:
