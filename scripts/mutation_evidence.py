@@ -227,8 +227,8 @@ def write_evidence(
     return 0
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
-    """Parse paths, run outcomes, and changed-module selection."""
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the paths, run outcomes, and changed-module selection."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--stats", type=Path, required=True)
@@ -236,12 +236,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--export-exit-code", type=int, required=True)
     parser.add_argument("--gate-exit-code", type=int, required=True)
     parser.add_argument("--patterns", nargs="*", default=[])
-    return parser.parse_args(argv)
+    return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     """Write evidence for the mutation run that just finished."""
-    args = _parse_args(argv)
+    args = build_parser().parse_args(argv)
     return write_evidence(
         args.evidence_dir,
         args.stats,

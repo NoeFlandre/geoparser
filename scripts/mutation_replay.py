@@ -254,8 +254,8 @@ def execute_replay(
     return int(_replay_failed(records))
 
 
-def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    """Parse the explicit CI dispatch arguments."""
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the explicit CI dispatch arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--selection-file", type=Path, required=True)
     parser.add_argument("--expected-sha", required=True)
@@ -263,12 +263,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--evidence-dir", type=Path, default=Path("mutation-replay"))
     parser.add_argument("--allowlist", type=Path, default=_ALLOWLIST)
     parser.add_argument("--validate-only", action="store_true")
-    return parser.parse_args(argv)
+    return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     """Run the allowlisted replay and convert validation errors to CI errors."""
-    args = _parse_args(argv)
+    args = build_parser().parse_args(argv)
     try:
         selection = args.selection_file.read_text(encoding="utf-8")
         if args.validate_only:
