@@ -246,19 +246,32 @@ def _specifier_terms(requirement: str) -> list[tuple[str, tuple[int, ...]]]:
 def requirement_satisfied(requirement: str, installed: str) -> bool:
     """Return True when the installed release satisfies every term of a requirement.
 
-    Terms compare plain release numbers with zero padding. An installed version
-    that is not a plain release, such as 1.0rc1, never satisfies a requirement.
+    Terms compare release numbers with zero padding, then the post-release
+    number, so 0.6.1.post1 is above 0.6.1 as PEP 440 orders it. An installed
+    version that is not a plain release, such as 1.0rc1, never satisfies a
+    requirement.
     """
     terms = _specifier_terms(requirement)
     parsed = _release_and_stage(installed)
     if parsed is None or parsed[1]:
         return False
     version = parsed[0]
+    post = _post_number(installed)
     for operation, bound in terms:
         width = max(len(version), len(bound))
-        if not _OPERATORS[operation](_pad(version, width), _pad(bound, width)):
+        left = (*_pad(version, width), post)
+        right = (*_pad(bound, width), -1)
+        if not _OPERATORS[operation](left, right):
             return False
     return True
+
+
+def _post_number(version: str) -> int:
+    """Return the post-release number of a version, or -1 when it has none."""
+    match = _VERSION.fullmatch(version)
+    if match is None or match.group("post") is None:
+        return -1
+    return int(match.group("post").removeprefix(".post"))
 
 
 def check_tokenizers(
