@@ -312,8 +312,8 @@ def _mutation_output_link(root: Path, artifact_dir: Path) -> Iterator[None]:
         repository_output.unlink(missing_ok=True)
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Run all quality stages unless an explicitly diagnostic flag is used."""
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the stage selection flags for the quality gauntlet."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--include-baseline",
@@ -335,7 +335,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Avoid network access and check only that uv.lock exists.",
     )
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run all quality stages unless an explicitly diagnostic flag is used."""
+    args = build_parser().parse_args(argv)
 
     root = Path(__file__).resolve().parents[1]
     with tempfile.TemporaryDirectory(prefix="geoparser-qa-") as directory:
