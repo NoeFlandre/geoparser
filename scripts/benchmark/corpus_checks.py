@@ -27,6 +27,7 @@ OVERLAPPING_SPAN = "overlapping_span"
 MISSING_GOLD = "missing_gold"
 SOURCE_COUNT = "source_count"
 EMPTY_CORPUS = "empty_corpus"
+DROPPED_GOLD = "dropped_gold"
 DUPLICATE_DOCUMENT = "duplicate_document"
 
 MAX_LATITUDE = 90.0
@@ -158,6 +159,19 @@ def _source_count_problems(
     return found
 
 
+def _dropped_problems(dropped_gold: int) -> list[Problem]:
+    """Refuse a load that discarded gold, since no source here allows any drop.
+
+    An adapter that drops a span changes the gold a run scores, and a capped
+    load has no published total to catch it. The release's own spans all align,
+    so a drop means the file or the reader is wrong.
+    """
+    if dropped_gold == 0:
+        return []
+    detail = f"{dropped_gold} gold entries dropped while reading; none are allowed"
+    return [Problem(DROPPED_GOLD, CORPUS, detail)]
+
+
 def _identifier_problems(documents: list[Document]) -> list[Problem]:
     """Flag every identifier that more than one document carries.
 
@@ -186,6 +200,7 @@ def check_corpus(
     *,
     expected_documents: int | None = None,
     expected_gold: int | None = None,
+    dropped_gold: int = 0,
 ) -> CorpusReport:
     """
     Check every document of a corpus and its totals against the source.
@@ -199,6 +214,7 @@ def check_corpus(
         documents: The parsed documents, in corpus order
         expected_documents: The number of documents the source publishes
         expected_gold: The number of gold spans the source publishes
+        dropped_gold: Gold entries the adapter read and discarded
 
     Returns:
         The totals and every problem found
@@ -209,6 +225,7 @@ def check_corpus(
     ]
     gold_spans = sum(len(document.gold) for document in loaded)
     problems.extend(_identifier_problems(loaded))
+    problems.extend(_dropped_problems(dropped_gold))
     problems.extend(_emptiness_problems(len(loaded), gold_spans))
     problems.extend(
         _source_count_problems(

@@ -20,7 +20,7 @@ from pathlib import Path
 from scripts.benchmark import corpus
 from scripts.benchmark.corpus import Document
 from scripts.benchmark.hipe import hipe_qids, parse_hipe
-from scripts.benchmark.newsli import MAX_DOCUMENTS, parse_newsli
+from scripts.benchmark.newsli import MAX_DOCUMENTS, read_newsli
 from scripts.benchmark.wikidata import load_coordinates
 
 HIPE_BASE_URL = (
@@ -93,6 +93,8 @@ class LoadedCorpus:
     digest: str
     expected_documents: int | None = None
     expected_gold: int | None = None
+    # Gold entries the adapter read and dropped, for sources that drop any.
+    dropped_gold: int = 0
 
 
 # Totals per HIPE-2022 test split, as the checked-in multilingual report of the
@@ -277,9 +279,11 @@ def _load_newsli(spec: CorpusSpec, cache_dir: Path, limit: int | None) -> Loaded
     _check_newsli_release(data, release)
     digest = hashlib.sha256(data)
     digest.update(spec.language.encode())
+    documents, dropped = read_newsli(release, spec.language, limit=limit)
     return LoadedCorpus(
         spec.name,
         spec.language,
-        parse_newsli(release, spec.language, limit=limit),
+        documents,
         digest.hexdigest()[:16],
+        dropped_gold=dropped,
     )

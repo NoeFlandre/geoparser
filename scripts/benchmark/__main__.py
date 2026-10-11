@@ -148,6 +148,7 @@ def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:
         loaded.documents,
         expected_documents=loaded.expected_documents,
         expected_gold=loaded.expected_gold,
+        dropped_gold=loaded.dropped_gold,
     )
     if found.clean:
         print(totals_note(loaded))

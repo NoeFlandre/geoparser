@@ -266,3 +266,18 @@ class TestDocumentIdentifiers:
 
         assert report.count(corpus_checks.DUPLICATE_DOCUMENT) == 1
         assert report.problems[-1].detail == "identifier appears 3 times"
+
+
+class TestDroppedGold:
+    """A load that discarded gold is refused, since no source allows a drop."""
+
+    def test_a_dropped_entry_is_a_problem(self):
+        report = corpus_checks.check_corpus([_document(PARIS)], dropped_gold=1)
+
+        assert report.count(corpus_checks.DROPPED_GOLD) == 1
+        assert not report.clean
+
+    def test_no_dropped_entry_is_clean(self):
+        report = corpus_checks.check_corpus([_document(PARIS)], dropped_gold=0)
+
+        assert report.count(corpus_checks.DROPPED_GOLD) == 0
