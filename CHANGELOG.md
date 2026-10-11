@@ -8,6 +8,13 @@ This file records all notable changes to GeoParser. The project follows
 
 ### Added
 
+- Add an offline MultiCoNER II place-recognition adapter, pinned to revision
+  `4be2d62c912977ee26ed14d2553a4fe17ca3d980` under CC BY 4.0. It keeps the twelve
+  dataset languages that are in the 85-code inventory, scores exact spans with
+  the shared protocol contract, and reports every invalid record. It runs no
+  model and downloads no data. Clean and noisy breakdowns are not supported by
+  the release.
+
 - Add an offline adapter for the UniTopRank rule-based toponym ranker, pinned to
   GitLab commit `346deb166f12b0c97c8c0f9759b593ff178ceafd` (Apache-2.0). It checks a
   local checkout against 15 reviewed blob IDs before importing anything, maps gazetteer
