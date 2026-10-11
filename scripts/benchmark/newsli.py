@@ -34,16 +34,21 @@ def _article(
     language: str,
     identifier: str,
     entries: list[dict],
-) -> Document | None:
-    """Build one article when its text file exists and has valid gold spans."""
+) -> tuple[Document | None, int]:
+    """
+    Build one article when its text file exists and has valid gold spans.
+
+    Returns the article, or None, with the number of gold entries it dropped.
+    """
     member = f"{language}_geotoponyms/{identifier}.txt"
     if member not in names:
-        return None
+        return None, len(entries)
     text = archive.read(member).decode("utf-8")
     spans = tuple(_aligned(entries, text))
+    dropped = len(entries) - len(spans)
     if not spans:
-        return None
-    return Document(identifier, text, spans)
+        return None, dropped
+    return Document(identifier, text, spans), dropped
 
 
 def _articles(
@@ -51,17 +56,49 @@ def _articles(
     language: str,
     gold: dict[str, list[dict]],
     limit: int,
-) -> list[Document]:
+) -> tuple[list[Document], int]:
     """Read articles in stable identifier order, up to the requested cap."""
     names = set(archive.namelist())
     documents = []
+    dropped = 0
     for identifier in sorted(gold):
-        document = _article(archive, names, language, identifier, gold[identifier])
+        document, lost = _article(
+            archive, names, language, identifier, gold[identifier]
+        )
+        dropped += lost
         if document is not None:
             documents.append(document)
         if len(documents) >= limit:
             break
-    return documents
+    return documents, dropped
+
+
+def read_newsli(
+    path: Path, language: str, *, limit: int | None = None
+) -> tuple[list[Document], int]:
+    """
+    Read one language of the NewsLi release, and count the gold it dropped.
+
+    A gold entry is dropped when its span does not select its own surface form,
+    or when its article has no text file. The count covers only the articles
+    read under the cap, so a capped load reports the drops it actually scored
+    past.
+
+    Args:
+        path: The release zip
+        language: Two-letter code of the language to read
+        limit: Keep only the first this many documents, on top of the cap
+
+    Returns:
+        The parsed documents, in identifier order, and the dropped gold entries
+
+    Raises:
+        KeyError: When the release holds no such language
+    """
+    cap = min(MAX_DOCUMENTS, limit) if limit is not None else MAX_DOCUMENTS
+    with zipfile.ZipFile(path) as archive:
+        gold = json.loads(archive.read(f"{language}_geotoponyms.json"))
+        return _articles(archive, language, gold, cap)
 
 
 def parse_newsli(
@@ -81,10 +118,7 @@ def parse_newsli(
     Raises:
         KeyError: When the release holds no such language
     """
-    cap = min(MAX_DOCUMENTS, limit) if limit is not None else MAX_DOCUMENTS
-    with zipfile.ZipFile(path) as archive:
-        gold = json.loads(archive.read(f"{language}_geotoponyms.json"))
-        return _articles(archive, language, gold, cap)
+    return read_newsli(path, language, limit=limit)[0]
 
 
 def _aligned(entries: list[dict], text: str):
