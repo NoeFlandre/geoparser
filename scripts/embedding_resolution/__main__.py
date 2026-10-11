@@ -50,6 +50,17 @@ def registry_document() -> dict[str, object]:
     }
 
 
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the commands; building the parser reads and writes nothing."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("registry", help="print the pinned registry as JSON")
+    freeze = commands.add_parser("freeze", help="validate a freeze plan offline")
+    freeze.add_argument("plan", type=Path, metavar="PLAN.json")
+    freeze.add_argument("--output", type=Path, default=None, metavar="EXPERIMENT.json")
+    return parser
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """
     Dispatch the registry and freeze commands.
@@ -60,13 +71,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     Returns:
         0 on success, 2 when the plan is invalid or cannot be read
     """
-    parser = argparse.ArgumentParser(description=__doc__)
-    commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("registry", help="print the pinned registry as JSON")
-    freeze = commands.add_parser("freeze", help="validate a freeze plan offline")
-    freeze.add_argument("plan", type=Path, metavar="PLAN.json")
-    freeze.add_argument("--output", type=Path, default=None, metavar="EXPERIMENT.json")
-    arguments = parser.parse_args(argv)
+    arguments = build_parser().parse_args(argv)
     if arguments.command == "registry":
         print(json.dumps(registry_document(), indent=2, sort_keys=True))
         return 0
