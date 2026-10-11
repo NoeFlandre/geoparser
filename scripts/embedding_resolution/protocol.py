@@ -186,6 +186,11 @@ class FreezePlan(Contract):
         self._check_sources_and_thresholds()
         self._check_complete()
         require(
+            self.context.token_limit <= min(model.max_seq_length for model in MODELS),
+            "the context budget exceeds a registered model's maximum sequence "
+            "length, so that model would truncate its contexts",
+        )
+        require(
             set(self.reviewed_code) <= {model.key for model in MODELS},
             "reviewed code names a model outside the registry",
         )

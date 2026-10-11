@@ -620,3 +620,11 @@ def test_an_extra_weight_artifact_outside_the_registry_is_refused():
 
     with pytest.raises(ValidationError, match="weight artifact for each registered"):
         FreezePlan.model_validate(payload)
+
+
+def test_a_context_budget_longer_than_any_model_window_is_refused():
+    payload = plan_payload()
+    payload["context"]["token_limit"] = 257
+
+    with pytest.raises(ValidationError, match="maximum sequence length"):
+        FreezePlan.model_validate(payload)
