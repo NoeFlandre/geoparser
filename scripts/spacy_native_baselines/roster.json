@@ -524,9 +524,7 @@
         "LC": "LOC"
       },
       "label_meaning_basis": "unverified_label_meaning",
-      "extra_requirements": [
-        "natto-py>=0.9.0"
-      ],
+      "extra_requirements": [],
       "other_3_8_packages_not_selected": [
         "ko_core_news_lg",
         "ko_core_news_md"

@@ -105,8 +105,8 @@ missing or differently versioned package raises `MissingPipelineError`, and the
 message names the pinned wheel URL to install. That URL carries the recorded
 SHA-256 digest as a fragment, which pip checks before installing, so a replaced
 release asset is refused. The message also lists the tokenizer requirements the
-pipeline records (`sudachipy` and `sudachidict_core` for Japanese, `natto-py`
-for Korean, `spacy-pkuseg` for Chinese). Before loading, each recorded tokenizer
+pipeline records (`sudachipy` and `sudachidict_core` for Japanese, and
+`spacy-pkuseg` for Chinese; the Korean pipeline records none). Before loading, each recorded tokenizer
 requirement is checked against the installed release. A missing tokenizer, or
 one outside its specifier, raises `TokenizerRequirementError` and nothing is
 loaded. The pipeline's installed distribution must also come from its roster
@@ -139,7 +139,7 @@ equal the roster's label set exactly, or `LabelSchemeError` is raised. Only the
   label set and label harmonization.
 - `run_identity(pipeline)` extends that identity with the installed versions of
   spaCy, the pipeline package and each tokenizer requirement. The tokenizer
-  specifiers (`sudachipy`, `sudachidict_core`, `natto-py`) are open-ended and no
+  specifiers (`sudachipy`, `sudachidict_core`) are open-ended and no
   reviewed release is pinned, so clean installs at different times can tokenize
   differently. Use `run_identity` for result records: two runs are comparable
   only when their run identities match.
