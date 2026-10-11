@@ -2,3 +2,5 @@ tests/fixtures/uner/sv_pud_first_sentence.iob2 text eol=lf
 # Keep content-pinned Otter source artifacts byte-identical across platforms.
 docs/examples/otter-source-manifest.json text eol=lf
 docs/guides/otter-source-review.md text eol=lf
+# The reviewed UniTopRank requirements are hashed byte for byte, so Windows must not check them out with CRLF.
+scripts/unitoprank_benchmark/ranker-requirements.txt text eol=lf
