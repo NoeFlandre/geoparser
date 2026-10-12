@@ -49,6 +49,13 @@ from scripts.spacy_native_baselines.roster import (
 )
 
 DOWNLOAD_TIMEOUT_SECONDS = 600
+CHUNK_BYTES = 1 << 20
+
+
+class WheelMismatchError(RuntimeError):
+    """A downloaded wheel does not match the roster."""
+
+
 # A language whose pipeline cannot be fetched, verified, installed or loaded is
 # recorded as failed with its reason, and the run goes on. The English control
 # is different: without it no transfer result exists, so it still aborts.
@@ -60,11 +67,6 @@ RECORDED_FAILURES = (
     OSError,
     subprocess.CalledProcessError,
 )
-CHUNK_BYTES = 1 << 20
-
-
-class WheelMismatchError(RuntimeError):
-    """A downloaded wheel does not match the roster."""
 
 
 def _sha256(path: Path) -> str:
