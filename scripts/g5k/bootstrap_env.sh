@@ -17,9 +17,13 @@ TREE="$1"
 VENV="$2"
 
 python3 -m venv "$VENV"
-"$VENV/bin/python" -m pip install --quiet --upgrade pip uv
+"$VENV/bin/python" -m pip install --quiet --upgrade pip
 
 cd "$TREE"
+# A tree may pin the uv it must be used with (tool.uv.required-version), and uv
+# refuses to run any other version. Install exactly that one.
+UV_SPEC="$("$VENV/bin/python" -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb")).get("tool", {}).get("uv", {}).get("required-version", ""))')"
+"$VENV/bin/python" -m pip install --quiet "uv${UV_SPEC}"
 "$VENV/bin/uv" export --frozen --no-dev --no-hashes --no-emit-project --no-header \
     > "$VENV/locked.txt"
 

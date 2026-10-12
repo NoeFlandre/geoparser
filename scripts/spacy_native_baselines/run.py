@@ -36,7 +36,11 @@ from geoparser.modules.recognizers.spacy_native import NativeSpacyRecognizer
 from scripts.panx_benchmark import constants
 from scripts.panx_benchmark.data import load_test_examples
 from scripts.spacy_native_baselines.evaluation import evaluate_baselines
-from scripts.spacy_native_baselines.loading import load_pipeline
+from scripts.spacy_native_baselines.loading import (
+    LabelSchemeError,
+    MissingPipelineError,
+    load_pipeline,
+)
 from scripts.spacy_native_baselines.roster import (
     ROSTER_PATH,
     NativePipeline,
@@ -45,6 +49,17 @@ from scripts.spacy_native_baselines.roster import (
 )
 
 DOWNLOAD_TIMEOUT_SECONDS = 600
+# A language whose pipeline cannot be fetched, verified, installed or loaded is
+# recorded as failed with its reason, and the run goes on. The English control
+# is different: without it no transfer result exists, so it still aborts.
+RECORDED_FAILURES = (
+    WheelMismatchError,
+    MissingPipelineError,
+    LabelSchemeError,
+    ImportError,
+    OSError,
+    subprocess.CalledProcessError,
+)
 CHUNK_BYTES = 1 << 20
 
 
@@ -167,7 +182,12 @@ def _markdown(result: dict[str, Any]) -> str:
         "",
         f"Unsupported languages with no native pipeline: {len(result['unsupported'])}.",
         "",
+        "## Failed (supported by the roster, not scored)",
+        "",
     ]
+    for language, reason in sorted(result.get("failed", {}).items()):
+        lines.append(f"- {language}: {reason}")
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -190,11 +210,19 @@ def run(
 
     recognizers: dict[str, NativeSpacyRecognizer] = {}
     records: list[dict[str, Any]] = []
+    failed: dict[str, str] = {}
+    control = roster.english_control.language
     for language, pipeline in sorted(pipelines.items()):
-        wheel = fetch_wheel(pipeline, wheels)
+        try:
+            wheel = fetch_wheel(pipeline, wheels)
+            install_wheel(wheel)
+            nlp = load_pipeline(pipeline)
+        except RECORDED_FAILURES as error:
+            if language == control:
+                raise
+            failed[language] = f"{type(error).__name__}: {error}"
+            continue
         records.append(_pipeline_record(pipeline, wheel))
-        install_wheel(wheel)
-        nlp = load_pipeline(pipeline)
         recognizers[language] = NativeSpacyRecognizer(
             nlp,
             language=language,
@@ -208,8 +236,8 @@ def run(
     examples = dataset.examples_by_language
     if languages:
         examples = {language: examples[language] for language in languages}
-    english = recognizers[roster.english_control.language]
-    matched_arms = {language: recognizers[language] for language in selected}
+    english = recognizers[control]
+    matched_arms = dict(recognizers)
     result = evaluate_baselines(
         examples,
         matched_arms,
@@ -227,6 +255,7 @@ def run(
         },
         "roster_sha256": _sha256(ROSTER_PATH),
         "pipelines": records,
+        "failed": failed,
         "environment": _environment(),
         "seconds": round(time.perf_counter() - started, 1),
         **result,

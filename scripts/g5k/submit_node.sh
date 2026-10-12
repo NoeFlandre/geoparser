@@ -27,6 +27,9 @@ TASK="${TASK:-benchmark}"
 NATIVE_LANGUAGES="${NATIVE_LANGUAGES:-}"
 NATIVE_LIMIT="${NATIVE_LIMIT:-}"
 WALLTIME="${WALLTIME:-3:00}"
+# GPUS=0 reserves a CPU host instead: the native spaCy baselines need no GPU,
+# and reserving one would leave it idle.
+GPUS="${GPUS:-1}"
 CLUSTER="${CLUSTER:-grue}"
 QUEUE="${QUEUE:-besteffort}"
 RESULTS="${RESULTS:-$HOME/geoparser-g5k/runs/$RUN_NAME}"
@@ -79,17 +82,23 @@ job_env=$(printf "BUNDLE=%q COMMIT=%q RUN_NAME=%q RESULTS=%q CORPORA=%q PIPELINE
     "$BUNDLE" "$COMMIT" "$RUN_NAME" "$RESULTS" "$CORPORA" "$PIPELINES" "$PHASES" \
     "$VERIFY" "$DEVICE" "$CHUNK_SIZE" "$MIN_SIMILARITY" "$HELPERS" "$TASK" "$NATIVE_LANGUAGES" "$NATIVE_LIMIT")
 
-OPTIONS=(-p "cluster='${CLUSTER}'")
+if [[ "$GPUS" == "0" ]]; then
+    RESOURCES="host=1,walltime=${WALLTIME}"
+    OPTIONS=()
+else
+    RESOURCES="host=1/gpu=${GPUS},walltime=${WALLTIME}"
+    OPTIONS=(-p "cluster='${CLUSTER}'")
+fi
 CHECKPOINT_SECONDS=600
 if [[ "$QUEUE" == "besteffort" ]]; then
     OPTIONS+=(-q besteffort -t besteffort -t idempotent)
     CHECKPOINT_SECONDS=60
 fi
 
-echo "submitting: oarsub -n ${JOB_NAME} -l host=1/gpu=1,walltime=${WALLTIME} ${OPTIONS[*]}"
+echo "submitting: oarsub -n ${JOB_NAME} -l ${RESOURCES} ${OPTIONS[*]-}"
 oarsub \
     -n "$JOB_NAME" \
-    -l "host=1/gpu=1,walltime=${WALLTIME}" \
+    -l "$RESOURCES" \
     "${OPTIONS[@]}" \
     -O "$RESULTS/logs/%jobid%.out" \
     -E "$RESULTS/logs/%jobid%.err" \
