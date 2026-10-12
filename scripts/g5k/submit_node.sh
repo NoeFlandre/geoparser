@@ -21,8 +21,11 @@ set -euo pipefail
 : "${BUNDLE:?set BUNDLE}"
 : "${COMMIT:?set COMMIT}"
 : "${RUN_NAME:?set RUN_NAME}"
-: "${CORPORA:?set CORPORA}"
-: "${PIPELINES:?set PIPELINES}"
+CORPORA="${CORPORA:-}"
+PIPELINES="${PIPELINES:-}"
+TASK="${TASK:-benchmark}"
+NATIVE_LANGUAGES="${NATIVE_LANGUAGES:-}"
+NATIVE_LIMIT="${NATIVE_LIMIT:-}"
 WALLTIME="${WALLTIME:-3:00}"
 CLUSTER="${CLUSTER:-grue}"
 QUEUE="${QUEUE:-besteffort}"
@@ -38,11 +41,11 @@ if [[ ! "$COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
     echo "COMMIT must be a full 40-character hash" >&2
     exit 2
 fi
-if [[ ! "$CORPORA" =~ ^[a-z0-9-]+(,[a-z0-9-]+)*$ ]]; then
+if [[ -n "$CORPORA" && ! "$CORPORA" =~ ^[a-z0-9-]+(,[a-z0-9-]+)*$ ]]; then
     echo "CORPORA must be a comma-separated list of corpus names" >&2
     exit 2
 fi
-if [[ ! "$PIPELINES" =~ ^[a-z0-9.-]+(,[a-z0-9.-]+)*$ ]]; then
+if [[ -n "$PIPELINES" && ! "$PIPELINES" =~ ^[a-z0-9.-]+(,[a-z0-9.-]+)*$ ]]; then
     echo "PIPELINES must be a comma-separated list of pipeline names" >&2
     exit 2
 fi
@@ -72,9 +75,9 @@ if [[ -n "$existing" ]]; then
 fi
 
 # Everything the job needs is passed in its command line, quoted for the shell.
-job_env=$(printf "BUNDLE=%q COMMIT=%q RUN_NAME=%q RESULTS=%q CORPORA=%q PIPELINES=%q PHASES=%q VERIFY=%q DEVICE=%q CHUNK_SIZE=%q MIN_SIMILARITY=%q HELPERS=%q" \
+job_env=$(printf "BUNDLE=%q COMMIT=%q RUN_NAME=%q RESULTS=%q CORPORA=%q PIPELINES=%q PHASES=%q VERIFY=%q DEVICE=%q CHUNK_SIZE=%q MIN_SIMILARITY=%q HELPERS=%q TASK=%q NATIVE_LANGUAGES=%q NATIVE_LIMIT=%q" \
     "$BUNDLE" "$COMMIT" "$RUN_NAME" "$RESULTS" "$CORPORA" "$PIPELINES" "$PHASES" \
-    "$VERIFY" "$DEVICE" "$CHUNK_SIZE" "$MIN_SIMILARITY" "$HELPERS")
+    "$VERIFY" "$DEVICE" "$CHUNK_SIZE" "$MIN_SIMILARITY" "$HELPERS" "$TASK" "$NATIVE_LANGUAGES" "$NATIVE_LIMIT")
 
 OPTIONS=(-p "cluster='${CLUSTER}'")
 CHECKPOINT_SECONDS=600

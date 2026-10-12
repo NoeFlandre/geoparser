@@ -13,9 +13,15 @@
 #   6. aggregates the per-corpus reports into summary.md and summary.json
 #   7. removes its scratch directory, whatever happened
 #
-# Required: BUNDLE, COMMIT, RUN_NAME, RESULTS, CORPORA, PIPELINES.
+# Required: BUNDLE, COMMIT, RUN_NAME, RESULTS, and for TASK=benchmark also
+#           CORPORA and PIPELINES.
 # Optional: PHASES (recognition, resolution, or both), VERIFY (1), DEVICE (cuda),
-#           CHUNK_SIZE (5), MIN_SIMILARITY (0.0), HELPERS (this directory).
+#           CHUNK_SIZE (5), MIN_SIMILARITY (0.0), HELPERS (this directory),
+#           TASK (benchmark, the default, or native-spacy).
+#
+# TASK=native-spacy runs the native spaCy baselines on the pinned WikiANN splits
+# instead (scripts/spacy_native_baselines/run.py). It needs no gazetteer and no
+# corpus verification, because WikiANN is checked by its own loader.
 
 set -euo pipefail
 
@@ -23,17 +29,23 @@ set -euo pipefail
 : "${COMMIT:?set COMMIT to the full commit to run}"
 : "${RUN_NAME:?set RUN_NAME}"
 : "${RESULTS:?set RESULTS to a directory on the frontend home}"
-: "${CORPORA:?set CORPORA to comma-separated corpus names}"
-: "${PIPELINES:?set PIPELINES to comma-separated pipeline names}"
+CORPORA="${CORPORA:-}"
+PIPELINES="${PIPELINES:-}"
 
 HELPERS="${HELPERS:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 PHASES="${PHASES:-}"
+TASK="${TASK:-benchmark}"
 VERIFY="${VERIFY:-1}"
 DEVICE="${DEVICE:-cuda}"
 CHUNK_SIZE="${CHUNK_SIZE:-5}"
 MIN_SIMILARITY="${MIN_SIMILARITY:-0.0}"
 
 JOB="${OAR_JOB_ID:-manual}"
+
+if [[ "$TASK" == "benchmark" && ( -z "$CORPORA" || -z "$PIPELINES" ) ]]; then
+    echo "TASK=benchmark needs CORPORA and PIPELINES" >&2
+    exit 2
+fi
 SCRATCH="/tmp/geoparser-${RUN_NAME}-${JOB}"
 OUT="$SCRATCH/out"
 TREE="$SCRATCH/src"
@@ -94,6 +106,25 @@ bash "$HELPERS/bootstrap_env.sh" "$TREE" "$VENV" 2>&1 | tee "$RESULTS/logs/${JOB
 # shellcheck disable=SC1091
 source "$VENV/bin/activate"
 cd "$TREE"
+
+if [[ "$TASK" == "native-spacy" ]]; then
+    echo "=== native spaCy baselines at $(date -Is) ==="
+    NATIVE_OUT="$RESULTS/native-spacy"
+    mkdir -p "$NATIVE_OUT"
+    NATIVE_ARGS=()
+    for language in ${NATIVE_LANGUAGES:-}; do
+        NATIVE_ARGS+=(--language "$language")
+    done
+    if [[ -n "${NATIVE_LIMIT:-}" ]]; then
+        NATIVE_ARGS+=(--limit "$NATIVE_LIMIT")
+    fi
+    python -m scripts.spacy_native_baselines.run \
+        --cache "$SCRATCH/native-cache" --wheels "$SCRATCH/wheels" \
+        --output "$NATIVE_OUT" "${NATIVE_ARGS[@]}"
+    persist
+    echo "=== native run finished at $(date -Is) ==="
+    exit 0
+fi
 
 echo "=== gazetteer source headers at $(date -Is) ==="
 curl -sI https://download.geonames.org/export/dump/allCountries.zip \
