@@ -128,16 +128,13 @@ def test_unknown_pipeline_is_rejected():
 
 
 @pytest.mark.parametrize(
-    ("pipeline", "builder"),
-    [
-        (pipelines.XLM_MINILM, "_build_xlm_recognizer"),
-        (pipelines.OTTER_MINILM, "_build_otter_recognizer"),
-    ],
+    "pipeline",
+    [pipelines.XLM_MINILM, pipelines.OTTER_MINILM],
 )
-def test_new_pipeline_selects_its_declared_recognizer(monkeypatch, pipeline, builder):
+def test_new_pipeline_selects_its_declared_recognizer(monkeypatch, pipeline):
     recognizer = object()
     factory = Mock(return_value=recognizer)
-    monkeypatch.setattr(pipelines, builder, factory)
+    monkeypatch.setitem(pipelines._RECOGNIZER_BUILDERS, pipeline, factory)
 
     assert pipelines.build_recognizer(pipeline, device="cuda") is recognizer
     factory.assert_called_once_with("cuda")
