@@ -4,14 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).parents[3]
 INDEX = ROOT / "benchmark-evidence/archives/inventory-index.json"
-pytestmark = pytest.mark.skipif(
-    ROOT.name == "mutants",
-    reason="The mutation workspace copies tests but not archived evidence files",
-)
 
 
 def test_archived_inventories_match_their_recorded_hashes() -> None:
@@ -36,3 +30,20 @@ def test_completed_and_inventory_evidence_remains_present() -> None:
     )
 
     assert all((ROOT / path).is_file() for path in retained)
+
+
+def test_uner_source_audit_path_maps_to_archived_inventory() -> None:
+    """The unchanged historical audit path resolves through the archive index."""
+    audit_path = ROOT / "benchmark-evidence/uner/adapter-source-audit.json"
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    index = json.loads(INDEX.read_text(encoding="utf-8"))
+    matches = [
+        entry
+        for entry in index["files"]
+        if entry["original_path"] == audit["source_snapshot"]
+    ]
+
+    assert len(matches) == 1
+    archived = ROOT / matches[0]["archive_path"]
+    assert archived.is_file()
+    assert hashlib.sha256(archived.read_bytes()).hexdigest() == matches[0]["sha256"]
