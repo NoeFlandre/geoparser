@@ -48,6 +48,8 @@ export XDG_DATA_HOME="$SCRATCH/share"
 export XDG_CACHE_HOME="$SCRATCH/cache"
 export HF_HOME="$SCRATCH/huggingface"
 export GEOPARSER_DB_PATH="$SCRATCH/benchmark.sqlite"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-4}"
 mkdir -p "$GEOPARSER_GAZETTEERS_DIR" "$HF_HOME"
 
 # shellcheck disable=SC1091
@@ -58,6 +60,7 @@ echo "=== environment ==="
 python - <<'PY'
 import torch
 print(f"torch {torch.__version__}")
+print(f"torch CPU threads: {torch.get_num_threads()}")
 print(f"cuda available: {torch.cuda.is_available()}")
 if torch.cuda.is_available():
     print(f"gpu: {torch.cuda.get_device_name(0)}")

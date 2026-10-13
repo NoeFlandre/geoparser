@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Submit the benchmark to OAR, respecting the Grid'5000 usage policy.
 #
-#   ./scripts/g5k/submit.sh                  # default: 1 GPU, 2 hours
+#   ./scripts/g5k/submit.sh                  # default: 1 GPU, 4 cores, 2 hours
 #   WALLTIME=4:00 LIMIT=50 ./scripts/g5k/submit.sh
 #   CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
 #
@@ -10,8 +10,8 @@
 # Each value is comma-separated and passed to the benchmark CLI on the node.
 #
 # Policy notes this script encodes:
-#   * one GPU on one host -- the workload is single-process inference, so more
-#     would sit idle while still being unavailable to everyone else
+#   * one GPU and four CPU cores on one host -- the workload is single-process
+#     inference, so more would sit idle while still being unavailable to others
 #   * an explicit, modest walltime rather than the maximum
 #   * a refusal to submit when a job of this name is already queued or running,
 #     because duplicate and speculative reservations are what the policy
@@ -24,6 +24,7 @@ set -euo pipefail
 JOB_NAME="${JOB_NAME:-geoparser-bench}"
 WALLTIME="${WALLTIME:-2:00}"
 GPUS="${GPUS:-1}"
+CORES="${CORES:-4}"
 REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
 VENV="${VENV:-$HOME/geoparser-venv}"
 RESULTS="${RESULTS:-$HOME/geoparser-bench}"
@@ -79,10 +80,14 @@ if [[ -n "$existing" ]]; then
     exit 1
 fi
 
-RESOURCES="host=1/gpu=${GPUS},walltime=${WALLTIME}"
+RESOURCES="host=1/gpu=${GPUS}/core=${CORES},walltime=${WALLTIME}"
 OPTIONS=()
 if [[ -n "$CLUSTER" ]]; then
     OPTIONS+=(-p "cluster='${CLUSTER}'")
+fi
+if [[ "$CLUSTER" == "ecotaxe" ]]; then
+    # Nantes lists ecotaxe as an exotic cluster; OAR requires this type.
+    OPTIONS+=(-t exotic)
 fi
 # How long before the walltime OAR sends the checkpoint signal. besteffort
 # jobs are capped at a minute, which is enough: the run's own progress is
