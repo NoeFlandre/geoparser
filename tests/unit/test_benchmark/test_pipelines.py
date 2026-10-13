@@ -1,6 +1,7 @@
 """Factory tests for benchmark pipeline composition."""
 
 import sys
+from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest.mock import Mock
@@ -42,15 +43,25 @@ def test_cli_accepts_the_hybrid_pipeline():
     assert arguments.pipeline == [pipelines.HYBRID]
 
 
-def test_hybrid_uses_gliner2_for_recognition(monkeypatch):
+@pytest.mark.parametrize("pipeline", [pipelines.XLM_MINILM, pipelines.OTTER_MINILM])
+def test_cli_accepts_each_missing_recognizer_pipeline(pipeline):
+    arguments = build_parser().parse_args(["--pipeline", pipeline])
+
+    assert arguments.pipeline == [pipeline]
+
+
+def test_hybrid_uses_gliner2_for_recognition(monkeypatch, tmp_path):
     recognizer = SimpleNamespace(model_name="fastino/gliner2.5-multi-v1", model=Mock())
     gliner_factory = Mock(return_value=recognizer)
+    snapshot = tmp_path / "gliner-snapshot"
     _patch_module_classes(monkeypatch, GLiNER2Recognizer=gliner_factory)
+    monkeypatch.setattr(pipelines, "_snapshot", lambda key: snapshot)
 
     result = pipelines.build_recognizer(pipelines.HYBRID, device="cuda")
 
     assert result is recognizer
-    gliner_factory.assert_called_once_with()
+    gliner_factory.assert_called_once_with(model_name=str(snapshot))
+    assert recognizer.benchmark_model_pin == pipelines._pinned_name("gliner")
     recognizer.model.to.assert_called_once_with("cuda")
 
 
@@ -81,13 +92,26 @@ def test_swapped_keeps_jina_resolver(monkeypatch):
     resolver = SimpleNamespace(transformer=Mock(), reranker=Mock())
     jina_factory = Mock(return_value=resolver)
     _patch_module_classes(monkeypatch, JinaResolver=jina_factory)
+    snapshots = {
+        "jina_embeddings": Path("/cache/jina-embeddings"),
+        "jina_reranker": Path("/cache/jina-reranker"),
+    }
+    monkeypatch.setattr(pipelines, "_require_context_model", Mock())
+    monkeypatch.setattr(pipelines, "_snapshot", lambda key: snapshots[key])
 
     result = pipelines.build_resolver(
         pipelines.SWAPPED, device="cpu", min_similarity=0.0
     )
 
     assert result is resolver
-    jina_factory.assert_called_once_with(gazetteer_name="geonames", min_similarity=0.0)
+    jina_factory.assert_called_once_with(
+        model_name=str(snapshots["jina_embeddings"]),
+        reranker_name=str(snapshots["jina_reranker"]),
+        gazetteer_name="geonames",
+        min_similarity=0.0,
+    )
+    assert resolver.benchmark_model_pin == pipelines._pinned_name("jina_embeddings")
+    assert resolver.benchmark_reranker_pin == pipelines._pinned_name("jina_reranker")
     resolver.transformer.to.assert_called_once_with("cpu")
     resolver.reranker.to.assert_called_once_with("cpu")
 
@@ -97,12 +121,31 @@ def test_unknown_pipeline_is_rejected():
         pipelines.build_recognizer("unknown", device="cpu")
 
 
-def test_prior_uses_gliner2_for_recognition(monkeypatch):
+@pytest.mark.parametrize(
+    ("pipeline", "builder"),
+    [
+        (pipelines.XLM_MINILM, "_build_xlm_recognizer"),
+        (pipelines.OTTER_MINILM, "_build_otter_recognizer"),
+    ],
+)
+def test_new_pipeline_selects_its_declared_recognizer(monkeypatch, pipeline, builder):
+    recognizer = object()
+    factory = Mock(return_value=recognizer)
+    monkeypatch.setattr(pipelines, builder, factory)
+
+    assert pipelines.build_recognizer(pipeline, device="cuda") is recognizer
+    factory.assert_called_once_with("cuda")
+
+
+def test_prior_uses_gliner2_for_recognition(monkeypatch, tmp_path):
     recognizer = SimpleNamespace(model=Mock())
     gliner_factory = Mock(return_value=recognizer)
+    snapshot = tmp_path / "gliner-snapshot"
     _patch_module_classes(monkeypatch, GLiNER2Recognizer=gliner_factory)
+    monkeypatch.setattr(pipelines, "_snapshot", lambda key: snapshot)
 
     assert pipelines.build_recognizer(pipelines.PRIOR, device="cpu") is recognizer
+    gliner_factory.assert_called_once_with(model_name=str(snapshot))
 
 
 def test_prior_uses_the_prior_resolver_on_the_upstream_model(monkeypatch):
@@ -171,6 +214,7 @@ def test_ablations_share_hybrids_recognizer(monkeypatch, pipeline):
     recognizer = SimpleNamespace(model=Mock())
     gliner_factory = Mock(return_value=recognizer)
     _patch_module_classes(monkeypatch, GLiNER2Recognizer=gliner_factory)
+    monkeypatch.setattr(pipelines, "_snapshot", lambda key: Path("/cache/gliner"))
 
     assert pipelines.build_recognizer(pipeline, device="cpu") is recognizer
 
@@ -241,3 +285,75 @@ def test_model_names_describe_the_loaded_recognizer_resolver_and_reranker(
     recognizer, resolver, expected
 ):
     assert pipelines.model_names(recognizer, resolver) == expected
+
+
+def test_model_names_use_pins_for_newly_loaded_snapshots():
+    recognizer = SimpleNamespace(
+        model_name="/tmp/cache/snapshot",
+        benchmark_model_pin="recognizer@revision",
+    )
+    resolver = SimpleNamespace(
+        model_name="/tmp/minilm",
+        benchmark_model_pin="resolver@revision",
+        reranker_name="/tmp/reranker",
+        benchmark_reranker_pin="reranker@revision",
+    )
+
+    assert pipelines.model_names(recognizer, resolver) == {
+        "recognizer": "recognizer@revision",
+        "resolver": "resolver@revision",
+        "reranker": "reranker@revision",
+    }
+
+
+def test_new_pipeline_identities_pin_shared_resolution_models():
+    xlm_pins = pipelines.pipeline_model_pins(pipelines.XLM_MINILM)
+    otter_pins = pipelines.pipeline_model_pins(pipelines.OTTER_MINILM)
+
+    assert xlm_pins["recognizer"] != otter_pins["recognizer"]
+    assert xlm_pins["resolver"] == otter_pins["resolver"]
+    assert (
+        xlm_pins["context_sentence_splitter"] == otter_pins["context_sentence_splitter"]
+    )
+
+
+def test_otter_integration_provenance_matches_retained_checkpoint_plan():
+    provenance = pipelines.otter_integration_provenance()
+
+    assert provenance["model"] == (
+        "whoisjones/otter-cross-mmbert@8729188e4f5fc7948d0e9dfd7d7e6d36c2e7270d"
+    )
+    assert provenance["model_sha256"] == (
+        "8987080bfc3e6672a75fb19ffe904d39e79ad804eabfda8247a62c347fb024b2"
+    )
+    assert provenance["source_manifest_sha256"] == (
+        "2d6e72bacb2e933cd27d0f5bd7ef53ebac3be0eebcbbe6cfbf36f22014ba2d78"
+    )
+    assert provenance["source_review_sha256"] == (
+        "458e5cae6d0ce62b0d7a7fdb91a7617b1092463ce62a14471d86974552fcab75"
+    )
+    assert provenance["plan_status"] == "planned"
+    assert provenance["language_support"] == "unspecified"
+    assert isinstance(provenance["plan_lock_matches_current"], bool)
+
+
+def test_otter_checkpoint_config_matches_the_retained_arm():
+    config = SimpleNamespace(
+        architecture="cross_encoder",
+        max_seq_length=1024,
+        max_span_length=30,
+    )
+    pipelines._verify_otter_model_config(SimpleNamespace(config=config))
+
+
+def test_otter_checkpoint_config_must_match_the_retained_arm():
+    model = SimpleNamespace(
+        config=SimpleNamespace(
+            architecture="bi_encoder",
+            max_seq_length=1024,
+            max_span_length=30,
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="differs from its retained arm plan"):
+        pipelines._verify_otter_model_config(model)

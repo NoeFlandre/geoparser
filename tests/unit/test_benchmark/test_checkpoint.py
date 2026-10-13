@@ -16,6 +16,7 @@ from scripts.benchmark.checkpoint import (
     Checkpoint,
     RunIdentity,
     load,
+    resolution_reuse_compatible,
     save,
 )
 
@@ -80,6 +81,7 @@ class TestRoundTrip:
         state = Checkpoint(identity())
         state.record("resolution", "7", [{"start": 1, "end": 2}])
         state.elapsed_seconds = 12.5
+        state.phase_elapsed_seconds["resolution"] = 8.0
         save(path, state)
 
         resumed, reasons = load(path, identity())
@@ -87,6 +89,7 @@ class TestRoundTrip:
         assert reasons == []
         assert resumed.completed("resolution") == {"7"}
         assert resumed.elapsed_seconds == 12.5
+        assert resumed.phase_elapsed_seconds == {"resolution": 8.0}
 
     def test_creates_parent_directories(self, tmp_path):
         """Test that a fresh output directory does not need to exist."""
@@ -172,3 +175,47 @@ class TestRunIdentity:
         other = identity(commit="0ther", min_similarity=0.5)
 
         assert set(identity().differences(other)) == {"commit", "min_similarity"}
+
+    def test_model_pins_are_load_bearing(self):
+        first = identity(model_pins={"resolver": "minilm@one"})
+        second = identity(model_pins={"resolver": "minilm@two"})
+
+        assert first.differences(second) == ["model_pins"]
+
+    def test_gold_span_resolution_reuse_requires_matching_provenance(self):
+        common = {
+            "corpus_digest": "same-corpus",
+            "gazetteer": "geonames",
+            "min_similarity": 0.0,
+            "limit": None,
+            "commit": "same-code",
+            "model_pins": {
+                "recognizer": "different-recognizer",
+                "resolver": "minilm@pin",
+                "context_sentence_splitter": "xx_sent_ud_sm@3.8.0",
+            },
+        }
+        first = identity(pipeline="xlm-minilm", **common)
+        second = identity(pipeline="otter-cross-minilm", **common)
+
+        assert resolution_reuse_compatible(first, second)
+        assert not resolution_reuse_compatible(
+            first,
+            identity(
+                pipeline="otter-cross-minilm",
+                **{**common, "corpus_digest": "other"},
+            ),
+        )
+        assert not resolution_reuse_compatible(
+            first,
+            identity(
+                pipeline="otter-cross-minilm",
+                **{
+                    **common,
+                    "model_pins": {
+                        **common["model_pins"],
+                        "resolver": "minilm@other",
+                    },
+                },
+            ),
+        )

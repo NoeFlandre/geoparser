@@ -17,6 +17,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from geoparser.modules.recognizers.otter import PredictionOutputError
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import pipelines, report
 from scripts.benchmark.corpus import Document
@@ -164,7 +165,11 @@ def run_phase(
         min_similarity=settings.min_similarity,
     )
     names = pipelines.model_names(recognizer, resolver)
-    state.elapsed_seconds += time.perf_counter() - loading_started
+    loading_seconds = time.perf_counter() - loading_started
+    state.elapsed_seconds += loading_seconds
+    state.phase_elapsed_seconds[phase] = (
+        state.phase_elapsed_seconds.get(phase, 0.0) + loading_seconds
+    )
     _run_chunks(
         _PhaseExecution(
             phase,
@@ -207,12 +212,24 @@ def _run_chunks(
     try:
         for index, chunk in enumerate(phase_chunks, start=1):
             started = time.perf_counter()
-            predictions = _process_chunk(
-                execution.phase, chunk, recognizer=recognizer, resolver=resolver
+            predictions, failures = _process_chunk_with_failures(
+                execution.phase,
+                chunk,
+                recognizer=recognizer,
+                resolver=resolver,
             )
             for document_id, annotations in predictions.items():
                 execution.state.record(execution.phase, document_id, annotations)
-            execution.state.elapsed_seconds += time.perf_counter() - started
+            if failures:
+                execution.state.failures.setdefault(execution.phase, {}).update(
+                    failures
+                )
+            elapsed = time.perf_counter() - started
+            execution.state.elapsed_seconds += elapsed
+            execution.state.phase_elapsed_seconds[execution.phase] = (
+                execution.state.phase_elapsed_seconds.get(execution.phase, 0.0)
+                + elapsed
+            )
             ckpt.save(execution.checkpoint_path, execution.state)
             execution.log(
                 f"    chunk {index}/{len(phase_chunks)} "
@@ -269,6 +286,61 @@ def _process_chunk(
         project.delete()
 
 
+def _process_chunk_with_failures(
+    phase: str,
+    documents: Sequence[Document],
+    *,
+    recognizer: t.Any,
+    resolver: t.Any,
+) -> tuple[dict[str, list[dict[str, t.Any]]], dict[str, dict[str, t.Any]]]:
+    """Record Otter's document-level input and output failures explicitly."""
+    try:
+        return (
+            _process_chunk(phase, documents, recognizer=recognizer, resolver=resolver),
+            {},
+        )
+    except ValueError as error:
+        if phase != RECOGNITION or _otter_failure(error) is None:
+            raise
+
+    predictions: dict[str, list[dict[str, t.Any]]] = {}
+    failures: dict[str, dict[str, t.Any]] = {}
+    for document in documents:
+        try:
+            predictions.update(
+                _process_chunk(
+                    phase, [document], recognizer=recognizer, resolver=resolver
+                )
+            )
+        except ValueError as error:
+            failure = _otter_failure(error)
+            if phase != RECOGNITION or failure is None:
+                raise
+            predictions[document.identifier] = []
+            failures[document.identifier] = {
+                "kind": failure[0],
+                "reason": failure[1],
+                "message": str(error),
+            }
+    return predictions, failures
+
+
+def _otter_failure(error: ValueError) -> tuple[str, str] | None:
+    """Return safe report metadata for the two document-level Otter failures."""
+    message = str(error)
+    if "Otter document at index" in message and "exceeding the limit" in message:
+        return (
+            "unsupported_input",
+            "Otter sequence-length limit; document was not truncated",
+        )
+    if isinstance(error, PredictionOutputError):
+        return (
+            "invalid_output",
+            "Otter returned output that did not match its document.",
+        )
+    return None
+
+
 def score(
     pipeline: str,
     documents: Sequence[Document],
@@ -295,12 +367,16 @@ def score(
         name=pipeline,
         models=models,
         elapsed_seconds=state.elapsed_seconds,
+        phase_elapsed_seconds=state.phase_elapsed_seconds.copy(),
         device=device,
+        phase_provenance=state.phase_provenance.copy(),
+        failures=state.failures.copy(),
     )
     recognized = [report.deserialize(a) for a in state.annotations(RECOGNITION)]
     resolved = [report.deserialize(a) for a in state.annotations(RESOLUTION)]
-    if recognized:
+    complete_documents = {document.identifier for document in documents}
+    if state.completed(RECOGNITION) == complete_documents:
         result.recognition = report.score_recognition(expected, recognized)
-    if resolved:
+    if state.completed(RESOLUTION) == complete_documents:
         result.resolution = report.score_resolution(expected, resolved)
     return result

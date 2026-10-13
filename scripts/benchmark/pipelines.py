@@ -20,12 +20,21 @@ the comparison would quietly run on the CPU.
 from __future__ import annotations
 
 import contextlib
+import hashlib
+import importlib.metadata
+import json
+import os
 import typing as t
+from pathlib import Path
+
+from scripts.benchmark import missing_matrix
 
 UPSTREAM = "upstream"
 SWAPPED = "swapped"
 HYBRID = "hybrid"
 PRIOR = "prior"
+XLM_MINILM = "xlm-minilm"
+OTTER_MINILM = "otter-cross-minilm"
 DEFAULT_PIPELINES = (UPSTREAM, SWAPPED, HYBRID, PRIOR)
 
 # PriorResolver settings as (population_weight, inflection_fallback). The
@@ -44,12 +53,328 @@ PRIOR_SETTINGS = {
     "population-1.0": (1.0, False),
 }
 ABLATIONS = tuple(name for name in PRIOR_SETTINGS if name != PRIOR)
-PIPELINES = (*DEFAULT_PIPELINES, *ABLATIONS)
+PIPELINES = (*DEFAULT_PIPELINES, XLM_MINILM, OTTER_MINILM, *ABLATIONS)
 UPSTREAM_RESOLVER_MODEL = "dguzh/geo-all-MiniLM-L6-v2"
 
 # The upstream recognizer. The transformer pipeline needs a plugin the library
 # does not install, so the small pipeline is what upstream runs out of the box.
 UPSTREAM_SPACY_MODEL = "en_core_web_sm"
+SPACY_CONTEXT_MODEL = "xx_sent_ud_sm"
+SPACY_CONTEXT_MODEL_VERSION = "3.8.0"
+XLM_BATCH_SIZE = 8
+XLM_STRIDE = 128
+OTTER_ENTITY_TYPES = ("city", "country", "location")
+OTTER_THRESHOLD = 0.5
+OTTER_BATCH_SIZE = 8
+OTTER_ARM_PLAN = (
+    Path(__file__).resolve().parents[2] / "docs/examples/otter-recognition-arms.json"
+)
+
+
+def _snapshot(model_key: str) -> Path:
+    """Fetch one pinned Hub snapshot into the configured node-local cache."""
+    repo_id, revision = missing_matrix.MODEL_PINS[model_key]
+    from huggingface_hub import snapshot_download
+
+    hf_home = Path(os.environ.get("HF_HOME", Path.home() / ".cache/huggingface"))
+    path = Path(
+        snapshot_download(
+            repo_id=repo_id,
+            revision=revision,
+            cache_dir=str(hf_home / "hub"),
+        )
+    )
+    if path.name != revision:
+        message = f"{repo_id} resolved to snapshot {path.name}, expected {revision}"
+        raise RuntimeError(message)
+    return path
+
+
+@contextlib.contextmanager
+def _offline_model_load() -> t.Iterator[None]:
+    """Prevent pinned local snapshots from falling back to unpinned downloads."""
+    names = ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE")
+    previous = {name: os.environ.get(name) for name in names}
+    for name in names:
+        os.environ[name] = "1"
+    try:
+        yield
+    finally:
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
+def _require_context_model() -> None:
+    """Fail before inference if the resolver's locked spaCy model is absent."""
+    try:
+        installed = importlib.metadata.version("xx-sent-ud-sm")
+    except importlib.metadata.PackageNotFoundError as error:
+        message = (
+            f"Install the locked {SPACY_CONTEXT_MODEL}=={SPACY_CONTEXT_MODEL_VERSION} "
+            "package before running the pinned resolver comparison."
+        )
+        raise RuntimeError(message) from error
+    if installed != SPACY_CONTEXT_MODEL_VERSION:
+        message = (
+            f"Expected {SPACY_CONTEXT_MODEL} {SPACY_CONTEXT_MODEL_VERSION}; "
+            f"found {installed}"
+        )
+        raise RuntimeError(message)
+
+
+def _pinned_name(model_key: str) -> str:
+    """Return the immutable repository and revision recorded in reports."""
+    repo_id, revision = missing_matrix.MODEL_PINS[model_key]
+    return f"{repo_id}@{revision}"
+
+
+def _attach_model_pin(model: t.Any, model_key: str) -> None:
+    """Annotate a loaded object without changing its runtime model path."""
+    model.benchmark_model_pin = _pinned_name(model_key)
+
+
+def _otter_arm_plan() -> tuple[dict, dict, dict[str, str]]:
+    """Load and verify the retained Otter arm configuration and source review."""
+    root = Path(__file__).resolve().parents[2]
+    plan = json.loads(OTTER_ARM_PLAN.read_text(encoding="utf-8"))
+    if plan.get("format") != "otter-recognition-arm-plan-v1":
+        message = "Unexpected Otter arm plan format."
+        raise RuntimeError(message)
+    manifest_path = root / plan["source_manifest"]
+    review_path = root / plan["source_review"]
+    digests = {
+        "arm_plan_sha256": hashlib.sha256(OTTER_ARM_PLAN.read_bytes()).hexdigest(),
+        "source_manifest_sha256": hashlib.sha256(
+            manifest_path.read_bytes()
+        ).hexdigest(),
+        "source_review_sha256": hashlib.sha256(review_path.read_bytes()).hexdigest(),
+    }
+    if digests["source_manifest_sha256"] != plan["source_manifest_sha256"]:
+        message = "Otter source manifest does not match its reviewed hash."
+        raise RuntimeError(message)
+    if digests["source_review_sha256"] != plan["source_review_sha256"]:
+        message = "Otter source review does not match its reviewed hash."
+        raise RuntimeError(message)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    repo_id, revision = missing_matrix.MODEL_PINS["otter_cross"]
+    arms = [arm for arm in plan["arms"] if arm.get("key") == "otter_cross_mmbert"]
+    if len(arms) != 1:
+        message = "Otter arm plan must contain exactly one cross-encoder arm."
+        raise RuntimeError(message)
+    arm = arms[0]
+    expected = {
+        "model": (repo_id, revision),
+        "architecture": "cross_encoder",
+        "max_seq_length": 1024,
+        "max_span_length": 30,
+        "threshold": OTTER_THRESHOLD,
+        "batch_size": OTTER_BATCH_SIZE,
+        "entity_types": list(OTTER_ENTITY_TYPES),
+    }
+    actual = {
+        "model": (arm["model"]["identifier"], arm["model"]["revision"]),
+        "architecture": arm["expected_architecture"],
+        "max_seq_length": arm["expected_max_seq_length"],
+        "max_span_length": arm["expected_max_span_length"],
+        "threshold": arm["threshold"],
+        "batch_size": arm["batch_size"],
+        "entity_types": arm["entity_types"],
+    }
+    if actual != expected:
+        message = f"Otter arm plan differs from the benchmark integration: {actual!r}"
+        raise RuntimeError(message)
+    entry = next(
+        model
+        for model in manifest["models"]
+        if (model["identifier"], model["revision"]) == (repo_id, revision)
+    )
+    weight = next(
+        (
+            artifact
+            for artifact in entry["files"]
+            if artifact["path"] == "model.safetensors"
+        ),
+        None,
+    )
+    if weight is None or weight["sha256"] != arm["model"]["sha256"]:
+        message = "Otter arm weight digest differs from the source manifest."
+        raise RuntimeError(message)
+    return plan, arm, {**digests, "model_sha256": weight["sha256"]}
+
+
+def otter_integration_provenance() -> dict[str, t.Any]:
+    """Return verified Otter integration hashes and stale-lock disclosure."""
+    plan, arm, digests = _otter_arm_plan()
+    root = Path(__file__).resolve().parents[2]
+    current_lock = hashlib.sha256((root / "uv.lock").read_bytes()).hexdigest()
+    return {
+        **digests,
+        "model": arm["source"],
+        "license": "Apache-2.0",
+        "plan_status": plan["status"],
+        "plan_dependency_lock_sha256": plan["dependency_lock_sha256"],
+        "current_dependency_lock_sha256": current_lock,
+        "plan_lock_matches_current": plan["dependency_lock_sha256"] == current_lock,
+        "language_support": arm["language_support"],
+        "training_overlap": arm["training_overlap"],
+    }
+
+
+def _verify_otter_snapshot(snapshot: Path) -> None:
+    """Verify the retained Otter plan, source closure and weights before loading code."""
+    _, _, _ = _otter_arm_plan()
+    root = Path(__file__).resolve().parents[2]
+    manifest = json.loads(
+        (root / "docs/examples/otter-source-manifest.json").read_text(encoding="utf-8")
+    )
+    repo_id, revision = missing_matrix.MODEL_PINS["otter_cross"]
+    entry = next(
+        model
+        for model in manifest["models"]
+        if (model["identifier"], model["revision"]) == (repo_id, revision)
+    )
+    verified = set()
+    for artifact in entry["files"]:
+        path = snapshot / artifact["path"]
+        if not path.is_file() or path.stat().st_size != artifact["bytes"]:
+            message = f"Otter artifact missing or wrong size: {artifact['path']}"
+            raise RuntimeError(message)
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(block)
+        if digest.hexdigest() != artifact["sha256"]:
+            message = f"Otter artifact hash mismatch: {artifact['path']}"
+            raise RuntimeError(message)
+        verified.add(artifact["path"])
+    missing_code = set(manifest["inference_imports"]) - verified
+    if missing_code:
+        message = f"Otter import closure is not fully pinned: {sorted(missing_code)}"
+        raise RuntimeError(message)
+
+
+def _verify_otter_model_config(model: t.Any) -> None:
+    """Reject a checkpoint whose runtime configuration differs from the arm plan."""
+    _, arm, _ = _otter_arm_plan()
+    config = model.config
+    expected = {
+        "architecture": arm["expected_architecture"],
+        "max_seq_length": arm["expected_max_seq_length"],
+        "max_span_length": arm["expected_max_span_length"],
+    }
+    actual = {key: getattr(config, key, None) for key in expected}
+    if actual != expected:
+        message = (
+            f"Otter checkpoint config differs from its retained arm plan: {actual!r}"
+        )
+        raise RuntimeError(message)
+
+
+def _build_gliner_recognizer(device: str) -> t.Any:
+    """Load GLiNER2 from the explicit snapshot used for the Jina comparison."""
+    from geoparser.modules import GLiNER2Recognizer
+
+    snapshot = _snapshot("gliner")
+    with _offline_model_load():
+        recognizer = GLiNER2Recognizer(model_name=str(snapshot))
+    recognizer.model_name = _pinned_name("gliner")
+    _attach_model_pin(recognizer, "gliner")
+    _move(getattr(recognizer, "model", None), device)
+    return recognizer
+
+
+def _build_xlm_recognizer(device: str) -> t.Any:
+    """Load the pinned multilingual XLM-R location tagger with overlap windows."""
+    from transformers import AutoModelForTokenClassification, AutoTokenizer, pipeline
+
+    from geoparser.modules.recognizers import Recognizer
+
+    snapshot = _snapshot("xlm_r")
+    model_id = _pinned_name("xlm_r")
+    with _offline_model_load():
+        tokenizer = AutoTokenizer.from_pretrained(
+            str(snapshot), use_fast=True, local_files_only=True
+        )
+        model = AutoModelForTokenClassification.from_pretrained(
+            str(snapshot), local_files_only=True
+        )
+        model.eval()
+        inference_pipeline = pipeline(
+            "token-classification",
+            model=model,
+            tokenizer=tokenizer,
+            aggregation_strategy="simple",
+            stride=XLM_STRIDE,
+            device=0 if device.startswith("cuda") else -1,
+        )
+
+    class XLMBenchmarkRecognizer(Recognizer):
+        """Map pinned XLM-R LOC groups to the project span representation."""
+
+        def __init__(self):
+            super().__init__(model_name=model_id)
+            self.model_name = model_id
+            self.inference_pipeline = inference_pipeline
+            self.benchmark_model_pin = model_id
+
+        def predict(self, texts: list[str]) -> list[list[tuple[int, int]]]:
+            predictions = self.inference_pipeline(texts, batch_size=XLM_BATCH_SIZE)
+            if len(predictions) != len(texts):
+                message = "XLM-R returned a different number of document predictions."
+                raise RuntimeError(message)
+            output = []
+            for entities in predictions:
+                spans = set()
+                for entity in entities:
+                    label = entity.get("entity_group", entity.get("entity", ""))
+                    if label.removeprefix("B-").removeprefix("I-") != "LOC":
+                        continue
+                    start, end = entity.get("start"), entity.get("end")
+                    if start is not None and end is not None:
+                        spans.add((int(start), int(end)))
+                output.append(sorted(spans))
+            return output
+
+    return XLMBenchmarkRecognizer()
+
+
+def _build_otter_recognizer(device: str) -> t.Any:
+    """Load the hash-reviewed Otter cross encoder and its local tokenizer."""
+    from transformers import AutoModel, AutoTokenizer
+
+    from geoparser.modules import OtterRecognizer
+
+    snapshot = _snapshot("otter_cross")
+    _verify_otter_snapshot(snapshot)
+    with _offline_model_load():
+        tokenizer = AutoTokenizer.from_pretrained(
+            str(snapshot), trust_remote_code=False, local_files_only=True
+        )
+        model = AutoModel.from_pretrained(
+            str(snapshot),
+            trust_remote_code=True,
+            local_files_only=True,
+            use_safetensors=True,
+        )
+    _verify_otter_model_config(model)
+    model._tokenizer = tokenizer
+    model.eval()
+    model.to(device)
+    recognizer = OtterRecognizer(
+        model,
+        source=_pinned_name("otter_cross"),
+        entity_types=OTTER_ENTITY_TYPES,
+        threshold=OTTER_THRESHOLD,
+        batch_size=OTTER_BATCH_SIZE,
+    )
+    recognizer.model_name = _pinned_name("otter_cross")
+    _attach_model_pin(recognizer, "otter_cross")
+    recognizer.invalid_predictions = []
+    recognizer.unsupported_inputs = []
+    return recognizer
 
 
 def resolve_device(requested: str) -> str:
@@ -98,7 +423,7 @@ def build_recognizer(pipeline: str, *, device: str) -> t.Any:
     Return the recognizer half of a named pipeline.
 
     Args:
-        pipeline: ``upstream`` uses spaCy; the others use GLiNER2
+        pipeline: A named recognizer/resolver comparison
         device: Where to place the model
 
     Returns:
@@ -108,6 +433,10 @@ def build_recognizer(pipeline: str, *, device: str) -> t.Any:
         msg = f"Unknown benchmark pipeline: {pipeline}"
         raise ValueError(msg)
 
+    if pipeline == XLM_MINILM:
+        return _build_xlm_recognizer(device)
+    if pipeline == OTTER_MINILM:
+        return _build_otter_recognizer(device)
     if pipeline == UPSTREAM:
         from geoparser.modules import SpacyRecognizer
 
@@ -121,11 +450,7 @@ def build_recognizer(pipeline: str, *, device: str) -> t.Any:
                 spacy.require_gpu()
         return SpacyRecognizer(model_name=UPSTREAM_SPACY_MODEL)
 
-    from geoparser.modules import GLiNER2Recognizer
-
-    recognizer = GLiNER2Recognizer()
-    _move(getattr(recognizer, "model", None), device)
-    return recognizer
+    return _build_gliner_recognizer(device)
 
 
 def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.Any:
@@ -174,12 +499,33 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
             population_weight=population_weight,
             inflection_fallback=inflection_fallback,
         )
-    else:
+    elif pipeline == SWAPPED:
         from geoparser.modules import JinaResolver
 
-        resolver = JinaResolver(
-            gazetteer_name=GAZETTEER_NAME, min_similarity=min_similarity
-        )
+        _require_context_model()
+        embeddings_snapshot = _snapshot("jina_embeddings")
+        reranker_snapshot = _snapshot("jina_reranker")
+        with _offline_model_load():
+            resolver = JinaResolver(
+                model_name=str(embeddings_snapshot),
+                reranker_name=str(reranker_snapshot),
+                gazetteer_name=GAZETTEER_NAME,
+                min_similarity=min_similarity,
+            )
+        resolver.benchmark_model_pin = _pinned_name("jina_embeddings")
+        resolver.benchmark_reranker_pin = _pinned_name("jina_reranker")
+    else:
+        from geoparser.modules import SentenceTransformerResolver
+
+        _require_context_model()
+        snapshot = _snapshot("minilm")
+        with _offline_model_load():
+            resolver = SentenceTransformerResolver(
+                model_name=str(snapshot),
+                gazetteer_name=GAZETTEER_NAME,
+                min_similarity=min_similarity,
+            )
+        resolver.benchmark_model_pin = _pinned_name("minilm")
 
     _move(getattr(resolver, "transformer", None), device)
     _move(getattr(resolver, "reranker", None), device)
@@ -217,10 +563,50 @@ def model_names(recognizer: t.Any, resolver: t.Any) -> dict[str, str]:
     """
     names = {}
     if recognizer is not None:
-        names["recognizer"] = recognizer.model_name
+        names["recognizer"] = getattr(
+            recognizer, "benchmark_model_pin", recognizer.model_name
+        )
     if resolver is not None:
-        names["resolver"] = resolver.model_name
-        reranker = getattr(resolver, "reranker_name", None)
+        names["resolver"] = getattr(
+            resolver, "benchmark_model_pin", resolver.model_name
+        )
+        reranker = getattr(
+            resolver,
+            "benchmark_reranker_pin",
+            getattr(resolver, "reranker_name", None),
+        )
         if reranker:
             names["reranker"] = reranker
     return names
+
+
+def pipeline_model_pins(pipeline: str) -> dict[str, str]:
+    """Return the immutable model identity that makes a checkpoint resumable."""
+    pins: dict[str, str] = {}
+    if pipeline == UPSTREAM:
+        pins["recognizer"] = f"{UPSTREAM_SPACY_MODEL}@3.8.0"
+    elif pipeline in {XLM_MINILM, OTTER_MINILM}:
+        key = "xlm_r" if pipeline == XLM_MINILM else "otter_cross"
+        pins["recognizer"] = _pinned_name(key)
+    elif pipeline in {SWAPPED, HYBRID, PRIOR, *ABLATIONS}:
+        pins["recognizer"] = _pinned_name("gliner")
+    if pipeline == SWAPPED:
+        pins["resolver"] = _pinned_name("jina_embeddings")
+        pins["reranker"] = _pinned_name("jina_reranker")
+        pins["context_sentence_splitter"] = (
+            f"{SPACY_CONTEXT_MODEL}@{SPACY_CONTEXT_MODEL_VERSION}"
+        )
+    elif pipeline in {XLM_MINILM, OTTER_MINILM}:
+        pins["resolver"] = _pinned_name("minilm")
+        pins["context_sentence_splitter"] = (
+            f"{SPACY_CONTEXT_MODEL}@{SPACY_CONTEXT_MODEL_VERSION}"
+        )
+    elif pipeline in PRIOR_SETTINGS or pipeline in {UPSTREAM, HYBRID}:
+        pins["resolver"] = UPSTREAM_RESOLVER_MODEL
+        pins["context_sentence_splitter"] = (
+            f"{SPACY_CONTEXT_MODEL}@{SPACY_CONTEXT_MODEL_VERSION}"
+        )
+    if pipeline not in PIPELINES:
+        message = f"Unknown benchmark pipeline: {pipeline}"
+        raise ValueError(message)
+    return pins

@@ -25,6 +25,7 @@ JOB_NAME="${JOB_NAME:-geoparser-bench}"
 WALLTIME="${WALLTIME:-2:00}"
 GPUS="${GPUS:-1}"
 REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
+VENV="${VENV:-$HOME/geoparser-venv}"
 RESULTS="${RESULTS:-$HOME/geoparser-bench}"
 CLUSTER="${CLUSTER:-}"
 # besteffort takes GPUs that would otherwise sit idle, and gives them straight
@@ -105,7 +106,7 @@ oarsub \
     -E "$RESULTS/logs/%jobid%.err" \
     --checkpoint "$CHECKPOINT_SECONDS" \
     --signal 12 \
-    "REPO_ROOT='$REPO_ROOT' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
+    "REPO_ROOT='$REPO_ROOT' VENV='$VENV' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
 DEVICE='${DEVICE:-auto}' CHUNK_SIZE='${CHUNK_SIZE:-5}' \
 MIN_SIMILARITY='${MIN_SIMILARITY:-0.0}' PIPELINES='$PIPELINES' CORPORA='$CORPORA' PHASES='$PHASES' \
 bash $REPO_ROOT/scripts/g5k/run_benchmark.sh"

@@ -33,7 +33,10 @@ class PipelineResult:
     recognition: dict[str, float] = field(default_factory=dict)
     resolution: dict[str, float] = field(default_factory=dict)
     elapsed_seconds: float = 0.0
+    phase_elapsed_seconds: dict[str, float] = field(default_factory=dict)
     device: str = "cpu"
+    phase_provenance: dict[str, dict[str, t.Any]] = field(default_factory=dict)
+    failures: dict[str, dict[str, dict[str, t.Any]]] = field(default_factory=dict)
 
 
 def serialize(annotation: Annotation) -> dict[str, t.Any]:
@@ -135,6 +138,16 @@ def render_markdown(
         "",
     ]
     lines += _model_rows(results)
+    failures = _failure_rows(results)
+    if failures:
+        lines += [
+            "",
+            "## Explicit failures",
+            "",
+            "| Pipeline | Phase | Document | Kind | Reason |",
+            "| --- | --- | --- | --- | --- |",
+            *failures,
+        ]
     lines += [
         "",
         "Resolution is scored on the gold spans, supplied to both pipelines",
@@ -175,7 +188,7 @@ def _resolution_rows(results: Sequence[PipelineResult]) -> list[str]:
         f"| {result.resolution['mean_error_km']:.1f} "
         f"| {result.resolution['median_error_km']:.1f} "
         f"| {result.resolution['auc']:.3f} "
-        f"| {result.elapsed_seconds:.1f} |"
+        f"| {result.phase_elapsed_seconds.get('resolution', 0.0):.1f} |"
         for result in results
         if result.resolution
     ]
@@ -188,6 +201,23 @@ def _model_rows(results: Sequence[PipelineResult]) -> list[str]:
         f"{', '.join(f'{role}={name}' for role, name in result.models.items())}"
         for result in results
     ]
+
+
+def _failure_rows(results: Sequence[PipelineResult]) -> list[str]:
+    """Format explicit per-document failures without hiding them in the score."""
+    rows = []
+    for result in results:
+        for phase, documents in result.failures.items():
+            for document_id, failure in documents.items():
+                reason = str(
+                    failure.get("reason", failure.get("message", "unspecified"))
+                )
+                reason = reason.replace("|", "\\|").replace("\n", " ")
+                rows.append(
+                    f"| {result.name} | {phase} | {document_id} "
+                    f"| {failure.get('kind', 'failure')} | {reason} |"
+                )
+    return rows
 
 
 def render_summary(rows: Sequence[dict[str, t.Any]]) -> str:

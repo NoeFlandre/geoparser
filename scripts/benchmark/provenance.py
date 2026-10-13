@@ -29,6 +29,11 @@ def source_commit(root: Path) -> str:
     return git_provenance.commit_id(short=True, cwd=root)
 
 
+def source_commit_full(root: Path) -> str:
+    """Return the complete Git object ID recorded in the run manifest."""
+    return git_provenance.commit_id(cwd=root)
+
+
 def environment(job_id: str | None = None) -> dict[str, t.Any]:
     """
     Return the facts about this run worth keeping next to its numbers.

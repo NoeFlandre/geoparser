@@ -12,6 +12,7 @@ from unittest.mock import Mock, call
 import pytest
 
 from geoparser.evaluation import _location_coordinates
+from geoparser.modules.recognizers.otter import PredictionOutputError
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import runner
 from scripts.benchmark.checkpoint import Checkpoint, RunIdentity
@@ -97,6 +98,14 @@ class TestScore:
         assert result.recognition == {}
         assert result.resolution == {}
 
+    def test_scores_a_completed_phase_when_every_prediction_is_empty(self):
+        state = Checkpoint(identity())
+        state.record(runner.RECOGNITION, "0", [])
+
+        result = score("swapped", [document()], state, models={}, device="cpu")
+
+        assert result.recognition == {"precision": 1.0, "recall": 0.0, "f1": 0.0}
+
     def test_carries_provenance_into_the_result(self):
         """Test that the report can say where and with what this ran."""
         state = Checkpoint(identity())
@@ -178,6 +187,77 @@ def test_predictions_are_keyed_by_corpus_id_and_keep_unresolved_spans():
             },
         ],
         "article-b": [],
+    }
+
+
+def test_otter_overlength_documents_are_recorded_without_truncation(monkeypatch):
+    documents = [document("short"), document("long")]
+
+    def process(_phase, batch, *, recognizer, resolver):
+        if len(batch) > 1:
+            raise ValueError(
+                "Otter document at index 1 has 99 tokens, exceeding the limit "
+                "of 10; truncation is not supported."
+            )
+        if batch[0].identifier == "long":
+            raise ValueError(
+                "Otter document at index 0 has 99 tokens, exceeding the limit "
+                "of 10; truncation is not supported."
+            )
+        return {batch[0].identifier: []}
+
+    monkeypatch.setattr(runner, "_process_chunk", process)
+
+    predictions, failures = runner._process_chunk_with_failures(
+        runner.RECOGNITION, documents, recognizer=object(), resolver=None
+    )
+
+    assert predictions == {"short": [], "long": []}
+    assert failures == {
+        "long": {
+            "kind": "unsupported_input",
+            "reason": "Otter sequence-length limit; document was not truncated",
+            "message": (
+                "Otter document at index 0 has 99 tokens, exceeding the limit "
+                "of 10; truncation is not supported."
+            ),
+        }
+    }
+
+
+def test_otter_invalid_document_outputs_are_recorded_without_aborting_chunk(
+    monkeypatch,
+):
+    documents = [document("good"), document("invalid")]
+
+    def process(_phase, batch, *, recognizer, resolver):
+        if len(batch) > 1:
+            raise PredictionOutputError(
+                "Invalid Otter output for document at index 1: bad span.",
+                document_index=1,
+                raw_output=None,
+            )
+        if batch[0].identifier == "invalid":
+            raise PredictionOutputError(
+                "Invalid Otter output for document at index 0: bad span.",
+                document_index=0,
+                raw_output=None,
+            )
+        return {batch[0].identifier: []}
+
+    monkeypatch.setattr(runner, "_process_chunk", process)
+
+    predictions, failures = runner._process_chunk_with_failures(
+        runner.RECOGNITION, documents, recognizer=object(), resolver=None
+    )
+
+    assert predictions == {"good": [], "invalid": []}
+    assert failures == {
+        "invalid": {
+            "kind": "invalid_output",
+            "reason": "Otter returned output that did not match its document.",
+            "message": "Invalid Otter output for document at index 0: bad span.",
+        }
     }
 
 

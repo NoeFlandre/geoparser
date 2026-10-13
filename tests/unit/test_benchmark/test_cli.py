@@ -6,11 +6,14 @@ checkpoints of two corpora must never be mistaken for one another.
 """
 
 import argparse
+import json
 import os
+from types import SimpleNamespace
 
 import pytest
 
 from scripts.benchmark import __main__ as benchmark_cli
+from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import corpora, pipelines, runner
 from scripts.benchmark.__main__ import build_parser, corpus_output_dir
 from scripts.benchmark.corpora import LoadedCorpus
@@ -97,7 +100,7 @@ def _execute_score_pipeline(monkeypatch, tmp_path):
     run = benchmark_cli._CorpusRun(
         loaded, arguments, tmp_path, "cpu", "commit", {"host": "fixture"}
     )
-    state = object()
+    state = ckpt.Checkpoint(benchmark_cli._run_identity(run, "swapped"))
     identities = []
     phases = []
 
@@ -183,16 +186,17 @@ def test_corpus_report_preserves_environment_and_pipeline_metrics(tmp_path):
     payload = benchmark_cli._corpus_report_payload(run, 3, [result])
 
     assert payload["environment"] == {"host": "fixture"}
-    assert payload["pipelines"] == [
-        {
-            "name": "swapped",
-            "device": "cpu",
-            "models": {"recognizer": "model@revision"},
-            "recognition": {"f1": 0.75},
-            "resolution": {"auc": 0.2},
-            "elapsed_seconds": 2.5,
-        }
-    ]
+    pipeline = payload["pipelines"][0]
+    assert pipeline["name"] == "swapped"
+    assert pipeline["device"] == "cpu"
+    assert pipeline["models"] == {"recognizer": "model@revision"}
+    assert pipeline["recognition"] == {"f1": 0.75}
+    assert pipeline["resolution"] == {"auc": 0.2}
+    assert pipeline["elapsed_seconds"] == 2.5
+    assert pipeline["phase_elapsed_seconds"] == {}
+    assert pipeline["phase_provenance"] == {}
+    assert pipeline["failures"] == {}
+    assert pipeline["model_metadata"]["reranker"]["license"] == "CC-BY-NC-4.0"
 
 
 def test_corpus_summary_row_records_counts_and_scores(tmp_path):
@@ -209,8 +213,99 @@ def test_corpus_summary_row_records_counts_and_scores(tmp_path):
             "recognition": {"f1": 0.75},
             "resolution": {"auc": 0.2},
             "elapsed_seconds": 2.5,
+            "phase_elapsed_seconds": {},
+            "failures": {},
         }
     ]
+
+
+def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
+    arguments = argparse.Namespace(
+        min_similarity=0.0,
+        limit=None,
+        chunk_size=5,
+        device="cuda",
+    )
+
+    manifest = benchmark_cli._run_manifest(
+        SimpleNamespace(
+            names=["newsli-ar"],
+            pipeline_names=[pipelines.XLM_MINILM],
+            phases=[runner.RECOGNITION, runner.RESOLUTION],
+            arguments=arguments,
+            commit="short-sha",
+            full_commit="a" * 40,
+            facts={"started_at": "2026-10-13T00:00:00+00:00", "gpu": "A100"},
+            device="cuda",
+        )
+    )
+
+    cell = manifest["protocol"]["corpora"]["newsli-ar"]
+    assert (cell["expected_documents"], cell["expected_gold_toponyms"]) == (500, 3319)
+    assert "sorted order" in cell["source_split"]
+    assert manifest["full_commit"] == "a" * 40
+    assert manifest["protocol"]["pipelines"][pipelines.XLM_MINILM]["model_pins"][
+        "resolver"
+    ].endswith("@d678769f195c194ffdc6f3735a9360118a855b43")
+
+    resumed = json.loads(json.dumps(manifest))
+    resumed["protocol"]["corpora"]["newsli-ar"].update(
+        {"status": "complete", "corpus_digest": "digest", "documents": 500}
+    )
+    assert benchmark_cli._manifest_identity(
+        resumed
+    ) == benchmark_cli._manifest_identity(manifest)
+
+
+def test_run_manifest_marks_explicit_document_failures():
+    manifest = {
+        "protocol": {
+            "corpora": {
+                "fixture": {"language": "en"},
+            },
+            "pipelines": {
+                "otter-cross-minilm": {"model_pins": {"recognizer": "otter@pin"}},
+            },
+        }
+    }
+    payload = {
+        "corpus_digest": "digest",
+        "documents": 2,
+        "gold_toponyms": 1,
+        "environment": {"hostname": "fixture"},
+        "pipelines": [
+            {
+                "name": "otter-cross-minilm",
+                "recognition": {"f1": 0.0},
+                "resolution": {"auc": 0.2},
+                "phase_elapsed_seconds": {"recognition": 2.0, "resolution": 3.0},
+                "phase_provenance": {},
+                "failures": {
+                    "recognition": {
+                        "long-doc": {"kind": "unsupported_input", "reason": "limit"}
+                    }
+                },
+            }
+        ],
+    }
+
+    benchmark_cli._record_manifest_cell(
+        manifest,
+        "fixture",
+        payload,
+        [runner.RECOGNITION, runner.RESOLUTION],
+    )
+
+    result = manifest["protocol"]["corpora"]["fixture"]["pipelines"][
+        "otter-cross-minilm"
+    ]
+    assert manifest["protocol"]["corpora"]["fixture"]["status"] == (
+        "complete_with_document_failures"
+    )
+    assert result["failure_count"] == 1
+    assert result["failures"]["recognition"]["long-doc"]["kind"] == (
+        "unsupported_input"
+    )
 
 
 def test_corpus_report_writer_emits_markdown_and_json(tmp_path):
@@ -231,6 +326,7 @@ def _run_default_corpus_main(monkeypatch, tmp_path, capsys):
     )
     result = PipelineResult(name="swapped", device="cpu")
     load_calls = []
+    monkeypatch.setattr(benchmark_cli.missing_matrix, "MATRIX", ())
 
     monkeypatch.setattr(benchmark_cli.pipelines, "resolve_device", lambda value: value)
     monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda value: value)
@@ -301,7 +397,12 @@ def test_main_expands_all_corpora_once_and_preserves_database_override(
     )
     monkeypatch.setattr(benchmark_cli.provenance, "environment", lambda job: {})
     monkeypatch.setattr(
-        benchmark_cli.corpora, "CORPORA", {"alpha": object(), "beta": object()}
+        benchmark_cli.corpora,
+        "CORPORA",
+        {
+            "alpha": SimpleNamespace(language="en", documents=1, gold_spans=1),
+            "beta": SimpleNamespace(language="en", documents=1, gold_spans=1),
+        },
     )
     monkeypatch.setattr(
         benchmark_cli.corpora,

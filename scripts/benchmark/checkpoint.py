@@ -39,6 +39,7 @@ class RunIdentity:
     limit: int | None
     commit: str
     schema_version: int = SCHEMA_VERSION
+    model_pins: dict[str, str] = field(default_factory=dict)
 
     def differences(self, other: RunIdentity) -> list[str]:
         """
@@ -57,6 +58,33 @@ class RunIdentity:
         ]
 
 
+def resolution_reuse_compatible(first: RunIdentity, second: RunIdentity) -> bool:
+    """Whether two runs can share gold-span resolution predictions exactly."""
+    invariant_fields = (
+        "corpus_digest",
+        "gazetteer",
+        "min_similarity",
+        "limit",
+        "commit",
+        "schema_version",
+    )
+    if any(
+        getattr(first, field) != getattr(second, field) for field in invariant_fields
+    ):
+        return False
+    first_pins = {
+        name: pin
+        for name, pin in first.model_pins.items()
+        if name in {"resolver", "reranker", "context_sentence_splitter"}
+    }
+    second_pins = {
+        name: pin
+        for name, pin in second.model_pins.items()
+        if name in {"resolver", "reranker", "context_sentence_splitter"}
+    }
+    return "resolver" in first_pins and first_pins == second_pins
+
+
 @dataclass
 class Checkpoint:
     """Partial results for one pipeline, plus the identity they belong to."""
@@ -68,6 +96,9 @@ class Checkpoint:
     recognition: dict[str, list[dict[str, t.Any]]] = field(default_factory=dict)
     resolution: dict[str, list[dict[str, t.Any]]] = field(default_factory=dict)
     elapsed_seconds: float = 0.0
+    phase_elapsed_seconds: dict[str, float] = field(default_factory=dict)
+    failures: dict[str, dict[str, dict[str, t.Any]]] = field(default_factory=dict)
+    phase_provenance: dict[str, dict[str, t.Any]] = field(default_factory=dict)
 
     def completed(self, phase: str) -> set[str]:
         """
@@ -130,6 +161,9 @@ def save(path: Path, checkpoint: Checkpoint) -> None:
         "recognition": checkpoint.recognition,
         "resolution": checkpoint.resolution,
         "elapsed_seconds": checkpoint.elapsed_seconds,
+        "phase_elapsed_seconds": checkpoint.phase_elapsed_seconds,
+        "failures": checkpoint.failures,
+        "phase_provenance": checkpoint.phase_provenance,
     }
     write_json_atomic(path, payload)
 
@@ -167,6 +201,9 @@ def load(path: Path, identity: RunIdentity) -> tuple[Checkpoint, list[str]]:
             recognition=payload.get("recognition", {}),
             resolution=payload.get("resolution", {}),
             elapsed_seconds=payload.get("elapsed_seconds", 0.0),
+            phase_elapsed_seconds=payload.get("phase_elapsed_seconds", {}),
+            failures=payload.get("failures", {}),
+            phase_provenance=payload.get("phase_provenance", {}),
         ),
         [],
     )

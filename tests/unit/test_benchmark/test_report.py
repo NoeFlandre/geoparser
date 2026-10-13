@@ -164,6 +164,32 @@ class TestRenderMarkdown:
 
         assert "gold spans" in text
 
+    def test_lists_explicit_unsupported_inputs(self):
+        result = self.result()
+        result.failures = {
+            "recognition": {
+                "article-1": {
+                    "kind": "unsupported_input",
+                    "reason": "sequence limit exceeded",
+                }
+            }
+        }
+
+        text = self.render([result])
+
+        assert "## Explicit failures" in text
+        assert "| swapped | recognition | article-1 | unsupported_input" in text
+        assert "sequence limit exceeded" in text
+
+    def test_resolution_table_uses_resolution_phase_time(self):
+        result = self.result()
+        result.elapsed_seconds = 50.0
+        result.phase_elapsed_seconds = {"recognition": 42.0, "resolution": 8.0}
+
+        text = self.render([result])
+
+        assert "| swapped | cuda | 0.500 | 123.4 | 12.3 | 0.250 | 8.0 |" in text
+
 
 class TestRenderSummary:
     """One table across every corpus that ran."""
