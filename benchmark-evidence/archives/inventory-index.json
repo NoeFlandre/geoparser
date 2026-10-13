@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "archive_path": "benchmark-evidence/archives/multiconer/manifest.json",
+      "original_path": "scripts/multiconer_benchmark/multiconer_manifest.json",
+      "sha256": "7de332607037f594103515647c0b9bef7b1f2b80d4d547425822afb9f4853939",
+      "kind": "dataset source manifest",
+      "evaluation_status": "no model evaluation"
+    },
+    {
+      "archive_path": "benchmark-evidence/archives/masakhaner/manifest.json",
+      "original_path": "scripts/masakhaner_benchmark/manifest.json",
+      "sha256": "ee1b661a2de521e79f633ab6c8fd8e77eebe01239a7a760f572e3e755e6bb7bc",
+      "kind": "dataset source manifest",
+      "evaluation_status": "no model evaluation"
+    },
+    {
+      "archive_path": "benchmark-evidence/archives/uner/sources.json",
+      "original_path": "scripts/uner_benchmark/sources.json",
+      "sha256": "1da20dcfdf9816199ec12fa01ebf9f3b1fd91da32cd1e224a713926443573156",
+      "kind": "dataset source inventory",
+      "evaluation_status": "no model evaluation"
+    },
+    {
+      "archive_path": "benchmark-evidence/archives/unitoprank/pins.py",
+      "original_path": "scripts/unitoprank_benchmark/pins.py",
+      "sha256": "942cb1f8ad4f8e635e9c58030a67a413b68c7889e5a1e425675b108523c5fad9",
+      "kind": "upstream source pins",
+      "evaluation_status": "no held-out corpus evaluation"
+    },
+    {
+      "archive_path": "benchmark-evidence/archives/unitoprank/ranker-requirements.txt",
+      "original_path": "scripts/unitoprank_benchmark/ranker-requirements.txt",
+      "sha256": "73754813d1ef57a5faa8900b1080141f0ae86fa17b997ec07ca7c044e771092b",
+      "kind": "isolated environment requirements",
+      "evaluation_status": "no held-out corpus evaluation"
+    },
+    {
+      "archive_path": "benchmark-evidence/archives/reranker-isolation/pins.py",
+      "original_path": "scripts/reranker_isolation/pins.py",
+      "sha256": "11505b4850d2d220465cb7fcfea0f30317ad1da1240f208a627a4b83e650123b",
+      "kind": "model revision and digest pins",
+      "evaluation_status": "no model inference"
+    }
+  ]
+}
