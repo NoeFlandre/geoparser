@@ -510,9 +510,7 @@ class TestSourceTotalsGate:
             in capsys.readouterr().out
         )
 
-    def test_a_capped_run_rejects_gold_lost_while_parsing_the_source(
-        self, tmp_path
-    ):
+    def test_a_capped_run_rejects_gold_lost_while_parsing_the_source(self, tmp_path):
         """A cap cannot hide a GeoVirus span dropped from the full source."""
         _write_geovirus(tmp_path, GEOVIRUS_ARTICLES)
         path = tmp_path / "GeoVirus.xml"
