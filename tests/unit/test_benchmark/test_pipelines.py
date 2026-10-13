@@ -358,7 +358,6 @@ def test_otter_integration_provenance_matches_retained_checkpoint_plan():
             "source_review_sha256",
             "plan_status",
             "language_support",
-            "plan_lock_matches_current",
         )
     } == {
         "model": "whoisjones/otter-cross-mmbert@8729188e4f5fc7948d0e9dfd7d7e6d36c2e7270d",
@@ -367,10 +366,8 @@ def test_otter_integration_provenance_matches_retained_checkpoint_plan():
         "source_review_sha256": "458e5cae6d0ce62b0d7a7fdb91a7617b1092463ce62a14471d86974552fcab75",
         "plan_status": "planned",
         "language_support": "unspecified",
-        "plan_lock_matches_current": isinstance(
-            provenance["plan_lock_matches_current"], bool
-        ),
     }
+    assert isinstance(provenance["plan_lock_matches_current"], bool)
 
 
 def test_otter_checkpoint_config_matches_the_retained_arm():
