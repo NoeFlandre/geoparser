@@ -21,7 +21,7 @@ set -euo pipefail
 
 VENV="${VENV:-$HOME/geoparser-venv}"
 REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
-RESULTS="${RESULTS:-$HOME/geoparser-bench}"
+: "${RESULTS:?Set RESULTS to a durable shared filesystem path (for example Grid5000 Evergreen)}"
 LIMIT="${LIMIT:-}"
 DEVICE="${DEVICE:-auto}"
 CHUNK_SIZE="${CHUNK_SIZE:-5}"

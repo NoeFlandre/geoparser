@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Submit the benchmark to OAR, respecting the Grid'5000 usage policy.
 #
-#   ./scripts/g5k/submit.sh                  # default: 1 GPU, 4 cores, 2 hours
-#   WALLTIME=4:00 LIMIT=50 ./scripts/g5k/submit.sh
+#   RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench ./scripts/g5k/submit.sh
+#   RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench WALLTIME=4:00 LIMIT=50 ./scripts/g5k/submit.sh
 #   CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
 #
 # PIPELINES accepts benchmark pipeline names, CORPORA accepts registered
@@ -18,6 +18,8 @@
 #     specifically prohibits
 #
 # Check conformance before and after:  usagepolicycheck -t
+# RESULTS is required so checkpoints and large artifacts stay on durable
+# shared storage instead of consuming a frontend's home quota.
 
 set -euo pipefail
 
@@ -27,7 +29,7 @@ GPUS="${GPUS:-1}"
 CORES="${CORES:-4}"
 REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
 VENV="${VENV:-$HOME/geoparser-venv}"
-RESULTS="${RESULTS:-$HOME/geoparser-bench}"
+: "${RESULTS:?Set RESULTS to a durable shared filesystem path (for example Grid5000 Evergreen)}"
 CLUSTER="${CLUSTER:-}"
 # besteffort takes GPUs that would otherwise sit idle, and gives them straight
 # back when someone with a claim on them asks. The job is killed rather than
