@@ -128,10 +128,17 @@ def test_unknown_pipeline_is_rejected():
 
 
 @pytest.mark.parametrize(
-    "pipeline",
-    [pipelines.XLM_MINILM, pipelines.OTTER_MINILM],
+    ("pipeline", "expected_builder"),
+    [
+        (pipelines.XLM_MINILM, pipelines._build_xlm_recognizer),
+        (pipelines.OTTER_MINILM, pipelines._build_otter_recognizer),
+    ],
 )
-def test_new_pipeline_selects_its_declared_recognizer(monkeypatch, pipeline):
+def test_new_pipeline_selects_its_declared_recognizer(
+    monkeypatch, pipeline, expected_builder
+):
+    assert pipelines._RECOGNIZER_BUILDERS[pipeline] is expected_builder
+
     recognizer = object()
     factory = Mock(return_value=recognizer)
     monkeypatch.setitem(pipelines._RECOGNIZER_BUILDERS, pipeline, factory)
