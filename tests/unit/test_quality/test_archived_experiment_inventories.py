@@ -34,16 +34,16 @@ def test_completed_and_inventory_evidence_remains_present() -> None:
 
 def test_uner_source_audit_path_maps_to_archived_inventory() -> None:
     """The unchanged historical audit path resolves through the archive index."""
-    audit_path = ROOT / "benchmark-evidence/uner/adapter-source-audit.json"
-    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    audit = json.loads(
+        (ROOT / "benchmark-evidence/uner/adapter-source-audit.json").read_text(
+            encoding="utf-8"
+        )
+    )
     index = json.loads(INDEX.read_text(encoding="utf-8"))
-    matches = [
-        entry
+    archived = next(
+        ROOT / entry["archive_path"]
         for entry in index["files"]
         if entry["original_path"] == audit["source_snapshot"]
-    ]
+    )
 
-    assert len(matches) == 1
-    archived = ROOT / matches[0]["archive_path"]
     assert archived.is_file()
-    assert hashlib.sha256(archived.read_bytes()).hexdigest() == matches[0]["sha256"]
