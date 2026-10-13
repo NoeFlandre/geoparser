@@ -1,17 +1,19 @@
 """Sharing gold-span resolution must preserve its full provenance."""
 
 from argparse import Namespace
-from types import SimpleNamespace
 from unittest.mock import Mock, call
 
 from scripts.benchmark import __main__ as benchmark
 from scripts.benchmark import checkpoint as ckpt
-from scripts.benchmark import pipelines, report, runner
+from scripts.benchmark import corpora, corpus, pipelines, report, runner
 
 
 def _run(tmp_path, *, phases=None):
-    documents = [SimpleNamespace(identifier="0"), SimpleNamespace(identifier="1")]
-    loaded = SimpleNamespace(documents=documents, digest="same-corpus")
+    documents = [
+        corpus.Document("0", "first", ()),
+        corpus.Document("1", "second", ()),
+    ]
+    loaded = corpora.LoadedCorpus("fixture", "en", documents, "same-corpus")
     arguments = Namespace(
         pipeline=[pipelines.XLM_MINILM, pipelines.OTTER_MINILM],
         phase=phases,
@@ -82,10 +84,11 @@ def test_reused_resolution_predictions_are_pinned_and_labeled(tmp_path, monkeypa
     target_path = run.output_dir / f"checkpoint-{pipelines.OTTER_MINILM}.json"
     ckpt.save(target_path, target_state)
 
-    scored = SimpleNamespace(
-        models={"recognizer": target_identity.model_pins["recognizer"]}
+    scored = report.PipelineResult(
+        name=pipelines.OTTER_MINILM,
+        models={"recognizer": target_identity.model_pins["recognizer"]},
     )
-    score = Mock(return_value=SimpleNamespace(models={}))
+    score = Mock(return_value=report.PipelineResult(name=pipelines.OTTER_MINILM))
     monkeypatch.setattr(runner, "score", score)
 
     benchmark._reuse_resolution(

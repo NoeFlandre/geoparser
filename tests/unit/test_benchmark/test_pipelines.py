@@ -67,6 +67,7 @@ def test_hybrid_uses_gliner2_for_recognition(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("pipeline", [pipelines.UPSTREAM, "hybrid"])
 def test_upstream_and_hybrid_use_the_same_minilm_resolver(monkeypatch, pipeline):
+    snapshot = Path("/cache/minilm-snapshot")
     transformer = Mock()
     resolver = SimpleNamespace(
         model_name="dguzh/geo-all-MiniLM-L6-v2",
@@ -76,15 +77,19 @@ def test_upstream_and_hybrid_use_the_same_minilm_resolver(monkeypatch, pipeline)
     resolver_factory = Mock(return_value=resolver)
     _patch_module_classes(monkeypatch, SentenceTransformerResolver=resolver_factory)
     monkeypatch.setattr(pipelines, "GAZETTEER_NAME", "geonames")
+    snapshot_factory = Mock(return_value=snapshot)
+    monkeypatch.setattr(pipelines, "_snapshot", snapshot_factory)
 
     result = pipelines.build_resolver(pipeline, device="cuda", min_similarity=0.0)
 
     assert result is resolver
+    snapshot_factory.assert_called_once_with("minilm")
     resolver_factory.assert_called_once_with(
-        model_name=pipelines.UPSTREAM_RESOLVER_MODEL,
+        model_name=str(snapshot),
         gazetteer_name="geonames",
         min_similarity=0.0,
     )
+    assert resolver.benchmark_model_pin == pipelines._pinned_name("minilm")
     transformer.to.assert_called_once_with("cuda")
 
 
@@ -149,23 +154,28 @@ def test_prior_uses_gliner2_for_recognition(monkeypatch, tmp_path):
 
 
 def test_prior_uses_the_prior_resolver_on_the_upstream_model(monkeypatch):
+    snapshot = Path("/cache/minilm-snapshot")
     resolver = SimpleNamespace(transformer=Mock(), reranker=None)
     prior_factory = Mock(return_value=resolver)
     _patch_module_classes(monkeypatch, PriorResolver=prior_factory)
     monkeypatch.setattr(pipelines, "GAZETTEER_NAME", "geonames")
+    snapshot_factory = Mock(return_value=snapshot)
+    monkeypatch.setattr(pipelines, "_snapshot", snapshot_factory)
 
     result = pipelines.build_resolver(
         pipelines.PRIOR, device="cuda", min_similarity=0.0
     )
 
     assert result is resolver
+    snapshot_factory.assert_called_once_with("minilm")
     prior_factory.assert_called_once_with(
-        model_name=pipelines.UPSTREAM_RESOLVER_MODEL,
+        model_name=str(snapshot),
         gazetteer_name="geonames",
         min_similarity=0.0,
         population_weight=0.3,
         inflection_fallback=False,
     )
+    assert resolver.benchmark_model_pin == pipelines._pinned_name("minilm")
     resolver.transformer.to.assert_called_once_with("cuda")
 
 
@@ -196,11 +206,15 @@ def test_each_ablation_changes_one_setting(monkeypatch, pipeline, settings):
     prior_factory = Mock(return_value=resolver)
     _patch_module_classes(monkeypatch, PriorResolver=prior_factory)
     monkeypatch.setattr(pipelines, "GAZETTEER_NAME", "geonames")
+    snapshot = Path("/cache/minilm-snapshot")
+    snapshot_factory = Mock(return_value=snapshot)
+    monkeypatch.setattr(pipelines, "_snapshot", snapshot_factory)
 
     pipelines.build_resolver(pipeline, device="cpu", min_similarity=0.0)
 
+    snapshot_factory.assert_called_once_with("minilm")
     prior_factory.assert_called_once_with(
-        model_name=pipelines.UPSTREAM_RESOLVER_MODEL,
+        model_name=str(snapshot),
         gazetteer_name="geonames",
         min_similarity=0.0,
         population_weight=weight,
@@ -314,6 +328,16 @@ def test_new_pipeline_identities_pin_shared_resolution_models():
     assert xlm_pins["resolver"] == otter_pins["resolver"]
     assert (
         xlm_pins["context_sentence_splitter"] == otter_pins["context_sentence_splitter"]
+    )
+
+
+@pytest.mark.parametrize(
+    "pipeline",
+    [pipelines.UPSTREAM, pipelines.HYBRID, pipelines.PRIOR, *pipelines.ABLATIONS],
+)
+def test_existing_minilm_pipeline_identities_pin_the_frozen_revision(pipeline):
+    assert pipelines.pipeline_model_pins(pipeline)["resolver"] == (
+        pipelines._pinned_name("minilm")
     )
 
 

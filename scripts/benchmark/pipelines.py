@@ -320,12 +320,12 @@ def _build_xlm_recognizer(device: str) -> t.Any:
             self.inference_pipeline = inference_pipeline
             self.benchmark_model_pin = model_id
 
-        def predict(self, texts: list[str]) -> list[list[tuple[int, int]]]:
+        def predict(self, texts: list[str]) -> list[list[tuple[int, int]] | None]:
             predictions = self.inference_pipeline(texts, batch_size=XLM_BATCH_SIZE)
             if len(predictions) != len(texts):
                 message = "XLM-R returned a different number of document predictions."
                 raise RuntimeError(message)
-            output = []
+            output: list[list[tuple[int, int]] | None] = []
             for entities in predictions:
                 spans = set()
                 for entity in entities:
@@ -483,22 +483,28 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
     if pipeline in (UPSTREAM, HYBRID):
         from geoparser.modules import SentenceTransformerResolver
 
-        resolver = SentenceTransformerResolver(
-            model_name=UPSTREAM_RESOLVER_MODEL,
-            gazetteer_name=GAZETTEER_NAME,
-            min_similarity=min_similarity,
-        )
+        snapshot = _snapshot("minilm")
+        with _offline_model_load():
+            resolver = SentenceTransformerResolver(
+                model_name=str(snapshot),
+                gazetteer_name=GAZETTEER_NAME,
+                min_similarity=min_similarity,
+            )
+        resolver.benchmark_model_pin = _pinned_name("minilm")
     elif pipeline in PRIOR_SETTINGS:
         from geoparser.modules import PriorResolver
 
         population_weight, inflection_fallback = PRIOR_SETTINGS[pipeline]
-        resolver = PriorResolver(
-            model_name=UPSTREAM_RESOLVER_MODEL,
-            gazetteer_name=GAZETTEER_NAME,
-            min_similarity=min_similarity,
-            population_weight=population_weight,
-            inflection_fallback=inflection_fallback,
-        )
+        snapshot = _snapshot("minilm")
+        with _offline_model_load():
+            resolver = PriorResolver(
+                model_name=str(snapshot),
+                gazetteer_name=GAZETTEER_NAME,
+                min_similarity=min_similarity,
+                population_weight=population_weight,
+                inflection_fallback=inflection_fallback,
+            )
+        resolver.benchmark_model_pin = _pinned_name("minilm")
     elif pipeline == SWAPPED:
         from geoparser.modules import JinaResolver
 
@@ -596,13 +602,12 @@ def pipeline_model_pins(pipeline: str) -> dict[str, str]:
         pins["context_sentence_splitter"] = (
             f"{SPACY_CONTEXT_MODEL}@{SPACY_CONTEXT_MODEL_VERSION}"
         )
-    elif pipeline in {XLM_MINILM, OTTER_MINILM}:
+    elif (
+        pipeline in {XLM_MINILM, OTTER_MINILM}
+        or pipeline in PRIOR_SETTINGS
+        or pipeline in {UPSTREAM, HYBRID}
+    ):
         pins["resolver"] = _pinned_name("minilm")
-        pins["context_sentence_splitter"] = (
-            f"{SPACY_CONTEXT_MODEL}@{SPACY_CONTEXT_MODEL_VERSION}"
-        )
-    elif pipeline in PRIOR_SETTINGS or pipeline in {UPSTREAM, HYBRID}:
-        pins["resolver"] = UPSTREAM_RESOLVER_MODEL
         pins["context_sentence_splitter"] = (
             f"{SPACY_CONTEXT_MODEL}@{SPACY_CONTEXT_MODEL_VERSION}"
         )

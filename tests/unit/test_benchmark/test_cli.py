@@ -9,13 +9,14 @@ import argparse
 import json
 import os
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
 from scripts.benchmark import __main__ as benchmark_cli
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import corpora, pipelines, runner
-from scripts.benchmark.__main__ import build_parser, corpus_output_dir
+from scripts.benchmark.__main__ import _ManifestPlan, build_parser, corpus_output_dir
 from scripts.benchmark.corpora import LoadedCorpus
 from scripts.benchmark.corpus import Document, GoldSpan
 from scripts.benchmark.report import PipelineResult
@@ -228,7 +229,7 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
     )
 
     manifest = benchmark_cli._run_manifest(
-        SimpleNamespace(
+        _ManifestPlan(
             names=["newsli-ar"],
             pipeline_names=[pipelines.XLM_MINILM],
             phases=[runner.RECOGNITION, runner.RESOLUTION],
@@ -258,7 +259,7 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
 
 
 def test_run_manifest_marks_explicit_document_failures():
-    manifest = {
+    manifest: dict[str, Any] = {
         "protocol": {
             "corpora": {
                 "fixture": {"language": "en"},
@@ -296,9 +297,8 @@ def test_run_manifest_marks_explicit_document_failures():
         [runner.RECOGNITION, runner.RESOLUTION],
     )
 
-    result = manifest["protocol"]["corpora"]["fixture"]["pipelines"][
-        "otter-cross-minilm"
-    ]
+    fixture_pipelines: Any = manifest["protocol"]["corpora"]["fixture"]["pipelines"]
+    result = fixture_pipelines["otter-cross-minilm"]
     assert manifest["protocol"]["corpora"]["fixture"]["status"] == (
         "complete_with_document_failures"
     )
