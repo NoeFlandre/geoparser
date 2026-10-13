@@ -126,3 +126,62 @@ def test_reused_resolution_predictions_are_pinned_and_labeled(tmp_path, monkeypa
         },
         "scored_resolver": target_identity.model_pins["resolver"],
     }
+
+
+
+def test_load_reusable_resolution_rejects_a_different_resolver(tmp_path):
+    run = _run(tmp_path)
+
+    try:
+        benchmark._load_reusable_resolution(
+            run, pipelines.OTTER_MINILM, pipelines.SWAPPED
+        )
+    except RuntimeError as error:
+        assert "Cannot reuse swapped resolution for otter-minilm" in str(error)
+    else:
+        raise AssertionError("a different resolver must not be reused")
+
+
+def test_load_reusable_resolution_rejects_checkpoint_load_reasons(
+    monkeypatch, tmp_path
+):
+    run = _run(tmp_path)
+    run.output_dir.mkdir(exist_ok=True)
+    source_identity = benchmark._run_identity(run, pipelines.XLM_MINILM)
+    load = Mock(return_value=(ckpt.Checkpoint(source_identity), ["stale checkpoint"]))
+    monkeypatch.setattr(ckpt, "load", load)
+
+    try:
+        benchmark._load_reusable_resolution(
+            run, pipelines.OTTER_MINILM, pipelines.XLM_MINILM
+        )
+    except RuntimeError as error:
+        assert "stale checkpoint" in str(error)
+    else:
+        raise AssertionError("checkpoint load reasons must block reuse")
+    load.assert_called_once_with(
+        run.output_dir / f"checkpoint-{pipelines.XLM_MINILM}.json",
+        source_identity,
+    )
+
+
+def test_load_reusable_resolution_rejects_incomplete_source(
+    tmp_path,
+):
+    run = _run(tmp_path)
+    run.output_dir.mkdir(exist_ok=True)
+    source_identity = benchmark._run_identity(run, pipelines.XLM_MINILM)
+    ckpt.save(
+        run.output_dir / f"checkpoint-{pipelines.XLM_MINILM}.json",
+        ckpt.Checkpoint(source_identity),
+    )
+
+    try:
+        benchmark._load_reusable_resolution(
+            run, pipelines.OTTER_MINILM, pipelines.XLM_MINILM
+        )
+    except RuntimeError as error:
+        assert "Cannot reuse incomplete" in str(error)
+        assert "0/2 documents" in str(error)
+    else:
+        raise AssertionError("an incomplete resolution checkpoint must not be reused")

@@ -54,7 +54,7 @@ jobs:
             --benchmark-disable \
             tests/benchmarks/test_guards.py
 
-      - name: Benchmark pull request base
+      - name: Prepare pull request base
         env:
           BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || inputs.base_ref || 'main' }}
           TMPDIR: ${{ github.workspace }}/.tmp
@@ -69,30 +69,54 @@ jobs:
             --no-install-package en-core-web-sm \
             --no-install-package xx-sent-ud-sm
           uv pip install --python .tmp/main/.venv/bin/python "pytest-benchmark==5.3.0"
-          cd .tmp/main
-          "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python" -m pytest \
-            --confcutdir=tests/benchmarks \
-            -o addopts='' \
-            -o markers=benchmark \
-            -m benchmark \
-            --benchmark-only \
-            --benchmark-json="$GITHUB_WORKSPACE/.tmp/main.json" \
-            tests/benchmarks/test_performance.py
 
-      - name: Benchmark pull request branch and run algorithmic guards
+      - name: Measure base and head in counterbalanced order
         env:
           TMPDIR: ${{ github.workspace }}/.tmp
           HF_HOME: ${{ github.workspace }}/.tmp/huggingface
         run: |
-          "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest \
-            --confcutdir=tests/benchmarks \
-            -o addopts='' \
-            -m benchmark \
-            --benchmark-json=.tmp/pull-request.json \
-            tests/benchmarks
+          mkdir -p .tmp/benchmark-pairs
+          run_benchmark() {
+            label="$1"
+            project="$2"
+            interpreter="$3"
+            (
+              cd "$project"
+              "$interpreter" -m pytest \
+                --confcutdir=tests/benchmarks \
+                -o addopts='' \
+                -o markers=benchmark \
+                -m benchmark \
+                --benchmark-only \
+                --benchmark-json="$GITHUB_WORKSPACE/.tmp/benchmark-pairs/$label.json" \
+                tests/benchmarks/test_performance.py
+            )
+          }
+
+          # Balance runner position: head, base, base, head, base, head.
+          run_benchmark head-1 "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/.venv/bin/python"
+          run_benchmark base-1 "$GITHUB_WORKSPACE/.tmp/main" "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python"
+          run_benchmark base-2 "$GITHUB_WORKSPACE/.tmp/main" "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python"
+          run_benchmark head-2 "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/.venv/bin/python"
+          run_benchmark base-3 "$GITHUB_WORKSPACE/.tmp/main" "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python"
+          run_benchmark head-3 "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/.venv/bin/python"
 
       - name: Enforce median regression limit
         run: >-
           "$GITHUB_WORKSPACE/.venv/bin/python"
           scripts/benchmark/compare.py
-          .tmp/main.json .tmp/pull-request.json
+          .tmp/benchmark-pairs/base-1.json
+          .tmp/benchmark-pairs/head-1.json
+          --additional-baseline .tmp/benchmark-pairs/base-2.json
+          --additional-candidate .tmp/benchmark-pairs/head-2.json
+          --additional-baseline .tmp/benchmark-pairs/base-3.json
+          --additional-candidate .tmp/benchmark-pairs/head-3.json
+
+      - name: Store paired benchmark reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: paired-benchmark-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .tmp/benchmark-pairs/*.json
+          if-no-files-found: warn
+          retention-days: 14

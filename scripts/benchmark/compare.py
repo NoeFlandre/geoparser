@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import statistics
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +77,49 @@ def compare_reports(
     return failures
 
 
+
+def _median_report(reports: list[dict[str, Any]], label: str) -> dict[str, float]:
+    """Return medians across repeated report medians with stable test inventory."""
+    if not reports:
+        msg = f"{label} reports must not be empty"
+        raise ValueError(msg)
+
+    values = [_medians(report) for report in reports]
+    names = set(values[0])
+    for index, report_values in enumerate(values[1:], start=2):
+        if set(report_values) != names:
+            msg = f"{label} report {index} has a different benchmark inventory"
+            raise ValueError(msg)
+    return {
+        name: statistics.median(report_values[name] for report_values in values)
+        for name in sorted(names)
+    }
+
+
+def compare_repeated_reports(
+    baseline_reports: list[dict[str, Any]],
+    candidate_reports: list[dict[str, Any]],
+    maximum_regression: float = 0.25,
+) -> list[str]:
+    """Compare the median of repeated per-run medians against the same gate."""
+    if not baseline_reports or len(baseline_reports) != len(candidate_reports):
+        msg = "baseline and candidate reports must have the same non-zero count"
+        raise ValueError(msg)
+
+    baseline = _median_report(baseline_reports, "baseline")
+    candidate = _median_report(candidate_reports, "candidate")
+    return compare_reports(
+        {"benchmarks": [
+            {"fullname": name, "stats": {"median": value}}
+            for name, value in baseline.items()
+        ]},
+        {"benchmarks": [
+            {"fullname": name, "stats": {"median": value}}
+            for name, value in candidate.items()
+        ]},
+        maximum_regression,
+    )
+
 def _regressions(
     baseline: dict[str, float], candidate: dict[str, float], maximum_regression: float
 ) -> list[str]:
@@ -99,6 +143,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("baseline", type=Path)
     parser.add_argument("candidate", type=Path)
+    parser.add_argument("--additional-baseline", type=Path, action="append", default=[])
+    parser.add_argument("--additional-candidate", type=Path, action="append", default=[])
     parser.add_argument("--maximum-regression", type=float, default=0.25)
     return parser
 
@@ -106,11 +152,31 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
 
-    baseline_report = json.loads(arguments.baseline.read_text())
-    candidate_report = json.loads(arguments.candidate.read_text())
-    failures = compare_reports(
-        baseline_report, candidate_report, arguments.maximum_regression
-    )
+    baseline_reports = [
+        json.loads(path.read_text())
+        for path in [arguments.baseline, *arguments.additional_baseline]
+    ]
+    candidate_reports = [
+        json.loads(path.read_text())
+        for path in [arguments.candidate, *arguments.additional_candidate]
+    ]
+    if len(baseline_reports) == 1 and len(candidate_reports) == 1:
+        baseline_report, candidate_report = baseline_reports[0], candidate_reports[0]
+        failures = compare_reports(
+            baseline_report, candidate_report, arguments.maximum_regression
+        )
+    else:
+        failures = compare_repeated_reports(
+            baseline_reports, candidate_reports, arguments.maximum_regression
+        )
+        baseline_report = {"benchmarks": [
+            {"fullname": name, "stats": {"median": value}}
+            for name, value in _median_report(baseline_reports, "baseline").items()
+        ]}
+        candidate_report = {"benchmarks": [
+            {"fullname": name, "stats": {"median": value}}
+            for name, value in _median_report(candidate_reports, "candidate").items()
+        ]}
     if failures:
         print("Benchmark regression check failed:")
         for failure in failures:
@@ -118,8 +184,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     compared = len(_medians(candidate_report))
+    repeated = len(baseline_reports)
+    suffix = f" from {repeated} runs per revision" if repeated > 1 else ""
     print(
-        f"Compared {compared} benchmark medians; no regression exceeded "
+        f"Compared {compared} benchmark medians{suffix}; no regression exceeded "
         f"{arguments.maximum_regression:.0%}."
     )
     return 0

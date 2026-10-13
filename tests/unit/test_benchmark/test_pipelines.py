@@ -533,3 +533,39 @@ def test_otter_snapshot_rejects_artifact_hash_mismatch(monkeypatch, tmp_path):
 
     with pytest.raises(RuntimeError, match="hash mismatch"):
         pipelines._verify_otter_snapshot(tmp_path)
+
+
+
+@pytest.mark.parametrize(
+    ("device", "gpu_error"),
+    [("cpu", False), ("cuda", False), ("cuda", True)],
+)
+def test_spacy_recognizer_uses_the_locked_model_with_optional_gpu(
+    monkeypatch, device, gpu_error
+):
+    recognizer = object()
+    factory = Mock(return_value=recognizer)
+    _patch_module_classes(monkeypatch, SpacyRecognizer=factory)
+    spacy = ModuleType("spacy")
+    require_gpu = Mock(
+        side_effect=RuntimeError("GPU setup unavailable") if gpu_error else None
+    )
+    spacy.__dict__["require_gpu"] = require_gpu
+    monkeypatch.setitem(sys.modules, "spacy", spacy)
+
+    assert pipelines._build_spacy_recognizer(device) is recognizer
+
+    factory.assert_called_once_with(model_name=pipelines.UPSTREAM_SPACY_MODEL)
+    if device.startswith("cuda"):
+        require_gpu.assert_called_once_with()
+    else:
+        require_gpu.assert_not_called()
+
+
+def test_otter_source_entry_matches_the_retained_model_pin():
+    manifest, entry = pipelines._otter_source_entry()
+    repo_id, revision = pipelines.missing_matrix.MODEL_PINS["otter_cross"]
+
+    assert entry in manifest["models"]
+    assert entry["identifier"] == repo_id
+    assert entry["revision"] == revision
