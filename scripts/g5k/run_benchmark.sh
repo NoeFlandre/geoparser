@@ -6,10 +6,9 @@
 #   2. runs the benchmark, checkpointing into durable $RESULTS storage
 #   3. leaves node-local scratch to Grid'5000's normal job cleanup
 #
-# The gazetteer goes on local disk because it needs about 31 GB while building
-# and 10 GB afterwards, against a 24 GB /home quota. Local disk is wiped
-# between jobs, so it is rebuilt each time -- about 25 minutes, which is the
-# price of not filling a shared, un-backed-up filesystem.
+# The gazetteer is built on node-local disk because it needs about 31 GB while
+# building, against a 24 GB /home quota. The installed 10 GB database is copied
+# to durable $RESULTS/artifacts once, then reused byte-for-byte by later jobs.
 #
 # The benchmark checkpoints per chunk into $RESULTS, which should be on a
 # durable shared filesystem, so a job that ends at walltime resumes.
@@ -49,6 +48,7 @@ export XDG_DATA_HOME="$SCRATCH/share"
 export XDG_CACHE_HOME="$SCRATCH/cache"
 export HF_HOME="$SCRATCH/huggingface"
 export GEOPARSER_DB_PATH="$SCRATCH/benchmark.sqlite"
+export GEOPARSER_GAZETTEER_ARTIFACT_DIR="$RESULTS/artifacts"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-4}"
 mkdir -p "$GEOPARSER_GAZETTEERS_DIR" "$GEOPARSER_CORPUS_CACHE_DIR" "$HF_HOME"
@@ -69,10 +69,8 @@ PY
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 df -h "$SCRATCH" | tail -1
 
-echo "=== building gazetteer on node-local disk ==="
-if [[ ! -e "$GEOPARSER_GAZETTEERS_DIR/geonames.db" ]]; then
-    time python -m geoparser install geonames
-fi
+echo "=== preparing pinned gazetteer artifact ==="
+time "$REPO_ROOT/scripts/g5k/prepare_gazetteer.sh"
 python -m geoparser list
 
 echo "=== running benchmark ==="
