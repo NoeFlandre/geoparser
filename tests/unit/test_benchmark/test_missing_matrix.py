@@ -89,8 +89,16 @@ def test_model_metadata_records_license_and_cell_specific_language_coverage():
     jina = missing_matrix.pipeline_model_metadata("swapped", "en")
     otter = missing_matrix.pipeline_model_metadata("otter-cross-minilm", "ta")
 
-    assert arabic["recognizer"]["language_coverage"] == "fine_tuned"
-    assert finnish["recognizer"]["language_coverage"] == "cross_lingual_transfer"
-    assert jina["reranker"]["license"] == "CC-BY-NC-4.0"
-    assert jina["resolver"]["language_support"].startswith("119+ languages")
-    assert otter["recognizer"]["language_coverage"] == "unspecified"
+    assert (
+        arabic["recognizer"]["language_coverage"],
+        finnish["recognizer"]["language_coverage"],
+        jina["reranker"]["license"],
+        jina["resolver"]["language_support"].startswith("119+ languages"),
+        otter["recognizer"]["language_coverage"],
+    ) == (
+        "fine_tuned",
+        "cross_lingual_transfer",
+        "CC-BY-NC-4.0",
+        True,
+        "unspecified",
+    )

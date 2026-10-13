@@ -387,8 +387,26 @@ def score(
     recognized = [report.deserialize(a) for a in state.annotations(RECOGNITION)]
     resolved = [report.deserialize(a) for a in state.annotations(RESOLUTION)]
     complete_documents = {document.identifier for document in documents}
-    if state.completed(RECOGNITION) == complete_documents:
-        result.recognition = report.score_recognition(expected, recognized)
-    if state.completed(RESOLUTION) == complete_documents:
-        result.resolution = report.score_resolution(expected, resolved)
+    result.recognition = _score_completed_phase(
+        RECOGNITION, expected, recognized, complete_documents, state
+    )
+    result.resolution = _score_completed_phase(
+        RESOLUTION, expected, resolved, complete_documents, state
+    )
     return result
+
+
+def _score_completed_phase(
+    phase: str,
+    expected: Sequence[report.Annotation],
+    predictions: Sequence[report.Annotation],
+    document_ids: set[str],
+    state: ckpt.Checkpoint,
+) -> dict[str, float]:
+    """Return metrics only when every document has a prediction for the phase."""
+    if state.completed(phase) != document_ids:
+        return {}
+    scorer = (
+        report.score_recognition if phase == RECOGNITION else report.score_resolution
+    )
+    return scorer(expected, predictions)

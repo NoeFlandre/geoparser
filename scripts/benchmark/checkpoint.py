@@ -61,7 +61,16 @@ class RunIdentity:
 
 def resolution_reuse_compatible(first: RunIdentity, second: RunIdentity) -> bool:
     """Whether two runs can share gold-span resolution predictions exactly."""
-    invariant_fields = (
+    return (
+        _resolution_inputs_match(first, second)
+        and "resolver" in _resolution_model_pins(first)
+        and _resolution_model_pins(first) == _resolution_model_pins(second)
+    )
+
+
+def _resolution_inputs_match(first: RunIdentity, second: RunIdentity) -> bool:
+    """Check every non-model value that affects gold-span resolution."""
+    fields = (
         "corpus_digest",
         "gazetteer",
         "gazetteer_sha256",
@@ -70,23 +79,15 @@ def resolution_reuse_compatible(first: RunIdentity, second: RunIdentity) -> bool
         "commit",
         "schema_version",
     )
-    if not first.gazetteer_sha256 or not second.gazetteer_sha256:
-        return False
-    if any(
-        getattr(first, field) != getattr(second, field) for field in invariant_fields
-    ):
-        return False
-    first_pins = {
-        name: pin
-        for name, pin in first.model_pins.items()
-        if name in {"resolver", "reranker", "context_sentence_splitter"}
-    }
-    second_pins = {
-        name: pin
-        for name, pin in second.model_pins.items()
-        if name in {"resolver", "reranker", "context_sentence_splitter"}
-    }
-    return "resolver" in first_pins and first_pins == second_pins
+    return bool(first.gazetteer_sha256 and second.gazetteer_sha256) and all(
+        getattr(first, field) == getattr(second, field) for field in fields
+    )
+
+
+def _resolution_model_pins(identity: RunIdentity) -> dict[str, str]:
+    """Keep only the models used by deterministic resolution."""
+    roles = {"resolver", "reranker", "context_sentence_splitter"}
+    return {name: pin for name, pin in identity.model_pins.items() if name in roles}
 
 
 @dataclass

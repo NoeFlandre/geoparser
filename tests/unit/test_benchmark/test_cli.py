@@ -190,19 +190,32 @@ def _corpus_report_run(tmp_path):
 def test_corpus_report_preserves_environment_and_pipeline_metrics(tmp_path):
     run, result = _corpus_report_run(tmp_path)
     payload = benchmark_cli._corpus_report_payload(run, 3, [result])
-
-    assert payload["environment"] == {"host": "fixture"}
     pipeline = payload["pipelines"][0]
-    assert pipeline["name"] == "swapped"
-    assert pipeline["device"] == "cpu"
-    assert pipeline["models"] == {"recognizer": "model@revision"}
-    assert pipeline["recognition"] == {"f1": 0.75}
-    assert pipeline["resolution"] == {"auc": 0.2}
-    assert pipeline["elapsed_seconds"] == 2.5
-    assert pipeline["phase_elapsed_seconds"] == {}
-    assert pipeline["phase_provenance"] == {}
-    assert pipeline["failures"] == {}
-    assert pipeline["model_metadata"]["reranker"]["license"] == "CC-BY-NC-4.0"
+    assert {
+        "environment": payload["environment"],
+        "name": pipeline["name"],
+        "device": pipeline["device"],
+        "models": pipeline["models"],
+        "recognition": pipeline["recognition"],
+        "resolution": pipeline["resolution"],
+        "elapsed_seconds": pipeline["elapsed_seconds"],
+        "phase_elapsed_seconds": pipeline["phase_elapsed_seconds"],
+        "phase_provenance": pipeline["phase_provenance"],
+        "failures": pipeline["failures"],
+        "reranker_license": pipeline["model_metadata"]["reranker"]["license"],
+    } == {
+        "environment": {"host": "fixture"},
+        "name": "swapped",
+        "device": "cpu",
+        "models": {"recognizer": "model@revision"},
+        "recognition": {"f1": 0.75},
+        "resolution": {"auc": 0.2},
+        "elapsed_seconds": 2.5,
+        "phase_elapsed_seconds": {},
+        "phase_provenance": {},
+        "failures": {},
+        "reranker_license": "CC-BY-NC-4.0",
+    }
 
 
 def test_corpus_summary_row_records_counts_and_scores(tmp_path):
@@ -247,12 +260,15 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
     )
 
     cell = manifest["protocol"]["corpora"]["newsli-ar"]
-    assert (cell["expected_documents"], cell["expected_gold_toponyms"]) == (500, 3319)
-    assert "sorted order" in cell["source_split"]
-    assert manifest["full_commit"] == "a" * 40
-    assert manifest["protocol"]["pipelines"][pipelines.XLM_MINILM]["model_pins"][
-        "resolver"
-    ].endswith("@d678769f195c194ffdc6f3735a9360118a855b43")
+    assert (
+        cell["expected_documents"],
+        cell["expected_gold_toponyms"],
+        "sorted order" in cell["source_split"],
+        manifest["full_commit"],
+        manifest["protocol"]["pipelines"][pipelines.XLM_MINILM]["model_pins"][
+            "resolver"
+        ].endswith("@d678769f195c194ffdc6f3735a9360118a855b43"),
+    ) == (500, 3319, True, "a" * 40, True)
 
     resumed = json.loads(json.dumps(manifest))
     resumed["protocol"]["corpora"]["newsli-ar"].update(

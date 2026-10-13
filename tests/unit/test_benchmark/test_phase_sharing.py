@@ -96,27 +96,33 @@ def test_reused_resolution_predictions_are_pinned_and_labeled(tmp_path, monkeypa
     )
 
     copied, reasons = ckpt.load(target_path, target_identity)
-    assert reasons == []
-    assert copied.completed(runner.RESOLUTION) == {"0", "1"}
-    assert copied.phase_elapsed_seconds[runner.RESOLUTION] == 12.5
-    assert copied.elapsed_seconds == 20.0
-    assert copied.phase_provenance[runner.RESOLUTION] == {
-        "reused": True,
-        "source_pipeline": pipelines.XLM_MINILM,
-        "documents": 2,
-        "corpus_digest": "same-corpus",
-        "gazetteer": "geonames",
-        "gazetteer_sha256": "same-gazetteer-content",
-        "min_similarity": 0.0,
-        "code_commit": "same-code",
-        "model_pins": {
-            "resolver": target_identity.model_pins["resolver"],
-            "context_sentence_splitter": target_identity.model_pins[
-                "context_sentence_splitter"
-            ],
+    assert {
+        "reasons": reasons,
+        "completed": copied.completed(runner.RESOLUTION),
+        "phase_seconds": copied.phase_elapsed_seconds[runner.RESOLUTION],
+        "elapsed_seconds": copied.elapsed_seconds,
+        "provenance": copied.phase_provenance[runner.RESOLUTION],
+        "scored_resolver": score.call_args.kwargs["models"]["resolver"],
+    } == {
+        "reasons": [],
+        "completed": {"0", "1"},
+        "phase_seconds": 12.5,
+        "elapsed_seconds": 20.0,
+        "provenance": {
+            "reused": True,
+            "source_pipeline": pipelines.XLM_MINILM,
+            "documents": 2,
+            "corpus_digest": "same-corpus",
+            "gazetteer": "geonames",
+            "gazetteer_sha256": "same-gazetteer-content",
+            "min_similarity": 0.0,
+            "code_commit": "same-code",
+            "model_pins": {
+                "resolver": target_identity.model_pins["resolver"],
+                "context_sentence_splitter": target_identity.model_pins[
+                    "context_sentence_splitter"
+                ],
+            },
         },
+        "scored_resolver": target_identity.model_pins["resolver"],
     }
-    assert (
-        score.call_args.kwargs["models"]["resolver"]
-        == target_identity.model_pins["resolver"]
-    )

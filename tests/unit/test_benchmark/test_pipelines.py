@@ -1,5 +1,6 @@
 """Factory tests for benchmark pipeline composition."""
 
+import hashlib
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -344,21 +345,28 @@ def test_existing_minilm_pipeline_identities_pin_the_frozen_revision(pipeline):
 def test_otter_integration_provenance_matches_retained_checkpoint_plan():
     provenance = pipelines.otter_integration_provenance()
 
-    assert provenance["model"] == (
-        "whoisjones/otter-cross-mmbert@8729188e4f5fc7948d0e9dfd7d7e6d36c2e7270d"
-    )
-    assert provenance["model_sha256"] == (
-        "8987080bfc3e6672a75fb19ffe904d39e79ad804eabfda8247a62c347fb024b2"
-    )
-    assert provenance["source_manifest_sha256"] == (
-        "2d6e72bacb2e933cd27d0f5bd7ef53ebac3be0eebcbbe6cfbf36f22014ba2d78"
-    )
-    assert provenance["source_review_sha256"] == (
-        "458e5cae6d0ce62b0d7a7fdb91a7617b1092463ce62a14471d86974552fcab75"
-    )
-    assert provenance["plan_status"] == "planned"
-    assert provenance["language_support"] == "unspecified"
-    assert isinstance(provenance["plan_lock_matches_current"], bool)
+    assert {
+        key: provenance[key]
+        for key in (
+            "model",
+            "model_sha256",
+            "source_manifest_sha256",
+            "source_review_sha256",
+            "plan_status",
+            "language_support",
+            "plan_lock_matches_current",
+        )
+    } == {
+        "model": "whoisjones/otter-cross-mmbert@8729188e4f5fc7948d0e9dfd7d7e6d36c2e7270d",
+        "model_sha256": "8987080bfc3e6672a75fb19ffe904d39e79ad804eabfda8247a62c347fb024b2",
+        "source_manifest_sha256": "2d6e72bacb2e933cd27d0f5bd7ef53ebac3be0eebcbbe6cfbf36f22014ba2d78",
+        "source_review_sha256": "458e5cae6d0ce62b0d7a7fdb91a7617b1092463ce62a14471d86974552fcab75",
+        "plan_status": "planned",
+        "language_support": "unspecified",
+        "plan_lock_matches_current": isinstance(
+            provenance["plan_lock_matches_current"], bool
+        ),
+    }
 
 
 def test_otter_checkpoint_config_matches_the_retained_arm():
@@ -381,3 +389,142 @@ def test_otter_checkpoint_config_must_match_the_retained_arm():
 
     with pytest.raises(RuntimeError, match="differs from its retained arm plan"):
         pipelines._verify_otter_model_config(model)
+
+
+def test_snapshot_download_is_pinned_to_the_requested_revision(monkeypatch, tmp_path):
+    revision = pipelines.missing_matrix.MODEL_PINS["minilm"][1]
+    snapshot = tmp_path / revision
+    hub = ModuleType("huggingface_hub")
+    download = Mock(return_value=str(snapshot))
+    hub.__dict__["snapshot_download"] = download
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub)
+    monkeypatch.setenv("HF_HOME", str(tmp_path / "cache"))
+
+    assert pipelines._snapshot("minilm") == snapshot
+    download.assert_called_once_with(
+        repo_id=pipelines.missing_matrix.MODEL_PINS["minilm"][0],
+        revision=revision,
+        cache_dir=str(tmp_path / "cache" / "hub"),
+    )
+
+
+def test_snapshot_download_rejects_a_different_revision(monkeypatch, tmp_path):
+    hub = ModuleType("huggingface_hub")
+    hub.__dict__["snapshot_download"] = lambda **_kwargs: str(tmp_path / "mutable")
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub)
+
+    with pytest.raises(RuntimeError, match="expected"):
+        pipelines._snapshot("minilm")
+
+
+@pytest.mark.parametrize(
+    ("installed", "expected_error"),
+    [(pipelines.SPACY_CONTEXT_MODEL_VERSION, None), ("1.0.0", "Expected")],
+)
+def test_context_model_version_is_checked(monkeypatch, installed, expected_error):
+    monkeypatch.setattr(
+        pipelines.importlib.metadata, "version", lambda _name: installed
+    )
+
+    if expected_error:
+        with pytest.raises(RuntimeError, match=expected_error):
+            pipelines._require_context_model()
+    else:
+        pipelines._require_context_model()
+
+
+def test_context_model_must_be_installed(monkeypatch):
+    def missing(_name):
+        raise pipelines.importlib.metadata.PackageNotFoundError
+
+    monkeypatch.setattr(pipelines.importlib.metadata, "version", missing)
+
+    with pytest.raises(RuntimeError, match="Install the locked"):
+        pipelines._require_context_model()
+
+
+def test_xlm_recognizer_build_and_prediction_use_pinned_snapshot(monkeypatch, tmp_path):
+    class FakeRecognizer:
+        def __init__(self, model_name):
+            self.model_name = model_name
+
+    class FakeModel:
+        def eval(self):
+            self.evaluated = True
+
+    tokenizer = object()
+    model = FakeModel()
+    predictions = [
+        [
+            {"entity_group": "LOC", "start": 4, "end": 8},
+            {"entity_group": "B-LOC", "start": 0, "end": 3},
+            {"entity_group": "PER", "start": 9, "end": 12},
+            {"entity_group": "LOC", "start": None, "end": 12},
+        ]
+    ]
+    inference = Mock(return_value=predictions)
+    tokenizer_factory = SimpleNamespace(from_pretrained=Mock(return_value=tokenizer))
+    model_factory = SimpleNamespace(from_pretrained=Mock(return_value=model))
+    transformers = ModuleType("transformers")
+    transformers.AutoTokenizer = tokenizer_factory
+    transformers.AutoModelForTokenClassification = model_factory
+    transformers.pipeline = Mock(return_value=inference)
+    monkeypatch.setitem(sys.modules, "transformers", transformers)
+    recognizers = ModuleType("geoparser.modules.recognizers")
+    recognizers.__dict__["Recognizer"] = FakeRecognizer
+    monkeypatch.setitem(sys.modules, "geoparser.modules.recognizers", recognizers)
+    snapshot = tmp_path / pipelines.missing_matrix.MODEL_PINS["xlm_r"][1]
+    monkeypatch.setattr(pipelines, "_snapshot", lambda _key: snapshot)
+
+    recognizer = pipelines._build_xlm_recognizer("cuda")
+
+    assert recognizer.predict(["Zurich"]) == [[(0, 3), (4, 8)]]
+    assert recognizer.benchmark_model_pin == pipelines._pinned_name("xlm_r")
+    assert model.evaluated
+    tokenizer_factory.from_pretrained.assert_called_once_with(
+        str(snapshot), use_fast=True, local_files_only=True
+    )
+    model_factory.from_pretrained.assert_called_once_with(
+        str(snapshot), local_files_only=True
+    )
+    transformers.pipeline.assert_called_once()
+
+
+def test_xlm_prediction_rejects_a_changed_document_count():
+    with pytest.raises(RuntimeError, match="different number"):
+        pipelines._predict_xlm_spans(lambda *_args, **_kwargs: [], ["Zurich"])
+
+
+def test_otter_snapshot_verifies_artifact_sizes_hashes_and_import_closure(
+    monkeypatch, tmp_path
+):
+    artifact_bytes = b"verified tiny model source"
+    (tmp_path / "model.safetensors").write_bytes(artifact_bytes)
+    digest = hashlib.sha256(artifact_bytes).hexdigest()
+    artifact = {
+        "path": "model.safetensors",
+        "bytes": len(artifact_bytes),
+        "sha256": digest,
+    }
+    manifest = {"inference_imports": ["model.safetensors"]}
+    entry = {"files": [artifact]}
+    monkeypatch.setattr(pipelines, "_otter_arm_plan", Mock())
+    monkeypatch.setattr(pipelines, "_otter_source_entry", lambda: (manifest, entry))
+
+    pipelines._verify_otter_snapshot(tmp_path)
+
+
+def test_otter_snapshot_rejects_artifact_hash_mismatch(monkeypatch, tmp_path):
+    (tmp_path / "model.safetensors").write_bytes(b"wrong")
+    monkeypatch.setattr(pipelines, "_otter_arm_plan", Mock())
+    monkeypatch.setattr(
+        pipelines,
+        "_otter_source_entry",
+        lambda: (
+            {"inference_imports": ["model.safetensors"]},
+            {"files": [{"path": "model.safetensors", "bytes": 5, "sha256": "wrong"}]},
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="hash mismatch"):
+        pipelines._verify_otter_snapshot(tmp_path)

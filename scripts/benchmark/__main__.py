@@ -25,6 +25,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from scripts._cli import EXIT_OK
 from scripts._io import PROJECT_ROOT, write_json_atomic
@@ -72,6 +73,19 @@ class _ManifestPlan:
     full_commit: str
     facts: dict
     device: str
+
+
+@dataclass(frozen=True)
+class _CorpusExecution:
+    """Shared output and run inputs while selected corpora are scored."""
+
+    output_dir: Path
+    arguments: argparse.Namespace
+    device: str
+    commit: str
+    facts: dict
+    phases: Sequence[str]
+    manifest: dict
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -195,33 +209,39 @@ def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:
     """
     problems = _corpus_problems(loaded)
     if not problems:
-        expected_cell = next(
-            (
-                cell
-                for cell in missing_matrix.MATRIX
-                if missing_matrix.cell_name(cell) == loaded.name
-            ),
-            None,
-        )
-        if (
-            expected_cell is not None
-            and loaded.expected_documents == expected_cell.documents
-        ):
-            actual_gold = corpus.gold_toponym_count(loaded.documents)
-            if (len(loaded.documents), actual_gold) != (
-                expected_cell.documents,
-                expected_cell.gold_toponyms,
-            ):
-                message = (
-                    f"{loaded.name} differs from the frozen matrix: expected "
-                    f"{expected_cell.documents} documents/"
-                    f"{expected_cell.gold_toponyms} gold spans, found "
-                    f"{len(loaded.documents)}/{actual_gold}; no model ran."
-                )
-                raise CorpusRejectedError(message)
+        _check_frozen_corpus_totals(loaded)
         print(totals_note(loaded))
         return
     raise CorpusRejectedError(_corpus_rejection_message(loaded.name, problems))
+
+
+def _check_frozen_corpus_totals(loaded: corpora.LoadedCorpus) -> None:
+    """Reject a frozen matrix slice whose loaded gold totals changed."""
+    expected = next(
+        (
+            cell
+            for cell in missing_matrix.MATRIX
+            if missing_matrix.cell_name(cell) == loaded.name
+        ),
+        None,
+    )
+    if expected is not None:
+        _check_known_frozen_totals(loaded, expected)
+
+
+def _check_known_frozen_totals(loaded: corpora.LoadedCorpus, expected: Any) -> None:
+    """Compare loaded counts when the adapter declared the frozen slice size."""
+    if loaded.expected_documents != expected.documents:
+        return
+    actual = (len(loaded.documents), corpus.gold_toponym_count(loaded.documents))
+    frozen = (expected.documents, expected.gold_toponyms)
+    if actual != frozen:
+        message = (
+            f"{loaded.name} differs from the frozen matrix: expected "
+            f"{expected.documents} documents/{expected.gold_toponyms} gold spans, "
+            f"found {actual[0]}/{actual[1]}; no model ran."
+        )
+        raise CorpusRejectedError(message)
 
 
 def run_corpus(
@@ -277,35 +297,52 @@ def _score_requested_pipelines(
     pipelines_to_run = run.arguments.pipeline or list(pipelines.DEFAULT_PIPELINES)
     phases = run.arguments.phase or [runner.RECOGNITION, runner.RESOLUTION]
     shareable = {pipelines.XLM_MINILM, pipelines.OTTER_MINILM}
-    resolution_drivers: dict[str, str] = {}
-    if runner.RESOLUTION in phases:
-        for pipeline_name in pipelines_to_run:
-            if pipeline_name in shareable:
-                family = missing_matrix.resolver_family(pipeline_name)
-                resolution_drivers.setdefault(family, pipeline_name)
+    drivers = _resolution_drivers(pipelines_to_run, phases, shareable)
+    return [
+        _score_one_requested_pipeline(run, name, phases, shareable, drivers)
+        for name in pipelines_to_run
+    ]
 
-    results: dict[str, report.PipelineResult] = {}
-    for pipeline_name in pipelines_to_run:
-        phase_selection = list(phases)
-        family = missing_matrix.resolver_family(pipeline_name)
-        driver = resolution_drivers.get(family)
-        if (
-            pipeline_name in shareable
-            and runner.RESOLUTION in phase_selection
-            and driver is not None
-            and driver != pipeline_name
-        ):
-            phase_selection.remove(runner.RESOLUTION)
-        result = _score_pipeline(run, pipeline_name, phase_selection)
-        if (
-            pipeline_name in shareable
-            and runner.RESOLUTION in phases
-            and driver is not None
-            and driver != pipeline_name
-        ):
-            result = _reuse_resolution(run, pipeline_name, driver, result)
-        results[pipeline_name] = result
-    return [results[name] for name in pipelines_to_run]
+
+def _resolution_drivers(
+    pipeline_names: Sequence[str], phases: Sequence[str], shareable: set[str]
+) -> dict[str, str]:
+    """Choose one matching resolver run to produce reusable resolution data."""
+    if runner.RESOLUTION not in phases:
+        return {}
+    drivers: dict[str, str] = {}
+    for name in pipeline_names:
+        if name in shareable:
+            drivers.setdefault(missing_matrix.resolver_family(name), name)
+    return drivers
+
+
+def _phases_for_pipeline(
+    name: str, phases: Sequence[str], shareable: set[str], drivers: dict[str, str]
+) -> list[str]:
+    """Skip resolution when an equivalent recognizer pipeline already ran it."""
+    selected = list(phases)
+    family = missing_matrix.resolver_family(name)
+    if name in shareable and drivers.get(family, name) != name:
+        selected = [phase for phase in selected if phase != runner.RESOLUTION]
+    return selected
+
+
+def _score_one_requested_pipeline(
+    run: _CorpusRun,
+    name: str,
+    phases: Sequence[str],
+    shareable: set[str],
+    drivers: dict[str, str],
+) -> report.PipelineResult:
+    """Run one pipeline and attach matching reusable resolution predictions."""
+    driver = drivers.get(missing_matrix.resolver_family(name))
+    result = _score_pipeline(
+        run, name, _phases_for_pipeline(name, phases, shareable, drivers)
+    )
+    if name in shareable and runner.RESOLUTION in phases and driver and driver != name:
+        return _reuse_resolution(run, name, driver, result)
+    return result
 
 
 def _run_identity(run: _CorpusRun, pipeline_name: str) -> ckpt.RunIdentity:
@@ -329,6 +366,31 @@ def _reuse_resolution(
     target_result: report.PipelineResult,
 ) -> report.PipelineResult:
     """Copy a complete gold-span resolution phase after exact identity checks."""
+    source_identity, target_identity, source_state = _load_reusable_resolution(
+        run, target_pipeline, source_pipeline
+    )
+    target_state = _copy_reusable_resolution(
+        run,
+        target_pipeline,
+        source_pipeline,
+        target_identity,
+        source_identity,
+        source_state,
+    )
+    models = _resolution_score_models(target_result, target_identity)
+    return runner.score(
+        target_pipeline,
+        run.loaded.documents,
+        target_state,
+        models=models,
+        device=run.device,
+    )
+
+
+def _load_reusable_resolution(
+    run: _CorpusRun, target_pipeline: str, source_pipeline: str
+) -> tuple[ckpt.RunIdentity, ckpt.RunIdentity, ckpt.Checkpoint]:
+    """Load only a complete source checkpoint with an identical resolver identity."""
     source_identity = _run_identity(run, source_pipeline)
     target_identity = _run_identity(run, target_pipeline)
     if not ckpt.resolution_reuse_compatible(source_identity, target_identity):
@@ -350,8 +412,43 @@ def _reuse_resolution(
             f"{len(expected_documents)} documents."
         )
         raise RuntimeError(message)
+    return source_identity, target_identity, source_state
 
+
+def _resolution_reuse_provenance(
+    source_pipeline: str,
+    source_identity: ckpt.RunIdentity,
+    document_count: int,
+) -> dict:
+    """Describe why copied resolution predictions belong to this target run."""
+    return {
+        "reused": True,
+        "source_pipeline": source_pipeline,
+        "documents": document_count,
+        "corpus_digest": source_identity.corpus_digest,
+        "gazetteer": source_identity.gazetteer,
+        "gazetteer_sha256": source_identity.gazetteer_sha256,
+        "min_similarity": source_identity.min_similarity,
+        "code_commit": source_identity.commit,
+        "model_pins": {
+            name: pin
+            for name, pin in source_identity.model_pins.items()
+            if name in {"resolver", "reranker", "context_sentence_splitter"}
+        },
+    }
+
+
+def _copy_reusable_resolution(
+    run: _CorpusRun,
+    target_pipeline: str,
+    source_pipeline: str,
+    target_identity: ckpt.RunIdentity,
+    source_identity: ckpt.RunIdentity,
+    source_state: ckpt.Checkpoint,
+) -> ckpt.Checkpoint:
+    """Copy resolution data into a target checkpoint and write its provenance."""
     target_path = run.output_dir / f"checkpoint-{target_pipeline}.json"
+    expected_documents = {document.identifier for document in run.loaded.documents}
     target_state, reasons = ckpt.load(target_path, target_identity)
     for reason in reasons:
         print(f"  {target_pipeline}: starting fresh -- {reason}")
@@ -368,22 +465,18 @@ def _reuse_resolution(
             - previous_resolution_seconds
         )
         target_state.phase_provenance[runner.RESOLUTION] = {
-            "reused": True,
-            "source_pipeline": source_pipeline,
-            "documents": len(expected_documents),
-            "corpus_digest": source_identity.corpus_digest,
-            "gazetteer": source_identity.gazetteer,
-            "gazetteer_sha256": source_identity.gazetteer_sha256,
-            "min_similarity": source_identity.min_similarity,
-            "code_commit": source_identity.commit,
-            "model_pins": {
-                name: pin
-                for name, pin in source_identity.model_pins.items()
-                if name in {"resolver", "reranker", "context_sentence_splitter"}
-            },
+            **_resolution_reuse_provenance(
+                source_pipeline, source_identity, len(expected_documents)
+            )
         }
         ckpt.save(target_path, target_state)
+    return target_state
 
+
+def _resolution_score_models(
+    target_result: report.PipelineResult, target_identity: ckpt.RunIdentity
+) -> dict[str, str]:
+    """Combine recognizer pins from a partial target with its resolver pins."""
     models = dict(target_result.models)
     models.update(
         {
@@ -392,13 +485,7 @@ def _reuse_resolution(
             if name in target_identity.model_pins
         }
     )
-    return runner.score(
-        target_pipeline,
-        run.loaded.documents,
-        target_state,
-        models=models,
-        device=run.device,
-    )
+    return models
 
 
 def _score_pipeline(
@@ -408,7 +495,6 @@ def _score_pipeline(
 ) -> report.PipelineResult:
     """Resume, run, and score one pipeline for a corpus."""
     loaded = run.loaded
-    arguments = run.arguments
     identity = _run_identity(run, pipeline_name)
     checkpoint_path = run.output_dir / f"checkpoint-{pipeline_name}.json"
     state, reasons = ckpt.load(checkpoint_path, identity)
@@ -418,44 +504,74 @@ def _score_pipeline(
     models: dict[str, str] = {}
     for phase in phases:
         models.update(
-            runner.run_phase(
-                phase,
-                pipeline_name,
-                loaded.documents,
-                state,
-                checkpoint_path,
-                runner.PhaseSettings(
-                    device=run.device,
-                    min_similarity=arguments.min_similarity,
-                    chunk_size=arguments.chunk_size,
-                ),
+            _run_and_record_phase(
+                run, pipeline_name, phase, identity, state, checkpoint_path
             )
         )
-        if state.completed(phase) == {
-            document.identifier for document in loaded.documents
-        }:
-            state.phase_provenance.setdefault(
-                phase,
-                {
-                    "reused": False,
-                    "source_pipeline": pipeline_name,
-                    "documents": len(loaded.documents),
-                    "corpus_digest": loaded.digest,
-                    "gazetteer": pipelines.GAZETTEER_NAME,
-                    "gazetteer_sha256": identity.gazetteer_sha256,
-                    "min_similarity": arguments.min_similarity,
-                    "code_commit": run.commit,
-                    "model_pins": identity.model_pins,
-                },
-            )
-            ckpt.save(checkpoint_path, state)
-    for role in ("recognizer", "resolver", "reranker"):
-        phase = runner.RECOGNITION if role == "recognizer" else runner.RESOLUTION
-        if phase in phases and role in identity.model_pins:
-            models.setdefault(role, identity.model_pins[role])
+    models = _complete_phase_model_pins(models, phases, identity.model_pins)
     return runner.score(
         pipeline_name, loaded.documents, state, models=models, device=run.device
     )
+
+
+def _run_and_record_phase(
+    run: _CorpusRun,
+    pipeline_name: str,
+    phase: str,
+    identity: ckpt.RunIdentity,
+    state: ckpt.Checkpoint,
+    checkpoint_path: Path,
+) -> dict[str, str]:
+    """Execute one phase and record its code and gazetteer provenance."""
+    arguments = run.arguments
+    models = runner.run_phase(
+        phase,
+        pipeline_name,
+        run.loaded.documents,
+        state,
+        checkpoint_path,
+        runner.PhaseSettings(
+            device=run.device,
+            min_similarity=arguments.min_similarity,
+            chunk_size=arguments.chunk_size,
+        ),
+    )
+    expected = {document.identifier for document in run.loaded.documents}
+    if state.completed(phase) == expected:
+        state.phase_provenance.setdefault(
+            phase,
+            _phase_provenance(run, pipeline_name, identity),
+        )
+        ckpt.save(checkpoint_path, state)
+    return models
+
+
+def _phase_provenance(
+    run: _CorpusRun, pipeline_name: str, identity: ckpt.RunIdentity
+) -> dict:
+    """Build provenance for predictions generated by this run's own phase."""
+    return {
+        "reused": False,
+        "source_pipeline": pipeline_name,
+        "documents": len(run.loaded.documents),
+        "corpus_digest": run.loaded.digest,
+        "gazetteer": pipelines.GAZETTEER_NAME,
+        "gazetteer_sha256": identity.gazetteer_sha256,
+        "min_similarity": run.arguments.min_similarity,
+        "code_commit": run.commit,
+        "model_pins": identity.model_pins,
+    }
+
+
+def _complete_phase_model_pins(
+    models: dict[str, str], phases: Sequence[str], model_pins: dict[str, str]
+) -> dict[str, str]:
+    """Keep immutable model identities in scores when checkpoints were resumed."""
+    for role in ("recognizer", "resolver", "reranker"):
+        phase = runner.RECOGNITION if role == "recognizer" else runner.RESOLUTION
+        if phase in phases and role in model_pins:
+            models.setdefault(role, model_pins[role])
+    return models
 
 
 def _corpus_report_payload(
@@ -538,71 +654,82 @@ def _summary_rows(
 
 def _run_manifest(plan: _ManifestPlan) -> dict:
     """Build a reproducible, incrementally updated manifest for this run."""
-    names = plan.names
-    pipeline_names = plan.pipeline_names
-    phases = plan.phases
-    arguments = plan.arguments
-    commit = plan.commit
-    full_commit = plan.full_commit
-    facts = plan.facts
+    cells = _manifest_corpus_cells(plan.names)
+    model_runs = _manifest_pipeline_pins(plan.pipeline_names)
+    return _assemble_run_manifest(plan, cells, model_runs)
+
+
+def _manifest_source_split(name: str) -> str:
+    """Describe the registered input split for a corpus adapter."""
+    if name == "geovirus":
+        return "complete GeoVirus benchmark corpus"
+    if name.startswith(("hipe2020-", "newseye-", "topres19th-")):
+        return "HIPE-2022 v2.1 unmasked test split"
+    if name.startswith("newsli-"):
+        return (
+            "UniTopRank NewsLi release; registered cap selects up to 500 "
+            "valid article identifiers in sorted order"
+        )
+    return "registered corpus adapter"
+
+
+def _manifest_corpus_cell(name: str, fixed: Any) -> dict:
+    """Describe expected counts and split rules for one requested corpus."""
+    spec = corpora.CORPORA[name]
+    return {
+        "language": spec.language,
+        "expected_documents": fixed.documents if fixed else spec.documents,
+        "expected_gold_toponyms": fixed.gold_toponyms if fixed else spec.gold_spans,
+        "evaluation_rule": (
+            "frozen first-five-corpora matrix"
+            if fixed
+            else "registered benchmark adapter"
+        ),
+        "source_split": _manifest_source_split(name),
+        "status": "pending",
+    }
+
+
+def _manifest_corpus_cells(names: Sequence[str]) -> dict[str, dict]:
+    """Describe each selected corpus against the frozen matrix or registry."""
     fixed_cells = {
         missing_matrix.cell_name(cell): cell for cell in missing_matrix.MATRIX
     }
-    cells = {}
-    for name in names:
-        spec = corpora.CORPORA[name]
-        fixed = fixed_cells.get(name)
-        cells[name] = {
-            "language": spec.language,
-            "expected_documents": fixed.documents if fixed else spec.documents,
-            "expected_gold_toponyms": (
-                fixed.gold_toponyms if fixed else spec.gold_spans
-            ),
-            "evaluation_rule": (
-                "frozen first-five-corpora matrix"
-                if fixed
-                else "registered benchmark adapter"
-            ),
-            "source_split": (
-                "complete GeoVirus benchmark corpus"
-                if name == "geovirus"
-                else "HIPE-2022 v2.1 unmasked test split"
-                if name.startswith(("hipe2020-", "newseye-", "topres19th-"))
-                else "UniTopRank NewsLi release; registered cap selects up to 500 "
-                "valid article identifiers in sorted order"
-                if name.startswith("newsli-")
-                else "registered corpus adapter"
-            ),
-            "status": "pending",
-        }
+    return {name: _manifest_corpus_cell(name, fixed_cells.get(name)) for name in names}
+
+
+def _manifest_pipeline_pins(pipeline_names: Sequence[str]) -> dict[str, dict]:
+    """Record immutable model pins and retained integration evidence."""
     model_runs = {}
     for name in pipeline_names:
-        pins = pipelines.pipeline_model_pins(name)
-        model_runs[name] = {
-            "model_pins": pins,
-        }
+        model_runs[name] = {"model_pins": pipelines.pipeline_model_pins(name)}
         if name == pipelines.OTTER_MINILM:
             model_runs[name]["integration_provenance"] = (
                 pipelines.otter_integration_provenance()
             )
+    return model_runs
+
+
+def _assemble_run_manifest(plan: _ManifestPlan, cells: dict, model_runs: dict) -> dict:
+    """Assemble protocol, environment and experiment inputs into a manifest."""
     lock_path = REPOSITORY_ROOT / "uv.lock"
     return {
         "manifest_version": 1,
         "status": "running",
-        "commit": commit,
-        "full_commit": full_commit,
+        "commit": plan.commit,
+        "full_commit": plan.full_commit,
         "dependency_lock_sha256": hashlib.sha256(lock_path.read_bytes()).hexdigest(),
-        "started_at": facts.get("started_at"),
-        "environment": facts,
+        "started_at": plan.facts.get("started_at"),
+        "environment": plan.facts,
         "protocol": {
             "gazetteer": pipelines.GAZETTEER_NAME,
-            "gazetteer_artifact_sha256": facts.get("gazetteer_artifact_sha256"),
-            "min_similarity": arguments.min_similarity,
-            "limit": arguments.limit,
-            "chunk_size": arguments.chunk_size,
+            "gazetteer_artifact_sha256": plan.facts.get("gazetteer_artifact_sha256"),
+            "min_similarity": plan.arguments.min_similarity,
+            "limit": plan.arguments.limit,
+            "chunk_size": plan.arguments.chunk_size,
             "device": plan.device,
-            "accelerator": facts.get("gpu"),
-            "phases": list(phases),
+            "accelerator": plan.facts.get("gpu"),
+            "phases": list(plan.phases),
             "pipelines": model_runs,
             "corpora": cells,
         },
@@ -626,51 +753,64 @@ def _record_manifest_cell(
             "pipelines": {},
         }
     )
-    all_complete = True
-    has_failures = False
     for result in payload["pipelines"]:
-        phase_results = {
-            runner.RECOGNITION: result["recognition"],
-            runner.RESOLUTION: result["resolution"],
-        }
-        phase_status = {
-            phase: ("complete" if phase_results[phase] else "not_completed")
-            for phase in phases
-        }
-        failures = result["failures"]
-        has_failures |= bool(failures)
-        complete = all(status == "complete" for status in phase_status.values())
-        all_complete &= complete
-        cell["pipelines"][result["name"]] = {
-            "status": "complete" if complete else "incomplete",
-            "phase_status": phase_status,
-            "model_pins": manifest["protocol"]["pipelines"][result["name"]][
-                "model_pins"
-            ],
-            "model_metadata": (
-                missing_matrix.pipeline_model_metadata(result["name"], cell["language"])
-                if result["name"] in missing_matrix.MISSING_PIPELINES
-                else {}
-            ),
-            "integration_provenance": (
-                pipelines.otter_integration_provenance()
-                if result["name"] == pipelines.OTTER_MINILM
-                else {}
-            ),
-            "recognition": result["recognition"],
-            "resolution": result["resolution"],
-            "phase_elapsed_seconds": result["phase_elapsed_seconds"],
-            "phase_provenance": result["phase_provenance"],
-            "failure_count": sum(map(len, failures.values())),
-            "failures": failures,
-        }
-    cell["status"] = (
-        "complete_with_document_failures"
-        if all_complete and has_failures
-        else "complete"
-        if all_complete
-        else "incomplete"
-    )
+        cell["pipelines"][result["name"]] = _manifest_pipeline_cell(
+            result, manifest, cell["language"], phases
+        )
+    records = list(cell["pipelines"].values())
+    cell["status"] = _manifest_cell_status(records)
+
+
+def _manifest_phase_status(result: dict, phases: Sequence[str]) -> dict[str, str]:
+    """Mark each requested metric phase as complete or not completed."""
+    metrics = {
+        runner.RECOGNITION: result["recognition"],
+        runner.RESOLUTION: result["resolution"],
+    }
+    return {
+        phase: "complete" if metrics[phase] else "not_completed" for phase in phases
+    }
+
+
+def _manifest_pipeline_cell(
+    result: dict, manifest: dict, language: str, phases: Sequence[str]
+) -> dict:
+    """Serialize one pipeline measurement and its pinned model evidence."""
+    name = result["name"]
+    phase_status = _manifest_phase_status(result, phases)
+    failures = result["failures"]
+    complete = all(status == "complete" for status in phase_status.values())
+    return {
+        "status": "complete" if complete else "incomplete",
+        "phase_status": phase_status,
+        "model_pins": manifest["protocol"]["pipelines"][name]["model_pins"],
+        "model_metadata": (
+            missing_matrix.pipeline_model_metadata(name, language)
+            if name in missing_matrix.MISSING_PIPELINES
+            else {}
+        ),
+        "integration_provenance": (
+            pipelines.otter_integration_provenance()
+            if name == pipelines.OTTER_MINILM
+            else {}
+        ),
+        "recognition": result["recognition"],
+        "resolution": result["resolution"],
+        "phase_elapsed_seconds": result["phase_elapsed_seconds"],
+        "phase_provenance": result["phase_provenance"],
+        "failure_count": sum(map(len, failures.values())),
+        "failures": failures,
+    }
+
+
+def _manifest_cell_status(records: Sequence[dict]) -> str:
+    """Summarize complete pipeline rows, preserving document failures."""
+    all_complete = all(record["status"] == "complete" for record in records)
+    if not all_complete:
+        return "incomplete"
+    if any(record["failure_count"] for record in records):
+        return "complete_with_document_failures"
+    return "complete"
 
 
 def _persist_run_manifest(output_dir: Path, manifest: dict) -> None:
@@ -716,43 +856,12 @@ def _manifest_identity(manifest: dict) -> dict:
     }
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the benchmark on every requested corpus and write the reports."""
-    arguments = build_parser().parse_args(argv)
-    output_dir = arguments.output_dir.expanduser()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    os.environ.setdefault("GEOPARSER_DB_PATH", str(output_dir / "benchmark.sqlite"))
-
-    requested = arguments.corpus or list(corpora.DEFAULT)
-    names = list(corpora.CORPORA) if "all" in requested else requested
-
-    device = pipelines.resolve_device(arguments.device)
-    commit = provenance.source_commit(REPOSITORY_ROOT)
-    full_commit = provenance.source_commit_full(REPOSITORY_ROOT)
-    facts = provenance.environment(os.environ.get("OAR_JOB_ID"))
-    phases = arguments.phase or [runner.RECOGNITION, runner.RESOLUTION]
-    if runner.RESOLUTION in phases:
-        facts["gazetteer_artifact_sha256"] = provenance.gazetteer_artifact_sha256(
-            pipelines.GAZETTEER_NAME
-        )
-    print(f"device: {pipelines.describe_device(device)}")
-
-    pipeline_names = arguments.pipeline or list(pipelines.DEFAULT_PIPELINES)
-    manifest_path = output_dir / "run-manifest.json"
-    manifest = _run_manifest(
-        _ManifestPlan(
-            names=list(dict.fromkeys(names)),
-            pipeline_names=pipeline_names,
-            phases=phases,
-            arguments=arguments,
-            commit=commit,
-            full_commit=full_commit,
-            facts=facts,
-            device=device,
-        )
-    )
-    if manifest_path.exists():
-        previous = json.loads(manifest_path.read_text(encoding="utf-8"))
+def _prepare_run_manifest(output_dir: Path, plan: _ManifestPlan) -> dict:
+    """Create or resume a run manifest after checking experiment identity."""
+    path = output_dir / "run-manifest.json"
+    manifest = _run_manifest(plan)
+    if path.exists():
+        previous = json.loads(path.read_text(encoding="utf-8"))
         if _manifest_identity(previous) != _manifest_identity(manifest):
             message = (
                 "The output directory has a run manifest for a different "
@@ -763,40 +872,65 @@ def main(argv: Sequence[str] | None = None) -> int:
         manifest["status"] = "running"
         manifest.pop("completed_at", None)
     _persist_run_manifest(output_dir, manifest)
+    return manifest
 
+
+def _run_requested_corpora(
+    names: Sequence[str],
+    execution: _CorpusExecution,
+) -> tuple[int, list[dict]]:
+    """Load and score selected corpus cells, persisting progress after each."""
     rows: list[dict] = []
-    corpus_cache_root = Path(
-        os.environ.get("GEOPARSER_CORPUS_CACHE_DIR", str(output_dir))
-    )
+    output_dir = execution.output_dir
+    cache_root = Path(os.environ.get("GEOPARSER_CORPUS_CACHE_DIR", str(output_dir)))
     for name in dict.fromkeys(names):
         folder = corpus_output_dir(output_dir, name)
-        loaded = corpora.load(name, corpus_cache_root / name, limit=arguments.limit)
+        loaded = corpora.load(name, cache_root / name, limit=execution.arguments.limit)
         try:
             rows += run_corpus(
-                loaded, arguments, folder, device=device, commit=commit, facts=facts
+                loaded,
+                execution.arguments,
+                folder,
+                device=execution.device,
+                commit=execution.commit,
+                facts=execution.facts,
             )
         except CorpusRejectedError as error:
             print(error, file=sys.stderr)
-            manifest["protocol"]["corpora"][name].update(
+            execution.manifest["protocol"]["corpora"][name].update(
                 {"status": "rejected", "reason": str(error)}
             )
-            manifest["status"] = "rejected"
-            _persist_run_manifest(output_dir, manifest)
-            return 1
-        payload = json.loads(
-            (folder / "benchmark-report.json").read_text(encoding="utf-8")
-        )
-        _record_manifest_cell(manifest, name, payload, phases)
-        _persist_run_manifest(output_dir, manifest)
-        (output_dir / "summary.md").write_text(
-            report.render_summary(rows), encoding="utf-8"
-        )
-        (output_dir / "summary.json").write_text(
-            json.dumps(
-                {"commit": commit, "environment": facts, "rows": rows}, indent=2
-            ),
-            encoding="utf-8",
-        )
+            execution.manifest["status"] = "rejected"
+            _persist_run_manifest(output_dir, execution.manifest)
+            return 1, rows
+        _record_completed_corpus(execution, folder, name, rows)
+    return EXIT_OK, rows
+
+
+def _record_completed_corpus(
+    execution: _CorpusExecution,
+    folder: Path,
+    name: str,
+    rows: list[dict],
+) -> None:
+    """Record the newly completed corpus payload and refresh run summaries."""
+    payload = json.loads((folder / "benchmark-report.json").read_text(encoding="utf-8"))
+    _record_manifest_cell(execution.manifest, name, payload, execution.phases)
+    _persist_run_manifest(execution.output_dir, execution.manifest)
+    (execution.output_dir / "summary.md").write_text(
+        report.render_summary(rows), encoding="utf-8"
+    )
+    (execution.output_dir / "summary.json").write_text(
+        json.dumps(
+            {"commit": execution.commit, "environment": execution.facts, "rows": rows},
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
+def _finish_run_manifest(output_dir: Path, manifest: dict, rows: list[dict]) -> None:
+    """Mark the run status, persist its completion time and render final scores."""
     manifest["status"] = (
         "complete"
         if all(
@@ -808,7 +942,62 @@ def main(argv: Sequence[str] | None = None) -> int:
     manifest["completed_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     _persist_run_manifest(output_dir, manifest)
     print(report.render_summary(rows))
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the benchmark on every requested corpus and write the reports."""
+    arguments = build_parser().parse_args(argv)
+    output_dir = arguments.output_dir.expanduser()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("GEOPARSER_DB_PATH", str(output_dir / "benchmark.sqlite"))
+    plan = _manifest_plan(arguments)
+    manifest = _prepare_run_manifest(output_dir, plan)
+    execution = _CorpusExecution(
+        output_dir,
+        arguments,
+        plan.device,
+        plan.commit,
+        plan.facts,
+        plan.phases,
+        manifest,
+    )
+    exit_code, rows = _run_requested_corpora(plan.names, execution)
+    if exit_code != EXIT_OK:
+        return exit_code
+    _finish_run_manifest(output_dir, manifest, rows)
     return EXIT_OK
+
+
+def _manifest_plan(arguments: argparse.Namespace) -> _ManifestPlan:
+    """Resolve CLI choices and capture code, device and environment identity."""
+    names = _requested_corpus_names(arguments)
+    device = pipelines.resolve_device(arguments.device)
+    commit = provenance.source_commit(REPOSITORY_ROOT)
+    full_commit = provenance.source_commit_full(REPOSITORY_ROOT)
+    facts = provenance.environment(os.environ.get("OAR_JOB_ID"))
+    phases = arguments.phase or [runner.RECOGNITION, runner.RESOLUTION]
+    if runner.RESOLUTION in phases:
+        facts["gazetteer_artifact_sha256"] = provenance.gazetteer_artifact_sha256(
+            pipelines.GAZETTEER_NAME
+        )
+    print(f"device: {pipelines.describe_device(device)}")
+    return _ManifestPlan(
+        names=names,
+        pipeline_names=arguments.pipeline or list(pipelines.DEFAULT_PIPELINES),
+        phases=phases,
+        arguments=arguments,
+        commit=commit,
+        full_commit=full_commit,
+        facts=facts,
+        device=device,
+    )
+
+
+def _requested_corpus_names(arguments: argparse.Namespace) -> list[str]:
+    """Expand the all-corpora selector and preserve unique request order."""
+    requested = arguments.corpus or list(corpora.DEFAULT)
+    names = list(corpora.CORPORA) if "all" in requested else requested
+    return list(dict.fromkeys(names))
 
 
 if __name__ == "__main__":
