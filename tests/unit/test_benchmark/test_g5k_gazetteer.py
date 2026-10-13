@@ -3,6 +3,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 SCRIPT = Path(__file__).resolve().parents[3] / "scripts/g5k/prepare_gazetteer.sh"
 
 
@@ -58,3 +60,8 @@ def test_g5k_reuses_byte_identical_gazetteer_across_jobs(tmp_path):
     assert (tmp_path / "install.log").read_text().splitlines() == [
         "-m geoparser install geonames"
     ]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX execute bits are unavailable")
+def test_g5k_gazetteer_helper_is_executable():
+    assert SCRIPT.stat().st_mode & 0o111
