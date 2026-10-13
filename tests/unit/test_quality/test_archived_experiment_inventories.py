@@ -6,6 +6,26 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[3]
 INDEX = ROOT / "benchmark-evidence/archives/inventory-index.json"
+EXPECTED_ARCHIVES = {
+    "scripts/multiconer_benchmark/multiconer_manifest.json": (
+        "benchmark-evidence/archives/multiconer/manifest.json"
+    ),
+    "scripts/masakhaner_benchmark/manifest.json": (
+        "benchmark-evidence/archives/masakhaner/manifest.json"
+    ),
+    "scripts/uner_benchmark/sources.json": (
+        "benchmark-evidence/archives/uner/sources.json"
+    ),
+    "scripts/unitoprank_benchmark/pins.py": (
+        "benchmark-evidence/archives/unitoprank/pins.py"
+    ),
+    "scripts/unitoprank_benchmark/ranker-requirements.txt": (
+        "benchmark-evidence/archives/unitoprank/ranker-requirements.txt"
+    ),
+    "scripts/reranker_isolation/pins.py": (
+        "benchmark-evidence/archives/reranker-isolation/pins.py"
+    ),
+}
 
 
 def test_archived_inventories_match_their_recorded_hashes() -> None:
@@ -13,7 +33,10 @@ def test_archived_inventories_match_their_recorded_hashes() -> None:
     index = json.loads(INDEX.read_text(encoding="utf-8"))
 
     assert index["schema_version"] == 1
-    assert len(index["files"]) == 6
+    assert {
+        entry["original_path"]: entry["archive_path"] for entry in index["files"]
+    } == EXPECTED_ARCHIVES
+    assert not (ROOT / "scripts/reranker_isolation/pins.py").exists()
     for entry in index["files"]:
         archived = ROOT / entry["archive_path"]
         payload = archived.read_bytes()
