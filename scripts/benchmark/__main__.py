@@ -131,7 +131,10 @@ def totals_note(loaded: corpora.LoadedCorpus) -> str:
     """Say which source totals a run was compared with, and which it was not."""
     documents = _total_note("documents", loaded.expected_documents)
     gold = _total_note("gold spans", loaded.expected_gold)
-    return f"{loaded.name}: {documents}; {gold}"
+    note = f"{loaded.name}: {documents}; {gold}"
+    if loaded.integrity_report is not None:
+        note += "; full source checked against recorded totals"
+    return note
 
 
 def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:
@@ -150,16 +153,22 @@ def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:
         expected_gold=loaded.expected_gold,
         dropped_gold=loaded.dropped_gold,
     )
-    if found.clean:
+    reports = [found]
+    if loaded.integrity_report is not None:
+        reports.append(loaded.integrity_report)
+    problems = list(
+        dict.fromkeys(problem for report in reports for problem in report.problems)
+    )
+    if not problems:
         print(totals_note(loaded))
         return
     shown = "; ".join(
         f"{problem.kind} in {problem.document}: {problem.detail}"
-        for problem in found.problems[:PROBLEMS_SHOWN]
+        for problem in problems[:PROBLEMS_SHOWN]
     )
     msg = (
         f"{loaded.name} rejected by corpus checks, no model was run: "
-        f"{len(found.problems)} problems. {shown}"
+        f"{len(problems)} problems. {shown}"
     )
     raise CorpusRejectedError(msg)
 

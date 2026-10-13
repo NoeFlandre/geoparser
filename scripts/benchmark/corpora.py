@@ -17,7 +17,7 @@ import json
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from scripts.benchmark import corpus
+from scripts.benchmark import corpus, corpus_checks
 from scripts.benchmark.corpus import Document
 from scripts.benchmark.hipe import hipe_qids, parse_hipe
 from scripts.benchmark.newsli import MAX_DOCUMENTS, read_newsli
@@ -95,6 +95,8 @@ class LoadedCorpus:
     expected_gold: int | None = None
     # Gold entries the adapter read and dropped, for sources that drop any.
     dropped_gold: int = 0
+    # Capped GeoVirus/HIPE runs also validate the complete recorded source.
+    integrity_report: corpus_checks.CorpusReport | None = None
 
 
 # Totals per HIPE-2022 test split, as the checked-in multilingual report of the
@@ -227,8 +229,24 @@ def load(
         KeyError: When the name is not registered
     """
     spec = CORPORA[name]
-    loaded = _load_parsed(spec, cache_dir, limit, coordinate_cache)
     documents, gold = expected_totals(spec, limit)
+    if limit is not None and gold is None and spec.kind != NEWSLI:
+        # A cap makes the subset's gold total unknown, but must not also hide
+        # gold lost while parsing the registered source. Validate its pinned
+        # full-load totals before selecting the documents to score.
+        full = _load_parsed(spec, cache_dir, None, coordinate_cache)
+        loaded = replace(
+            full,
+            documents=full.documents[:limit],
+            integrity_report=corpus_checks.check_corpus(
+                full.documents,
+                expected_documents=spec.documents,
+                expected_gold=spec.gold_spans,
+                dropped_gold=full.dropped_gold,
+            ),
+        )
+    else:
+        loaded = _load_parsed(spec, cache_dir, limit, coordinate_cache)
     return replace(loaded, expected_documents=documents, expected_gold=gold)
 
 

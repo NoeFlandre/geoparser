@@ -510,6 +510,25 @@ class TestSourceTotalsGate:
             in capsys.readouterr().out
         )
 
+    def test_a_capped_run_rejects_gold_lost_while_parsing_the_source(
+        self, tmp_path
+    ):
+        """A cap cannot hide a GeoVirus span dropped from the full source."""
+        _write_geovirus(tmp_path, GEOVIRUS_ARTICLES)
+        path = tmp_path / "GeoVirus.xml"
+        path.write_text(
+            path.read_text(encoding="utf-8").replace(
+                "<lat>10.0</lat><lon>20.0</lon>", "", 1
+            ),
+            encoding="utf-8",
+        )
+        loaded = corpora.load("geovirus", tmp_path, limit=9)
+
+        with pytest.raises(benchmark_cli.CorpusRejectedError) as raised:
+            benchmark_cli.require_clean_corpus(loaded)
+
+        assert "source publishes 2167" in str(raised.value)
+
     @pytest.mark.parametrize("articles", [228, 0])
     def test_a_truncated_or_empty_source_stops_the_run_before_any_model(
         self, monkeypatch, tmp_path, capsys, articles
@@ -657,3 +676,23 @@ class TestHipeRecordedTotals:
             "documents compared with 48; gold spans compared with 558"
             in capsys.readouterr().out
         )
+
+    def test_a_capped_hipe_run_rejects_gold_lost_while_parsing_the_source(
+        self, monkeypatch, tmp_path
+    ):
+        """A cap cannot hide a linked HIPE span missing from the coordinate map."""
+        folder = tmp_path / "hipe2020-de"
+        _stage_hipe(monkeypatch, folder, RECORDED_HIPE_DE)
+        path = folder / corpora.CORPORA["hipe2020-de"].filename
+        path.write_text(
+            path.read_text(encoding="utf-8").replace(
+                "\tQ90\t_\t_\n", "\tQ999\t_\t_\n", 1
+            ),
+            encoding="utf-8",
+        )
+        loaded = corpora.load("hipe2020-de", folder, limit=5)
+
+        with pytest.raises(benchmark_cli.CorpusRejectedError) as raised:
+            benchmark_cli.require_clean_corpus(loaded)
+
+        assert "source publishes 558" in str(raised.value)
