@@ -128,7 +128,6 @@ def test_reused_resolution_predictions_are_pinned_and_labeled(tmp_path, monkeypa
     }
 
 
-
 def test_load_reusable_resolution_rejects_a_different_resolver(tmp_path):
     run = _run(tmp_path)
 
@@ -137,7 +136,7 @@ def test_load_reusable_resolution_rejects_a_different_resolver(tmp_path):
             run, pipelines.OTTER_MINILM, pipelines.SWAPPED
         )
     except RuntimeError as error:
-        assert "Cannot reuse swapped resolution for otter-minilm" in str(error)
+        assert f"Cannot reuse {pipelines.SWAPPED} resolution for {pipelines.OTTER_MINILM}" in str(error)
     else:
         raise AssertionError("a different resolver must not be reused")
 

@@ -535,7 +535,6 @@ def test_otter_snapshot_rejects_artifact_hash_mismatch(monkeypatch, tmp_path):
         pipelines._verify_otter_snapshot(tmp_path)
 
 
-
 @pytest.mark.parametrize(
     ("device", "gpu_error"),
     [("cpu", False), ("cuda", False), ("cuda", True)],

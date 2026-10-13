@@ -77,7 +77,6 @@ def compare_reports(
     return failures
 
 
-
 def _median_report(reports: list[dict[str, Any]], label: str) -> dict[str, float]:
     """Return medians across repeated report medians with stable test inventory."""
     if not reports:
@@ -109,16 +108,21 @@ def compare_repeated_reports(
     baseline = _median_report(baseline_reports, "baseline")
     candidate = _median_report(candidate_reports, "candidate")
     return compare_reports(
-        {"benchmarks": [
-            {"fullname": name, "stats": {"median": value}}
-            for name, value in baseline.items()
-        ]},
-        {"benchmarks": [
-            {"fullname": name, "stats": {"median": value}}
-            for name, value in candidate.items()
-        ]},
+        {
+            "benchmarks": [
+                {"fullname": name, "stats": {"median": value}}
+                for name, value in baseline.items()
+            ]
+        },
+        {
+            "benchmarks": [
+                {"fullname": name, "stats": {"median": value}}
+                for name, value in candidate.items()
+            ]
+        },
         maximum_regression,
     )
+
 
 def _regressions(
     baseline: dict[str, float], candidate: dict[str, float], maximum_regression: float
@@ -144,7 +148,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("baseline", type=Path)
     parser.add_argument("candidate", type=Path)
     parser.add_argument("--additional-baseline", type=Path, action="append", default=[])
-    parser.add_argument("--additional-candidate", type=Path, action="append", default=[])
+    parser.add_argument(
+        "--additional-candidate", type=Path, action="append", default=[]
+    )
     parser.add_argument("--maximum-regression", type=float, default=0.25)
     return parser
 
@@ -169,14 +175,20 @@ def main(argv: list[str] | None = None) -> int:
         failures = compare_repeated_reports(
             baseline_reports, candidate_reports, arguments.maximum_regression
         )
-        baseline_report = {"benchmarks": [
-            {"fullname": name, "stats": {"median": value}}
-            for name, value in _median_report(baseline_reports, "baseline").items()
-        ]}
-        candidate_report = {"benchmarks": [
-            {"fullname": name, "stats": {"median": value}}
-            for name, value in _median_report(candidate_reports, "candidate").items()
-        ]}
+        baseline_report = {
+            "benchmarks": [
+                {"fullname": name, "stats": {"median": value}}
+                for name, value in _median_report(baseline_reports, "baseline").items()
+            ]
+        }
+        candidate_report = {
+            "benchmarks": [
+                {"fullname": name, "stats": {"median": value}}
+                for name, value in _median_report(
+                    candidate_reports, "candidate"
+                ).items()
+            ]
+        }
     if failures:
         print("Benchmark regression check failed:")
         for failure in failures:

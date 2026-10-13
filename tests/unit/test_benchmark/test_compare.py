@@ -90,12 +90,14 @@ def test_comparison_cli_reads_reports_and_returns_the_gate_result(
     assert expected_message in output
 
 
-
 def test_repeated_comparison_uses_the_median_of_run_medians():
-    assert compare_repeated_reports(
-        [report(1.0), report(1.0), report(100.0)],
-        [report(1.25), report(1.25), report(1_000.0)],
-    ) == []
+    assert (
+        compare_repeated_reports(
+            [report(1.0), report(1.0), report(100.0)],
+            [report(1.25), report(1.25), report(1_000.0)],
+        )
+        == []
+    )
 
 
 def test_repeated_comparison_requires_matching_nonempty_report_counts():
@@ -106,7 +108,10 @@ def test_repeated_comparison_requires_matching_nonempty_report_counts():
 def test_repeated_comparison_rejects_changed_benchmark_inventory():
     with pytest.raises(ValueError, match="different benchmark inventory"):
         compare_repeated_reports(
-            [report(1.0), {"benchmarks": [{"fullname": "other", "stats": {"median": 1.0}}]}],
+            [
+                report(1.0),
+                {"benchmarks": [{"fullname": "other", "stats": {"median": 1.0}}]},
+            ],
             [report(1.0), report(1.0)],
         )
 
@@ -116,9 +121,12 @@ def test_comparison_cli_accepts_counterbalanced_repeated_reports(
 ):
     paths = []
     for name, value in [
-        ("base-1", 1.0), ("head-1", 1.2),
-        ("base-2", 1.0), ("head-2", 1.25),
-        ("base-3", 100.0), ("head-3", 1_000.0),
+        ("base-1", 1.0),
+        ("head-1", 1.2),
+        ("base-2", 1.0),
+        ("head-2", 1.25),
+        ("base-3", 100.0),
+        ("head-3", 1_000.0),
     ]:
         path = tmp_path / f"{name}.json"
         path.write_text(json.dumps(report(value)), encoding="utf-8")
@@ -127,11 +135,17 @@ def test_comparison_cli_accepts_counterbalanced_repeated_reports(
         sys,
         "argv",
         [
-            "compare", str(paths[0]), str(paths[1]),
-            "--additional-baseline", str(paths[2]),
-            "--additional-candidate", str(paths[3]),
-            "--additional-baseline", str(paths[4]),
-            "--additional-candidate", str(paths[5]),
+            "compare",
+            str(paths[0]),
+            str(paths[1]),
+            "--additional-baseline",
+            str(paths[2]),
+            "--additional-candidate",
+            str(paths[3]),
+            "--additional-baseline",
+            str(paths[4]),
+            "--additional-candidate",
+            str(paths[5]),
         ],
     )
 
