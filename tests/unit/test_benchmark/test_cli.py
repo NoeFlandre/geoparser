@@ -26,6 +26,11 @@ from scripts.benchmark.report import PipelineResult
 def _accept_miniature_newsli_release(monkeypatch):
     """These tests write miniature releases; the pin itself is tested in test_corpora."""
     monkeypatch.setattr(corpora, "_check_newsli_release", lambda data, path: None)
+    monkeypatch.setattr(
+        benchmark_cli.provenance,
+        "gazetteer_artifact_sha256",
+        lambda name: "test-gazetteer-sha256",
+    )
 
 
 class TestCorpusOption:
@@ -376,6 +381,10 @@ def test_main_loads_default_corpus_and_writes_report_files(
         (corpus_dir / "benchmark-report.md").is_file(),
         (tmp_path / "summary.json").is_file(),
     ) == (True, True, True)
+    manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+    assert manifest["protocol"]["gazetteer_artifact_sha256"] == (
+        "test-gazetteer-sha256"
+    )
 
 
 def test_main_keeps_downloaded_corpora_in_the_configured_scratch_cache(

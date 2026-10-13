@@ -26,7 +26,7 @@ def _run(tmp_path, *, phases=None):
         tmp_path,
         "cuda",
         "same-code",
-        {},
+        {"gazetteer_artifact_sha256": "same-gazetteer-content"},
     )
 
 
@@ -106,6 +106,7 @@ def test_reused_resolution_predictions_are_pinned_and_labeled(tmp_path, monkeypa
         "documents": 2,
         "corpus_digest": "same-corpus",
         "gazetteer": "geonames",
+        "gazetteer_sha256": "same-gazetteer-content",
         "min_similarity": 0.0,
         "code_commit": "same-code",
         "model_pins": {

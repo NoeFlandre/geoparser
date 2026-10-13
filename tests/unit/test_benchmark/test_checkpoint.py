@@ -7,6 +7,7 @@ nothing downstream could tell. These tests pin that it starts over instead.
 """
 
 import json
+from dataclasses import asdict
 from typing import Any
 
 import pytest
@@ -27,6 +28,7 @@ def identity(**overrides: Any) -> RunIdentity:
         "pipeline": "swapped",
         "corpus_digest": "abc123",
         "gazetteer": "geonames",
+        "gazetteer_sha256": "gazetteer-sha256",
         "min_similarity": 0.0,
         "limit": None,
         "commit": "deadbee",
@@ -125,6 +127,7 @@ class TestRefusalToResume:
             ("corpus_digest", "different"),
             ("min_similarity", 0.5),
             ("gazetteer", "swissnames3d"),
+            ("gazetteer_sha256", "different-gazetteer-content"),
             ("limit", 10),
             ("pipeline", "upstream"),
             ("schema_version", SCHEMA_VERSION + 1),
@@ -162,6 +165,18 @@ class TestRefusalToResume:
         assert state.completed("resolution") == set()
         assert any("unreadable" in reason for reason in reasons)
 
+    def test_starts_fresh_on_a_checkpoint_without_a_gazetteer_hash(self, tmp_path):
+        """Old name-only gazetteer evidence cannot resume under a pinned run."""
+        path = tmp_path / "checkpoint.json"
+        old_identity = asdict(identity())
+        old_identity.pop("gazetteer_sha256")
+        path.write_text(json.dumps({"identity": old_identity}), encoding="utf-8")
+
+        resumed, reasons = load(path, identity())
+
+        assert resumed.completed("resolution") == set()
+        assert any("gazetteer_sha256" in reason for reason in reasons)
+
 
 class TestRunIdentity:
     """Comparing two runs."""
@@ -186,6 +201,7 @@ class TestRunIdentity:
         common = {
             "corpus_digest": "same-corpus",
             "gazetteer": "geonames",
+            "gazetteer_sha256": "same-gazetteer-content",
             "min_similarity": 0.0,
             "limit": None,
             "commit": "same-code",
@@ -219,3 +235,15 @@ class TestRunIdentity:
                 },
             ),
         )
+
+    def test_gold_span_resolution_reuse_requires_a_gazetteer_hash(self):
+        first = identity(pipeline="xlm-minilm", gazetteer_sha256=None)
+        second = identity(pipeline="otter-cross-minilm", gazetteer_sha256=None)
+
+        assert not resolution_reuse_compatible(first, second)
+
+    def test_gold_span_resolution_reuse_requires_the_same_gazetteer_hash(self):
+        first = identity(pipeline="xlm-minilm", gazetteer_sha256="hash-one")
+        second = identity(pipeline="otter-cross-minilm", gazetteer_sha256="hash-two")
+
+        assert not resolution_reuse_compatible(first, second)

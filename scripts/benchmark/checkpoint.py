@@ -40,6 +40,7 @@ class RunIdentity:
     commit: str
     schema_version: int = SCHEMA_VERSION
     model_pins: dict[str, str] = field(default_factory=dict)
+    gazetteer_sha256: str | None = None
 
     def differences(self, other: RunIdentity) -> list[str]:
         """
@@ -63,11 +64,14 @@ def resolution_reuse_compatible(first: RunIdentity, second: RunIdentity) -> bool
     invariant_fields = (
         "corpus_digest",
         "gazetteer",
+        "gazetteer_sha256",
         "min_similarity",
         "limit",
         "commit",
         "schema_version",
     )
+    if not first.gazetteer_sha256 or not second.gazetteer_sha256:
+        return False
     if any(
         getattr(first, field) != getattr(second, field) for field in invariant_fields
     ):

@@ -70,7 +70,7 @@ nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 df -h "$SCRATCH" | tail -1
 
 echo "=== building gazetteer on node-local disk ==="
-if [[ ! -e "$GEOPARSER_GAZETTEERS_DIR/geonames.duckdb" ]]; then
+if [[ ! -e "$GEOPARSER_GAZETTEERS_DIR/geonames.db" ]]; then
     time python -m geoparser install geonames
 fi
 python -m geoparser list

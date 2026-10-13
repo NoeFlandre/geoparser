@@ -314,6 +314,7 @@ def _run_identity(run: _CorpusRun, pipeline_name: str) -> ckpt.RunIdentity:
         pipeline=pipeline_name,
         corpus_digest=run.loaded.digest,
         gazetteer=pipelines.GAZETTEER_NAME,
+        gazetteer_sha256=run.facts.get("gazetteer_artifact_sha256"),
         min_similarity=run.arguments.min_similarity,
         limit=run.arguments.limit,
         commit=run.commit,
@@ -372,6 +373,7 @@ def _reuse_resolution(
             "documents": len(expected_documents),
             "corpus_digest": source_identity.corpus_digest,
             "gazetteer": source_identity.gazetteer,
+            "gazetteer_sha256": source_identity.gazetteer_sha256,
             "min_similarity": source_identity.min_similarity,
             "code_commit": source_identity.commit,
             "model_pins": {
@@ -440,6 +442,7 @@ def _score_pipeline(
                     "documents": len(loaded.documents),
                     "corpus_digest": loaded.digest,
                     "gazetteer": pipelines.GAZETTEER_NAME,
+                    "gazetteer_sha256": identity.gazetteer_sha256,
                     "min_similarity": arguments.min_similarity,
                     "code_commit": run.commit,
                     "model_pins": identity.model_pins,
@@ -469,6 +472,7 @@ def _corpus_report_payload(
         "documents": len(loaded.documents),
         "gold_toponyms": gold_count,
         "gazetteer": pipelines.GAZETTEER_NAME,
+        "gazetteer_sha256": run.facts.get("gazetteer_artifact_sha256"),
         "min_similarity": run.arguments.min_similarity,
         "commit": run.commit,
         "environment": run.facts,
@@ -592,6 +596,7 @@ def _run_manifest(plan: _ManifestPlan) -> dict:
         "environment": facts,
         "protocol": {
             "gazetteer": pipelines.GAZETTEER_NAME,
+            "gazetteer_artifact_sha256": facts.get("gazetteer_artifact_sha256"),
             "min_similarity": arguments.min_similarity,
             "limit": arguments.limit,
             "chunk_size": arguments.chunk_size,
@@ -681,9 +686,10 @@ def _manifest_identity(manifest: dict) -> dict:
         "full_commit": manifest["full_commit"],
         "dependency_lock_sha256": manifest["dependency_lock_sha256"],
         "protocol": {
-            key: protocol[key]
+            key: protocol.get(key)
             for key in (
                 "gazetteer",
+                "gazetteer_artifact_sha256",
                 "min_similarity",
                 "limit",
                 "chunk_size",
@@ -724,10 +730,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     commit = provenance.source_commit(REPOSITORY_ROOT)
     full_commit = provenance.source_commit_full(REPOSITORY_ROOT)
     facts = provenance.environment(os.environ.get("OAR_JOB_ID"))
+    phases = arguments.phase or [runner.RECOGNITION, runner.RESOLUTION]
+    if runner.RESOLUTION in phases:
+        facts["gazetteer_artifact_sha256"] = provenance.gazetteer_artifact_sha256(
+            pipelines.GAZETTEER_NAME
+        )
     print(f"device: {pipelines.describe_device(device)}")
 
     pipeline_names = arguments.pipeline or list(pipelines.DEFAULT_PIPELINES)
-    phases = arguments.phase or [runner.RECOGNITION, runner.RESOLUTION]
     manifest_path = output_dir / "run-manifest.json"
     manifest = _run_manifest(
         _ManifestPlan(
