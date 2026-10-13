@@ -4,8 +4,14 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).parents[3]
 INDEX = ROOT / "benchmark-evidence/archives/inventory-index.json"
+pytestmark = pytest.mark.skipif(
+    ROOT.name == "mutants",
+    reason="The mutation workspace copies tests but not archived evidence files",
+)
 
 
 def test_archived_inventories_match_their_recorded_hashes() -> None:
