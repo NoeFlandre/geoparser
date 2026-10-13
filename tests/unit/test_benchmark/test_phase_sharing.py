@@ -136,7 +136,10 @@ def test_load_reusable_resolution_rejects_a_different_resolver(tmp_path):
             run, pipelines.OTTER_MINILM, pipelines.SWAPPED
         )
     except RuntimeError as error:
-        assert f"Cannot reuse {pipelines.SWAPPED} resolution for {pipelines.OTTER_MINILM}" in str(error)
+        assert (
+            f"Cannot reuse {pipelines.SWAPPED} resolution for "
+            f"{pipelines.OTTER_MINILM}"
+        ) in str(error)
     else:
         raise AssertionError("a different resolver must not be reused")
 
