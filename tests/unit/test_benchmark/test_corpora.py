@@ -5,10 +5,23 @@ Every corpus the CLI offers must load to the same shape, so the runner and
 the report never need to know which one they are scoring.
 """
 
+import hashlib
+
 import pytest
 
 from scripts.benchmark import corpora
 from scripts.benchmark.corpus import Document, GoldSpan
+
+
+def pin_release(monkeypatch, release):
+    """Pin the release to the miniature zip, so its own size and digest match."""
+    data = release.read_bytes()
+    monkeypatch.setattr(corpora, "NEWSLI_RELEASE_BYTES", len(data))
+    monkeypatch.setattr(
+        corpora,
+        "NEWSLI_RELEASE_MD5",
+        hashlib.md5(data, usedforsecurity=False).hexdigest(),
+    )
 
 
 class TestRegistry:
@@ -114,6 +127,7 @@ class TestNewsliRegistry:
         from tests.unit.test_benchmark.test_newsli import write_release
 
         release = write_release(tmp_path)
+        pin_release(monkeypatch, release)
         fetched = []
 
         def download(cache_path, *, url):
@@ -128,3 +142,66 @@ class TestNewsliRegistry:
         assert loaded.language == "ro"
         assert [d.identifier for d in loaded.documents] == ["ro-1", "ro-2"]
         assert len(loaded.digest) == 16
+
+    @pytest.mark.parametrize("wrong_pin", ["bytes", "digest"])
+    def test_refuses_a_cached_release_that_is_not_the_pinned_file(
+        self, tmp_path, monkeypatch, wrong_pin
+    ):
+        """A stale or altered zip stops the load before any article is parsed."""
+        from tests.unit.test_benchmark.test_newsli import write_release
+
+        release = write_release(tmp_path)
+        pin_release(monkeypatch, release)
+        if wrong_pin == "bytes":
+            monkeypatch.setattr(
+                corpora, "NEWSLI_RELEASE_BYTES", corpora.NEWSLI_RELEASE_BYTES + 1
+            )
+        else:
+            monkeypatch.setattr(corpora, "NEWSLI_RELEASE_MD5", "0" * 32)
+        monkeypatch.setattr(
+            corpora.corpus, "download_corpus", lambda cache_path, *, url: release
+        )
+
+        with pytest.raises(ValueError, match="pinned UniTopRank release"):
+            corpora.load("newsli-ro", tmp_path / "newsli-ro")
+
+
+class TestExpectedTotals:
+    """What a load of each corpus must hold, given the caps that apply to it."""
+
+    @pytest.mark.parametrize(
+        ("name", "limit", "expected"),
+        [
+            ("geovirus", None, (229, 2167)),
+            ("geovirus", 500, (229, 2167)),
+            ("geovirus", 9, (9, None)),
+            ("newsli-de", None, (500, None)),
+            ("newsli-de", 40, (40, None)),
+            ("newsli-fa", None, (71, 326)),
+            ("newsli-fa", 10, (10, None)),
+            ("newsli-fa", 1000, (71, 326)),
+            ("newsli-pl", None, (186, 196)),
+            ("hipe2020-fr", None, (43, 800)),
+            ("hipe2020-fr", 5, (5, None)),
+            ("topres19th-en", None, (110, 880)),
+        ],
+    )
+    def test_a_full_load_holds_the_source_totals_and_a_capped_one_its_cap(
+        self, name, limit, expected
+    ):
+        """Full loads compare with the source; capped loads compare documents only."""
+        assert corpora.expected_totals(corpora.CORPORA[name], limit) == expected
+
+    def test_a_load_carries_its_expected_totals(self, tmp_path, monkeypatch):
+        """Test that the totals travel with the loaded corpus to the gate."""
+        from tests.unit.test_benchmark.test_newsli import write_release
+
+        release = write_release(tmp_path)
+        pin_release(monkeypatch, release)
+        monkeypatch.setattr(
+            corpora.corpus, "download_corpus", lambda cache_path, *, url: release
+        )
+
+        loaded = corpora.load("newsli-ro", tmp_path / "newsli-ro")
+
+        assert (loaded.expected_documents, loaded.expected_gold) == (226, 385)

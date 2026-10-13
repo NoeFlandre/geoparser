@@ -12,7 +12,7 @@ import zipfile
 
 import pytest
 
-from scripts.benchmark.newsli import MAX_DOCUMENTS, parse_newsli
+from scripts.benchmark.newsli import MAX_DOCUMENTS, parse_newsli, read_newsli
 
 _DEFAULT_DOCUMENTS = {
     "ro-2": ("Merg la Craiova.", [(8, 15, "Craiova", 44.33, 23.81)]),
@@ -123,3 +123,49 @@ class TestParseNewsli:
         """A language the release does not hold fails loudly."""
         with pytest.raises(KeyError):
             parse_newsli(write_release(tmp_path), "xx")
+
+
+class TestDroppedGold:
+    """Gold that the reader discards is counted, so no load loses it silently."""
+
+    def test_counts_a_misaligned_span_in_a_kept_article(self, tmp_path):
+        """The article stays, and its one misaligned entry is counted as dropped."""
+        path = write_release(
+            tmp_path,
+            documents={
+                "ro-1": (
+                    "Din Egipt vin.",
+                    [(4, 9, "Egipt", 27.0, 29.0), (0, 5, "Egipt", 27.0, 29.0)],
+                )
+            },
+        )
+
+        documents, dropped = read_newsli(path, "ro")
+
+        assert [d.identifier for d in documents] == ["ro-1"]
+        assert dropped == 1
+
+    def test_counts_every_entry_of_an_article_with_no_valid_span(self, tmp_path):
+        """An article whose spans all misalign is dropped and all its entries count."""
+        path = write_release(
+            tmp_path,
+            documents={"ro-1": ("Din Egipt vin.", [(0, 5, "Egipt", 27.0, 29.0)])},
+        )
+
+        assert read_newsli(path, "ro") == ([], 1)
+
+    def test_counts_the_entries_of_an_article_without_text(self, tmp_path):
+        """A gold entry whose text file is missing is dropped and counted."""
+        path = write_release(
+            tmp_path,
+            documents={"ro-9": (None, [(0, 1, "x", 0.0, 0.0), (1, 2, "y", 0.0, 0.0)])},
+        )
+
+        assert read_newsli(path, "ro") == ([], 2)
+
+    def test_a_clean_release_drops_nothing(self, tmp_path):
+        """An aligned release reads every entry, so the count is zero."""
+        documents, dropped = read_newsli(write_release(tmp_path), "ro")
+
+        assert len(documents) == 2
+        assert dropped == 0
