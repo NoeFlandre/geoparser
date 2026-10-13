@@ -23,7 +23,7 @@ def _run_prepare(tmp_path: Path, scratch_name: str) -> Path:
             "GEOPARSER_GAZETTEERS_DIR": str(tmp_path / scratch_name / "gazetteers"),
             "GEOPARSER_GAZETTEER_ARTIFACT_DIR": str(tmp_path / "results" / "artifacts"),
             "GAZETTEER_CALL_LOG": str(tmp_path / "install.log"),
-            "PATH": f"{fake_bin}:{env['PATH']}",
+            "PATH": os.pathsep.join((str(fake_bin), env["PATH"])),
         }
     )
     subprocess.run(["bash", str(SCRIPT)], check=True, env=env, capture_output=True)
