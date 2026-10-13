@@ -755,9 +755,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     _persist_run_manifest(output_dir, manifest)
 
     rows: list[dict] = []
+    corpus_cache_root = Path(
+        os.environ.get("GEOPARSER_CORPUS_CACHE_DIR", str(output_dir))
+    )
     for name in dict.fromkeys(names):
         folder = corpus_output_dir(output_dir, name)
-        loaded = corpora.load(name, folder, limit=arguments.limit)
+        loaded = corpora.load(name, corpus_cache_root / name, limit=arguments.limit)
         try:
             rows += run_corpus(
                 loaded, arguments, folder, device=device, commit=commit, facts=facts

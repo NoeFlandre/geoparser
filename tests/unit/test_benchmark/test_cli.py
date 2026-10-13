@@ -317,7 +317,7 @@ def test_corpus_report_writer_emits_markdown_and_json(tmp_path):
     assert '"commit": "commit"' in (tmp_path / "benchmark-report.json").read_text()
 
 
-def _run_default_corpus_main(monkeypatch, tmp_path, capsys):
+def _run_default_corpus_main(monkeypatch, tmp_path, capsys, *, corpus_cache=None):
     """Run the default corpus path with loading and model scoring stubbed."""
     gold = GoldSpan(0, 4, "city", 47.0, 8.0)
     second_gold = GoldSpan(5, 9, "town", 47.1, 8.1)
@@ -348,6 +348,9 @@ def _run_default_corpus_main(monkeypatch, tmp_path, capsys):
         benchmark_cli, "_score_requested_pipelines", lambda run: [result]
     )
     monkeypatch.delenv("GEOPARSER_DB_PATH", raising=False)
+    monkeypatch.delenv("GEOPARSER_CORPUS_CACHE_DIR", raising=False)
+    if corpus_cache is not None:
+        monkeypatch.setenv("GEOPARSER_CORPUS_CACHE_DIR", str(corpus_cache))
     monkeypatch.setenv("OAR_JOB_ID", "job-17")
 
     exit_code = benchmark_cli.main(
@@ -373,6 +376,19 @@ def test_main_loads_default_corpus_and_writes_report_files(
         (corpus_dir / "benchmark-report.md").is_file(),
         (tmp_path / "summary.json").is_file(),
     ) == (True, True, True)
+
+
+def test_main_keeps_downloaded_corpora_in_the_configured_scratch_cache(
+    monkeypatch, tmp_path, capsys
+):
+    corpus_cache = tmp_path / "node-scratch" / "corpora"
+
+    exit_code, load_calls, _corpus_dir, _output = _run_default_corpus_main(
+        monkeypatch, tmp_path / "durable-results", capsys, corpus_cache=corpus_cache
+    )
+
+    assert exit_code == 0
+    assert load_calls == [("geovirus", corpus_cache / "geovirus", 9)]
 
 
 def test_main_reports_provenance_and_corpus_summary(monkeypatch, tmp_path, capsys):

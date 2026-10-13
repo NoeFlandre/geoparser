@@ -44,13 +44,14 @@ trap preserve_scratch EXIT
 
 # Keep every large, regenerable artifact off /home.
 export GEOPARSER_GAZETTEERS_DIR="$SCRATCH/gazetteers"
+export GEOPARSER_CORPUS_CACHE_DIR="$SCRATCH/corpora"
 export XDG_DATA_HOME="$SCRATCH/share"
 export XDG_CACHE_HOME="$SCRATCH/cache"
 export HF_HOME="$SCRATCH/huggingface"
 export GEOPARSER_DB_PATH="$SCRATCH/benchmark.sqlite"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-4}"
-mkdir -p "$GEOPARSER_GAZETTEERS_DIR" "$HF_HOME"
+mkdir -p "$GEOPARSER_GAZETTEERS_DIR" "$GEOPARSER_CORPUS_CACHE_DIR" "$HF_HOME"
 
 # shellcheck disable=SC1091
 source "$VENV/bin/activate"
