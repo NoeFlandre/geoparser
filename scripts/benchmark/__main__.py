@@ -137,6 +137,34 @@ def totals_note(loaded: corpora.LoadedCorpus) -> str:
     return note
 
 
+def _corpus_problems(loaded: corpora.LoadedCorpus) -> list[corpus_checks.Problem]:
+    """Combine subset checks with any full-source integrity checks."""
+    found = corpus_checks.check_corpus(
+        loaded.documents,
+        expected_documents=loaded.expected_documents,
+        expected_gold=loaded.expected_gold,
+        dropped_gold=loaded.dropped_gold,
+    )
+    reports = [found]
+    if loaded.integrity_report is not None:
+        reports.append(loaded.integrity_report)
+    return list(
+        dict.fromkeys(problem for report in reports for problem in report.problems)
+    )
+
+
+def _corpus_rejection_message(name: str, problems: list[corpus_checks.Problem]) -> str:
+    """Format the bounded summary for a rejected corpus."""
+    shown = "; ".join(
+        f"{problem.kind} in {problem.document}: {problem.detail}"
+        for problem in problems[:PROBLEMS_SHOWN]
+    )
+    return (
+        f"{name} rejected by corpus checks, no model was run: "
+        f"{len(problems)} problems. {shown}"
+    )
+
+
 def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:
     """
     Stop before any model runs when the corpus fails its offline checks.
@@ -147,30 +175,11 @@ def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:
     Raises:
         CorpusRejectedError: If any check found a problem in the corpus
     """
-    found = corpus_checks.check_corpus(
-        loaded.documents,
-        expected_documents=loaded.expected_documents,
-        expected_gold=loaded.expected_gold,
-        dropped_gold=loaded.dropped_gold,
-    )
-    reports = [found]
-    if loaded.integrity_report is not None:
-        reports.append(loaded.integrity_report)
-    problems = list(
-        dict.fromkeys(problem for report in reports for problem in report.problems)
-    )
+    problems = _corpus_problems(loaded)
     if not problems:
         print(totals_note(loaded))
         return
-    shown = "; ".join(
-        f"{problem.kind} in {problem.document}: {problem.detail}"
-        for problem in problems[:PROBLEMS_SHOWN]
-    )
-    msg = (
-        f"{loaded.name} rejected by corpus checks, no model was run: "
-        f"{len(problems)} problems. {shown}"
-    )
-    raise CorpusRejectedError(msg)
+    raise CorpusRejectedError(_corpus_rejection_message(loaded.name, problems))
 
 
 def run_corpus(
