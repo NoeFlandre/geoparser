@@ -369,10 +369,10 @@ def _predict_xlm_spans(
     if len(predictions) != len(texts):
         message = "XLM-R returned a different number of document predictions."
         raise RuntimeError(message)
-    output: list[list[tuple[int, int]] | None] = []
-    for entities in predictions:
-        output.append(_xlm_entity_spans(entities))
-    return output
+    return [
+        t.cast(list[tuple[int, int]] | None, _xlm_entity_spans(entities))
+        for entities in predictions
+    ]
 
 
 def _verify_otter_model_config(model: t.Any) -> None:
