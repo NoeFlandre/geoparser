@@ -363,13 +363,16 @@ def _xlm_entity_spans(entities: Sequence[dict[str, t.Any]]) -> list[tuple[int, i
 
 def _predict_xlm_spans(
     inference_pipeline: t.Any, texts: list[str]
-) -> list[list[tuple[int, int]]]:
+) -> list[list[tuple[int, int]] | None]:
     """Run pinned XLM-R and convert one entity list per input document."""
     predictions = inference_pipeline(texts, batch_size=XLM_BATCH_SIZE)
     if len(predictions) != len(texts):
         message = "XLM-R returned a different number of document predictions."
         raise RuntimeError(message)
-    return [_xlm_entity_spans(entities) for entities in predictions]
+    output: list[list[tuple[int, int]] | None] = []
+    for entities in predictions:
+        output.append(_xlm_entity_spans(entities))
+    return output
 
 
 def _verify_otter_model_config(model: t.Any) -> None:
