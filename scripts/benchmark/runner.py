@@ -295,26 +295,38 @@ def _process_chunk_with_failures(
 ) -> tuple[dict[str, list[dict[str, t.Any]]], dict[str, dict[str, t.Any]]]:
     """Record Otter's document-level input and output failures explicitly."""
     try:
-        return (
-            _process_chunk(phase, documents, recognizer=recognizer, resolver=resolver),
-            {},
+        predictions = _process_chunk(
+            phase, documents, recognizer=recognizer, resolver=resolver
         )
     except ValueError as error:
         if phase != RECOGNITION or _otter_failure(error) is None:
             raise
+        return _process_recognition_documents_individually(
+            documents, recognizer=recognizer, resolver=resolver
+        )
 
+    return predictions, {}
+
+
+def _process_recognition_documents_individually(
+    documents: Sequence[Document], *, recognizer: t.Any, resolver: t.Any
+) -> tuple[dict[str, list[dict[str, t.Any]]], dict[str, dict[str, t.Any]]]:
+    """Retry a failed Otter batch per document and retain its failures."""
     predictions: dict[str, list[dict[str, t.Any]]] = {}
     failures: dict[str, dict[str, t.Any]] = {}
     for document in documents:
         try:
             predictions.update(
                 _process_chunk(
-                    phase, [document], recognizer=recognizer, resolver=resolver
+                    RECOGNITION,
+                    [document],
+                    recognizer=recognizer,
+                    resolver=resolver,
                 )
             )
         except ValueError as error:
             failure = _otter_failure(error)
-            if phase != RECOGNITION or failure is None:
+            if failure is None:
                 raise
             predictions[document.identifier] = []
             failures[document.identifier] = {
