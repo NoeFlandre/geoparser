@@ -261,6 +261,48 @@ def test_otter_invalid_document_outputs_are_recorded_without_aborting_chunk(
     }
 
 
+@pytest.mark.parametrize(
+    ("phase", "message"),
+    [
+        (runner.RECOGNITION, "ordinary failure"),
+        (
+            runner.RESOLUTION,
+            "Otter document at index 0 has 99 tokens, exceeding the limit of 10",
+        ),
+    ],
+)
+def test_chunk_failure_handling_propagates_errors_outside_recognition_otter_inputs(
+    monkeypatch, phase, message
+):
+    monkeypatch.setattr(runner, "_process_chunk", Mock(side_effect=ValueError(message)))
+
+    with pytest.raises(ValueError, match=message):
+        runner._process_chunk_with_failures(
+            phase, [document()], recognizer=object(), resolver=object()
+        )
+
+
+def test_individual_retry_propagates_non_otter_errors(monkeypatch):
+    documents = [document("good"), document("bad")]
+
+    def process(_phase, batch, *, recognizer, resolver):
+        if len(batch) > 1:
+            raise ValueError(
+                "Otter document at index 1 has 99 tokens, exceeding the limit "
+                "of 10; truncation is not supported."
+            )
+        if batch[0].identifier == "bad":
+            raise ValueError("ordinary failure on a single document")
+        return {batch[0].identifier: []}
+
+    monkeypatch.setattr(runner, "_process_chunk", process)
+
+    with pytest.raises(ValueError, match="ordinary failure"):
+        runner._process_chunk_with_failures(
+            runner.RECOGNITION, documents, recognizer=object(), resolver=None
+        )
+
+
 def test_build_phase_models_constructs_only_the_recognizer(monkeypatch):
     recognizer = object()
     build_recognizer = Mock(return_value=recognizer)
