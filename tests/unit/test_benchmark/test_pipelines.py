@@ -466,9 +466,13 @@ def test_xlm_recognizer_build_and_prediction_use_pinned_snapshot(monkeypatch, tm
     tokenizer_factory = SimpleNamespace(from_pretrained=Mock(return_value=tokenizer))
     model_factory = SimpleNamespace(from_pretrained=Mock(return_value=model))
     transformers = ModuleType("transformers")
-    transformers.AutoTokenizer = tokenizer_factory
-    transformers.AutoModelForTokenClassification = model_factory
-    transformers.pipeline = Mock(return_value=inference)
+    transformers.__dict__.update(
+        {
+            "AutoTokenizer": tokenizer_factory,
+            "AutoModelForTokenClassification": model_factory,
+            "pipeline": Mock(return_value=inference),
+        }
+    )
     monkeypatch.setitem(sys.modules, "transformers", transformers)
     recognizers = ModuleType("geoparser.modules.recognizers")
     recognizers.__dict__["Recognizer"] = FakeRecognizer
