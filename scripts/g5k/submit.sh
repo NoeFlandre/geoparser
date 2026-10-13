@@ -3,7 +3,7 @@
 #
 #   RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench ./scripts/g5k/submit.sh
 #   RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench WALLTIME=4:00 LIMIT=50 ./scripts/g5k/submit.sh
-#   CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
+#   RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
 #
 # PIPELINES accepts benchmark pipeline names, CORPORA accepts registered
 # corpus names or "all", and PHASES accepts recognition and/or resolution.
