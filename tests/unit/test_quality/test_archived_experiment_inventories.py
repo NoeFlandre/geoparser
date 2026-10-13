@@ -33,6 +33,7 @@ def test_archived_inventories_match_their_recorded_hashes() -> None:
     index = json.loads(INDEX.read_text(encoding="utf-8"))
 
     assert index["schema_version"] == 1
+    assert len(index["files"]) == len(EXPECTED_ARCHIVES)
     assert {
         entry["original_path"]: entry["archive_path"] for entry in index["files"]
     } == EXPECTED_ARCHIVES
