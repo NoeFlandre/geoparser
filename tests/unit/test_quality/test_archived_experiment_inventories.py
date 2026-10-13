@@ -28,20 +28,36 @@ EXPECTED_ARCHIVES = {
 }
 
 
-def test_archived_inventories_match_their_recorded_hashes() -> None:
-    """Every moved inventory retains its exact original bytes."""
+def test_archived_inventory_index_has_expected_schema_and_count() -> None:
+    """The archive index keeps its schema and expected number of rows."""
     index = json.loads(INDEX.read_text(encoding="utf-8"))
 
     assert index["schema_version"] == 1
     assert len(index["files"]) == len(EXPECTED_ARCHIVES)
+
+
+def test_archived_inventory_index_has_the_expected_path_mapping() -> None:
+    """Every archived inventory maps from its exact original path."""
+    index = json.loads(INDEX.read_text(encoding="utf-8"))
+
     assert {
         entry["original_path"]: entry["archive_path"] for entry in index["files"]
     } == EXPECTED_ARCHIVES
-    assert not (ROOT / "scripts/reranker_isolation/pins.py").exists()
+
+
+def test_archived_inventories_match_their_recorded_hashes() -> None:
+    """Every moved inventory retains its exact original bytes."""
+    index = json.loads(INDEX.read_text(encoding="utf-8"))
+
     for entry in index["files"]:
         archived = ROOT / entry["archive_path"]
         payload = archived.read_bytes()
         assert hashlib.sha256(payload).hexdigest() == entry["sha256"]
+
+
+def test_reranker_pin_is_not_an_active_script() -> None:
+    """Archived reranker pins do not remain in the active experiment tree."""
+    assert not (ROOT / "scripts/reranker_isolation/pins.py").exists()
 
 
 def test_completed_and_inventory_evidence_remains_present() -> None:
