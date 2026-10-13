@@ -40,10 +40,11 @@ def test_uner_source_audit_path_maps_to_archived_inventory() -> None:
         )
     )
     index = json.loads(INDEX.read_text(encoding="utf-8"))
-    archived = next(
-        ROOT / entry["archive_path"]
+    matches = [
+        entry
         for entry in index["files"]
         if entry["original_path"] == audit["source_snapshot"]
-    )
+    ]
 
-    assert archived.is_file()
+    assert len(matches) == 1
+    assert (ROOT / matches[0]["archive_path"]).is_file()
