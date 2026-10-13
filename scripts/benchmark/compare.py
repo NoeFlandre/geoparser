@@ -87,9 +87,7 @@ def _median_report(reports: list[dict[str, Any]], label: str) -> dict[str, float
     }
 
 
-def _shared_benchmark_names(
-    reports: list[dict[str, float]], label: str
-) -> set[str]:
+def _shared_benchmark_names(reports: list[dict[str, float]], label: str) -> set[str]:
     """Require every repeated report to contain the same benchmarks."""
     names = set(reports[0])
     for index, report in enumerate(reports[1:], start=2):
@@ -178,12 +176,8 @@ def _compare_report_sets(
     arguments: argparse.Namespace,
 ) -> tuple[list[str], dict[str, Any], int]:
     """Compare primary reports or the median of explicitly supplied repetitions."""
-    baseline_reports = _read_reports(
-        arguments.baseline, arguments.additional_baseline
-    )
-    candidate_reports = _read_reports(
-        arguments.candidate, arguments.additional_candidate
-    )
+    baseline_reports = _read_reports(arguments.baseline, arguments.additional_baseline)
+    candidate_reports = _read_reports(arguments.candidate, arguments.additional_candidate)
     repeated = len(baseline_reports)
     if repeated == 1 and len(candidate_reports) == 1:
         failures = compare_reports(
