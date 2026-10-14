@@ -65,3 +65,57 @@ def test_g5k_reuses_byte_identical_gazetteer_across_jobs(tmp_path):
 @pytest.mark.skipif(os.name == "nt", reason="POSIX execute bits are unavailable")
 def test_g5k_gazetteer_helper_is_executable():
     assert SCRIPT.stat().st_mode & 0o111
+
+
+SUBMIT_SCRIPT = Path(__file__).resolve().parents[3] / "scripts/g5k/submit.sh"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Grid5000 submission requires POSIX shell")
+def test_g5k_submit_forwards_memory_ceiling(tmp_path):
+    """A configured installer memory cap reaches the OAR job command."""
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    oarstat = fake_bin / "oarstat"
+    oarstat.write_text("#!/bin/sh\nprintf '[]\n'\n", encoding="utf-8")
+    oarstat.chmod(0o755)
+    oarsub = fake_bin / "oarsub"
+    oarsub.write_text(
+        "#!/bin/sh\nprintf '%s\n' \"$@\" > \"$OARSUB_CAPTURE\"\n",
+        encoding="utf-8",
+    )
+    oarsub.chmod(0o755)
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{fake_bin}:{env.get('PATH', '/usr/bin:/bin')}",
+            "OARSUB_CAPTURE": str(tmp_path / "oarsub-args.txt"),
+            "JOB_NAME": "geoparser-memory-test",
+            "RESULTS": str(tmp_path / "results"),
+            "REPO_ROOT": str(tmp_path / "repo"),
+            "VENV": str(tmp_path / "venv"),
+            "CLUSTER": "grue",
+            "QUEUE": "besteffort",
+            "GPUS": "1",
+            "CORES": "4",
+            "WALLTIME": "2:00",
+            "PIPELINES": "swapped,xlm-minilm,otter-cross-minilm",
+            "CORPORA": "geovirus",
+            "PHASES": "recognition,resolution",
+            "GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB": "6144",
+        }
+    )
+    bash = shutil.which("bash")
+    if bash is None:
+        raise RuntimeError("The Grid5000 submit regression requires Bash")
+    subprocess.run(
+        [bash, str(SUBMIT_SCRIPT)],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    command = (tmp_path / "oarsub-args.txt").read_text(encoding="utf-8")
+    assert "host=1/gpu=1/core=4,walltime=2:00" in command
+    assert "GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB='6144'" in command
