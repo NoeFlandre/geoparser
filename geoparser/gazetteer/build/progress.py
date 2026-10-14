@@ -199,6 +199,11 @@ def print_build_header(gazetteer_name: str) -> None:
     _console.print()
 
 
+def print_build_memory_diagnostics(message: str) -> None:
+    """Print the detected memory budget through the active build console."""
+    _console.print(message, style="dim")
+
+
 def print_build_summary(feature_count: int, name_count: int) -> None:
     """
     Print a short summary after a gazetteer build completes.

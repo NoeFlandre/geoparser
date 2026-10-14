@@ -97,6 +97,8 @@ class LoadedCorpus:
     dropped_gold: int = 0
     # Capped GeoVirus/HIPE runs also validate the complete recorded source.
     integrity_report: corpus_checks.CorpusReport | None = None
+    # The explicit benchmark CLI limit, if this load is a smoke/subset run.
+    limit: int | None = None
 
 
 # Totals per HIPE-2022 test split, as the checked-in multilingual report of the
@@ -247,7 +249,12 @@ def load(
         )
     else:
         loaded = _load_parsed(spec, cache_dir, limit, coordinate_cache)
-    return replace(loaded, expected_documents=documents, expected_gold=gold)
+    return replace(
+        loaded,
+        expected_documents=documents,
+        expected_gold=gold,
+        limit=limit,
+    )
 
 
 def _load_parsed(

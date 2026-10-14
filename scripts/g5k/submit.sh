@@ -1,31 +1,36 @@
 #!/usr/bin/env bash
 # Submit the benchmark to OAR, respecting the Grid'5000 usage policy.
 #
-#   ./scripts/g5k/submit.sh                  # default: 1 GPU, 2 hours
-#   WALLTIME=4:00 LIMIT=50 ./scripts/g5k/submit.sh
-#   CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
+#   RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench ./scripts/g5k/submit.sh
+#   RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench WALLTIME=4:00 LIMIT=50 ./scripts/g5k/submit.sh
+#   RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
+#   GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB=6144 RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench ./scripts/g5k/submit.sh
 #
 # PIPELINES accepts benchmark pipeline names, CORPORA accepts registered
 # corpus names or "all", and PHASES accepts recognition and/or resolution.
 # Each value is comma-separated and passed to the benchmark CLI on the node.
 #
 # Policy notes this script encodes:
-#   * one GPU on one host -- the workload is single-process inference, so more
-#     would sit idle while still being unavailable to everyone else
+#   * one GPU and four CPU cores on one host -- the workload is single-process
+#     inference, so more would sit idle while still being unavailable to others
 #   * an explicit, modest walltime rather than the maximum
 #   * a refusal to submit when a job of this name is already queued or running,
 #     because duplicate and speculative reservations are what the policy
 #     specifically prohibits
 #
 # Check conformance before and after:  usagepolicycheck -t
+# RESULTS is required so checkpoints and large artifacts stay on durable
+# shared storage instead of consuming a frontend's home quota.
 
 set -euo pipefail
 
 JOB_NAME="${JOB_NAME:-geoparser-bench}"
 WALLTIME="${WALLTIME:-2:00}"
 GPUS="${GPUS:-1}"
+CORES="${CORES:-4}"
 REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
-RESULTS="${RESULTS:-$HOME/geoparser-bench}"
+VENV="${VENV:-$HOME/geoparser-venv}"
+: "${RESULTS:?Set RESULTS to a durable shared filesystem path (for example Grid5000 Evergreen)}"
 CLUSTER="${CLUSTER:-}"
 # besteffort takes GPUs that would otherwise sit idle, and gives them straight
 # back when someone with a claim on them asks. The job is killed rather than
@@ -57,19 +62,54 @@ if [[ -n "$PHASES" && ! "$PHASES" =~ ^(recognition|resolution)(,(recognition|res
     exit 2
 fi
 
+GAZETTEER_MEMORY_LIMIT_MB="${GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB:-}"
+if [[ -n "$GAZETTEER_MEMORY_LIMIT_MB" && ! "$GAZETTEER_MEMORY_LIMIT_MB" =~ ^[1-9][0-9]*$ ]]; then
+    echo "GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB must be a positive integer number of MiB" >&2
+    exit 2
+fi
+
 mkdir -p "$RESULTS/logs"
 
-existing="$(oarstat -u --json 2>/dev/null \
-    | python3 -c "
-import json, sys
+if ! oarstat_json="$(oarstat -u --json)"; then
+    echo "Could not inspect queued/running OAR jobs; refusing to submit." >&2
+    exit 1
+fi
+
+if ! existing="$(BENCHMARK_JOB_NAME="$JOB_NAME" python3 -c '
+import json, os, sys
+
 try:
     jobs = json.load(sys.stdin)
-except Exception:
-    sys.exit(0)
-for job in (jobs.values() if isinstance(jobs, dict) else jobs):
-    if job.get('name') == '${JOB_NAME}' and job.get('state') in {'Waiting', 'Running', 'Launching', 'toLaunch'}:
-        print(job.get('Job_Id') or job.get('id'))
-" || true)"
+except Exception as error:
+    print(f"Could not parse oarstat JSON: {error}", file=sys.stderr)
+    sys.exit(1)
+
+if isinstance(jobs, dict):
+    jobs = list(jobs.values())
+elif not isinstance(jobs, list):
+    print("oarstat JSON must be a list or object of jobs", file=sys.stderr)
+    sys.exit(1)
+
+for job in jobs:
+    if not isinstance(job, dict):
+        print("oarstat JSON contains a non-object job", file=sys.stderr)
+        sys.exit(1)
+    if not isinstance(job.get("name"), str) or not isinstance(job.get("state"), str):
+        print("oarstat JSON contains a job without a name or state", file=sys.stderr)
+        sys.exit(1)
+    if (
+        job["name"] == os.environ["BENCHMARK_JOB_NAME"]
+        and job["state"] in {"Waiting", "Running", "Launching", "toLaunch"}
+    ):
+        job_id = job.get("Job_Id") or job.get("id")
+        if job_id is None:
+            print("Matching OAR job has no identifier", file=sys.stderr)
+            sys.exit(1)
+        print(job_id)
+' <<< "$oarstat_json")"; then
+    echo "Could not validate queued/running OAR jobs; refusing to submit." >&2
+    exit 1
+fi
 
 if [[ -n "$existing" ]]; then
     echo "A '${JOB_NAME}' job is already queued or running: ${existing}" >&2
@@ -78,10 +118,14 @@ if [[ -n "$existing" ]]; then
     exit 1
 fi
 
-RESOURCES="host=1/gpu=${GPUS},walltime=${WALLTIME}"
+RESOURCES="host=1/gpu=${GPUS}/core=${CORES},walltime=${WALLTIME}"
 OPTIONS=()
 if [[ -n "$CLUSTER" ]]; then
     OPTIONS+=(-p "cluster='${CLUSTER}'")
+fi
+if [[ "$CLUSTER" == "ecotaxe" ]]; then
+    # Nantes lists ecotaxe as an exotic cluster; OAR requires this type.
+    OPTIONS+=(-t exotic)
 fi
 # How long before the walltime OAR sends the checkpoint signal. besteffort
 # jobs are capped at a minute, which is enough: the run's own progress is
@@ -105,9 +149,10 @@ oarsub \
     -E "$RESULTS/logs/%jobid%.err" \
     --checkpoint "$CHECKPOINT_SECONDS" \
     --signal 12 \
-    "REPO_ROOT='$REPO_ROOT' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
+    "REPO_ROOT='$REPO_ROOT' VENV='$VENV' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
 DEVICE='${DEVICE:-auto}' CHUNK_SIZE='${CHUNK_SIZE:-5}' \
 MIN_SIMILARITY='${MIN_SIMILARITY:-0.0}' PIPELINES='$PIPELINES' CORPORA='$CORPORA' PHASES='$PHASES' \
+GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB='$GAZETTEER_MEMORY_LIMIT_MB' \
 bash $REPO_ROOT/scripts/g5k/run_benchmark.sh"
 
 echo

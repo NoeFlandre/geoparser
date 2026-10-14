@@ -6,13 +6,17 @@ checkpoints of two corpora must never be mistaken for one another.
 """
 
 import argparse
+import json
 import os
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
 from scripts.benchmark import __main__ as benchmark_cli
+from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import corpora, pipelines, runner
-from scripts.benchmark.__main__ import build_parser, corpus_output_dir
+from scripts.benchmark.__main__ import _ManifestPlan, build_parser, corpus_output_dir
 from scripts.benchmark.corpora import LoadedCorpus
 from scripts.benchmark.corpus import Document, GoldSpan
 from scripts.benchmark.report import PipelineResult
@@ -22,6 +26,11 @@ from scripts.benchmark.report import PipelineResult
 def _accept_miniature_newsli_release(monkeypatch):
     """These tests write miniature releases; the pin itself is tested in test_corpora."""
     monkeypatch.setattr(corpora, "_check_newsli_release", lambda data, path: None)
+    monkeypatch.setattr(
+        benchmark_cli.provenance,
+        "gazetteer_artifact_sha256",
+        lambda name: "test-gazetteer-sha256",
+    )
 
 
 class TestCorpusOption:
@@ -97,7 +106,7 @@ def _execute_score_pipeline(monkeypatch, tmp_path):
     run = benchmark_cli._CorpusRun(
         loaded, arguments, tmp_path, "cpu", "commit", {"host": "fixture"}
     )
-    state = object()
+    state = ckpt.Checkpoint(benchmark_cli._run_identity(run, "swapped"))
     identities = []
     phases = []
 
@@ -163,7 +172,7 @@ def _corpus_report_run(tmp_path):
     """Make a representative run and one result for corpus reports."""
     document = Document("doc", "Zurich", ())
     loaded = LoadedCorpus("fixture", "en", [document], "digest")
-    arguments = argparse.Namespace(min_similarity=0.25)
+    arguments = argparse.Namespace(min_similarity=0.25, limit=None)
     run = benchmark_cli._CorpusRun(
         loaded, arguments, tmp_path, "cpu", "commit", {"host": "fixture"}
     )
@@ -181,18 +190,32 @@ def _corpus_report_run(tmp_path):
 def test_corpus_report_preserves_environment_and_pipeline_metrics(tmp_path):
     run, result = _corpus_report_run(tmp_path)
     payload = benchmark_cli._corpus_report_payload(run, 3, [result])
-
-    assert payload["environment"] == {"host": "fixture"}
-    assert payload["pipelines"] == [
-        {
-            "name": "swapped",
-            "device": "cpu",
-            "models": {"recognizer": "model@revision"},
-            "recognition": {"f1": 0.75},
-            "resolution": {"auc": 0.2},
-            "elapsed_seconds": 2.5,
-        }
-    ]
+    pipeline = payload["pipelines"][0]
+    assert {
+        "environment": payload["environment"],
+        "name": pipeline["name"],
+        "device": pipeline["device"],
+        "models": pipeline["models"],
+        "recognition": pipeline["recognition"],
+        "resolution": pipeline["resolution"],
+        "elapsed_seconds": pipeline["elapsed_seconds"],
+        "phase_elapsed_seconds": pipeline["phase_elapsed_seconds"],
+        "phase_provenance": pipeline["phase_provenance"],
+        "failures": pipeline["failures"],
+        "reranker_license": pipeline["model_metadata"]["reranker"]["license"],
+    } == {
+        "environment": {"host": "fixture"},
+        "name": "swapped",
+        "device": "cpu",
+        "models": {"recognizer": "model@revision"},
+        "recognition": {"f1": 0.75},
+        "resolution": {"auc": 0.2},
+        "elapsed_seconds": 2.5,
+        "phase_elapsed_seconds": {},
+        "phase_provenance": {},
+        "failures": {},
+        "reranker_license": "CC-BY-NC-4.0",
+    }
 
 
 def test_corpus_summary_row_records_counts_and_scores(tmp_path):
@@ -209,8 +232,101 @@ def test_corpus_summary_row_records_counts_and_scores(tmp_path):
             "recognition": {"f1": 0.75},
             "resolution": {"auc": 0.2},
             "elapsed_seconds": 2.5,
+            "phase_elapsed_seconds": {},
+            "failures": {},
         }
     ]
+
+
+def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
+    arguments = argparse.Namespace(
+        min_similarity=0.0,
+        limit=None,
+        chunk_size=5,
+        device="cuda",
+    )
+
+    manifest = benchmark_cli._run_manifest(
+        _ManifestPlan(
+            names=["newsli-ar"],
+            pipeline_names=[pipelines.XLM_MINILM],
+            phases=[runner.RECOGNITION, runner.RESOLUTION],
+            arguments=arguments,
+            commit="short-sha",
+            full_commit="a" * 40,
+            facts={"started_at": "2026-10-13T00:00:00+00:00", "gpu": "A100"},
+            device="cuda",
+        )
+    )
+
+    cell = manifest["protocol"]["corpora"]["newsli-ar"]
+    assert (
+        cell["expected_documents"],
+        cell["expected_gold_toponyms"],
+        "sorted order" in cell["source_split"],
+        manifest["full_commit"],
+        manifest["protocol"]["pipelines"][pipelines.XLM_MINILM]["model_pins"][
+            "resolver"
+        ].endswith("@d678769f195c194ffdc6f3735a9360118a855b43"),
+    ) == (500, 3319, True, "a" * 40, True)
+
+    resumed = json.loads(json.dumps(manifest))
+    resumed["protocol"]["corpora"]["newsli-ar"].update(
+        {"status": "complete", "corpus_digest": "digest", "documents": 500}
+    )
+    assert benchmark_cli._manifest_identity(
+        resumed
+    ) == benchmark_cli._manifest_identity(manifest)
+
+
+def test_run_manifest_marks_explicit_document_failures():
+    manifest: dict[str, Any] = {
+        "protocol": {
+            "corpora": {
+                "fixture": {"language": "en"},
+            },
+            "pipelines": {
+                "otter-cross-minilm": {"model_pins": {"recognizer": "otter@pin"}},
+            },
+        }
+    }
+    payload = {
+        "corpus_digest": "digest",
+        "documents": 2,
+        "gold_toponyms": 1,
+        "environment": {"hostname": "fixture"},
+        "pipelines": [
+            {
+                "name": "otter-cross-minilm",
+                "recognition": {"f1": 0.0},
+                "resolution": {"auc": 0.2},
+                "phase_elapsed_seconds": {"recognition": 2.0, "resolution": 3.0},
+                "phase_provenance": {},
+                "failures": {
+                    "recognition": {
+                        "long-doc": {"kind": "unsupported_input", "reason": "limit"}
+                    }
+                },
+            }
+        ],
+    }
+
+    benchmark_cli._record_manifest_cell(
+        manifest,
+        "fixture",
+        payload,
+        [runner.RECOGNITION, runner.RESOLUTION],
+    )
+
+    fixture_pipelines: Any = manifest["protocol"]["corpora"]["fixture"]["pipelines"]
+    result = fixture_pipelines["otter-cross-minilm"]
+    assert manifest["protocol"]["corpora"]["fixture"]["status"] == (
+        "complete_with_document_failures"
+    )
+    assert result["failure_count"] == 1
+    assert result["failures"]["recognition"]["long-doc"]["kind"] == (
+        "unsupported_input"
+    )
 
 
 def test_corpus_report_writer_emits_markdown_and_json(tmp_path):
@@ -222,7 +338,7 @@ def test_corpus_report_writer_emits_markdown_and_json(tmp_path):
     assert '"commit": "commit"' in (tmp_path / "benchmark-report.json").read_text()
 
 
-def _run_default_corpus_main(monkeypatch, tmp_path, capsys):
+def _run_default_corpus_main(monkeypatch, tmp_path, capsys, *, corpus_cache=None):
     """Run the default corpus path with loading and model scoring stubbed."""
     gold = GoldSpan(0, 4, "city", 47.0, 8.0)
     second_gold = GoldSpan(5, 9, "town", 47.1, 8.1)
@@ -231,6 +347,7 @@ def _run_default_corpus_main(monkeypatch, tmp_path, capsys):
     )
     result = PipelineResult(name="swapped", device="cpu")
     load_calls = []
+    monkeypatch.setattr(benchmark_cli.missing_matrix, "MATRIX", ())
 
     monkeypatch.setattr(benchmark_cli.pipelines, "resolve_device", lambda value: value)
     monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda value: value)
@@ -252,6 +369,9 @@ def _run_default_corpus_main(monkeypatch, tmp_path, capsys):
         benchmark_cli, "_score_requested_pipelines", lambda run: [result]
     )
     monkeypatch.delenv("GEOPARSER_DB_PATH", raising=False)
+    monkeypatch.delenv("GEOPARSER_CORPUS_CACHE_DIR", raising=False)
+    if corpus_cache is not None:
+        monkeypatch.setenv("GEOPARSER_CORPUS_CACHE_DIR", str(corpus_cache))
     monkeypatch.setenv("OAR_JOB_ID", "job-17")
 
     exit_code = benchmark_cli.main(
@@ -277,6 +397,23 @@ def test_main_loads_default_corpus_and_writes_report_files(
         (corpus_dir / "benchmark-report.md").is_file(),
         (tmp_path / "summary.json").is_file(),
     ) == (True, True, True)
+    manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+    assert manifest["protocol"]["gazetteer_artifact_sha256"] == (
+        "test-gazetteer-sha256"
+    )
+
+
+def test_main_keeps_downloaded_corpora_in_the_configured_scratch_cache(
+    monkeypatch, tmp_path, capsys
+):
+    corpus_cache = tmp_path / "node-scratch" / "corpora"
+
+    exit_code, load_calls, _corpus_dir, _output = _run_default_corpus_main(
+        monkeypatch, tmp_path / "durable-results", capsys, corpus_cache=corpus_cache
+    )
+
+    assert exit_code == 0
+    assert load_calls == [("geovirus", corpus_cache / "geovirus", 9)]
 
 
 def test_main_reports_provenance_and_corpus_summary(monkeypatch, tmp_path, capsys):
@@ -301,7 +438,12 @@ def test_main_expands_all_corpora_once_and_preserves_database_override(
     )
     monkeypatch.setattr(benchmark_cli.provenance, "environment", lambda job: {})
     monkeypatch.setattr(
-        benchmark_cli.corpora, "CORPORA", {"alpha": object(), "beta": object()}
+        benchmark_cli.corpora,
+        "CORPORA",
+        {
+            "alpha": SimpleNamespace(language="en", documents=1, gold_spans=1),
+            "beta": SimpleNamespace(language="en", documents=1, gold_spans=1),
+        },
     )
     monkeypatch.setattr(
         benchmark_cli.corpora,
@@ -337,6 +479,72 @@ class TestCorpusChecksGate:
         )
 
         benchmark_cli.require_clean_corpus(clean)
+
+    def test_changed_adapter_totals_do_not_disable_the_frozen_matrix_check(self):
+        """A coordinated adapter/data change still has to match the frozen slice."""
+        documents = [
+            Document(
+                identifier,
+                "Paris",
+                (GoldSpan(0, 5, "Paris", 48.0, 2.0),),
+            )
+            for identifier in ("doc-1", "doc-2")
+        ]
+        loaded = LoadedCorpus(
+            "geovirus",
+            "en",
+            documents,
+            "digest",
+            expected_documents=2,
+            expected_gold=2,
+        )
+
+        with pytest.raises(benchmark_cli.CorpusRejectedError, match="frozen matrix"):
+            benchmark_cli._check_known_frozen_totals(
+                loaded, SimpleNamespace(documents=1, gold_toponyms=1)
+            )
+
+    def test_full_slice_limit_does_not_bypass_frozen_matrix_totals(self):
+        """A limit equal to a full slice still checks the frozen gold totals."""
+        loaded = LoadedCorpus(
+            "geovirus",
+            "en",
+            [Document("doc", "Paris", (GoldSpan(0, 5, "Paris", 48.0, 2.0),))],
+            "digest",
+            limit=229,
+        )
+
+        with pytest.raises(benchmark_cli.CorpusRejectedError, match="frozen matrix"):
+            benchmark_cli._check_frozen_corpus_totals(loaded)
+
+    @pytest.mark.parametrize(
+        ("name", "limit", "expected"),
+        [
+            ("geovirus", None, False),
+            ("geovirus", 5, True),
+            ("geovirus", 229, False),
+            ("newsli-fa", 71, False),
+            ("unregistered-fixture", 1, True),
+        ],
+    )
+    def test_limit_is_partial_uses_the_registered_full_slice(
+        self, name, limit, expected
+    ):
+        """Explicit limits are partial only when they truncate the known slice."""
+        assert benchmark_cli._limit_is_partial(name, limit) is expected
+
+    def test_unknown_registered_size_is_partial_for_an_explicit_limit(
+        self, monkeypatch
+    ):
+        """A registered corpus without a count cannot certify a full limited run."""
+        name = "unfrozen-fixture"
+        monkeypatch.setitem(
+            corpora.CORPORA,
+            name,
+            corpora.CorpusSpec(name, "en", "https://example.test/data", "fixture"),
+        )
+
+        assert benchmark_cli._limit_is_partial(name, 1) is True
 
     def test_malformed_corpus_is_rejected_naming_the_corpus_and_problem(self):
         """Test that the rejection says which corpus failed and why."""

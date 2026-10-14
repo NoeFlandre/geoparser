@@ -64,6 +64,8 @@ COLUMNS = (
     "language",
     "documents",
     "gold_toponyms",
+    "run_limit",
+    "run_partial",
     "pipeline",
     *MODEL_ROLES,
     "f1",
@@ -86,18 +88,33 @@ PIPELINE_DESCRIPTIONS = {
     "swapped": (
         "GLiNER2 `fastino/gliner2.5-multi-v1`",
         "Jina embeddings v5 + Jina reranker v3.5",
-        "Historical, GeoVirus only (`runs/*/baseline-jina/`).",
+        "GeoVirus pilot retained; GLiNER is Apache-2.0 with a multilingual claim, "
+        "while Jina is CC-BY-NC-4.0 with no exhaustive language list.",
     ),
     "hybrid": (
         "GLiNER2 `fastino/gliner2.5-multi-v1`",
         "MiniLM `dguzh/geo-all-MiniLM-L6-v2`",
-        "Multilingual recognition, upstream resolution.",
+        "Multilingual recognition, upstream resolution; MiniLM license and "
+        "exhaustive language list are undeclared.",
     ),
     "prior": (
         "GLiNER2 `fastino/gliner2.5-multi-v1`",
         "MiniLM + weight-0.3 population prior (no inflection fallback)",
         "hybrid, with a 0.3 log-population prior and exact matching only; "
-        "no inflection fallback or extra model.",
+        "no inflection fallback or extra model; MiniLM license and exhaustive "
+        "language list are undeclared.",
+    ),
+    "xlm-minilm": (
+        "XLM-R `Davlan/xlm-roberta-base-ner-hrl`",
+        "MiniLM `dguzh/geo-all-MiniLM-L6-v2`",
+        "AFL-3.0; fine-tuned for ar, de, en, es, fr, it, lv, nl, pt and zh; "
+        "other selected languages are cross-lingual transfer.",
+    ),
+    "otter-cross-minilm": (
+        "Otter `whoisjones/otter-cross-mmbert`",
+        "MiniLM `dguzh/geo-all-MiniLM-L6-v2`",
+        "Apache-2.0; multilingual claim, but supported languages are not "
+        "exhaustively listed.",
     ),
 }
 
@@ -182,6 +199,11 @@ def _pipeline_row(
         "language": data.get("language", "en"),
         "documents": data["documents"],
         "gold_toponyms": data["gold_toponyms"],
+        "run_limit": data.get("limit"),
+        # Reports written before the partial flag existed treated every
+        # explicit limit as a smoke run. Keep that conservative behavior for
+        # old evidence while allowing new full-slice caps to remain eligible.
+        "run_partial": data.get("partial", data.get("limit") is not None),
         "pipeline": pipeline["name"],
         **{role: models.get(role, "") for role in MODEL_ROLES},
         "f1": recognition.get("f1"),
@@ -252,12 +274,12 @@ def latest_results(
     pipelines: Sequence[str] | None = None,
 ) -> dict[tuple[str, str], dict[str, t.Any]]:
     """
-    Keep, for every corpus and pipeline, the row of the most recent run.
+    Keep, for every corpus and pipeline, the row of the most recent full run.
 
-    Runs are ordered by when they started rather than by folder name, so a
-    partial run cannot shadow the complete rerun that followed it. Given a
-    metric, only rows that measured it count, so a resolution-only rerun
-    cannot blank out the recognition scores of the run before it.
+    Partial smoke runs remain in the raw CSV with their limit, but cannot
+    replace full-corpus scores in the card. A limit at or above the registered
+    slice size is complete and remains eligible. Runs are ordered by start
+    time; metric-specific reruns cannot blank out other phase scores.
 
     Args:
         rows: Collected result rows
@@ -269,6 +291,8 @@ def latest_results(
     """
     latest: dict[tuple[str, str], dict[str, t.Any]] = {}
     for row in sorted(rows, key=lambda row: row.get("started_at", "")):
+        if row.get("run_partial", False):
+            continue
         if _missing_metric(row, metric):
             continue
         if _excluded_pipeline(row, pipelines):
@@ -611,19 +635,21 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
         "",
         "# Geoparser benchmark results",
         "",
-        "Geoparsing pipelines from [geoparser]"
-        "(https://github.com/NoeFlandre/geoparser) scored on English and",
-        "multilingual corpora, run on Grid'5000 (one Tesla T4).",
+        "Pipelines from [geoparser](https://github.com/NoeFlandre/geoparser) "
+        "scored on English and multilingual corpora on Grid'5000 (one Tesla T4).",
         "",
         *_benchmark_section(rows),
         *_pipeline_section(),
         "## Results",
         "",
-        "Latest run per corpus and pipeline. **Resolution** is the share of",
-        "gold toponyms placed within 161 km, scored on the gold spans so the",
-        "resolvers see the same toponyms. **Recognition** is exact-match F1.",
-        "AUC summarises the whole log-scaled error curve, lower being better.",
-        "**Bold** is best on a corpus, <u>underlined</u> second.",
+        "Latest run per corpus and pipeline. **Resolution Acc@161km** is the share "
+        "of gold spans within 161 km; all resolvers see the same gold spans.",
+        "**Recognition** is exact-match F1. AUC summarises the log-scaled error "
+        "curve (lower is better). **Bold**/**underline** mark first/second.",
+        "",
+        "New `run-manifest.json` files pin model revisions, language evidence, "
+        "phase reuse and per-document failures; historical runs may lack one, "
+        "and absent claims do not mean unsupported.",
         "",
         *_chart_links(repo_id),
         *_leaderboard(rows, "accuracy_at_161km", "Resolution: Acc@161km"),
@@ -635,8 +661,8 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
         *_ablation_chart_link(rows, repo_id),
         "## Files",
         "",
-        f"`{RESULTS_FILE}` (the viewer) has every run with AUC, errors and",
-        "runtime; `runs/` holds reports, checkpoints and job logs.",
+        f"`{RESULTS_FILE}` (viewer) has every run's metrics and runtime; `runs/` "
+        "holds reports, checkpoints, manifests and job logs.",
         "",
         "## Corpus terms",
         "",
