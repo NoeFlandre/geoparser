@@ -4,6 +4,7 @@
 #   ./scripts/g5k/submit.sh                  # default: 1 GPU, 2 hours
 #   WALLTIME=4:00 LIMIT=50 ./scripts/g5k/submit.sh
 #   CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
+#   GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB=6144 ./scripts/g5k/submit.sh
 #
 # PIPELINES accepts benchmark pipeline names, CORPORA accepts registered
 # corpus names or "all", and PHASES accepts recognition and/or resolution.
@@ -54,6 +55,12 @@ fi
 PHASES="${PHASES:-}"
 if [[ -n "$PHASES" && ! "$PHASES" =~ ^(recognition|resolution)(,(recognition|resolution))?$ ]]; then
     echo "PHASES must be recognition, resolution, or both, comma-separated" >&2
+    exit 2
+fi
+
+GAZETTEER_MEMORY_LIMIT_MB="${GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB:-}"
+if [[ -n "$GAZETTEER_MEMORY_LIMIT_MB" && ! "$GAZETTEER_MEMORY_LIMIT_MB" =~ ^[1-9][0-9]*$ ]]; then
+    echo "GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB must be a positive integer number of MiB" >&2
     exit 2
 fi
 
@@ -108,6 +115,7 @@ oarsub \
     "REPO_ROOT='$REPO_ROOT' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
 DEVICE='${DEVICE:-auto}' CHUNK_SIZE='${CHUNK_SIZE:-5}' \
 MIN_SIMILARITY='${MIN_SIMILARITY:-0.0}' PIPELINES='$PIPELINES' CORPORA='$CORPORA' PHASES='$PHASES' \
+GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB='$GAZETTEER_MEMORY_LIMIT_MB' \
 bash $REPO_ROOT/scripts/g5k/run_benchmark.sh"
 
 echo
