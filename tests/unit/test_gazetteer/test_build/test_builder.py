@@ -96,6 +96,42 @@ class TestSqliteTmpdir:
         assert _sqlite_temp_env_names() == ("TMP", "TEMP")
 
 
+def _configured_ceiling_builder(monkeypatch):
+    """Create the constrained builder and capture its memory diagnostics."""
+    builder = GazetteerBuilder()
+    monkeypatch.setenv("GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB", "6144")
+    monkeypatch.setattr(
+        builder,
+        "_memory_sources",
+        lambda: (
+            ("cgroup v2", 16 * 1024 * 1024 * 1024),
+            ("sysconf", 128 * 1024 * 1024 * 1024),
+        ),
+    )
+    monkeypatch.setattr(GazetteerBuilder, "_available_cpus", staticmethod(lambda: 4))
+    diagnostics = []
+    monkeypatch.setattr(
+        builder_module, "print_build_memory_diagnostics", diagnostics.append
+    )
+    return builder, diagnostics
+
+
+def _configured_ceiling_settings(builder, tmp_path):
+    """Apply the builder limits and return the resulting DuckDB settings."""
+    connection = duckdb.connect()
+    try:
+        builder._configure_staging(connection, tmp_path)
+        memory_setting = connection.execute(
+            "SELECT value FROM duckdb_settings() WHERE name = 'memory_limit'"
+        ).fetchone()
+        threads_setting = connection.execute(
+            "SELECT value FROM duckdb_settings() WHERE name = 'threads'"
+        ).fetchone()
+    finally:
+        connection.close()
+    return memory_setting, threads_setting
+
+
 @pytest.mark.unit
 class TestMemoryLimit:
     """Test memory/thread sizing helpers on GazetteerBuilder."""
@@ -138,53 +174,47 @@ class TestMemoryLimit:
         assert GazetteerBuilder()._thread_count(4096) == 4
         assert GazetteerBuilder()._thread_count(32_768) == 8
 
-    def test_configured_ceiling_is_applied_and_reported(self, monkeypatch, tmp_path):
-        """A configured ceiling constrains DuckDB and appears in diagnostics."""
-        builder = GazetteerBuilder()
-        monkeypatch.setenv("GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB", "6144")
-        monkeypatch.setattr(
-            builder,
-            "_memory_sources",
-            lambda: (
-                ("cgroup v2", 16 * 1024 * 1024 * 1024),
-                ("sysconf", 128 * 1024 * 1024 * 1024),
-            ),
-        )
-        monkeypatch.setattr(
-            GazetteerBuilder, "_available_cpus", staticmethod(lambda: 4)
-        )
-        diagnostics = []
-        monkeypatch.setattr(
-            builder_module, "print_build_memory_diagnostics", diagnostics.append
-        )
-        budget = builder._memory_budget()
-        message = builder._memory_budget_message(budget)
-        connection = duckdb.connect()
-        try:
-            builder._configure_staging(connection, tmp_path)
-            memory_setting = connection.execute(
-                "SELECT value FROM duckdb_settings() WHERE name = 'memory_limit'"
-            ).fetchone()
-            threads_setting = connection.execute(
-                "SELECT value FROM duckdb_settings() WHERE name = 'threads'"
-            ).fetchone()
-        finally:
-            connection.close()
+    def test_configured_ceiling_applies_memory_setting(self, monkeypatch, tmp_path):
+        """DuckDB receives a value close to the configured MiB ceiling."""
+        builder, _ = _configured_ceiling_builder(monkeypatch)
+        memory_setting, _ = _configured_ceiling_settings(builder, tmp_path)
 
-        assert budget.duckdb_limit_mb == 6144
-        assert budget.threads == 4
-        assert budget.configured_limit_mb == 6144
         assert memory_setting is not None
         assert (
             abs(_setting_to_bytes(memory_setting[0]) - 6144 * 1024**2)
             / (6144 * 1024**2)
             < 0.15
         )
-        assert threads_setting is not None and int(threads_setting[0]) == 4
+
+    def test_configured_ceiling_sets_threads(self, monkeypatch, tmp_path):
+        """DuckDB receives a thread cap derived from the configured memory."""
+        builder, diagnostics = _configured_ceiling_builder(monkeypatch)
+        budget = builder._memory_budget()
+        message = builder._memory_budget_message(budget)
+        _, threads_setting = _configured_ceiling_settings(builder, tmp_path)
+
+        assert threads_setting is not None
+        assert int(threads_setting[0]) == 4
         assert diagnostics == [message]
+
+    def test_configured_ceiling_limits_the_memory_budget(self, monkeypatch):
+        """The requested ceiling constrains the computed memory budget."""
+        builder, _ = _configured_ceiling_builder(monkeypatch)
+        budget = builder._memory_budget()
+
+        assert budget.duckdb_limit_mb == 6144
+        assert budget.threads == 4
+        assert budget.configured_limit_mb == 6144
+
+    def test_configured_ceiling_is_reported(self, monkeypatch):
+        """The configured ceiling appears in the diagnostic summary."""
+        builder, _ = _configured_ceiling_builder(monkeypatch)
+        budget = builder._memory_budget()
+        message = builder._memory_budget_message(budget)
+
         assert "cgroup limits=cgroup v2=16,384 MiB" in message
         assert "detected=16,384 MiB from cgroup v2" in message
-        assert "DuckDB cap=6,144 MiB" in message
+        assert "configured ceiling=6,144 MiB" in message
 
     def test_configured_ceiling_cannot_raise_automatic_limit(self, monkeypatch):
         """The override only lowers the existing automatically computed cap."""
@@ -197,7 +227,7 @@ class TestMemoryLimit:
         )
         assert builder._memory_limit_mb() == int(8 * 1024 * 0.6)
 
-    @pytest.mark.parametrize("value", ["0", "-1", "6g", "NaN"])
+    @pytest.mark.parametrize("value", ["0", "-1", "6g", "NaN", "\uff16"])
     def test_invalid_configured_ceiling_fails_clearly(self, monkeypatch, value):
         """Invalid overrides fail before downloading or building the gazetteer."""
         builder = GazetteerBuilder()
@@ -205,6 +235,18 @@ class TestMemoryLimit:
         monkeypatch.setattr(builder, "_memory_sources", lambda: ())
         with pytest.raises(ValueError, match="positive integer number of MiB"):
             builder._memory_limit_mb()
+
+    def test_blank_configured_ceiling_uses_automatic_limit(self, monkeypatch):
+        """A blank optional override leaves automatic memory sizing unchanged."""
+        builder = GazetteerBuilder()
+        monkeypatch.setenv("GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB", "   ")
+        monkeypatch.setattr(
+            builder,
+            "_memory_sources",
+            lambda: (("sysconf", 8 * 1024 * 1024 * 1024),),
+        )
+
+        assert builder._memory_limit_mb() == int(8 * 1024 * 0.6)
 
     def test_v2_cgroup_limit_is_detected_from_parent(self, tmp_path, monkeypatch):
         """A finite parent ``memory.max`` constrains a v2 child cgroup."""
@@ -279,6 +321,7 @@ class TestMemoryLimit:
         contents = {
             "/proc/self/cgroup": (
                 "0::/docker/job\n5:cpu,memory:/job.slice/task.scope\n"
+                "2:cpu:/job.slice/cpu\n"
             ),
             "/proc/self/mountinfo": (
                 "29 22 0:26 / /sys/fs/cgroup rw - cgroup2 cgroup rw\n"
@@ -563,6 +606,7 @@ class TestMemoryLimit:
                 "50 20 0:30 / /tmp rw - tmpfs tmpfs rw",
                 "51 20 0:31 / /sys/fs/cgroup/cpu rw - cgroup cgroup rw,cpu",
                 "52 20 0:32 / /sys/fs/cgroup/incomplete rw - cgroup cgroup",
+                "55 20 0:35 / /sys/fs/cgroup/empty rw - ",
                 "53 20 0:33 / /sys/fs/my\\040mount rw - cgroup2 cgroup rw",
                 "54 20 0:34 / /sys/fs/cgroup/memory\\040group rw - cgroup cgroup rw,memory",
             )
