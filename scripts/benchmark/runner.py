@@ -430,7 +430,8 @@ def _json_sequence_size(
     try:
         for index, value in enumerate(values):
             if index:
-                size += 1
+                # json.dumps uses the default separators (", ", ": ").
+                size += 2
             item_size = _json_value_size(value, budget - size, depth + 1, ancestors)
             if item_size is None:
                 return None
@@ -457,11 +458,11 @@ def _json_mapping_size(
             if type(key) is not str:
                 return None
             if index:
-                size += 1
+                size += 2
             key_size = _json_string_size(key, budget - size)
             if key_size is None:
                 return None
-            size += key_size + 1
+            size += key_size + 2
             item_size = _json_value_size(value, budget - size, depth + 1, ancestors)
             if item_size is None:
                 return None
