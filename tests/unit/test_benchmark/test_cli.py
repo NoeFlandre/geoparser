@@ -172,7 +172,7 @@ def _corpus_report_run(tmp_path):
     """Make a representative run and one result for corpus reports."""
     document = Document("doc", "Zurich", ())
     loaded = LoadedCorpus("fixture", "en", [document], "digest")
-    arguments = argparse.Namespace(min_similarity=0.25)
+    arguments = argparse.Namespace(min_similarity=0.25, limit=None)
     run = benchmark_cli._CorpusRun(
         loaded, arguments, tmp_path, "cpu", "commit", {"host": "fixture"}
     )
@@ -503,6 +503,35 @@ class TestCorpusChecksGate:
             benchmark_cli._check_known_frozen_totals(
                 loaded, SimpleNamespace(documents=1, gold_toponyms=1)
             )
+
+    def test_full_slice_limit_does_not_bypass_frozen_matrix_totals(self):
+        """A limit equal to a full slice still checks the frozen gold totals."""
+        loaded = LoadedCorpus(
+            "geovirus",
+            "en",
+            [Document("doc", "Paris", (GoldSpan(0, 5, "Paris", 48.0, 2.0),))],
+            "digest",
+            limit=229,
+        )
+
+        with pytest.raises(benchmark_cli.CorpusRejectedError, match="frozen matrix"):
+            benchmark_cli._check_frozen_corpus_totals(loaded)
+
+    @pytest.mark.parametrize(
+        ("name", "limit", "expected"),
+        [
+            ("geovirus", None, False),
+            ("geovirus", 5, True),
+            ("geovirus", 229, False),
+            ("newsli-fa", 71, False),
+            ("unregistered-fixture", 1, True),
+        ],
+    )
+    def test_limit_is_partial_uses_the_registered_full_slice(
+        self, name, limit, expected
+    ):
+        """Explicit limits are partial only when they truncate the known slice."""
+        assert benchmark_cli._limit_is_partial(name, limit) is expected
 
     def test_malformed_corpus_is_rejected_naming_the_corpus_and_problem(self):
         """Test that the rejection says which corpus failed and why."""

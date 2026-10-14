@@ -65,6 +65,7 @@ COLUMNS = (
     "documents",
     "gold_toponyms",
     "run_limit",
+    "run_partial",
     "pipeline",
     *MODEL_ROLES,
     "f1",
@@ -199,6 +200,10 @@ def _pipeline_row(
         "documents": data["documents"],
         "gold_toponyms": data["gold_toponyms"],
         "run_limit": data.get("limit"),
+        # Reports written before the partial flag existed treated every
+        # explicit limit as a smoke run. Keep that conservative behavior for
+        # old evidence while allowing new full-slice caps to remain eligible.
+        "run_partial": data.get("partial", data.get("limit") is not None),
         "pipeline": pipeline["name"],
         **{role: models.get(role, "") for role in MODEL_ROLES},
         "f1": recognition.get("f1"),
@@ -271,10 +276,10 @@ def latest_results(
     """
     Keep, for every corpus and pipeline, the row of the most recent full run.
 
-    Explicitly limited smoke runs remain in the raw CSV with their limit, but
-    cannot replace full-corpus scores in the card. Runs are ordered by when
-    they started rather than by folder name. Given a metric, only rows that
-    measured it count, so a resolution-only rerun cannot blank out recognition.
+    Partial smoke runs remain in the raw CSV with their limit, but cannot
+    replace full-corpus scores in the card. A limit at or above the registered
+    slice size is complete and remains eligible. Runs are ordered by start
+    time; metric-specific reruns cannot blank out other phase scores.
 
     Args:
         rows: Collected result rows
@@ -286,7 +291,7 @@ def latest_results(
     """
     latest: dict[tuple[str, str], dict[str, t.Any]] = {}
     for row in sorted(rows, key=lambda row: row.get("started_at", "")):
-        if row.get("run_limit") is not None:
+        if row.get("run_partial", False):
             continue
         if _missing_metric(row, metric):
             continue

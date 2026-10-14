@@ -217,8 +217,6 @@ def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:
 
 def _check_frozen_corpus_totals(loaded: corpora.LoadedCorpus) -> None:
     """Reject a frozen matrix slice whose loaded gold totals changed."""
-    if loaded.limit is not None:
-        return
     expected = next(
         (
             cell
@@ -228,6 +226,8 @@ def _check_frozen_corpus_totals(loaded: corpora.LoadedCorpus) -> None:
         None,
     )
     if expected is not None:
+        if loaded.limit is not None and loaded.limit < expected.documents:
+            return
         _check_known_frozen_totals(loaded, expected)
 
 
@@ -581,11 +581,13 @@ def _corpus_report_payload(
 ) -> dict:
     """Return the metadata and pipeline measurements stored as JSON."""
     loaded = run.loaded
+    limit = run.arguments.limit
     return {
         "corpus": loaded.name,
         "language": loaded.language,
         "corpus_digest": loaded.digest,
-        "limit": run.arguments.limit,
+        "limit": limit,
+        "partial": _limit_is_partial(loaded.name, limit),
         "documents": len(loaded.documents),
         "gold_toponyms": gold_count,
         "gazetteer": pipelines.GAZETTEER_NAME,
@@ -618,6 +620,27 @@ def _corpus_report_payload(
             for result in results
         ],
     }
+
+
+def _limit_is_partial(name: str, limit: int | None) -> bool:
+    """Whether an explicit run limit truncates the registered corpus slice."""
+    if limit is None:
+        return False
+    fixed = next(
+        (
+            cell
+            for cell in missing_matrix.MATRIX
+            if missing_matrix.cell_name(cell) == name
+        ),
+        None,
+    )
+    spec = corpora.CORPORA.get(name)
+    expected_documents = (
+        fixed.documents
+        if fixed is not None
+        else (spec.documents if spec is not None else None)
+    )
+    return expected_documents is None or limit < expected_documents
 
 
 def _write_corpus_reports(output_dir: Path, markdown: str, payload: dict) -> None:

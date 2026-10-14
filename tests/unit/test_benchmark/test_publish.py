@@ -23,31 +23,38 @@ from scripts.benchmark.publish import (
 )
 
 
-def report(tmp_path, folder, corpus="geovirus", language="en", limit=None):
+def report(
+    tmp_path,
+    folder,
+    corpus="geovirus",
+    language="en",
+    limit=None,
+    partial=None,
+    documents=2,
+):
     """Write one corpus report and return its folder."""
     path = tmp_path / folder
     path.mkdir(parents=True)
-    (path / "benchmark-report.json").write_text(
-        json.dumps(
+    payload = {
+        "corpus": corpus,
+        "language": language,
+        "limit": limit,
+        "documents": documents,
+        "gold_toponyms": 5,
+        "commit": "abc1234",
+        "pipelines": [
             {
-                "corpus": corpus,
-                "language": language,
-                "limit": limit,
-                "documents": 2,
-                "gold_toponyms": 5,
-                "commit": "abc1234",
-                "pipelines": [
-                    {
-                        "name": "hybrid",
-                        "models": {"recognizer": "r-model", "resolver": "s-model"},
-                        "recognition": {"f1": 0.5},
-                        "resolution": {"accuracy_at_161km": 0.75, "auc": 0.25},
-                        "elapsed_seconds": 3.0,
-                    }
-                ],
+                "name": "hybrid",
+                "models": {"recognizer": "r-model", "resolver": "s-model"},
+                "recognition": {"f1": 0.5},
+                "resolution": {"accuracy_at_161km": 0.75, "auc": 0.25},
+                "elapsed_seconds": 3.0,
             }
-        )
-    )
+        ],
+    }
+    if partial is not None:
+        payload["partial"] = partial
+    (path / "benchmark-report.json").write_text(json.dumps(payload))
     return path
 
 
@@ -123,7 +130,17 @@ class TestRenderCard:
         assert "| r1 |" not in card
 
 
-def _row(run, corpus, pipeline, *, f1, acc, started="2026-01-01T00:00:00"):
+def _row(
+    run,
+    corpus,
+    pipeline,
+    *,
+    f1,
+    acc,
+    started="2026-01-01T00:00:00",
+    run_limit=None,
+    run_partial=False,
+):
     """One collected result row."""
     return {
         "run": run,
@@ -131,7 +148,8 @@ def _row(run, corpus, pipeline, *, f1, acc, started="2026-01-01T00:00:00"):
         "language": "en",
         "documents": 2,
         "gold_toponyms": 5,
-        "run_limit": None,
+        "run_limit": run_limit,
+        "run_partial": run_partial,
         "pipeline": pipeline,
         "recognizer": "",
         "resolver": "",
@@ -168,12 +186,35 @@ class TestLatestResults:
     def test_a_limited_smoke_run_cannot_replace_full_corpus_scores(self):
         """Partial smoke evidence stays out of the card's latest full-run tables."""
         full = _row("full", "geovirus", "hybrid", f1=0.9, acc=0.9, started="1")
-        partial = {
-            **_row("smoke", "geovirus", "hybrid", f1=0.1, acc=0.1, started="2"),
-            "run_limit": 5,
-        }
+        partial = _row(
+            "smoke",
+            "geovirus",
+            "hybrid",
+            f1=0.1,
+            acc=0.1,
+            started="2",
+            run_limit=5,
+            run_partial=True,
+        )
 
         assert latest_results([full, partial]) == {("geovirus", "hybrid"): full}
+
+    def test_limit_covering_the_complete_slice_stays_eligible(self):
+        """An explicit limit equal to the corpus size is not a partial result."""
+        full = _row("full", "geovirus", "hybrid", f1=0.8, acc=0.8, started="1")
+        capped_full = _row(
+            "full-limit",
+            "geovirus",
+            "hybrid",
+            f1=0.9,
+            acc=0.9,
+            started="2",
+            run_limit=229,
+        )
+
+        assert latest_results([full, capped_full]) == {
+            ("geovirus", "hybrid"): capped_full
+        }
 
     def test_corpus_names_are_compared_case_insensitively(self):
         """GeoVirus from an older report and geovirus are one corpus."""
@@ -276,12 +317,32 @@ class TestViewer:
 
     def test_csv_identifies_limited_runs(self, tmp_path):
         """The raw evidence table labels smoke rows even though the card skips them."""
-        report(tmp_path, "run-smoke", limit=5)
+        report(tmp_path, "run-smoke", limit=5, partial=True)
 
         lines = render_csv(collect_rows(tmp_path)).splitlines()
 
         assert "run_limit" in lines[0]
+        assert "run_partial" in lines[0]
         assert ",5," in lines[1]
+        assert ",True," in lines[1]
+
+    def test_legacy_limited_report_remains_excluded_from_card(self, tmp_path):
+        """Pre-flag smoke evidence stays excluded conservatively."""
+        report(tmp_path, "legacy-smoke", limit=5)
+
+        rows = collect_rows(tmp_path)
+
+        assert rows[0]["run_partial"] is True
+        assert latest_results(rows) == {}
+
+    def test_full_limit_is_written_as_complete_for_publication(self, tmp_path):
+        """A limit matching the frozen GeoVirus count remains a full table row."""
+        report(tmp_path, "run-full", limit=229, partial=False, documents=229)
+
+        rows = collect_rows(tmp_path)
+
+        assert rows[0]["run_partial"] is False
+        assert latest_results(rows)[("geovirus", "hybrid")] == rows[0]
 
 
 class TestPipelineDescriptions:
