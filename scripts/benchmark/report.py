@@ -60,6 +60,24 @@ def deserialize(payload: dict[str, t.Any]) -> Annotation:
     )
 
 
+def _validate_invalid_output_count(value: int) -> int:
+    """Reject counts that cannot represent invalid documents."""
+    if type(value) is not int or value < 0:
+        msg = "invalid_output_false_positives must be a non-negative integer"
+        raise ValueError(msg)
+    return value
+
+
+def _span_identities(annotations: Sequence[Annotation]) -> set[t.Any]:
+    """Return exact identities for the supplied annotation spans."""
+    return {annotation.identity for annotation in annotations}
+
+
+def _ratio_or_default(numerator: float, denominator: float, default: float) -> float:
+    """Divide when the denominator is nonzero, otherwise use the defined empty case."""
+    return numerator / denominator if denominator else default
+
+
 def score_recognition(
     expected: Sequence[Annotation],
     predicted: Sequence[Annotation],
@@ -67,19 +85,16 @@ def score_recognition(
     invalid_output_false_positives: int = 0,
 ) -> dict[str, float]:
     """Return exact-span metrics, charging each invalid output as one FP."""
-    if type(invalid_output_false_positives) is not int or (
-        invalid_output_false_positives < 0
-    ):
-        msg = "invalid_output_false_positives must be a non-negative integer"
-        raise ValueError(msg)
-
-    expected_spans = {annotation.identity for annotation in expected}
-    predicted_spans = {annotation.identity for annotation in predicted}
+    invalid_output_false_positives = _validate_invalid_output_count(
+        invalid_output_false_positives
+    )
+    expected_spans = _span_identities(expected)
+    predicted_spans = _span_identities(predicted)
     true_positives = len(expected_spans & predicted_spans)
     predicted_count = len(predicted_spans) + invalid_output_false_positives
-    precision = true_positives / predicted_count if predicted_count else 1.0
-    recall = true_positives / len(expected_spans) if expected_spans else 1.0
-    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    precision = _ratio_or_default(true_positives, predicted_count, 1.0)
+    recall = _ratio_or_default(true_positives, len(expected_spans), 1.0)
+    f1 = _ratio_or_default(2 * precision * recall, precision + recall, 0.0)
     return {
         "precision": precision,
         "recall": recall,
