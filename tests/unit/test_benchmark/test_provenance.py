@@ -1,3 +1,4 @@
+import hashlib
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -6,6 +7,30 @@ from unittest.mock import Mock
 import pytest
 
 from scripts.benchmark import provenance
+
+
+def test_gazetteer_artifact_sha256_hashes_the_installed_file(monkeypatch, tmp_path):
+    artifact = tmp_path / "geonames.db"
+    artifact.write_bytes(b"known gazetteer bytes")
+    monkeypatch.setattr(
+        "geoparser.gazetteer.artifact.artifact_path", lambda name: artifact
+    )
+
+    actual = provenance.gazetteer_artifact_sha256("geonames")
+
+    assert actual == hashlib.sha256(b"known gazetteer bytes").hexdigest()
+
+
+def test_gazetteer_artifact_sha256_fails_when_artifact_is_missing(
+    monkeypatch, tmp_path
+):
+    artifact = tmp_path / "missing.db"
+    monkeypatch.setattr(
+        "geoparser.gazetteer.artifact.artifact_path", lambda name: artifact
+    )
+
+    with pytest.raises(FileNotFoundError, match="Gazetteer artifact not found"):
+        provenance.gazetteer_artifact_sha256("geonames")
 
 
 @pytest.mark.parametrize(

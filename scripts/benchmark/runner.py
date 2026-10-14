@@ -10,6 +10,8 @@ over: half a document's toponyms would be a wrong number, not a partial one.
 from __future__ import annotations
 
 import gc
+import json
+import math
 import time
 import typing as t
 import uuid
@@ -17,6 +19,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from geoparser.modules.recognizers.otter import PredictionOutputError
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import pipelines, report
 from scripts.benchmark.corpus import Document
@@ -164,7 +167,11 @@ def run_phase(
         min_similarity=settings.min_similarity,
     )
     names = pipelines.model_names(recognizer, resolver)
-    state.elapsed_seconds += time.perf_counter() - loading_started
+    loading_seconds = time.perf_counter() - loading_started
+    state.elapsed_seconds += loading_seconds
+    state.phase_elapsed_seconds[phase] = (
+        state.phase_elapsed_seconds.get(phase, 0.0) + loading_seconds
+    )
     _run_chunks(
         _PhaseExecution(
             phase,
@@ -207,12 +214,24 @@ def _run_chunks(
     try:
         for index, chunk in enumerate(phase_chunks, start=1):
             started = time.perf_counter()
-            predictions = _process_chunk(
-                execution.phase, chunk, recognizer=recognizer, resolver=resolver
+            predictions, failures = _process_chunk_with_failures(
+                execution.phase,
+                chunk,
+                recognizer=recognizer,
+                resolver=resolver,
             )
             for document_id, annotations in predictions.items():
                 execution.state.record(execution.phase, document_id, annotations)
-            execution.state.elapsed_seconds += time.perf_counter() - started
+            if failures:
+                execution.state.failures.setdefault(execution.phase, {}).update(
+                    failures
+                )
+            elapsed = time.perf_counter() - started
+            execution.state.elapsed_seconds += elapsed
+            execution.state.phase_elapsed_seconds[execution.phase] = (
+                execution.state.phase_elapsed_seconds.get(execution.phase, 0.0)
+                + elapsed
+            )
             ckpt.save(execution.checkpoint_path, execution.state)
             execution.log(
                 f"    chunk {index}/{len(phase_chunks)} "
@@ -269,6 +288,206 @@ def _process_chunk(
         project.delete()
 
 
+def _process_chunk_with_failures(
+    phase: str,
+    documents: Sequence[Document],
+    *,
+    recognizer: t.Any,
+    resolver: t.Any,
+) -> tuple[dict[str, list[dict[str, t.Any]]], dict[str, dict[str, t.Any]]]:
+    """Record Otter's document-level input and output failures explicitly."""
+    try:
+        predictions = _process_chunk(
+            phase, documents, recognizer=recognizer, resolver=resolver
+        )
+    except ValueError as error:
+        if phase != RECOGNITION or _otter_failure(error) is None:
+            raise
+        return _process_recognition_documents_individually(
+            documents, recognizer=recognizer, resolver=resolver
+        )
+
+    return predictions, {}
+
+
+def _process_recognition_documents_individually(
+    documents: Sequence[Document], *, recognizer: t.Any, resolver: t.Any
+) -> tuple[dict[str, list[dict[str, t.Any]]], dict[str, dict[str, t.Any]]]:
+    """Retry a failed Otter batch per document and retain its failures."""
+    predictions: dict[str, list[dict[str, t.Any]]] = {}
+    failures: dict[str, dict[str, t.Any]] = {}
+    for document in documents:
+        try:
+            predictions.update(
+                _process_chunk(
+                    RECOGNITION,
+                    [document],
+                    recognizer=recognizer,
+                    resolver=resolver,
+                )
+            )
+        except ValueError as error:
+            failure = _otter_failure(error)
+            if failure is None:
+                raise
+            predictions[document.identifier] = []
+            failures[document.identifier] = {
+                "kind": failure[0],
+                "reason": failure[1],
+                "message": str(error),
+            }
+            if isinstance(error, PredictionOutputError):
+                failures[document.identifier]["raw_output"] = _json_safe_raw_output(
+                    error.raw_output
+                )
+    return predictions, failures
+
+
+_MAX_RAW_OUTPUT_JSON_CHARS = 4096
+
+
+def _json_safe_raw_output(value: t.Any) -> t.Any:
+    """Bound and normalize diagnostic model output before checkpointing it."""
+    if _json_value_size(value, _MAX_RAW_OUTPUT_JSON_CHARS, 0, set()) is None:
+        return {
+            "omitted": True,
+            "reason": "non_json_or_over_character_limit",
+            "type": f"{type(value).__module__}.{type(value).__qualname__}",
+        }
+    return json.loads(json.dumps(value, allow_nan=False))
+
+
+def _json_value_size(
+    value: t.Any,
+    budget: int,
+    depth: int,
+    ancestors: set[int],
+) -> int | None:
+    """Measure strict JSON-compatible values without copying them."""
+    if budget < 1 or depth > 32:
+        return None
+    if type(value) in {type(None), bool, int, float}:
+        return _json_primitive_size(value, budget)
+    if type(value) is str:
+        return _json_string_size(value, budget)
+    if type(value) in {list, tuple}:
+        return _json_sequence_size(value, budget, depth, ancestors)
+    if type(value) is dict:
+        return _json_mapping_size(value, budget, depth, ancestors)
+    return None
+
+
+def _json_primitive_size(value: t.Any, budget: int) -> int | None:
+    """Measure a JSON primitive after checking its bounded scalar encoding."""
+    if value is None:
+        size = 4
+    elif type(value) is bool:
+        size = 4 if value else 5
+    elif type(value) is int:
+        if value.bit_length() > budget * 4:
+            return None
+        try:
+            size = len(str(value))
+        except ValueError:
+            return None
+    else:
+        if not math.isfinite(value):
+            return None
+        size = len(json.dumps(value, allow_nan=False))
+    return size if size <= budget else None
+
+
+def _json_string_size(value: str, budget: int) -> int | None:
+    """Measure an ASCII-safe JSON string, stopping as soon as it is too large."""
+    size = 2
+    if size > budget:
+        return None
+    for character in value:
+        codepoint = ord(character)
+        if character in {'"', "\\"}:
+            size += 2
+        elif codepoint < 0x20 or codepoint >= 0x7F:
+            size += 6 if codepoint <= 0xFFFF else 12
+        else:
+            size += 1
+        if size > budget:
+            return None
+    return size
+
+
+def _json_sequence_size(
+    values: list[t.Any] | tuple[t.Any, ...],
+    budget: int,
+    depth: int,
+    ancestors: set[int],
+) -> int | None:
+    """Measure list/tuple JSON payloads with bounded traversal."""
+    identity = id(values)
+    if identity in ancestors or budget < 2:
+        return None
+    ancestors.add(identity)
+    size = 2
+    try:
+        for index, value in enumerate(values):
+            if index:
+                # json.dumps uses the default separators (", ", ": ").
+                size += 2
+            item_size = _json_value_size(value, budget - size, depth + 1, ancestors)
+            if item_size is None:
+                return None
+            size += item_size
+    finally:
+        ancestors.remove(identity)
+    return size if size <= budget else None
+
+
+def _json_mapping_size(
+    values: dict[str, t.Any],
+    budget: int,
+    depth: int,
+    ancestors: set[int],
+) -> int | None:
+    """Measure string-keyed JSON objects with bounded traversal."""
+    identity = id(values)
+    if identity in ancestors or budget < 2:
+        return None
+    ancestors.add(identity)
+    size = 2
+    try:
+        for index, (key, value) in enumerate(values.items()):
+            if type(key) is not str:
+                return None
+            if index:
+                size += 2
+            key_size = _json_string_size(key, budget - size)
+            if key_size is None:
+                return None
+            size += key_size + 2
+            item_size = _json_value_size(value, budget - size, depth + 1, ancestors)
+            if item_size is None:
+                return None
+            size += item_size
+    finally:
+        ancestors.remove(identity)
+    return size if size <= budget else None
+
+
+def _otter_failure(error: ValueError) -> tuple[str, str] | None:
+    """Return safe report metadata for the two document-level Otter failures."""
+    message = str(error)
+    if "Otter document at index" in message and "exceeding the limit" in message:
+        return (
+            "unsupported_input",
+            "Otter sequence-length limit; document was not truncated",
+        )
+    if isinstance(error, PredictionOutputError):
+        return (
+            "invalid_output",
+            "Otter returned output that did not match its document.",
+        )
+    return None
+
+
 def score(
     pipeline: str,
     documents: Sequence[Document],
@@ -295,12 +514,47 @@ def score(
         name=pipeline,
         models=models,
         elapsed_seconds=state.elapsed_seconds,
+        phase_elapsed_seconds=state.phase_elapsed_seconds.copy(),
         device=device,
+        phase_provenance=state.phase_provenance.copy(),
+        failures=state.failures.copy(),
     )
     recognized = [report.deserialize(a) for a in state.annotations(RECOGNITION)]
     resolved = [report.deserialize(a) for a in state.annotations(RESOLUTION)]
-    if recognized:
-        result.recognition = report.score_recognition(expected, recognized)
-    if resolved:
-        result.resolution = report.score_resolution(expected, resolved)
+    complete_documents = {document.identifier for document in documents}
+    result.recognition = _score_completed_phase(
+        RECOGNITION,
+        expected,
+        recognized,
+        complete_documents,
+        state,
+        invalid_output_false_positives=sum(
+            failure.get("kind") == "invalid_output"
+            for failure in state.failures.get(RECOGNITION, {}).values()
+        ),
+    )
+    result.resolution = _score_completed_phase(
+        RESOLUTION, expected, resolved, complete_documents, state
+    )
     return result
+
+
+def _score_completed_phase(
+    phase: str,
+    expected: Sequence[report.Annotation],
+    predictions: Sequence[report.Annotation],
+    document_ids: set[str],
+    state: ckpt.Checkpoint,
+    *,
+    invalid_output_false_positives: int = 0,
+) -> dict[str, float]:
+    """Return metrics only when every document has a prediction for the phase."""
+    if state.completed(phase) != document_ids:
+        return {}
+    if phase == RECOGNITION:
+        return report.score_recognition(
+            expected,
+            predictions,
+            invalid_output_false_positives=invalid_output_false_positives,
+        )
+    return report.score_resolution(expected, predictions)

@@ -18,9 +18,6 @@ from geoparser.evaluation import (
     area_under_error_curve,
     mean_error_km,
     median_error_km,
-    recognition_f1,
-    recognition_precision,
-    recognition_recall,
 )
 
 
@@ -33,7 +30,10 @@ class PipelineResult:
     recognition: dict[str, float] = field(default_factory=dict)
     resolution: dict[str, float] = field(default_factory=dict)
     elapsed_seconds: float = 0.0
+    phase_elapsed_seconds: dict[str, float] = field(default_factory=dict)
     device: str = "cpu"
+    phase_provenance: dict[str, dict[str, t.Any]] = field(default_factory=dict)
+    failures: dict[str, dict[str, dict[str, t.Any]]] = field(default_factory=dict)
 
 
 def serialize(annotation: Annotation) -> dict[str, t.Any]:
@@ -60,14 +60,45 @@ def deserialize(payload: dict[str, t.Any]) -> Annotation:
     )
 
 
+def _validate_invalid_output_count(value: int) -> int:
+    """Reject counts that cannot represent invalid documents."""
+    if type(value) is not int or value < 0:
+        msg = "invalid_output_false_positives must be a non-negative integer"
+        raise ValueError(msg)
+    return value
+
+
+def _span_identities(annotations: Sequence[Annotation]) -> set[t.Any]:
+    """Return exact identities for the supplied annotation spans."""
+    return {annotation.identity for annotation in annotations}
+
+
+def _ratio_or_default(numerator: float, denominator: float, default: float) -> float:
+    """Divide when the denominator is nonzero, otherwise use the defined empty case."""
+    return numerator / denominator if denominator else default
+
+
 def score_recognition(
-    expected: Sequence[Annotation], predicted: Sequence[Annotation]
+    expected: Sequence[Annotation],
+    predicted: Sequence[Annotation],
+    *,
+    invalid_output_false_positives: int = 0,
 ) -> dict[str, float]:
-    """Return precision, recall and F1 over exactly matched spans."""
+    """Return exact-span metrics, charging each invalid output as one FP."""
+    invalid_output_false_positives = _validate_invalid_output_count(
+        invalid_output_false_positives
+    )
+    expected_spans = _span_identities(expected)
+    predicted_spans = _span_identities(predicted)
+    true_positives = len(expected_spans & predicted_spans)
+    predicted_count = len(predicted_spans) + invalid_output_false_positives
+    precision = _ratio_or_default(true_positives, predicted_count, 1.0)
+    recall = _ratio_or_default(true_positives, len(expected_spans), 1.0)
+    f1 = _ratio_or_default(2 * precision * recall, precision + recall, 0.0)
     return {
-        "precision": recognition_precision(expected, predicted),
-        "recall": recognition_recall(expected, predicted),
-        "f1": recognition_f1(expected, predicted),
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
     }
 
 
@@ -135,6 +166,16 @@ def render_markdown(
         "",
     ]
     lines += _model_rows(results)
+    failures = _failure_rows(results)
+    if failures:
+        lines += [
+            "",
+            "## Explicit failures",
+            "",
+            "| Pipeline | Phase | Document | Kind | Reason |",
+            "| --- | --- | --- | --- | --- |",
+            *failures,
+        ]
     lines += [
         "",
         "Resolution is scored on the gold spans, supplied to both pipelines",
@@ -175,7 +216,7 @@ def _resolution_rows(results: Sequence[PipelineResult]) -> list[str]:
         f"| {result.resolution['mean_error_km']:.1f} "
         f"| {result.resolution['median_error_km']:.1f} "
         f"| {result.resolution['auc']:.3f} "
-        f"| {result.elapsed_seconds:.1f} |"
+        f"| {result.phase_elapsed_seconds.get('resolution', 0.0):.1f} |"
         for result in results
         if result.resolution
     ]
@@ -188,6 +229,23 @@ def _model_rows(results: Sequence[PipelineResult]) -> list[str]:
         f"{', '.join(f'{role}={name}' for role, name in result.models.items())}"
         for result in results
     ]
+
+
+def _failure_rows(results: Sequence[PipelineResult]) -> list[str]:
+    """Format explicit per-document failures without hiding them in the score."""
+    rows = []
+    for result in results:
+        for phase, documents in result.failures.items():
+            for document_id, failure in documents.items():
+                reason = str(
+                    failure.get("reason", failure.get("message", "unspecified"))
+                )
+                reason = reason.replace("|", "\\|").replace("\n", " ")
+                rows.append(
+                    f"| {result.name} | {phase} | {document_id} "
+                    f"| {failure.get('kind', 'failure')} | {reason} |"
+                )
+    return rows
 
 
 def render_summary(rows: Sequence[dict[str, t.Any]]) -> str:

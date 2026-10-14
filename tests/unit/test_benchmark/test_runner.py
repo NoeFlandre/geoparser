@@ -6,12 +6,14 @@ and resumed correctly, which is what decides whether a job that hits its
 walltime has made progress or wasted a reservation.
 """
 
+import json
 from types import ModuleType, SimpleNamespace
 from unittest.mock import Mock, call
 
 import pytest
 
 from geoparser.evaluation import _location_coordinates
+from geoparser.modules.recognizers.otter import PredictionOutputError
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import runner
 from scripts.benchmark.checkpoint import Checkpoint, RunIdentity
@@ -97,6 +99,14 @@ class TestScore:
         assert result.recognition == {}
         assert result.resolution == {}
 
+    def test_scores_a_completed_phase_when_every_prediction_is_empty(self):
+        state = Checkpoint(identity())
+        state.record(runner.RECOGNITION, "0", [])
+
+        result = score("swapped", [document()], state, models={}, device="cpu")
+
+        assert result.recognition == {"precision": 1.0, "recall": 0.0, "f1": 0.0}
+
     def test_carries_provenance_into_the_result(self):
         """Test that the report can say where and with what this ran."""
         state = Checkpoint(identity())
@@ -179,6 +189,238 @@ def test_predictions_are_keyed_by_corpus_id_and_keep_unresolved_spans():
         ],
         "article-b": [],
     }
+
+
+def test_otter_overlength_documents_are_recorded_without_truncation(monkeypatch):
+    documents = [document("short"), document("long")]
+
+    def process(_phase, batch, *, recognizer, resolver):
+        if len(batch) > 1:
+            raise ValueError(
+                "Otter document at index 1 has 99 tokens, exceeding the limit "
+                "of 10; truncation is not supported."
+            )
+        if batch[0].identifier == "long":
+            raise ValueError(
+                "Otter document at index 0 has 99 tokens, exceeding the limit "
+                "of 10; truncation is not supported."
+            )
+        return {batch[0].identifier: []}
+
+    monkeypatch.setattr(runner, "_process_chunk", process)
+
+    predictions, failures = runner._process_chunk_with_failures(
+        runner.RECOGNITION, documents, recognizer=object(), resolver=None
+    )
+
+    assert predictions == {"short": [], "long": []}
+    assert failures == {
+        "long": {
+            "kind": "unsupported_input",
+            "reason": "Otter sequence-length limit; document was not truncated",
+            "message": (
+                "Otter document at index 0 has 99 tokens, exceeding the limit "
+                "of 10; truncation is not supported."
+            ),
+        }
+    }
+
+
+def test_otter_invalid_document_outputs_are_recorded_without_aborting_chunk(
+    tmp_path, monkeypatch
+):
+    documents = [document("good"), document("invalid")]
+    raw_output = [{"start": 0, "end": 6, "text": "Zurich", "label": "city"}]
+
+    def process(_phase, batch, *, recognizer, resolver):
+        if len(batch) > 1:
+            raise PredictionOutputError(
+                "Invalid Otter output for document at index 1: bad span.",
+                document_index=1,
+                raw_output=None,
+            )
+        if batch[0].identifier == "invalid":
+            raise PredictionOutputError(
+                "Invalid Otter output for document at index 0: bad span.",
+                document_index=0,
+                raw_output=raw_output,
+            )
+        return {batch[0].identifier: []}
+
+    monkeypatch.setattr(runner, "_process_chunk", process)
+
+    predictions, failures = runner._process_chunk_with_failures(
+        runner.RECOGNITION, documents, recognizer=object(), resolver=None
+    )
+
+    assert predictions == {"good": [], "invalid": []}
+    assert failures == {
+        "invalid": {
+            "kind": "invalid_output",
+            "reason": "Otter returned output that did not match its document.",
+            "message": "Invalid Otter output for document at index 0: bad span.",
+            "raw_output": raw_output,
+        }
+    }
+
+    checkpoint_path = tmp_path / "otter.json"
+    state = Checkpoint(identity(), failures={runner.RECOGNITION: failures})
+    ckpt.save(checkpoint_path, state)
+    restored, _ = ckpt.load(checkpoint_path, identity())
+    assert restored.failures[runner.RECOGNITION]["invalid"]["raw_output"] == raw_output
+
+
+def test_non_json_otter_output_is_safe_to_checkpoint(tmp_path, monkeypatch):
+    documents = [document("good"), document("invalid")]
+
+    class NonJsonOutput:
+        def __repr__(self):
+            return "non-json otter output"
+
+    def process(_phase, batch, *, recognizer, resolver):
+        if len(batch) > 1:
+            raise PredictionOutputError(
+                "Invalid Otter output for document at index 1: bad span.",
+                document_index=1,
+                raw_output=None,
+            )
+        if batch[0].identifier == "invalid":
+            raise PredictionOutputError(
+                "Invalid Otter output for document at index 0: bad span.",
+                document_index=0,
+                raw_output=NonJsonOutput(),
+            )
+        return {batch[0].identifier: []}
+
+    monkeypatch.setattr(runner, "_process_chunk", process)
+    _, failures = runner._process_chunk_with_failures(
+        runner.RECOGNITION, documents, recognizer=object(), resolver=None
+    )
+
+    assert failures["invalid"]["raw_output"] == {
+        "omitted": True,
+        "reason": "non_json_or_over_character_limit",
+        "type": f"{NonJsonOutput.__module__}.{NonJsonOutput.__qualname__}",
+    }
+    checkpoint_path = tmp_path / "non-json-otter.json"
+    state = Checkpoint(identity(), failures={runner.RECOGNITION: failures})
+    ckpt.save(checkpoint_path, state)
+    restored, _ = ckpt.load(checkpoint_path, identity())
+    assert (
+        restored.failures[runner.RECOGNITION]["invalid"]["raw_output"]["omitted"]
+        is True
+    )
+
+
+def test_oversized_otter_output_is_omitted_before_encoding():
+    outputs = [
+        "x" * (runner._MAX_RAW_OUTPUT_JSON_CHARS + 10),
+        [0] * (runner._MAX_RAW_OUTPUT_JSON_CHARS * 10),
+    ]
+
+    for output in outputs:
+        safe_output = runner._json_safe_raw_output(output)
+
+        assert safe_output["omitted"] is True
+        assert safe_output["reason"] == "non_json_or_over_character_limit"
+        assert len(json.dumps(safe_output)) <= runner._MAX_RAW_OUTPUT_JSON_CHARS
+
+
+def test_otter_output_near_limit_accounts_for_json_dump_separators():
+    output = [0] * 2047
+
+    safe_output = runner._json_safe_raw_output(output)
+
+    assert safe_output["omitted"] is True
+    assert len(json.dumps(safe_output)) <= runner._MAX_RAW_OUTPUT_JSON_CHARS
+
+
+def test_otter_output_at_limit_is_retained():
+    output = [0] * 1365
+
+    safe_output = runner._json_safe_raw_output(output)
+
+    assert safe_output == output
+    assert len(json.dumps(safe_output)) == runner._MAX_RAW_OUTPUT_JSON_CHARS - 1
+
+
+def test_otter_mapping_near_limit_accounts_for_json_dump_separators():
+    output = {f"k{index}": 0 for index in range(400)}
+
+    assert len(json.dumps(output, separators=(",", ":"))) <= (
+        runner._MAX_RAW_OUTPUT_JSON_CHARS
+    )
+    assert len(json.dumps(output)) > runner._MAX_RAW_OUTPUT_JSON_CHARS
+
+    safe_output = runner._json_safe_raw_output(output)
+
+    assert safe_output["omitted"] is True
+    assert len(json.dumps(safe_output)) <= runner._MAX_RAW_OUTPUT_JSON_CHARS
+
+
+def test_score_counts_invalid_otter_output_as_a_false_positive():
+    documents = [document("good"), document("invalid")]
+    state = Checkpoint(identity())
+    state.record(
+        runner.RECOGNITION,
+        "good",
+        [runner.report.serialize(runner.gold_annotations([documents[0]])[0])],
+    )
+    state.record(runner.RECOGNITION, "invalid", [])
+    state.failures[runner.RECOGNITION] = {
+        "invalid": {
+            "kind": "invalid_output",
+            "reason": "Otter returned output that did not match its document.",
+            "message": "bad span",
+            "raw_output": [{"malformed": True}],
+        }
+    }
+
+    result = score("swapped", documents, state, models={}, device="cpu")
+
+    assert result.recognition == {"precision": 0.5, "recall": 0.5, "f1": 0.5}
+
+
+@pytest.mark.parametrize(
+    ("phase", "message"),
+    [
+        (runner.RECOGNITION, "ordinary failure"),
+        (
+            runner.RESOLUTION,
+            "Otter document at index 0 has 99 tokens, exceeding the limit of 10",
+        ),
+    ],
+)
+def test_chunk_failure_handling_propagates_errors_outside_recognition_otter_inputs(
+    monkeypatch, phase, message
+):
+    monkeypatch.setattr(runner, "_process_chunk", Mock(side_effect=ValueError(message)))
+
+    with pytest.raises(ValueError, match=message):
+        runner._process_chunk_with_failures(
+            phase, [document()], recognizer=object(), resolver=object()
+        )
+
+
+def test_individual_retry_propagates_non_otter_errors(monkeypatch):
+    documents = [document("good"), document("bad")]
+
+    def process(_phase, batch, *, recognizer, resolver):
+        if len(batch) > 1:
+            raise ValueError(
+                "Otter document at index 1 has 99 tokens, exceeding the limit "
+                "of 10; truncation is not supported."
+            )
+        if batch[0].identifier == "bad":
+            raise ValueError("ordinary failure on a single document")
+        return {batch[0].identifier: []}
+
+    monkeypatch.setattr(runner, "_process_chunk", process)
+
+    with pytest.raises(ValueError, match="ordinary failure"):
+        runner._process_chunk_with_failures(
+            runner.RECOGNITION, documents, recognizer=object(), resolver=None
+        )
 
 
 def test_build_phase_models_constructs_only_the_recognizer(monkeypatch):

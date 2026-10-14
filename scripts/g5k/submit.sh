@@ -1,31 +1,35 @@
 #!/usr/bin/env bash
 # Submit the benchmark to OAR, respecting the Grid'5000 usage policy.
 #
-#   ./scripts/g5k/submit.sh                  # default: 1 GPU, 2 hours
-#   WALLTIME=4:00 LIMIT=50 ./scripts/g5k/submit.sh
-#   CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
+#   RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench ./scripts/g5k/submit.sh
+#   RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench WALLTIME=4:00 LIMIT=50 ./scripts/g5k/submit.sh
+#   RESULTS=/srv/storage/evergreen@storage1.sophia.grid5000.fr/$USER/geoparser-bench CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
 #
 # PIPELINES accepts benchmark pipeline names, CORPORA accepts registered
 # corpus names or "all", and PHASES accepts recognition and/or resolution.
 # Each value is comma-separated and passed to the benchmark CLI on the node.
 #
 # Policy notes this script encodes:
-#   * one GPU on one host -- the workload is single-process inference, so more
-#     would sit idle while still being unavailable to everyone else
+#   * one GPU and four CPU cores on one host -- the workload is single-process
+#     inference, so more would sit idle while still being unavailable to others
 #   * an explicit, modest walltime rather than the maximum
 #   * a refusal to submit when a job of this name is already queued or running,
 #     because duplicate and speculative reservations are what the policy
 #     specifically prohibits
 #
 # Check conformance before and after:  usagepolicycheck -t
+# RESULTS is required so checkpoints and large artifacts stay on durable
+# shared storage instead of consuming a frontend's home quota.
 
 set -euo pipefail
 
 JOB_NAME="${JOB_NAME:-geoparser-bench}"
 WALLTIME="${WALLTIME:-2:00}"
 GPUS="${GPUS:-1}"
+CORES="${CORES:-4}"
 REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
-RESULTS="${RESULTS:-$HOME/geoparser-bench}"
+VENV="${VENV:-$HOME/geoparser-venv}"
+: "${RESULTS:?Set RESULTS to a durable shared filesystem path (for example Grid5000 Evergreen)}"
 CLUSTER="${CLUSTER:-}"
 # besteffort takes GPUs that would otherwise sit idle, and gives them straight
 # back when someone with a claim on them asks. The job is killed rather than
@@ -78,10 +82,14 @@ if [[ -n "$existing" ]]; then
     exit 1
 fi
 
-RESOURCES="host=1/gpu=${GPUS},walltime=${WALLTIME}"
+RESOURCES="host=1/gpu=${GPUS}/core=${CORES},walltime=${WALLTIME}"
 OPTIONS=()
 if [[ -n "$CLUSTER" ]]; then
     OPTIONS+=(-p "cluster='${CLUSTER}'")
+fi
+if [[ "$CLUSTER" == "ecotaxe" ]]; then
+    # Nantes lists ecotaxe as an exotic cluster; OAR requires this type.
+    OPTIONS+=(-t exotic)
 fi
 # How long before the walltime OAR sends the checkpoint signal. besteffort
 # jobs are capped at a minute, which is enough: the run's own progress is
@@ -105,7 +113,7 @@ oarsub \
     -E "$RESULTS/logs/%jobid%.err" \
     --checkpoint "$CHECKPOINT_SECONDS" \
     --signal 12 \
-    "REPO_ROOT='$REPO_ROOT' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
+    "REPO_ROOT='$REPO_ROOT' VENV='$VENV' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
 DEVICE='${DEVICE:-auto}' CHUNK_SIZE='${CHUNK_SIZE:-5}' \
 MIN_SIMILARITY='${MIN_SIMILARITY:-0.0}' PIPELINES='$PIPELINES' CORPORA='$CORPORA' PHASES='$PHASES' \
 bash $REPO_ROOT/scripts/g5k/run_benchmark.sh"
