@@ -341,6 +341,49 @@ class TestMemoryLimit:
         monkeypatch.setattr(os, "cpu_count", lambda: 6)
         assert GazetteerBuilder._available_cpus() == 6
 
+    def test_windows_memory_reader_returns_total_phys(self, monkeypatch):
+        """GlobalMemoryStatusEx success yields ullTotalPhys."""
+        import ctypes
+        import ctypes.wintypes
+        import types
+
+        class FakeKernel:
+            @staticmethod
+            def GlobalMemoryStatusEx(ref):
+                ref._obj.ullTotalPhys = 8 * 1024 * 1024 * 1024
+                return 1
+
+        monkeypatch.setattr(
+            ctypes,
+            "windll",
+            types.SimpleNamespace(kernel32=FakeKernel),
+            raising=False,
+        )
+
+        assert (
+            GazetteerBuilder._physical_memory_bytes_windows() == 8 * 1024 * 1024 * 1024
+        )
+
+    def test_windows_memory_reader_returns_none_on_api_failure(self, monkeypatch):
+        """A failed GlobalMemoryStatusEx call is treated as unknown RAM."""
+        import ctypes
+        import ctypes.wintypes
+        import types
+
+        class FakeKernel:
+            @staticmethod
+            def GlobalMemoryStatusEx(_ref):
+                return 0
+
+        monkeypatch.setattr(
+            ctypes,
+            "windll",
+            types.SimpleNamespace(kernel32=FakeKernel),
+            raising=False,
+        )
+
+        assert GazetteerBuilder._physical_memory_bytes_windows() is None
+
 
 @pytest.mark.unit
 class TestDuplicateGeometryMerge:
