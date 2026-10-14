@@ -636,7 +636,7 @@ def _limit_is_partial(name: str, limit: int | None) -> bool:
     if fixed is not None:
         return limit < fixed.documents
     spec = corpora.CORPORA.get(name)
-    return spec is None or limit < spec.documents
+    return spec is None or spec.documents is None or limit < spec.documents
 
 
 def _write_corpus_reports(output_dir: Path, markdown: str, payload: dict) -> None:

@@ -533,6 +533,19 @@ class TestCorpusChecksGate:
         """Explicit limits are partial only when they truncate the known slice."""
         assert benchmark_cli._limit_is_partial(name, limit) is expected
 
+    def test_unknown_registered_size_is_partial_for_an_explicit_limit(
+        self, monkeypatch
+    ):
+        """A registered corpus without a count cannot certify a full limited run."""
+        name = "unfrozen-fixture"
+        monkeypatch.setitem(
+            corpora.CORPORA,
+            name,
+            corpora.CorpusSpec(name, "en", "https://example.test/data", "fixture"),
+        )
+
+        assert benchmark_cli._limit_is_partial(name, 1) is True
+
     def test_malformed_corpus_is_rejected_naming_the_corpus_and_problem(self):
         """Test that the rejection says which corpus failed and why."""
         with pytest.raises(benchmark_cli.CorpusRejectedError) as raised:
