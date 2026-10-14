@@ -335,8 +335,22 @@ def test_otter_output_near_limit_accounts_for_json_dump_separators():
     assert len(json.dumps(safe_output)) <= runner._MAX_RAW_OUTPUT_JSON_CHARS
 
 
+def test_otter_output_at_limit_is_retained():
+    output = [0] * 1365
+
+    safe_output = runner._json_safe_raw_output(output)
+
+    assert safe_output == output
+    assert len(json.dumps(safe_output)) == runner._MAX_RAW_OUTPUT_JSON_CHARS - 1
+
+
 def test_otter_mapping_near_limit_accounts_for_json_dump_separators():
-    output = {f"k{index}": 0 for index in range(600)}
+    output = {f"k{index}": 0 for index in range(400)}
+
+    assert len(json.dumps(output, separators=(",", ":"))) <= (
+        runner._MAX_RAW_OUTPUT_JSON_CHARS
+    )
+    assert len(json.dumps(output)) > runner._MAX_RAW_OUTPUT_JSON_CHARS
 
     safe_output = runner._json_safe_raw_output(output)
 
