@@ -626,24 +626,21 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
         "",
         "# Geoparser benchmark results",
         "",
-        "Geoparsing pipelines from [geoparser]"
-        "(https://github.com/NoeFlandre/geoparser) scored on English and",
-        "multilingual corpora, run on Grid'5000 (one Tesla T4).",
+        "Pipelines from [geoparser](https://github.com/NoeFlandre/geoparser) "
+        "scored on English and multilingual corpora on Grid'5000 (one Tesla T4).",
         "",
         *_benchmark_section(rows),
         *_pipeline_section(),
         "## Results",
         "",
-        "Latest run per corpus and pipeline. **Resolution** is the share of",
-        "gold toponyms placed within 161 km, scored on the gold spans so the",
-        "resolvers see the same toponyms. **Recognition** is exact-match F1.",
-        "AUC summarises the whole log-scaled error curve, lower being better.",
-        "**Bold** is best on a corpus, <u>underlined</u> second.",
+        "Latest run per corpus and pipeline. **Resolution Acc@161km** is the share "
+        "of gold spans within 161 km; all resolvers see the same gold spans.",
+        "**Recognition** is exact-match F1. AUC summarises the log-scaled error "
+        "curve (lower is better). **Bold**/**underline** mark first/second.",
         "",
-        "Each `runs/` directory includes a `run-manifest.json` with immutable",
-        "model revisions, documented language coverage, phase-reuse provenance,",
-        "and any per-document failures; unlisted language support is not treated",
-        "as unsupported without model evidence.",
+        "New `run-manifest.json` files pin model revisions, language evidence, "
+        "phase reuse and per-document failures; historical runs may lack one, "
+        "and absent claims do not mean unsupported.",
         "",
         *_chart_links(repo_id),
         *_leaderboard(rows, "accuracy_at_161km", "Resolution: Acc@161km"),
@@ -655,8 +652,8 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
         *_ablation_chart_link(rows, repo_id),
         "## Files",
         "",
-        f"`{RESULTS_FILE}` (the viewer) has every run with AUC, errors and",
-        "runtime; `runs/` holds reports, checkpoints and job logs.",
+        f"`{RESULTS_FILE}` (viewer) has every run's metrics and runtime; `runs/` "
+        "holds reports, checkpoints, manifests and job logs.",
         "",
         "## Corpus terms",
         "",

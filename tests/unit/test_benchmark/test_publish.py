@@ -296,6 +296,7 @@ class TestPipelineDescriptions:
         assert "supported languages are not exhaustively listed" in card
         assert "per-document failures" in card
         assert "run-manifest.json" in card
+        assert "historical runs may lack one" in card
 
     def test_prior_description_matches_the_default_configuration(self):
         """The published card describes the no-trimming population prior."""
