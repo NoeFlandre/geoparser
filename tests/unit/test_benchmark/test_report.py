@@ -63,6 +63,14 @@ class TestScoring:
 
         assert scores == {"precision": 1.0, "recall": 1.0, "f1": 1.0}
 
+    def test_invalid_output_adds_a_false_positive(self):
+        """Invalid model output lowers precision without changing recall."""
+        gold = [Annotation(0, 5, None, "d")]
+
+        scores = score_recognition(gold, gold, invalid_output_false_positives=1)
+
+        assert scores == {"precision": 0.5, "recall": 1.0, "f1": 2 / 3}
+
     def test_resolution_reports_the_four_figures(self):
         """Test a perfect resolution run."""
         gold = [located(0, 5, *ZURICH)]
