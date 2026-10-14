@@ -18,9 +18,11 @@ build; the artifact is the only output.
 
 import contextlib
 import os
+import re
 import shutil
 import typing as t
-from pathlib import Path
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
 
 import duckdb
 
@@ -31,6 +33,7 @@ from geoparser.gazetteer.build.progress import (
     item,
     label_suffixes,
     print_build_header,
+    print_build_memory_diagnostics,
     print_build_summary,
     stage,
     track,
@@ -40,6 +43,21 @@ from geoparser.gazetteer.build.stages.acquire import Acquirer
 from geoparser.gazetteer.build.stages.compile import ProjectionCompiler
 from geoparser.gazetteer.build.stages.emit import create_artifact_db, emit, finalize
 from geoparser.gazetteer.build.stages.load import Loader, quote_literal, scalar_int
+
+_MEMORY_LIMIT_ENV = "GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB"
+_CGROUP_V1_UNLIMITED_BYTES = 1 << 60
+
+
+@dataclass(frozen=True)
+class _MemoryBudget:
+    """Detected allocation memory and the staging limits derived from it."""
+
+    sources: tuple[tuple[str, int], ...]
+    detected_bytes: int | None
+    detected_source: str
+    duckdb_limit_mb: int
+    threads: int
+    configured_limit_mb: int | None
 
 
 def _sqlite_temp_env_names() -> tuple[str, ...]:
@@ -225,9 +243,11 @@ class GazetteerBuilder:
         # at DuckDB's defaults lets it size itself against reported RAM and
         # use every core, which on Windows (where RAM detection used to fail)
         # and on small machines can exhaust memory before spilling kicks in.
-        memory_limit_mb = self._memory_limit_mb()
+        budget = self._memory_budget()
+        print_build_memory_diagnostics(self._memory_budget_message(budget))
+        memory_limit_mb = budget.duckdb_limit_mb
         connection.execute(f"SET memory_limit = '{memory_limit_mb}MiB'")
-        connection.execute(f"SET threads = {self._thread_count(memory_limit_mb)}")
+        connection.execute(f"SET threads = {budget.threads}")
 
     def _memory_limit_mb(self) -> int:
         """
@@ -236,17 +256,101 @@ class GazetteerBuilder:
         When physical RAM can be detected, the limit is a fraction of that
         total with headroom left for the OS and the rest of the build. When
         it cannot, a fixed fallback is used so the staging engine is still
-        explicitly bounded.
+        explicitly bounded. ``GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB`` can
+        lower this ceiling for a memory-constrained build.
         """
-        total_bytes = self._physical_memory_bytes()
-        if total_bytes is None:
-            return self._FALLBACK_MEMORY_MB
-        total_mb = total_bytes / (1024 * 1024)
-        limit_mb = min(
-            total_mb * self._MEMORY_FRACTION,
-            total_mb - self._MEMORY_HEADROOM_MB,
+        return self._memory_budget().duckdb_limit_mb
+
+    def _memory_budget(self) -> _MemoryBudget:
+        """Detect available memory and derive the DuckDB cap and thread count."""
+        sources = self._memory_sources()
+        detected_bytes = min((value for _, value in sources), default=None)
+        detected_source = next(
+            (name for name, value in sources if value == detected_bytes),
+            "fallback",
         )
-        return int(max(limit_mb, self._MIN_MEMORY_MB))
+        if detected_bytes is None:
+            automatic_limit_mb = self._FALLBACK_MEMORY_MB
+        else:
+            total_mb = detected_bytes / (1024 * 1024)
+            automatic_limit_mb = int(
+                max(
+                    min(
+                        total_mb * self._MEMORY_FRACTION,
+                        total_mb - self._MEMORY_HEADROOM_MB,
+                    ),
+                    self._MIN_MEMORY_MB,
+                )
+            )
+
+        configured_limit_mb = self._configured_memory_limit_mb()
+        duckdb_limit_mb = automatic_limit_mb
+        if configured_limit_mb is not None:
+            duckdb_limit_mb = min(automatic_limit_mb, configured_limit_mb)
+
+        return _MemoryBudget(
+            sources=sources,
+            detected_bytes=detected_bytes,
+            detected_source=detected_source,
+            duckdb_limit_mb=duckdb_limit_mb,
+            threads=self._thread_count(duckdb_limit_mb),
+            configured_limit_mb=configured_limit_mb,
+        )
+
+    @staticmethod
+    def _configured_memory_limit_mb() -> int | None:
+        """Read an optional positive MiB ceiling without changing defaults."""
+        value = os.environ.get(_MEMORY_LIMIT_ENV)
+        if value is None or not value.strip():
+            return None
+        cleaned = value.strip()
+        if not cleaned.isascii() or not cleaned.isdecimal() or int(cleaned) <= 0:
+            msg = f"{_MEMORY_LIMIT_ENV} must be a positive integer number of MiB"
+            raise ValueError(msg)
+        return int(cleaned)
+
+    @staticmethod
+    def _memory_sources() -> tuple[tuple[str, int], ...]:
+        """Return detected cgroup and host memory values with their sources."""
+        readers = (
+            ("cgroup v2", GazetteerBuilder._physical_memory_bytes_cgroup_v2),
+            ("cgroup v1", GazetteerBuilder._physical_memory_bytes_cgroup_v1),
+            ("sysconf", GazetteerBuilder._physical_memory_bytes_sysconf),
+            ("Windows API", GazetteerBuilder._physical_memory_bytes_windows),
+        )
+        return tuple(
+            (name, value)
+            for name, reader in readers
+            if (value := GazetteerBuilder._read_memory(reader)) is not None
+        )
+
+    @staticmethod
+    def _memory_budget_message(budget: _MemoryBudget) -> str:
+        """Describe the memory probes and limits in a job-captured log line."""
+        cgroup_sources = [
+            (name, value) for name, value in budget.sources if name.startswith("cgroup")
+        ]
+        cgroup_text = (
+            ", ".join(
+                f"{name}={value // (1024 * 1024):,} MiB"
+                for name, value in cgroup_sources
+            )
+            or "unavailable"
+        )
+        if budget.detected_bytes is None:
+            detected_text = "unknown; using bounded fallback"
+        else:
+            detected_mib = budget.detected_bytes / (1024 * 1024)
+            detected_text = f"{detected_mib:,.0f} MiB from {budget.detected_source}"
+        if budget.configured_limit_mb is None:
+            ceiling_text = "no configured ceiling"
+        else:
+            ceiling_text = f"configured ceiling={budget.configured_limit_mb:,} MiB"
+        return (
+            f"Installer memory: cgroup limits={cgroup_text}; detected={detected_text}; "
+            f"{ceiling_text}; DuckDB cap={budget.duckdb_limit_mb:,} MiB; "
+            f"threads={budget.threads}"
+        )
 
     def _thread_count(self, memory_limit_mb: int) -> int:
         """
@@ -281,15 +385,7 @@ class GazetteerBuilder:
         otherwise let the staging engine size itself above the container
         budget and get OOM-killed.
         """
-        candidates = [
-            value
-            for reader in (
-                GazetteerBuilder._physical_memory_bytes_cgroup,
-                GazetteerBuilder._physical_memory_bytes_sysconf,
-                GazetteerBuilder._physical_memory_bytes_windows,
-            )
-            if (value := GazetteerBuilder._read_memory(reader))
-        ]
+        candidates = [value for _, value in GazetteerBuilder._memory_sources()]
         return min(candidates) if candidates else None
 
     @staticmethod
@@ -311,68 +407,152 @@ class GazetteerBuilder:
 
     @staticmethod
     def _physical_memory_bytes_cgroup() -> int | None:
-        """Read this process's cgroup v2 ``memory.max`` limit, if finite."""
-        relative = GazetteerBuilder._unified_cgroup_path()
-        if relative is None:
+        """Return the smallest finite v1 or v2 cgroup memory limit."""
+        candidates = [
+            value
+            for reader in (
+                GazetteerBuilder._physical_memory_bytes_cgroup_v2,
+                GazetteerBuilder._physical_memory_bytes_cgroup_v1,
+            )
+            if (value := GazetteerBuilder._read_memory(reader)) is not None
+        ]
+        return min(candidates) if candidates else None
+
+    @staticmethod
+    def _physical_memory_bytes_cgroup_v2() -> int | None:
+        """Read this process's finite cgroup v2 ``memory.max`` limit."""
+        return GazetteerBuilder._cgroup_memory_limit("v2", "memory.max")
+
+    @staticmethod
+    def _physical_memory_bytes_cgroup_v1() -> int | None:
+        """Read this process's finite cgroup v1 ``memory.limit_in_bytes``."""
+        return GazetteerBuilder._cgroup_memory_limit(
+            "v1", "memory.limit_in_bytes", unlimited_bytes=_CGROUP_V1_UNLIMITED_BYTES
+        )
+
+    @classmethod
+    def _cgroup_memory_limit(
+        cls, version: str, filename: str, unlimited_bytes: int | None = None
+    ) -> int | None:
+        """Read the smallest finite memory cap from a cgroup and its parents."""
+        membership = cls._cgroup_memberships().get(version)
+        if membership is None:
             return None
-        # Walk from the process cgroup up to the root; Docker often sets
-        # ``memory.max`` on the container cgroup while parents stay ``max``.
-        directory = Path("/sys/fs/cgroup") / relative.lstrip("/")
-        root = Path("/sys/fs/cgroup")
-        while True:
-            limit = GazetteerBuilder._cgroup_memory_limit(directory)
+
+        limits = []
+        for mount_version, mount_root, mountpoint in cls._cgroup_mounts():
+            if mount_version != version:
+                continue
+            limit = cls._cgroup_limit_for_mount(
+                membership, mount_root, mountpoint, filename, unlimited_bytes
+            )
             if limit is not None:
-                return limit
-            if GazetteerBuilder._at_cgroup_root(directory, root):
-                return None
-            directory = directory.parent
+                limits.append(limit)
+        return min(limits) if limits else None
 
-    @staticmethod
-    def _at_cgroup_root(directory: Path, root: Path) -> bool:
-        """
-        Whether the walk up the cgroup tree has nowhere left to go.
-
-        Args:
-            directory: The cgroup directory just inspected
-            root: The cgroup filesystem root
-
-        Returns:
-            True when there is no further parent worth reading
-        """
-        return directory in (root, directory.parent)
-
-    @staticmethod
-    def _unified_cgroup_path() -> str | None:
-        """
-        This process's path in the cgroup v2 unified hierarchy.
-
-        Returns:
-            The path after the ``0::`` prefix, or None if there is no
-            unified-hierarchy entry
-        """
-        with open("/proc/self/cgroup", encoding="utf-8") as handle:  # noqa: PTH123 - tests substitute builtins.open to fake /proc
-            for line in handle.read().splitlines():
-                # Unified hierarchy: ``0::/docker/<id>`` (or similar).
-                if line.startswith("0::"):
-                    return line[3:]
-        return None
-
-    @staticmethod
-    def _cgroup_memory_limit(directory: Path) -> int | None:
-        """
-        The finite ``memory.max`` of one cgroup directory, if it sets one.
-
-        Args:
-            directory: A cgroup directory to inspect
-
-        Returns:
-            The limit in bytes, or None when absent or unlimited
-        """
-        limit_path = directory / "memory.max"
-        if not limit_path.is_file():
+    @classmethod
+    def _cgroup_limit_for_mount(
+        cls,
+        membership: str,
+        mount_root: str,
+        mountpoint: str,
+        filename: str,
+        unlimited_bytes: int | None,
+    ) -> int | None:
+        """Find the smallest finite cap from a mounted cgroup and its parents."""
+        try:
+            relative = PurePosixPath(membership).relative_to(PurePosixPath(mount_root))
+        except ValueError:
             return None
-        text = limit_path.read_text(encoding="utf-8").strip()
-        return None if text == "max" else int(text)
+
+        boundary = Path(mountpoint)
+        current = boundary.joinpath(*relative.parts)
+        limits = []
+        while current == boundary or boundary in current.parents:
+            limit = cls._read_cgroup_limit_file(current / filename, unlimited_bytes)
+            if limit is not None:
+                limits.append(limit)
+            if current == boundary:
+                break
+            current = current.parent
+        return min(limits) if limits else None
+
+    @staticmethod
+    def _read_cgroup_limit_file(path: Path, unlimited_bytes: int | None) -> int | None:
+        """Read one finite cgroup memory limit, ignoring missing/unlimited files."""
+        try:
+            value_text = path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return None
+        if not value_text or value_text == "max":
+            return None
+        try:
+            value = int(value_text)
+        except ValueError:
+            return None
+        if value <= 0 or (unlimited_bytes is not None and value >= unlimited_bytes):
+            return None
+        return value
+
+    @staticmethod
+    def _read_proc_file(path: str) -> str:
+        """Read a small Linux procfs file used for cgroup discovery."""
+        return Path(path).read_text(encoding="utf-8")
+
+    @staticmethod
+    def _cgroup_memberships() -> dict[str, str]:
+        """Map cgroup v1/v2 hierarchies to this process's membership paths."""
+        try:
+            contents = GazetteerBuilder._read_proc_file("/proc/self/cgroup")
+        except OSError:
+            return {}
+
+        memberships = {}
+        for line in contents.splitlines():
+            hierarchy, controllers, path = line.split(":", maxsplit=2)
+            if hierarchy == "0" and not controllers:
+                memberships["v2"] = path
+            elif "memory" in controllers.split(","):
+                memberships["v1"] = path
+        return memberships
+
+    @staticmethod
+    def _cgroup_mounts() -> tuple[tuple[str, str, str], ...]:
+        """Read cgroup mount version, root and mountpoint from mountinfo."""
+        try:
+            contents = GazetteerBuilder._read_proc_file("/proc/self/mountinfo")
+        except OSError:
+            return ()
+
+        mounts = []
+        for line in contents.splitlines():
+            before, separator, after = line.partition(" - ")
+            if not separator:
+                continue
+            mount_fields = before.split()
+            filesystem_fields = after.split(maxsplit=2)
+            if len(mount_fields) < 5 or not filesystem_fields:
+                continue
+            filesystem = filesystem_fields[0]
+            if filesystem == "cgroup2":
+                version = "v2"
+            elif (
+                filesystem == "cgroup"
+                and len(filesystem_fields) == 3
+                and "memory" in filesystem_fields[2].split(",")
+            ):
+                version = "v1"
+            else:
+                continue
+            root = GazetteerBuilder._decode_mountinfo_path(mount_fields[3])
+            mountpoint = GazetteerBuilder._decode_mountinfo_path(mount_fields[4])
+            mounts.append((version, root, mountpoint))
+        return tuple(mounts)
+
+    @staticmethod
+    def _decode_mountinfo_path(value: str) -> str:
+        """Decode octal escapes used for whitespace in mountinfo paths."""
+        return re.sub(r"\\([0-7]{3})", lambda match: chr(int(match.group(1), 8)), value)
 
     @staticmethod
     def _physical_memory_bytes_sysconf() -> int | None:
