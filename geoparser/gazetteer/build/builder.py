@@ -547,10 +547,11 @@ class GazetteerBuilder:
     @staticmethod
     def _cgroup_ancestors(directory: Path, boundary: Path) -> t.Iterator[Path]:
         """Yield a cgroup directory and its parents up to the mount boundary."""
-        while directory != boundary:
+        while directory == boundary or boundary in directory.parents:
             yield directory
+            if directory == boundary:
+                return
             directory = directory.parent
-        yield boundary
 
     @staticmethod
     def _read_cgroup_limit_file(path: Path, unlimited_bytes: int | None) -> int | None:

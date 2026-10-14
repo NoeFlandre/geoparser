@@ -560,6 +560,13 @@ class TestMemoryLimit:
             is None
         )
 
+    def test_cgroup_ancestor_walk_stops_outside_mount(self, tmp_path):
+        """The parent walk cannot leave its mounted cgroup boundary."""
+        boundary = tmp_path / "cgroup"
+        outside = tmp_path / "outside"
+
+        assert tuple(GazetteerBuilder._cgroup_ancestors(outside, boundary)) == ()
+
     @pytest.mark.parametrize(
         ("contents", "unlimited", "expected"),
         [
