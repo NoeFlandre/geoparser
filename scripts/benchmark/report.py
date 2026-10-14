@@ -18,9 +18,6 @@ from geoparser.evaluation import (
     area_under_error_curve,
     mean_error_km,
     median_error_km,
-    recognition_f1,
-    recognition_precision,
-    recognition_recall,
 )
 
 
@@ -64,13 +61,29 @@ def deserialize(payload: dict[str, t.Any]) -> Annotation:
 
 
 def score_recognition(
-    expected: Sequence[Annotation], predicted: Sequence[Annotation]
+    expected: Sequence[Annotation],
+    predicted: Sequence[Annotation],
+    *,
+    invalid_output_false_positives: int = 0,
 ) -> dict[str, float]:
-    """Return precision, recall and F1 over exactly matched spans."""
+    """Return exact-span metrics, charging each invalid output as one FP."""
+    if type(invalid_output_false_positives) is not int or (
+        invalid_output_false_positives < 0
+    ):
+        msg = "invalid_output_false_positives must be a non-negative integer"
+        raise ValueError(msg)
+
+    expected_spans = {annotation.identity for annotation in expected}
+    predicted_spans = {annotation.identity for annotation in predicted}
+    true_positives = len(expected_spans & predicted_spans)
+    predicted_count = len(predicted_spans) + invalid_output_false_positives
+    precision = true_positives / predicted_count if predicted_count else 1.0
+    recall = true_positives / len(expected_spans) if expected_spans else 1.0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
     return {
-        "precision": recognition_precision(expected, predicted),
-        "recall": recognition_recall(expected, predicted),
-        "f1": recognition_f1(expected, predicted),
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
     }
 
 
