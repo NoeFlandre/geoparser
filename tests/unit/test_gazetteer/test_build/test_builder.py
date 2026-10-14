@@ -400,6 +400,184 @@ class TestMemoryLimit:
 
         assert GazetteerBuilder._physical_memory_bytes_windows() is None
 
+    @pytest.mark.parametrize("value", [None, 0, -1])
+    def test_read_memory_ignores_missing_and_nonpositive_values(self, value):
+        assert GazetteerBuilder._read_memory(lambda: value) is None
+
+    @pytest.mark.parametrize("error_type", [ValueError, OSError, AttributeError])
+    def test_read_memory_skips_unavailable_probes(self, error_type):
+        def reader():
+            raise error_type("probe unavailable")
+
+        assert GazetteerBuilder._read_memory(reader) is None
+
+    def test_memory_sources_collects_available_readers(self, monkeypatch):
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v2",
+            staticmethod(lambda: 4 * 1024**3),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v1",
+            staticmethod(lambda: None),
+        )
+
+        def unavailable():
+            raise OSError("sysconf unavailable")
+
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_sysconf",
+            staticmethod(unavailable),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_windows",
+            staticmethod(lambda: 8 * 1024**3),
+        )
+
+        assert GazetteerBuilder._memory_sources() == (
+            ("cgroup v2", 4 * 1024**3),
+            ("Windows API", 8 * 1024**3),
+        )
+
+    def test_legacy_cgroup_probe_returns_smallest_finite_limit(self, monkeypatch):
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v2",
+            staticmethod(lambda: 4 * 1024**3),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v1",
+            staticmethod(lambda: 2 * 1024**3),
+        )
+        assert GazetteerBuilder._physical_memory_bytes_cgroup() == 2 * 1024**3
+
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v2",
+            staticmethod(lambda: None),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v1",
+            staticmethod(lambda: None),
+        )
+        assert GazetteerBuilder._physical_memory_bytes_cgroup() is None
+
+    def test_sysconf_memory_probe_reads_page_count_and_size(self, monkeypatch):
+        values = {"SC_PHYS_PAGES": 100, "SC_PAGE_SIZE": 4096}
+        monkeypatch.setattr(os, "sysconf", lambda name: values[name])
+        assert GazetteerBuilder._physical_memory_bytes_sysconf() == 409600
+
+    def test_fallback_memory_diagnostics_are_explicit(self, monkeypatch):
+        monkeypatch.delenv("GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB", raising=False)
+        monkeypatch.setattr(GazetteerBuilder, "_memory_sources", staticmethod(tuple))
+        builder = GazetteerBuilder()
+
+        message = builder._memory_budget_message(builder._memory_budget())
+
+        assert "cgroup limits=unavailable" in message
+        assert "detected=unknown; using bounded fallback" in message
+        assert "no configured ceiling" in message
+
+    def test_cgroup_memory_probe_handles_missing_membership_and_matching_mount(
+        self, monkeypatch, tmp_path
+    ):
+        monkeypatch.setattr(GazetteerBuilder, "_cgroup_memberships", staticmethod(dict))
+        assert GazetteerBuilder._cgroup_memory_limit("v2", "memory.max") is None
+
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_cgroup_memberships",
+            staticmethod(lambda: {"v2": "/job/task"}),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_cgroup_mounts",
+            staticmethod(lambda: (("v1", "/", str(tmp_path)),)),
+        )
+        assert GazetteerBuilder._cgroup_memory_limit("v2", "memory.max") is None
+
+    def test_cgroup_limit_probe_handles_outside_membership_and_missing_files(
+        self, tmp_path
+    ):
+        assert (
+            GazetteerBuilder._cgroup_limit_for_mount(
+                "/outside/job", "/mounted", str(tmp_path), "memory.max", None
+            )
+            is None
+        )
+        assert (
+            GazetteerBuilder._cgroup_limit_for_mount(
+                "/job/task", "/", str(tmp_path), "memory.max", None
+            )
+            is None
+        )
+
+    @pytest.mark.parametrize(
+        ("contents", "unlimited", "expected"),
+        [
+            ("", None, None),
+            ("max", None, None),
+            ("not-an-integer", None, None),
+            ("0", None, None),
+            ("-1", None, None),
+            ("1024", 2048, 1024),
+            ("2048", 2048, None),
+        ],
+    )
+    def test_cgroup_limit_file_ignores_empty_invalid_and_unlimited_values(
+        self, tmp_path, contents, unlimited, expected
+    ):
+        path = tmp_path / "memory.max"
+        path.write_text(contents, encoding="utf-8")
+        assert GazetteerBuilder._read_cgroup_limit_file(path, unlimited) == expected
+
+    def test_cgroup_limit_file_ignores_missing_file(self, tmp_path):
+        assert (
+            GazetteerBuilder._read_cgroup_limit_file(tmp_path / "missing", None) is None
+        )
+
+    def test_cgroup_discovery_falls_back_when_proc_files_are_unavailable(
+        self, monkeypatch
+    ):
+        def unavailable(_path):
+            raise OSError("procfs unavailable")
+
+        monkeypatch.setattr(
+            GazetteerBuilder, "_read_proc_file", staticmethod(unavailable)
+        )
+        assert GazetteerBuilder._cgroup_memberships() == {}
+        assert GazetteerBuilder._cgroup_mounts() == ()
+
+    def test_mountinfo_parser_skips_unrelated_lines_and_decodes_escapes(
+        self, monkeypatch
+    ):
+        contents = "\n".join(
+            (
+                "not mountinfo",
+                "1 2 - cgroup2",
+                "50 20 0:30 / /tmp rw - tmpfs tmpfs rw",
+                "51 20 0:31 / /sys/fs/cgroup/cpu rw - cgroup cgroup rw,cpu",
+                "52 20 0:32 / /sys/fs/cgroup/incomplete rw - cgroup cgroup",
+                "53 20 0:33 / /sys/fs/my\\040mount rw - cgroup2 cgroup rw",
+                "54 20 0:34 / /sys/fs/cgroup/memory\\040group rw - cgroup cgroup rw,memory",
+            )
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_read_proc_file",
+            staticmethod(lambda _path: contents),
+        )
+
+        assert GazetteerBuilder._cgroup_mounts() == (
+            ("v2", "/", "/sys/fs/my mount"),
+            ("v1", "/", "/sys/fs/cgroup/memory group"),
+        )
+
 
 @pytest.mark.unit
 class TestDuplicateGeometryMerge:
