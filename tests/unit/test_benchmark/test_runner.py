@@ -226,9 +226,10 @@ def test_otter_overlength_documents_are_recorded_without_truncation(monkeypatch)
 
 
 def test_otter_invalid_document_outputs_are_recorded_without_aborting_chunk(
-    monkeypatch,
+    tmp_path, monkeypatch
 ):
     documents = [document("good"), document("invalid")]
+    raw_output = [{"start": 0, "end": 6, "text": "Zurich", "label": "city"}]
 
     def process(_phase, batch, *, recognizer, resolver):
         if len(batch) > 1:
@@ -241,7 +242,7 @@ def test_otter_invalid_document_outputs_are_recorded_without_aborting_chunk(
             raise PredictionOutputError(
                 "Invalid Otter output for document at index 0: bad span.",
                 document_index=0,
-                raw_output=None,
+                raw_output=raw_output,
             )
         return {batch[0].identifier: []}
 
@@ -257,8 +258,38 @@ def test_otter_invalid_document_outputs_are_recorded_without_aborting_chunk(
             "kind": "invalid_output",
             "reason": "Otter returned output that did not match its document.",
             "message": "Invalid Otter output for document at index 0: bad span.",
+            "raw_output": raw_output,
         }
     }
+
+    checkpoint_path = tmp_path / "otter.json"
+    state = Checkpoint(identity(), failures={runner.RECOGNITION: failures})
+    ckpt.save(checkpoint_path, state)
+    restored, _ = ckpt.load(checkpoint_path, identity())
+    assert restored.failures[runner.RECOGNITION]["invalid"]["raw_output"] == raw_output
+
+
+def test_score_counts_invalid_otter_output_as_a_false_positive():
+    documents = [document("good"), document("invalid")]
+    state = Checkpoint(identity())
+    state.record(
+        runner.RECOGNITION,
+        "good",
+        [runner.report.serialize(runner.gold_annotations([documents[0]])[0])],
+    )
+    state.record(runner.RECOGNITION, "invalid", [])
+    state.failures[runner.RECOGNITION] = {
+        "invalid": {
+            "kind": "invalid_output",
+            "reason": "Otter returned output that did not match its document.",
+            "message": "bad span",
+            "raw_output": [{"malformed": True}],
+        }
+    }
+
+    result = score("swapped", documents, state, models={}, device="cpu")
+
+    assert result.recognition == {"precision": 0.5, "recall": 0.5, "f1": 0.5}
 
 
 @pytest.mark.parametrize(

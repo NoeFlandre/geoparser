@@ -334,6 +334,8 @@ def _process_recognition_documents_individually(
                 "reason": failure[1],
                 "message": str(error),
             }
+            if isinstance(error, PredictionOutputError):
+                failures[document.identifier]["raw_output"] = error.raw_output
     return predictions, failures
 
 
@@ -388,7 +390,15 @@ def score(
     resolved = [report.deserialize(a) for a in state.annotations(RESOLUTION)]
     complete_documents = {document.identifier for document in documents}
     result.recognition = _score_completed_phase(
-        RECOGNITION, expected, recognized, complete_documents, state
+        RECOGNITION,
+        expected,
+        recognized,
+        complete_documents,
+        state,
+        invalid_output_false_positives=sum(
+            failure.get("kind") == "invalid_output"
+            for failure in state.failures.get(RECOGNITION, {}).values()
+        ),
     )
     result.resolution = _score_completed_phase(
         RESOLUTION, expected, resolved, complete_documents, state
@@ -402,11 +412,16 @@ def _score_completed_phase(
     predictions: Sequence[report.Annotation],
     document_ids: set[str],
     state: ckpt.Checkpoint,
+    *,
+    invalid_output_false_positives: int = 0,
 ) -> dict[str, float]:
     """Return metrics only when every document has a prediction for the phase."""
     if state.completed(phase) != document_ids:
         return {}
-    scorer = (
-        report.score_recognition if phase == RECOGNITION else report.score_resolution
-    )
-    return scorer(expected, predictions)
+    if phase == RECOGNITION:
+        return report.score_recognition(
+            expected,
+            predictions,
+            invalid_output_false_positives=invalid_output_false_positives,
+        )
+    return report.score_resolution(expected, predictions)

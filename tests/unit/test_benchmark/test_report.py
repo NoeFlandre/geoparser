@@ -5,6 +5,10 @@ A bug here does not crash, it prints a plausible number, so the round trip and
 the arithmetic are pinned rather than eyeballed.
 """
 
+import typing as t
+
+import pytest
+
 from geoparser.evaluation import Annotation
 from scripts.benchmark.report import (
     PipelineResult,
@@ -62,6 +66,40 @@ class TestScoring:
         scores = score_recognition(gold, gold)
 
         assert scores == {"precision": 1.0, "recall": 1.0, "f1": 1.0}
+
+    def test_invalid_output_adds_a_false_positive(self):
+        """Invalid model output lowers precision without changing recall."""
+        gold = [Annotation(0, 5, None, "d")]
+
+        scores = score_recognition(gold, gold, invalid_output_false_positives=1)
+
+        assert scores == {"precision": 0.5, "recall": 1.0, "f1": 2 / 3}
+
+    @pytest.mark.parametrize("invalid_count", [True, -1])
+    def test_recognition_rejects_invalid_output_count(self, invalid_count: t.Any):
+        with pytest.raises(ValueError, match="non-negative integer"):
+            score_recognition(
+                [],
+                [],
+                invalid_output_false_positives=invalid_count,
+            )
+
+    def test_recognition_defines_empty_input_metrics(self):
+        assert score_recognition([], []) == {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+        }
+
+    def test_recognition_zeroes_f1_when_no_spans_match(self):
+        expected = [Annotation(0, 5, None, "d")]
+        predicted = [Annotation(10, 15, None, "d")]
+
+        assert score_recognition(expected, predicted) == {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+        }
 
     def test_resolution_reports_the_four_figures(self):
         """Test a perfect resolution run."""
