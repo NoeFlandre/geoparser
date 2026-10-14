@@ -326,6 +326,24 @@ def test_oversized_otter_output_is_omitted_before_encoding():
         assert len(json.dumps(safe_output)) <= runner._MAX_RAW_OUTPUT_JSON_CHARS
 
 
+def test_otter_output_near_limit_accounts_for_json_dump_separators():
+    output = [0] * 2047
+
+    safe_output = runner._json_safe_raw_output(output)
+
+    assert safe_output["omitted"] is True
+    assert len(json.dumps(safe_output)) <= runner._MAX_RAW_OUTPUT_JSON_CHARS
+
+
+def test_otter_mapping_near_limit_accounts_for_json_dump_separators():
+    output = {f"k{index}": 0 for index in range(600)}
+
+    safe_output = runner._json_safe_raw_output(output)
+
+    assert safe_output["omitted"] is True
+    assert len(json.dumps(safe_output)) <= runner._MAX_RAW_OUTPUT_JSON_CHARS
+
+
 def test_score_counts_invalid_otter_output_as_a_false_positive():
     documents = [document("good"), document("invalid")]
     state = Checkpoint(identity())
