@@ -113,6 +113,22 @@ class TestMemoryLimit:
         )
         assert builder._memory_limit_mb() == int(8 * 1024 * 0.6)
 
+    def test_detected_limit_below_safe_minimum_fails_clearly(self, monkeypatch):
+        """A hard allocation limit cannot be hidden by the minimum DuckDB cap."""
+        builder = GazetteerBuilder()
+        monkeypatch.delenv("GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB", raising=False)
+        monkeypatch.setattr(
+            builder,
+            "_memory_sources",
+            lambda: (("cgroup v2", 1536 * 1024 * 1024),),
+        )
+
+        with pytest.raises(
+            MemoryError,
+            match=r"cgroup v2 memory limit of 1,536.0 MiB.*2,048 MiB minimum",
+        ):
+            builder._memory_limit_mb()
+
     def test_thread_count_is_capped_by_memory_and_cpu(self, monkeypatch):
         """Thread count never exceeds CPU count or the memory budget."""
         monkeypatch.setattr(
