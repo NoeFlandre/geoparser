@@ -96,131 +96,265 @@ class TestSqliteTmpdir:
         assert _sqlite_temp_env_names() == ("TMP", "TEMP")
 
 
+def _configured_ceiling_builder(monkeypatch):
+    """Create the constrained builder and capture its memory diagnostics."""
+    builder = GazetteerBuilder()
+    monkeypatch.setenv("GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB", "6144")
+    monkeypatch.setattr(
+        builder,
+        "_memory_sources",
+        lambda: (
+            ("cgroup v2", 16 * 1024 * 1024 * 1024),
+            ("sysconf", 128 * 1024 * 1024 * 1024),
+        ),
+    )
+    monkeypatch.setattr(GazetteerBuilder, "_available_cpus", staticmethod(lambda: 4))
+    diagnostics = []
+    monkeypatch.setattr(
+        builder_module, "print_build_memory_diagnostics", diagnostics.append
+    )
+    return builder, diagnostics
+
+
+def _configured_ceiling_settings(builder, tmp_path):
+    """Apply the builder limits and return the resulting DuckDB settings."""
+    connection = duckdb.connect()
+    try:
+        builder._configure_staging(connection, tmp_path)
+        memory_setting = connection.execute(
+            "SELECT value FROM duckdb_settings() WHERE name = 'memory_limit'"
+        ).fetchone()
+        threads_setting = connection.execute(
+            "SELECT value FROM duckdb_settings() WHERE name = 'threads'"
+        ).fetchone()
+    finally:
+        connection.close()
+    return memory_setting, threads_setting
+
+
 @pytest.mark.unit
 class TestMemoryLimit:
     """Test memory/thread sizing helpers on GazetteerBuilder."""
 
-    def test_returns_fallback_when_physical_memory_is_unknown(self, monkeypatch):
-        """An undetectable RAM size still yields an explicit fallback limit."""
+    def test_fallback_and_automatic_limit(self, monkeypatch):
+        """Unknown RAM uses the fallback; detected RAM keeps the old formula."""
         builder = GazetteerBuilder()
-        monkeypatch.setattr(builder, "_physical_memory_bytes", lambda: None)
-
+        monkeypatch.setattr(builder, "_memory_sources", lambda: ())
         assert builder._memory_limit_mb() == GazetteerBuilder._FALLBACK_MEMORY_MB
 
-    def test_returns_a_bounded_value_when_memory_is_known(self, monkeypatch):
-        """A known RAM size yields a positive, bounded MiB limit."""
-        builder = GazetteerBuilder()
         monkeypatch.setattr(
-            builder, "_physical_memory_bytes", lambda: 8 * 1024 * 1024 * 1024
+            builder,
+            "_memory_sources",
+            lambda: (("sysconf", 8 * 1024 * 1024 * 1024),),
+        )
+        assert builder._memory_limit_mb() == int(8 * 1024 * 0.6)
+
+    def test_detected_limit_below_safe_minimum_fails_clearly(self, monkeypatch):
+        """A hard allocation limit cannot be hidden by the minimum DuckDB cap."""
+        builder = GazetteerBuilder()
+        monkeypatch.delenv("GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB", raising=False)
+        monkeypatch.setattr(
+            builder,
+            "_memory_sources",
+            lambda: (("cgroup v2", 1536 * 1024 * 1024),),
         )
 
-        limit = builder._memory_limit_mb()
-        assert limit > 0
-        assert limit < 8 * 1024
+        with pytest.raises(
+            MemoryError,
+            match=r"cgroup v2 memory limit of 1,536.0 MiB.*2,048 MiB minimum",
+        ):
+            builder._memory_limit_mb()
 
     def test_thread_count_is_capped_by_memory_and_cpu(self, monkeypatch):
         """Thread count never exceeds CPU count or the memory budget."""
-        builder = GazetteerBuilder()
         monkeypatch.setattr(
             GazetteerBuilder, "_available_cpus", staticmethod(lambda: 8)
         )
+        assert GazetteerBuilder()._thread_count(512) == 1
+        assert GazetteerBuilder()._thread_count(4096) == 4
+        assert GazetteerBuilder()._thread_count(32_768) == 8
 
-        assert builder._thread_count(512) == 1
-        assert builder._thread_count(4096) == 4
-        assert builder._thread_count(32_768) == 8
+    def test_configured_ceiling_applies_memory_setting(self, monkeypatch, tmp_path):
+        """DuckDB receives a value close to the configured MiB ceiling."""
+        builder, _ = _configured_ceiling_builder(monkeypatch)
+        memory_setting, _ = _configured_ceiling_settings(builder, tmp_path)
 
-    def test_configure_staging_always_sets_memory_limit_and_threads(
-        self, monkeypatch, tmp_path
-    ):
-        """Staging always applies an explicit memory_limit and threads value."""
+        assert memory_setting is not None
+        assert (
+            abs(_setting_to_bytes(memory_setting[0]) - 6144 * 1024**2)
+            / (6144 * 1024**2)
+            < 0.15
+        )
+
+    def test_configured_ceiling_sets_threads(self, monkeypatch, tmp_path):
+        """DuckDB receives a thread cap derived from the configured memory."""
+        builder, diagnostics = _configured_ceiling_builder(monkeypatch)
+        budget = builder._memory_budget()
+        message = builder._memory_budget_message(budget)
+        _, threads_setting = _configured_ceiling_settings(builder, tmp_path)
+
+        assert threads_setting is not None
+        assert int(threads_setting[0]) == 4
+        assert diagnostics == [message]
+
+    def test_configured_ceiling_limits_the_memory_budget(self, monkeypatch):
+        """The requested ceiling constrains the computed memory budget."""
+        builder, _ = _configured_ceiling_builder(monkeypatch)
+        budget = builder._memory_budget()
+
+        assert budget.duckdb_limit_mb == 6144
+        assert budget.threads == 4
+        assert budget.configured_limit_mb == 6144
+
+    def test_configured_ceiling_is_reported(self, monkeypatch):
+        """The configured ceiling appears in the diagnostic summary."""
+        builder, _ = _configured_ceiling_builder(monkeypatch)
+        budget = builder._memory_budget()
+        message = builder._memory_budget_message(budget)
+
+        assert "cgroup limits=cgroup v2=16,384 MiB" in message
+        assert "detected=16,384 MiB from cgroup v2" in message
+        assert "configured ceiling=6,144 MiB" in message
+
+    def test_configured_ceiling_cannot_raise_automatic_limit(self, monkeypatch):
+        """The override only lowers the existing automatically computed cap."""
         builder = GazetteerBuilder()
+        monkeypatch.setenv("GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB", "6144")
         monkeypatch.setattr(
-            builder, "_physical_memory_bytes", lambda: 8 * 1024 * 1024 * 1024
+            builder,
+            "_memory_sources",
+            lambda: (("sysconf", 8 * 1024 * 1024 * 1024),),
+        )
+        assert builder._memory_limit_mb() == int(8 * 1024 * 0.6)
+
+    @pytest.mark.parametrize("value", ["0", "-1", "6g", "NaN", "\uff16"])
+    def test_invalid_configured_ceiling_fails_clearly(self, monkeypatch, value):
+        """Invalid overrides fail before downloading or building the gazetteer."""
+        builder = GazetteerBuilder()
+        monkeypatch.setenv("GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB", value)
+        monkeypatch.setattr(builder, "_memory_sources", lambda: ())
+        with pytest.raises(ValueError, match="positive integer number of MiB"):
+            builder._memory_limit_mb()
+
+    def test_blank_configured_ceiling_uses_automatic_limit(self, monkeypatch):
+        """A blank optional override leaves automatic memory sizing unchanged."""
+        builder = GazetteerBuilder()
+        monkeypatch.setenv("GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB", "   ")
+        monkeypatch.setattr(
+            builder,
+            "_memory_sources",
+            lambda: (("sysconf", 8 * 1024 * 1024 * 1024),),
+        )
+
+        assert builder._memory_limit_mb() == int(8 * 1024 * 0.6)
+
+    def test_v2_cgroup_limit_is_detected_from_parent(self, tmp_path, monkeypatch):
+        """A finite parent ``memory.max`` constrains a v2 child cgroup."""
+        root = tmp_path / "cgroup-v2"
+        (root / "docker" / "abc").mkdir(parents=True)
+        (root / "docker" / "memory.max").write_text("17179869184\n")
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_cgroup_memberships",
+            staticmethod(lambda: {"v2": "/docker/abc"}),
         )
         monkeypatch.setattr(
-            GazetteerBuilder, "_available_cpus", staticmethod(lambda: 4)
+            GazetteerBuilder,
+            "_cgroup_mounts",
+            staticmethod(lambda: (("v2", "/", str(root)),)),
         )
-        expected_limit = builder._memory_limit_mb()
-        connection = duckdb.connect()
-        try:
-            builder._configure_staging(connection, tmp_path)
-            memory_setting = connection.execute(
-                "SELECT value FROM duckdb_settings() WHERE name = 'memory_limit'"
-            ).fetchone()
-            threads_setting = connection.execute(
-                "SELECT value FROM duckdb_settings() WHERE name = 'threads'"
-            ).fetchone()
-            assert memory_setting is not None
-            assert threads_setting is not None
-            memory_limit = memory_setting[0]
-            threads = threads_setting[0]
-        finally:
-            connection.close()
+        assert GazetteerBuilder._physical_memory_bytes_cgroup_v2() == 17179869184
 
-        # DuckDB may render/round the limit (e.g. ``4.5 GiB``); check we are
-        # near the explicit budget rather than on DuckDB's unbounded default.
-        actual_bytes = _setting_to_bytes(memory_limit)
-        expected_bytes = expected_limit * 1024 * 1024
-        assert abs(actual_bytes - expected_bytes) / expected_bytes < 0.15
-        assert int(threads) == 4
+    def test_v1_memory_controller_limit_is_detected(self, tmp_path, monkeypatch):
+        """A v1 memory controller limit is used when v2 is absent."""
+        root = tmp_path / "cgroup-memory"
+        process = root / "job.slice" / "task.scope"
+        process.mkdir(parents=True)
+        (root / "job.slice" / "memory.limit_in_bytes").write_text("8589934592\n")
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_cgroup_memberships",
+            staticmethod(lambda: {"v1": "/job.slice/task.scope"}),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_cgroup_mounts",
+            staticmethod(lambda: (("v1", "/", str(root)),)),
+        )
+        assert GazetteerBuilder._physical_memory_bytes_cgroup_v1() == 8589934592
 
-    def test_physical_memory_bytes_falls_back_to_windows_api(self, monkeypatch):
-        """When sysconf is unavailable, the Windows reader is used."""
-
-        def _no_sysconf():
-            raise AttributeError("no sysconf")
-
+    def test_v1_unlimited_sentinel_is_ignored(self, tmp_path, monkeypatch):
+        """The v1 unlimited sentinel falls back to detected host memory."""
+        root = tmp_path / "cgroup-memory"
+        process = root / "job.slice" / "task.scope"
+        process.mkdir(parents=True)
+        (process / "memory.limit_in_bytes").write_text("9223372036854771712\n")
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_cgroup_memberships",
+            staticmethod(lambda: {"v1": "/job.slice/task.scope"}),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_cgroup_mounts",
+            staticmethod(lambda: (("v1", "/", str(root)),)),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v2",
+            staticmethod(lambda: None),
+        )
         monkeypatch.setattr(
             GazetteerBuilder,
             "_physical_memory_bytes_sysconf",
-            staticmethod(_no_sysconf),
+            staticmethod(lambda: 8 * 1024 * 1024 * 1024),
         )
         monkeypatch.setattr(
             GazetteerBuilder,
             "_physical_memory_bytes_windows",
-            staticmethod(lambda: 16 * 1024 * 1024 * 1024),
+            staticmethod(lambda: None),
+        )
+        assert GazetteerBuilder._physical_memory_bytes() == 8 * 1024 * 1024 * 1024
+
+    def test_cgroup_membership_and_mountinfo_are_parsed(self, monkeypatch):
+        """Both unified and v1 memory-controller mounts are identified."""
+        contents = {
+            "/proc/self/cgroup": (
+                "0::/docker/job\n5:cpu,memory:/job.slice/task.scope\n"
+                "2:cpu:/job.slice/cpu\n"
+            ),
+            "/proc/self/mountinfo": (
+                "29 22 0:26 / /sys/fs/cgroup rw - cgroup2 cgroup rw\n"
+                "30 22 0:27 / /sys/fs/cgroup/memory rw - cgroup cgroup rw,memory\n"
+            ),
+        }
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_read_proc_file",
+            staticmethod(lambda path: contents[path]),
+        )
+        assert GazetteerBuilder._cgroup_memberships() == {
+            "v2": "/docker/job",
+            "v1": "/job.slice/task.scope",
+        }
+        assert GazetteerBuilder._cgroup_mounts() == (
+            ("v2", "/", "/sys/fs/cgroup"),
+            ("v1", "/", "/sys/fs/cgroup/memory"),
         )
 
-        assert GazetteerBuilder._physical_memory_bytes() == 16 * 1024 * 1024 * 1024
-
-    def test_physical_memory_bytes_returns_none_when_all_readers_fail(
+    def test_physical_memory_prefers_cgroup_and_falls_back_to_sysconf(
         self, monkeypatch
     ):
-        """All detection failures are treated as 'unknown', not a crash."""
-
-        def _cgroup_none():
-            return None
-
-        def _sysconf_error():
-            raise OSError("not supported")
-
-        def _windows_error():
-            raise AttributeError("no windll")
-
+        """Finite cgroup caps win, while absent caps fall back to host RAM."""
         monkeypatch.setattr(
             GazetteerBuilder,
-            "_physical_memory_bytes_cgroup",
-            staticmethod(_cgroup_none),
-        )
-        monkeypatch.setattr(
-            GazetteerBuilder,
-            "_physical_memory_bytes_sysconf",
-            staticmethod(_sysconf_error),
-        )
-        monkeypatch.setattr(
-            GazetteerBuilder,
-            "_physical_memory_bytes_windows",
-            staticmethod(_windows_error),
-        )
-
-        assert GazetteerBuilder._physical_memory_bytes() is None
-
-    def test_physical_memory_bytes_prefers_lower_cgroup_limit(self, monkeypatch):
-        """A finite cgroup limit wins over larger host RAM from sysconf."""
-        monkeypatch.setattr(
-            GazetteerBuilder,
-            "_physical_memory_bytes_cgroup",
+            "_physical_memory_bytes_cgroup_v2",
             staticmethod(lambda: 4 * 1024 * 1024 * 1024),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v1",
+            staticmethod(lambda: None),
         )
         monkeypatch.setattr(
             GazetteerBuilder,
@@ -232,8 +366,23 @@ class TestMemoryLimit:
             "_physical_memory_bytes_windows",
             staticmethod(lambda: None),
         )
+        assert GazetteerBuilder._physical_memory_bytes() == 4 * 1024**3
 
-        assert GazetteerBuilder._physical_memory_bytes() == 4 * 1024 * 1024 * 1024
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v2",
+            staticmethod(lambda: None),
+        )
+        assert GazetteerBuilder._physical_memory_bytes() == 16 * 1024**3
+
+    def test_unknown_memory_uses_fallback(self, monkeypatch):
+        """All unavailable probes use the bounded fallback instead of failing."""
+        monkeypatch.setattr(GazetteerBuilder, "_memory_sources", staticmethod(tuple))
+        assert GazetteerBuilder._physical_memory_bytes() is None
+        assert (
+            GazetteerBuilder()._memory_limit_mb()
+            == GazetteerBuilder._FALLBACK_MEMORY_MB
+        )
 
     def test_available_cpus_falls_back_when_affinity_unsupported(self, monkeypatch):
         """Without sched_getaffinity, cpu_count() is used."""
@@ -243,129 +392,13 @@ class TestMemoryLimit:
 
         monkeypatch.setattr(os, "sched_getaffinity", _no_affinity, raising=False)
         monkeypatch.setattr(os, "cpu_count", lambda: 6)
-
         assert GazetteerBuilder._available_cpus() == 6
 
     def test_available_cpus_falls_back_when_affinity_missing(self, monkeypatch):
         """Missing sched_getaffinity is handled on platforms without it."""
         monkeypatch.delattr(os, "sched_getaffinity", raising=False)
         monkeypatch.setattr(os, "cpu_count", lambda: 6)
-
         assert GazetteerBuilder._available_cpus() == 6
-
-    def test_cgroup_reader_returns_none_without_unified_hierarchy(
-        self, tmp_path, monkeypatch
-    ):
-        """Legacy cgroup lines without ``0::`` yield no limit."""
-        cgroup = tmp_path / "cgroup"
-        cgroup.write_text("1:cpu:/\n")
-        real_open = open
-
-        def _open(path, *args, **kwargs):
-            if str(path) == "/proc/self/cgroup":
-                return real_open(cgroup, *args, **kwargs)
-            return real_open(path, *args, **kwargs)
-
-        monkeypatch.setattr("builtins.open", _open)
-
-        assert GazetteerBuilder._physical_memory_bytes_cgroup() is None
-
-    def test_cgroup_reader_returns_finite_memory_max(self, tmp_path, monkeypatch):
-        """A finite memory.max on the process cgroup is returned."""
-        from pathlib import Path as PathType
-
-        cgroup = tmp_path / "cgroup"
-        cgroup.write_text("0::/docker/abc\n")
-        cg_root = tmp_path / "cgroupfs"
-        limit_dir = cg_root / "docker" / "abc"
-        limit_dir.mkdir(parents=True)
-        (limit_dir / "memory.max").write_text("2147483648\n")
-
-        real_open = open
-
-        def _open(path, *args, **kwargs):
-            if str(path) == "/proc/self/cgroup":
-                return real_open(cgroup, *args, **kwargs)
-            return real_open(path, *args, **kwargs)
-
-        monkeypatch.setattr("builtins.open", _open)
-
-        real_path = PathType
-
-        def _path(*args, **kwargs):
-            if args and args[0] == "/sys/fs/cgroup":
-                return real_path(cg_root, *args[1:], **kwargs)
-            return real_path(*args, **kwargs)
-
-        monkeypatch.setattr("geoparser.gazetteer.build.builder.Path", _path)
-
-        assert GazetteerBuilder._physical_memory_bytes_cgroup() == 2147483648
-
-    def test_cgroup_reader_walks_up_to_a_parent_that_sets_a_limit(
-        self, tmp_path, monkeypatch
-    ):
-        """Docker sets memory.max on a parent while the leaf cgroup has none."""
-        from pathlib import Path as PathType
-
-        cgroup = tmp_path / "cgroup"
-        cgroup.write_text("0::/docker/abc\n")
-        cg_root = tmp_path / "cgroupfs"
-        (cg_root / "docker" / "abc").mkdir(parents=True)
-        # Only the parent carries the limit; the leaf has no memory.max at all.
-        (cg_root / "docker" / "memory.max").write_text("1073741824\n")
-
-        real_open = open
-
-        def _open(path, *args, **kwargs):
-            if str(path) == "/proc/self/cgroup":
-                return real_open(cgroup, *args, **kwargs)
-            return real_open(path, *args, **kwargs)
-
-        monkeypatch.setattr("builtins.open", _open)
-
-        real_path = PathType
-
-        def _path(*args, **kwargs):
-            if args and args[0] == "/sys/fs/cgroup":
-                return real_path(cg_root, *args[1:], **kwargs)
-            return real_path(*args, **kwargs)
-
-        monkeypatch.setattr("geoparser.gazetteer.build.builder.Path", _path)
-
-        assert GazetteerBuilder._physical_memory_bytes_cgroup() == 1073741824
-
-    def test_cgroup_reader_returns_none_when_every_level_is_unlimited(
-        self, tmp_path, monkeypatch
-    ):
-        """Walking to the root without a finite memory.max yields no limit."""
-        from pathlib import Path as PathType
-
-        cgroup = tmp_path / "cgroup"
-        cgroup.write_text("0::/docker/abc\n")
-        cg_root = tmp_path / "cgroupfs"
-        (cg_root / "docker" / "abc").mkdir(parents=True)
-        for directory in (cg_root, cg_root / "docker", cg_root / "docker" / "abc"):
-            (directory / "memory.max").write_text("max\n")
-
-        real_open = open
-
-        def _open(path, *args, **kwargs):
-            if str(path) == "/proc/self/cgroup":
-                return real_open(cgroup, *args, **kwargs)
-            return real_open(path, *args, **kwargs)
-
-        monkeypatch.setattr("builtins.open", _open)
-
-        real_path = PathType
-
-        def _path(*args, **kwargs):
-            if args and args[0] == "/sys/fs/cgroup":
-                return real_path(cg_root, *args[1:], **kwargs)
-            return real_path(*args, **kwargs)
-
-        monkeypatch.setattr("geoparser.gazetteer.build.builder.Path", _path)
-
-        assert GazetteerBuilder._physical_memory_bytes_cgroup() is None
 
     def test_windows_memory_reader_returns_total_phys(self, monkeypatch):
         """GlobalMemoryStatusEx success yields ullTotalPhys."""
@@ -409,6 +442,192 @@ class TestMemoryLimit:
         )
 
         assert GazetteerBuilder._physical_memory_bytes_windows() is None
+
+    @pytest.mark.parametrize("value", [None, 0, -1])
+    def test_read_memory_ignores_missing_and_nonpositive_values(self, value):
+        assert GazetteerBuilder._read_memory(lambda: value) is None
+
+    @pytest.mark.parametrize("error_type", [ValueError, OSError, AttributeError])
+    def test_read_memory_skips_unavailable_probes(self, error_type):
+        def reader():
+            raise error_type("probe unavailable")
+
+        assert GazetteerBuilder._read_memory(reader) is None
+
+    def test_memory_sources_collects_available_readers(self, monkeypatch):
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v2",
+            staticmethod(lambda: 4 * 1024**3),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v1",
+            staticmethod(lambda: None),
+        )
+
+        def unavailable():
+            raise OSError("sysconf unavailable")
+
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_sysconf",
+            staticmethod(unavailable),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_windows",
+            staticmethod(lambda: 8 * 1024**3),
+        )
+
+        assert GazetteerBuilder._memory_sources() == (
+            ("cgroup v2", 4 * 1024**3),
+            ("Windows API", 8 * 1024**3),
+        )
+
+    def test_legacy_cgroup_probe_returns_smallest_finite_limit(self, monkeypatch):
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v2",
+            staticmethod(lambda: 4 * 1024**3),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v1",
+            staticmethod(lambda: 2 * 1024**3),
+        )
+        assert GazetteerBuilder._physical_memory_bytes_cgroup() == 2 * 1024**3
+
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v2",
+            staticmethod(lambda: None),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_physical_memory_bytes_cgroup_v1",
+            staticmethod(lambda: None),
+        )
+        assert GazetteerBuilder._physical_memory_bytes_cgroup() is None
+
+    def test_sysconf_memory_probe_reads_page_count_and_size(self, monkeypatch):
+        values = {"SC_PHYS_PAGES": 100, "SC_PAGE_SIZE": 4096}
+        monkeypatch.setattr(os, "sysconf", lambda name: values[name], raising=False)
+        assert GazetteerBuilder._physical_memory_bytes_sysconf() == 409600
+
+    def test_fallback_memory_diagnostics_are_explicit(self, monkeypatch):
+        monkeypatch.delenv("GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB", raising=False)
+        monkeypatch.setattr(GazetteerBuilder, "_memory_sources", staticmethod(tuple))
+        builder = GazetteerBuilder()
+
+        message = builder._memory_budget_message(builder._memory_budget())
+
+        assert "cgroup limits=unavailable" in message
+        assert "detected=unknown; using bounded fallback" in message
+        assert "no configured ceiling" in message
+
+    def test_cgroup_memory_probe_handles_missing_membership_and_matching_mount(
+        self, monkeypatch, tmp_path
+    ):
+        monkeypatch.setattr(GazetteerBuilder, "_cgroup_memberships", staticmethod(dict))
+        assert GazetteerBuilder._cgroup_memory_limit("v2", "memory.max") is None
+
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_cgroup_memberships",
+            staticmethod(lambda: {"v2": "/job/task"}),
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_cgroup_mounts",
+            staticmethod(lambda: (("v1", "/", str(tmp_path)),)),
+        )
+        assert GazetteerBuilder._cgroup_memory_limit("v2", "memory.max") is None
+
+    def test_cgroup_limit_probe_handles_outside_membership_and_missing_files(
+        self, tmp_path
+    ):
+        assert (
+            GazetteerBuilder._cgroup_limit_for_mount(
+                "/outside/job", "/mounted", str(tmp_path), "memory.max", None
+            )
+            is None
+        )
+        assert (
+            GazetteerBuilder._cgroup_limit_for_mount(
+                "/job/task", "/", str(tmp_path), "memory.max", None
+            )
+            is None
+        )
+
+    def test_cgroup_ancestor_walk_stops_outside_mount(self, tmp_path):
+        """The parent walk cannot leave its mounted cgroup boundary."""
+        boundary = tmp_path / "cgroup"
+        outside = tmp_path / "outside"
+
+        assert tuple(GazetteerBuilder._cgroup_ancestors(outside, boundary)) == ()
+
+    @pytest.mark.parametrize(
+        ("contents", "unlimited", "expected"),
+        [
+            ("", None, None),
+            ("max", None, None),
+            ("not-an-integer", None, None),
+            ("0", None, None),
+            ("-1", None, None),
+            ("1024", 2048, 1024),
+            ("2048", 2048, None),
+        ],
+    )
+    def test_cgroup_limit_file_ignores_empty_invalid_and_unlimited_values(
+        self, tmp_path, contents, unlimited, expected
+    ):
+        path = tmp_path / "memory.max"
+        path.write_text(contents, encoding="utf-8")
+        assert GazetteerBuilder._read_cgroup_limit_file(path, unlimited) == expected
+
+    def test_cgroup_limit_file_ignores_missing_file(self, tmp_path):
+        assert (
+            GazetteerBuilder._read_cgroup_limit_file(tmp_path / "missing", None) is None
+        )
+
+    def test_cgroup_discovery_falls_back_when_proc_files_are_unavailable(
+        self, monkeypatch
+    ):
+        def unavailable(_path):
+            raise OSError("procfs unavailable")
+
+        monkeypatch.setattr(
+            GazetteerBuilder, "_read_proc_file", staticmethod(unavailable)
+        )
+        assert GazetteerBuilder._cgroup_memberships() == {}
+        assert GazetteerBuilder._cgroup_mounts() == ()
+
+    def test_mountinfo_parser_skips_unrelated_lines_and_decodes_escapes(
+        self, monkeypatch
+    ):
+        contents = "\n".join(
+            (
+                "not mountinfo",
+                "1 2 - cgroup2",
+                "50 20 0:30 / /tmp rw - tmpfs tmpfs rw",
+                "51 20 0:31 / /sys/fs/cgroup/cpu rw - cgroup cgroup rw,cpu",
+                "52 20 0:32 / /sys/fs/cgroup/incomplete rw - cgroup cgroup",
+                "55 20 0:35 / /sys/fs/cgroup/empty rw - ",
+                "53 20 0:33 / /sys/fs/my\\040mount rw - cgroup2 cgroup rw",
+                "54 20 0:34 / /sys/fs/cgroup/memory\\040group rw - cgroup cgroup rw,memory",
+            )
+        )
+        monkeypatch.setattr(
+            GazetteerBuilder,
+            "_read_proc_file",
+            staticmethod(lambda _path: contents),
+        )
+
+        assert GazetteerBuilder._cgroup_mounts() == (
+            ("v2", "/", "/sys/fs/my mount"),
+            ("v1", "/", "/sys/fs/cgroup/memory group"),
+        )
 
 
 @pytest.mark.unit
