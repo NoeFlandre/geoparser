@@ -269,6 +269,58 @@ def test_otter_invalid_document_outputs_are_recorded_without_aborting_chunk(
     assert restored.failures[runner.RECOGNITION]["invalid"]["raw_output"] == raw_output
 
 
+def test_non_json_otter_output_is_safe_to_checkpoint(tmp_path, monkeypatch):
+    documents = [document("good"), document("invalid")]
+
+    class NonJsonOutput:
+        def __repr__(self):
+            return "non-json otter output"
+
+    def process(_phase, batch, *, recognizer, resolver):
+        if len(batch) > 1:
+            raise PredictionOutputError(
+                "Invalid Otter output for document at index 1: bad span.",
+                document_index=1,
+                raw_output=None,
+            )
+        if batch[0].identifier == "invalid":
+            raise PredictionOutputError(
+                "Invalid Otter output for document at index 0: bad span.",
+                document_index=0,
+                raw_output=NonJsonOutput(),
+            )
+        return {batch[0].identifier: []}
+
+    monkeypatch.setattr(runner, "_process_chunk", process)
+    _, failures = runner._process_chunk_with_failures(
+        runner.RECOGNITION, documents, recognizer=object(), resolver=None
+    )
+
+    assert failures["invalid"]["raw_output"] == {
+        "unserializable": True,
+        "type": f"{NonJsonOutput.__module__}.{NonJsonOutput.__qualname__}",
+        "repr": "non-json otter output",
+    }
+    checkpoint_path = tmp_path / "non-json-otter.json"
+    state = Checkpoint(identity(), failures={runner.RECOGNITION: failures})
+    ckpt.save(checkpoint_path, state)
+    restored, _ = ckpt.load(checkpoint_path, identity())
+    assert (
+        restored.failures[runner.RECOGNITION]["invalid"]["raw_output"]["repr"]
+        == "non-json otter output"
+    )
+
+
+def test_oversized_otter_output_is_truncated_for_checkpointing():
+    output = "x" * (runner._MAX_RAW_OUTPUT_JSON_CHARS + 10)
+
+    safe_output = runner._json_safe_raw_output(output)
+
+    assert safe_output["truncated"] is True
+    assert safe_output["original_characters"] > runner._MAX_RAW_OUTPUT_JSON_CHARS
+    assert len(safe_output["preview"]) == runner._MAX_RAW_OUTPUT_JSON_CHARS
+
+
 def test_score_counts_invalid_otter_output_as_a_false_positive():
     documents = [document("good"), document("invalid")]
     state = Checkpoint(identity())

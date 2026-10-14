@@ -10,6 +10,8 @@ over: half a document's toponyms would be a wrong number, not a partial one.
 from __future__ import annotations
 
 import gc
+import json
+import reprlib
 import time
 import typing as t
 import uuid
@@ -335,8 +337,37 @@ def _process_recognition_documents_individually(
                 "message": str(error),
             }
             if isinstance(error, PredictionOutputError):
-                failures[document.identifier]["raw_output"] = error.raw_output
+                failures[document.identifier]["raw_output"] = _json_safe_raw_output(
+                    error.raw_output
+                )
     return predictions, failures
+
+
+_MAX_RAW_OUTPUT_JSON_CHARS = 4096
+
+
+def _json_safe_raw_output(value: t.Any) -> t.Any:
+    """Bound and normalize diagnostic model output before checkpointing it."""
+    try:
+        encoded = json.dumps(value, ensure_ascii=False, allow_nan=False)
+    except (TypeError, ValueError, OverflowError, RecursionError):
+        try:
+            preview = reprlib.Repr().repr(value)
+        except Exception:  # noqa: BLE001 - model output repr must not break checkpoints
+            preview = "<repr unavailable>"
+        return {
+            "unserializable": True,
+            "type": f"{type(value).__module__}.{type(value).__qualname__}",
+            "repr": preview[:_MAX_RAW_OUTPUT_JSON_CHARS],
+        }
+
+    if len(encoded) > _MAX_RAW_OUTPUT_JSON_CHARS:
+        return {
+            "truncated": True,
+            "original_characters": len(encoded),
+            "preview": encoded[:_MAX_RAW_OUTPUT_JSON_CHARS],
+        }
+    return json.loads(encoded)
 
 
 def _otter_failure(error: ValueError) -> tuple[str, str] | None:
