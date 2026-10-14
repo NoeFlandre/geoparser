@@ -273,6 +273,15 @@ class GazetteerBuilder:
             automatic_limit_mb = self._FALLBACK_MEMORY_MB
         else:
             total_mb = detected_bytes / (1024 * 1024)
+            minimum_total_mb = self._MIN_MEMORY_MB + self._MEMORY_HEADROOM_MB
+            if total_mb < minimum_total_mb:
+                msg = (
+                    f"Detected {detected_source} memory limit of {total_mb:,.1f} MiB "
+                    f"is below the {minimum_total_mb:,} MiB minimum needed to reserve "
+                    f"{self._MEMORY_HEADROOM_MB:,} MiB of headroom alongside a "
+                    f"{self._MIN_MEMORY_MB:,} MiB DuckDB limit."
+                )
+                raise MemoryError(msg)
             automatic_limit_mb = int(
                 max(
                     min(
