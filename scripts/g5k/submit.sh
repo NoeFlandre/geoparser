@@ -70,17 +70,46 @@ fi
 
 mkdir -p "$RESULTS/logs"
 
-existing="$(oarstat -u --json 2>/dev/null \
-    | python3 -c "
-import json, sys
+if ! oarstat_json="$(oarstat -u --json)"; then
+    echo "Could not inspect queued/running OAR jobs; refusing to submit." >&2
+    exit 1
+fi
+
+if ! existing="$(BENCHMARK_JOB_NAME="$JOB_NAME" python3 -c '
+import json, os, sys
+
 try:
     jobs = json.load(sys.stdin)
-except Exception:
-    sys.exit(0)
-for job in (jobs.values() if isinstance(jobs, dict) else jobs):
-    if job.get('name') == '${JOB_NAME}' and job.get('state') in {'Waiting', 'Running', 'Launching', 'toLaunch'}:
-        print(job.get('Job_Id') or job.get('id'))
-" || true)"
+except Exception as error:
+    print(f"Could not parse oarstat JSON: {error}", file=sys.stderr)
+    sys.exit(1)
+
+if isinstance(jobs, dict):
+    jobs = list(jobs.values())
+elif not isinstance(jobs, list):
+    print("oarstat JSON must be a list or object of jobs", file=sys.stderr)
+    sys.exit(1)
+
+for job in jobs:
+    if not isinstance(job, dict):
+        print("oarstat JSON contains a non-object job", file=sys.stderr)
+        sys.exit(1)
+    if not isinstance(job.get("name"), str) or not isinstance(job.get("state"), str):
+        print("oarstat JSON contains a job without a name or state", file=sys.stderr)
+        sys.exit(1)
+    if (
+        job["name"] == os.environ["BENCHMARK_JOB_NAME"]
+        and job["state"] in {"Waiting", "Running", "Launching", "toLaunch"}
+    ):
+        job_id = job.get("Job_Id") or job.get("id")
+        if job_id is None:
+            print("Matching OAR job has no identifier", file=sys.stderr)
+            sys.exit(1)
+        print(job_id)
+' <<< "$oarstat_json")"; then
+    echo "Could not validate queued/running OAR jobs; refusing to submit." >&2
+    exit 1
+fi
 
 if [[ -n "$existing" ]]; then
     echo "A '${JOB_NAME}' job is already queued or running: ${existing}" >&2

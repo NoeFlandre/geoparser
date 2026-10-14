@@ -64,6 +64,7 @@ COLUMNS = (
     "language",
     "documents",
     "gold_toponyms",
+    "run_limit",
     "pipeline",
     *MODEL_ROLES,
     "f1",
@@ -197,6 +198,7 @@ def _pipeline_row(
         "language": data.get("language", "en"),
         "documents": data["documents"],
         "gold_toponyms": data["gold_toponyms"],
+        "run_limit": data.get("limit"),
         "pipeline": pipeline["name"],
         **{role: models.get(role, "") for role in MODEL_ROLES},
         "f1": recognition.get("f1"),
@@ -267,12 +269,12 @@ def latest_results(
     pipelines: Sequence[str] | None = None,
 ) -> dict[tuple[str, str], dict[str, t.Any]]:
     """
-    Keep, for every corpus and pipeline, the row of the most recent run.
+    Keep, for every corpus and pipeline, the row of the most recent full run.
 
-    Runs are ordered by when they started rather than by folder name, so a
-    partial run cannot shadow the complete rerun that followed it. Given a
-    metric, only rows that measured it count, so a resolution-only rerun
-    cannot blank out the recognition scores of the run before it.
+    Explicitly limited smoke runs remain in the raw CSV with their limit, but
+    cannot replace full-corpus scores in the card. Runs are ordered by when
+    they started rather than by folder name. Given a metric, only rows that
+    measured it count, so a resolution-only rerun cannot blank out recognition.
 
     Args:
         rows: Collected result rows
@@ -284,6 +286,8 @@ def latest_results(
     """
     latest: dict[tuple[str, str], dict[str, t.Any]] = {}
     for row in sorted(rows, key=lambda row: row.get("started_at", "")):
+        if row.get("run_limit") is not None:
+            continue
         if _missing_metric(row, metric):
             continue
         if _excluded_pipeline(row, pipelines):

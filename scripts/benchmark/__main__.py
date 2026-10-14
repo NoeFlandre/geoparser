@@ -217,6 +217,8 @@ def require_clean_corpus(loaded: corpora.LoadedCorpus) -> None:
 
 def _check_frozen_corpus_totals(loaded: corpora.LoadedCorpus) -> None:
     """Reject a frozen matrix slice whose loaded gold totals changed."""
+    if loaded.limit is not None:
+        return
     expected = next(
         (
             cell
@@ -230,9 +232,7 @@ def _check_frozen_corpus_totals(loaded: corpora.LoadedCorpus) -> None:
 
 
 def _check_known_frozen_totals(loaded: corpora.LoadedCorpus, expected: Any) -> None:
-    """Compare loaded counts when the adapter declared the frozen slice size."""
-    if loaded.expected_documents != expected.documents:
-        return
+    """Compare full-load counts with the frozen slice, independent of adapter totals."""
     actual = (len(loaded.documents), corpus.gold_toponym_count(loaded.documents))
     frozen = (expected.documents, expected.gold_toponyms)
     if actual != frozen:
@@ -585,6 +585,7 @@ def _corpus_report_payload(
         "corpus": loaded.name,
         "language": loaded.language,
         "corpus_digest": loaded.digest,
+        "limit": run.arguments.limit,
         "documents": len(loaded.documents),
         "gold_toponyms": gold_count,
         "gazetteer": pipelines.GAZETTEER_NAME,

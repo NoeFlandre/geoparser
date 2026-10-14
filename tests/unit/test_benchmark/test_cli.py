@@ -480,6 +480,30 @@ class TestCorpusChecksGate:
 
         benchmark_cli.require_clean_corpus(clean)
 
+    def test_changed_adapter_totals_do_not_disable_the_frozen_matrix_check(self):
+        """A coordinated adapter/data change still has to match the frozen slice."""
+        documents = [
+            Document(
+                identifier,
+                "Paris",
+                (GoldSpan(0, 5, "Paris", 48.0, 2.0),),
+            )
+            for identifier in ("doc-1", "doc-2")
+        ]
+        loaded = LoadedCorpus(
+            "geovirus",
+            "en",
+            documents,
+            "digest",
+            expected_documents=2,
+            expected_gold=2,
+        )
+
+        with pytest.raises(benchmark_cli.CorpusRejectedError, match="frozen matrix"):
+            benchmark_cli._check_known_frozen_totals(
+                loaded, SimpleNamespace(documents=1, gold_toponyms=1)
+            )
+
     def test_malformed_corpus_is_rejected_naming_the_corpus_and_problem(self):
         """Test that the rejection says which corpus failed and why."""
         with pytest.raises(benchmark_cli.CorpusRejectedError) as raised:

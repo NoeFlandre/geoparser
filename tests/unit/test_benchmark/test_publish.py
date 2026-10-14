@@ -23,7 +23,7 @@ from scripts.benchmark.publish import (
 )
 
 
-def report(tmp_path, folder, corpus="geovirus", language="en"):
+def report(tmp_path, folder, corpus="geovirus", language="en", limit=None):
     """Write one corpus report and return its folder."""
     path = tmp_path / folder
     path.mkdir(parents=True)
@@ -32,6 +32,7 @@ def report(tmp_path, folder, corpus="geovirus", language="en"):
             {
                 "corpus": corpus,
                 "language": language,
+                "limit": limit,
                 "documents": 2,
                 "gold_toponyms": 5,
                 "commit": "abc1234",
@@ -130,6 +131,7 @@ def _row(run, corpus, pipeline, *, f1, acc, started="2026-01-01T00:00:00"):
         "language": "en",
         "documents": 2,
         "gold_toponyms": 5,
+        "run_limit": None,
         "pipeline": pipeline,
         "recognizer": "",
         "resolver": "",
@@ -162,6 +164,16 @@ class TestLatestResults:
         new = _row("a-full", "geovirus", "hybrid", f1=0.9, acc=0.9, started="2")
 
         assert latest_results([old, new]) == {("geovirus", "hybrid"): new}
+
+    def test_a_limited_smoke_run_cannot_replace_full_corpus_scores(self):
+        """Partial smoke evidence stays out of the card's latest full-run tables."""
+        full = _row("full", "geovirus", "hybrid", f1=0.9, acc=0.9, started="1")
+        partial = {
+            **_row("smoke", "geovirus", "hybrid", f1=0.1, acc=0.1, started="2"),
+            "run_limit": 5,
+        }
+
+        assert latest_results([full, partial]) == {("geovirus", "hybrid"): full}
 
     def test_corpus_names_are_compared_case_insensitively(self):
         """GeoVirus from an older report and geovirus are one corpus."""
@@ -261,6 +273,15 @@ class TestViewer:
         assert "recognizer" in lines[0] and "resolver" in lines[0]
         assert len(lines) == 2
         assert "r-model" in lines[1] and "s-model" in lines[1]
+
+    def test_csv_identifies_limited_runs(self, tmp_path):
+        """The raw evidence table labels smoke rows even though the card skips them."""
+        report(tmp_path, "run-smoke", limit=5)
+
+        lines = render_csv(collect_rows(tmp_path)).splitlines()
+
+        assert "run_limit" in lines[0]
+        assert ",5," in lines[1]
 
 
 class TestPipelineDescriptions:
