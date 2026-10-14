@@ -258,7 +258,14 @@ class TestPipelineDescriptions:
 
     def test_every_pipeline_is_described(self):
         """Test that every benchmark pipeline has an explanation."""
-        assert set(PIPELINE_DESCRIPTIONS) == {"upstream", "swapped", "hybrid", "prior"}
+        assert set(PIPELINE_DESCRIPTIONS) == {
+            "upstream",
+            "swapped",
+            "hybrid",
+            "prior",
+            "xlm-minilm",
+            "otter-cross-minilm",
+        }
 
     def test_card_explains_each_pipeline_and_its_models(self):
         """The pipelines table names every pipeline and its real models."""
@@ -268,6 +275,27 @@ class TestPipelineDescriptions:
         assert "**hybrid**" in card
         assert "fastino/gliner2.5-multi-v1" in card
         assert "dguzh/geo-all-MiniLM-L6-v2" in card
+
+    def test_missing_model_pipelines_appear_with_language_evidence(self):
+        """The first-five comparison includes its new models and support notes."""
+        rows = [
+            _row("run-a", "geovirus", "swapped", f1=0.8, acc=0.7),
+            _row("run-a", "geovirus", "xlm-minilm", f1=0.7, acc=0.7),
+            _row("run-a", "geovirus", "otter-cross-minilm", f1=0.6, acc=0.7),
+        ]
+
+        card = render_card(rows)
+
+        assert "| Corpus | Lang | swapped | xlm-minilm | otter-cross-minilm |" in card
+        assert "Davlan/xlm-roberta-base-ner-hrl" in card
+        assert "whoisjones/otter-cross-mmbert" in card
+        assert "cross-lingual transfer" in card
+        assert "CC-BY-NC-4.0" in card
+        assert "AFL-3.0" in card and "Apache-2.0" in card
+        assert "GeoVirus pilot retained" in card
+        assert "supported languages are not exhaustively listed" in card
+        assert "per-document failures" in card
+        assert "run-manifest.json" in card
 
     def test_prior_description_matches_the_default_configuration(self):
         """The published card describes the no-trimming population prior."""

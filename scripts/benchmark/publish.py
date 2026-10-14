@@ -86,18 +86,33 @@ PIPELINE_DESCRIPTIONS = {
     "swapped": (
         "GLiNER2 `fastino/gliner2.5-multi-v1`",
         "Jina embeddings v5 + Jina reranker v3.5",
-        "Historical, GeoVirus only (`runs/*/baseline-jina/`).",
+        "GeoVirus pilot retained; GLiNER is Apache-2.0 with a multilingual claim, "
+        "while Jina is CC-BY-NC-4.0 with no exhaustive language list.",
     ),
     "hybrid": (
         "GLiNER2 `fastino/gliner2.5-multi-v1`",
         "MiniLM `dguzh/geo-all-MiniLM-L6-v2`",
-        "Multilingual recognition, upstream resolution.",
+        "Multilingual recognition, upstream resolution; MiniLM license and "
+        "exhaustive language list are undeclared.",
     ),
     "prior": (
         "GLiNER2 `fastino/gliner2.5-multi-v1`",
         "MiniLM + weight-0.3 population prior (no inflection fallback)",
         "hybrid, with a 0.3 log-population prior and exact matching only; "
-        "no inflection fallback or extra model.",
+        "no inflection fallback or extra model; MiniLM license and exhaustive "
+        "language list are undeclared.",
+    ),
+    "xlm-minilm": (
+        "XLM-R `Davlan/xlm-roberta-base-ner-hrl`",
+        "MiniLM `dguzh/geo-all-MiniLM-L6-v2`",
+        "AFL-3.0; fine-tuned for ar, de, en, es, fr, it, lv, nl, pt and zh; "
+        "other selected languages are cross-lingual transfer.",
+    ),
+    "otter-cross-minilm": (
+        "Otter `whoisjones/otter-cross-mmbert`",
+        "MiniLM `dguzh/geo-all-MiniLM-L6-v2`",
+        "Apache-2.0; multilingual claim, but supported languages are not "
+        "exhaustively listed.",
     ),
 }
 
@@ -624,6 +639,11 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
         "resolvers see the same toponyms. **Recognition** is exact-match F1.",
         "AUC summarises the whole log-scaled error curve, lower being better.",
         "**Bold** is best on a corpus, <u>underlined</u> second.",
+        "",
+        "Each `runs/` directory includes a `run-manifest.json` with immutable",
+        "model revisions, documented language coverage, phase-reuse provenance,",
+        "and any per-document failures; unlisted language support is not treated",
+        "as unsupported without model evidence.",
         "",
         *_chart_links(repo_id),
         *_leaderboard(rows, "accuracy_at_161km", "Resolution: Acc@161km"),
