@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import gc
 import json
-import math
 import time
 import typing as t
 import uuid
@@ -364,12 +363,37 @@ def _json_value_size(
     ancestors: set[int],
 ) -> int | None:
     """Measure strict JSON-compatible values without copying them."""
-    if budget < 1 or depth > 32:
+    if _json_size_budget_exceeded(budget, depth):
         return None
+    return _json_size_for_type(value, budget, depth, ancestors)
+
+
+def _json_size_budget_exceeded(budget: int, depth: int) -> bool:
+    """Whether a value has exhausted its character or nesting budget."""
+    return budget < 1 or depth > 32
+
+
+def _json_size_for_type(
+    value: t.Any,
+    budget: int,
+    depth: int,
+    ancestors: set[int],
+) -> int | None:
+    """Dispatch a bounded JSON value by its exact built-in type."""
     if type(value) in {type(None), bool, int, float}:
         return _json_primitive_size(value, budget)
     if type(value) is str:
         return _json_string_size(value, budget)
+    return _json_container_size(value, budget, depth, ancestors)
+
+
+def _json_container_size(
+    value: t.Any,
+    budget: int,
+    depth: int,
+    ancestors: set[int],
+) -> int | None:
+    """Dispatch supported JSON containers without accepting subclasses."""
     if type(value) in {list, tuple}:
         return _json_sequence_size(value, budget, depth, ancestors)
     if type(value) is dict:
@@ -379,40 +403,35 @@ def _json_value_size(
 
 def _json_primitive_size(value: t.Any, budget: int) -> int | None:
     """Measure a JSON primitive after checking its bounded scalar encoding."""
-    if value is None:
-        size = 4
-    elif type(value) is bool:
-        size = 4 if value else 5
-    elif type(value) is int:
-        if value.bit_length() > budget * 4:
-            return None
-        try:
-            size = len(str(value))
-        except ValueError:
-            return None
-    else:
-        if not math.isfinite(value):
-            return None
+    if type(value) is int and value.bit_length() > budget * 4:
+        return None
+    try:
         size = len(json.dumps(value, allow_nan=False))
+    except (OverflowError, ValueError):
+        return None
     return size if size <= budget else None
 
 
 def _json_string_size(value: str, budget: int) -> int | None:
     """Measure an ASCII-safe JSON string, stopping as soon as it is too large."""
     size = 2
-    if size > budget:
+    if budget < size:
         return None
     for character in value:
-        codepoint = ord(character)
-        if character in {'"', "\\"}:
-            size += 2
-        elif codepoint < 0x20 or codepoint >= 0x7F:
-            size += 6 if codepoint <= 0xFFFF else 12
-        else:
-            size += 1
+        size += _json_character_size(character)
         if size > budget:
             return None
     return size
+
+
+def _json_character_size(character: str) -> int:
+    """Return a conservative ASCII JSON-escape length for one character."""
+    if character in {'"', "\\"}:
+        return 2
+    codepoint = ord(character)
+    if codepoint < 0x20 or codepoint >= 0x7F:
+        return 6 if codepoint <= 0xFFFF else 12
+    return 1
 
 
 def _json_sequence_size(
@@ -426,18 +445,27 @@ def _json_sequence_size(
     if identity in ancestors or budget < 2:
         return None
     ancestors.add(identity)
-    size = 2
     try:
-        for index, value in enumerate(values):
-            if index:
-                # json.dumps uses the default separators (", ", ": ").
-                size += 2
-            item_size = _json_value_size(value, budget - size, depth + 1, ancestors)
-            if item_size is None:
-                return None
-            size += item_size
+        return _json_sequence_content_size(values, budget, depth, ancestors)
     finally:
         ancestors.remove(identity)
+
+
+def _json_sequence_content_size(
+    values: list[t.Any] | tuple[t.Any, ...],
+    budget: int,
+    depth: int,
+    ancestors: set[int],
+) -> int | None:
+    """Measure sequence items, including the standard JSON separators."""
+    size = 2
+    for index, value in enumerate(values):
+        if index:
+            size += 2
+        item_size = _json_value_size(value, budget - size, depth + 1, ancestors)
+        if item_size is None:
+            return None
+        size += item_size
     return size if size <= budget else None
 
 
@@ -452,24 +480,49 @@ def _json_mapping_size(
     if identity in ancestors or budget < 2:
         return None
     ancestors.add(identity)
-    size = 2
     try:
-        for index, (key, value) in enumerate(values.items()):
-            if type(key) is not str:
-                return None
-            if index:
-                size += 2
-            key_size = _json_string_size(key, budget - size)
-            if key_size is None:
-                return None
-            size += key_size + 2
-            item_size = _json_value_size(value, budget - size, depth + 1, ancestors)
-            if item_size is None:
-                return None
-            size += item_size
+        return _json_mapping_content_size(values, budget, depth, ancestors)
     finally:
         ancestors.remove(identity)
+
+
+def _json_mapping_content_size(
+    values: dict[str, t.Any],
+    budget: int,
+    depth: int,
+    ancestors: set[int],
+) -> int | None:
+    """Measure mapping entries, including default JSON spacing."""
+    size = 2
+    for index, (key, value) in enumerate(values.items()):
+        if index:
+            size += 2
+        entry_size = _json_mapping_entry_size(
+            key, value, budget - size, depth, ancestors
+        )
+        if entry_size is None:
+            return None
+        size += entry_size
     return size if size <= budget else None
+
+
+def _json_mapping_entry_size(
+    key: t.Any,
+    value: t.Any,
+    budget: int,
+    depth: int,
+    ancestors: set[int],
+) -> int | None:
+    """Measure one string-keyed mapping entry without copying its value."""
+    if type(key) is not str:
+        return None
+    key_size = _json_string_size(key, budget)
+    if key_size is None:
+        return None
+    value_size = _json_value_size(value, budget - key_size - 2, depth + 1, ancestors)
+    if value_size is None:
+        return None
+    return key_size + 2 + value_size
 
 
 def _otter_failure(error: ValueError) -> tuple[str, str] | None:

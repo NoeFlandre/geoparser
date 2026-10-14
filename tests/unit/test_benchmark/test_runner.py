@@ -344,7 +344,112 @@ def test_otter_output_at_limit_is_retained():
     assert len(json.dumps(safe_output)) == runner._MAX_RAW_OUTPUT_JSON_CHARS - 1
 
 
-def test_otter_mapping_near_limit_accounts_for_json_dump_separators():
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (None, 4),
+        (True, 4),
+        (False, 5),
+        (0, 1),
+        (-12, 3),
+        (1.5, 3),
+    ],
+)
+def test_json_primitive_size_matches_encoded_json(value, expected):
+    assert runner._json_value_size(value, 100, 0, set()) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("plain", 7),
+        ('a"b', 6),
+        ("\\", 4),
+        ("\n", 8),
+        ("é", 8),
+        ("😀", 14),
+    ],
+)
+def test_json_string_size_conservatively_counts_escapes(value, expected):
+    assert runner._json_value_size(value, 100, 0, set()) == expected
+
+
+def test_json_value_size_rejects_non_json_values_and_non_finite_numbers():
+    assert runner._json_value_size(object(), 100, 0, set()) is None
+    assert runner._json_value_size(float("nan"), 100, 0, set()) is None
+
+
+def test_json_value_size_rejects_excessive_integer_before_stringifying():
+    value = 10 ** (runner._MAX_RAW_OUTPUT_JSON_CHARS * 2)
+
+    assert (
+        runner._json_value_size(value, runner._MAX_RAW_OUTPUT_JSON_CHARS, 0, set())
+        is None
+    )
+
+
+def test_json_value_size_rejects_integer_when_encoder_digit_limit_is_hit():
+    value = 10**4300
+
+    assert (
+        runner._json_value_size(value, runner._MAX_RAW_OUTPUT_JSON_CHARS, 0, set())
+        is None
+    )
+
+
+def test_json_value_size_rejects_over_budget_and_excessive_depth():
+    nested = 0
+    for _ in range(34):
+        nested = [nested]
+
+    assert runner._json_value_size("long", 3, 0, set()) is None
+    assert runner._json_value_size(nested, 100, 0, set()) is None
+
+
+@pytest.mark.parametrize(
+    ("value", "budget"),
+    [
+        (12, 1),
+        ([], 1),
+        ({}, 1),
+    ],
+)
+def test_json_value_size_rejects_small_scalar_and_container_budgets(value, budget):
+    assert runner._json_value_size(value, budget, 0, set()) is None
+
+
+def test_json_container_size_rejects_cycles_and_non_string_mapping_keys():
+    sequence = []
+    sequence.append(sequence)
+    mapping = {}
+    mapping["self"] = mapping
+
+    assert runner._json_value_size(sequence, 100, 0, set()) is None
+    assert runner._json_value_size(mapping, 100, 0, set()) is None
+    assert runner._json_value_size({1: "value"}, 100, 0, set()) is None
+
+
+def test_json_mapping_size_rejects_entry_key_and_value_when_over_budget():
+    long_key = {"x" * 20: 0}
+    long_value = {"key": "x" * 20}
+
+    assert runner._json_value_size(long_key, 10, 0, set()) is None
+    assert runner._json_value_size(long_value, 10, 0, set()) is None
+
+
+def test_json_mapping_size_counts_default_json_separators():
+    value = {"a": 1}
+
+    assert runner._json_value_size(value, 100, 0, set()) == len(json.dumps(value))
+
+
+def test_json_sequence_size_counts_default_json_separators():
+    value = (1, "a")
+
+    assert runner._json_value_size(value, 100, 0, set()) == len(json.dumps(value))
+
+
+def test_otter_mapping_compact_encoding_fits_while_default_encoding_does_not():
     output = {f"k{index}": 0 for index in range(400)}
 
     assert len(json.dumps(output, separators=(",", ":"))) <= (
@@ -352,9 +457,17 @@ def test_otter_mapping_near_limit_accounts_for_json_dump_separators():
     )
     assert len(json.dumps(output)) > runner._MAX_RAW_OUTPUT_JSON_CHARS
 
+
+def test_otter_mapping_near_limit_is_omitted():
+    output = {f"k{index}": 0 for index in range(400)}
+
+    assert runner._json_safe_raw_output(output)["omitted"] is True
+
+
+def test_otter_mapping_omission_notice_fits_character_budget():
+    output = {f"k{index}": 0 for index in range(400)}
     safe_output = runner._json_safe_raw_output(output)
 
-    assert safe_output["omitted"] is True
     assert len(json.dumps(safe_output)) <= runner._MAX_RAW_OUTPUT_JSON_CHARS
 
 
