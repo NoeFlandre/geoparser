@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import gc
 import json
-import reprlib
+import math
 import time
 import typing as t
 import uuid
@@ -348,26 +348,127 @@ _MAX_RAW_OUTPUT_JSON_CHARS = 4096
 
 def _json_safe_raw_output(value: t.Any) -> t.Any:
     """Bound and normalize diagnostic model output before checkpointing it."""
-    try:
-        encoded = json.dumps(value, ensure_ascii=False, allow_nan=False)
-    except (TypeError, ValueError, OverflowError, RecursionError):
-        try:
-            preview = reprlib.Repr().repr(value)
-        except Exception:  # noqa: BLE001 - model output repr must not break checkpoints
-            preview = "<repr unavailable>"
+    if _json_value_size(value, _MAX_RAW_OUTPUT_JSON_CHARS, 0, set()) is None:
         return {
-            "unserializable": True,
+            "omitted": True,
+            "reason": "non_json_or_over_character_limit",
             "type": f"{type(value).__module__}.{type(value).__qualname__}",
-            "repr": preview[:_MAX_RAW_OUTPUT_JSON_CHARS],
         }
+    return json.loads(json.dumps(value, allow_nan=False))
 
-    if len(encoded) > _MAX_RAW_OUTPUT_JSON_CHARS:
-        return {
-            "truncated": True,
-            "original_characters": len(encoded),
-            "preview": encoded[:_MAX_RAW_OUTPUT_JSON_CHARS],
-        }
-    return json.loads(encoded)
+
+def _json_value_size(
+    value: t.Any,
+    budget: int,
+    depth: int,
+    ancestors: set[int],
+) -> int | None:
+    """Measure strict JSON-compatible values without copying them."""
+    if budget < 1 or depth > 32:
+        return None
+    if type(value) in {type(None), bool, int, float}:
+        return _json_primitive_size(value, budget)
+    if type(value) is str:
+        return _json_string_size(value, budget)
+    if type(value) in {list, tuple}:
+        return _json_sequence_size(value, budget, depth, ancestors)
+    if type(value) is dict:
+        return _json_mapping_size(value, budget, depth, ancestors)
+    return None
+
+
+def _json_primitive_size(value: t.Any, budget: int) -> int | None:
+    """Measure a JSON primitive after checking its bounded scalar encoding."""
+    if value is None:
+        size = 4
+    elif type(value) is bool:
+        size = 4 if value else 5
+    elif type(value) is int:
+        if value.bit_length() > budget * 4:
+            return None
+        try:
+            size = len(str(value))
+        except ValueError:
+            return None
+    else:
+        if not math.isfinite(value):
+            return None
+        size = len(json.dumps(value, allow_nan=False))
+    return size if size <= budget else None
+
+
+def _json_string_size(value: str, budget: int) -> int | None:
+    """Measure an ASCII-safe JSON string, stopping as soon as it is too large."""
+    size = 2
+    if size > budget:
+        return None
+    for character in value:
+        codepoint = ord(character)
+        if character in {'"', "\\"}:
+            size += 2
+        elif codepoint < 0x20 or codepoint >= 0x7F:
+            size += 6 if codepoint <= 0xFFFF else 12
+        else:
+            size += 1
+        if size > budget:
+            return None
+    return size
+
+
+def _json_sequence_size(
+    values: list[t.Any] | tuple[t.Any, ...],
+    budget: int,
+    depth: int,
+    ancestors: set[int],
+) -> int | None:
+    """Measure list/tuple JSON payloads with bounded traversal."""
+    identity = id(values)
+    if identity in ancestors or budget < 2:
+        return None
+    ancestors.add(identity)
+    size = 2
+    try:
+        for index, value in enumerate(values):
+            if index:
+                size += 1
+            item_size = _json_value_size(value, budget - size, depth + 1, ancestors)
+            if item_size is None:
+                return None
+            size += item_size
+    finally:
+        ancestors.remove(identity)
+    return size if size <= budget else None
+
+
+def _json_mapping_size(
+    values: dict[str, t.Any],
+    budget: int,
+    depth: int,
+    ancestors: set[int],
+) -> int | None:
+    """Measure string-keyed JSON objects with bounded traversal."""
+    identity = id(values)
+    if identity in ancestors or budget < 2:
+        return None
+    ancestors.add(identity)
+    size = 2
+    try:
+        for index, (key, value) in enumerate(values.items()):
+            if type(key) is not str:
+                return None
+            if index:
+                size += 1
+            key_size = _json_string_size(key, budget - size)
+            if key_size is None:
+                return None
+            size += key_size + 1
+            item_size = _json_value_size(value, budget - size, depth + 1, ancestors)
+            if item_size is None:
+                return None
+            size += item_size
+    finally:
+        ancestors.remove(identity)
+    return size if size <= budget else None
 
 
 def _otter_failure(error: ValueError) -> tuple[str, str] | None:

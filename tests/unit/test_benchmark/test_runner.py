@@ -6,6 +6,7 @@ and resumed correctly, which is what decides whether a job that hits its
 walltime has made progress or wasted a reservation.
 """
 
+import json
 from types import ModuleType, SimpleNamespace
 from unittest.mock import Mock, call
 
@@ -297,28 +298,32 @@ def test_non_json_otter_output_is_safe_to_checkpoint(tmp_path, monkeypatch):
     )
 
     assert failures["invalid"]["raw_output"] == {
-        "unserializable": True,
+        "omitted": True,
+        "reason": "non_json_or_over_character_limit",
         "type": f"{NonJsonOutput.__module__}.{NonJsonOutput.__qualname__}",
-        "repr": "non-json otter output",
     }
     checkpoint_path = tmp_path / "non-json-otter.json"
     state = Checkpoint(identity(), failures={runner.RECOGNITION: failures})
     ckpt.save(checkpoint_path, state)
     restored, _ = ckpt.load(checkpoint_path, identity())
     assert (
-        restored.failures[runner.RECOGNITION]["invalid"]["raw_output"]["repr"]
-        == "non-json otter output"
+        restored.failures[runner.RECOGNITION]["invalid"]["raw_output"]["omitted"]
+        is True
     )
 
 
-def test_oversized_otter_output_is_truncated_for_checkpointing():
-    output = "x" * (runner._MAX_RAW_OUTPUT_JSON_CHARS + 10)
+def test_oversized_otter_output_is_omitted_before_encoding():
+    outputs = [
+        "x" * (runner._MAX_RAW_OUTPUT_JSON_CHARS + 10),
+        [0] * (runner._MAX_RAW_OUTPUT_JSON_CHARS * 10),
+    ]
 
-    safe_output = runner._json_safe_raw_output(output)
+    for output in outputs:
+        safe_output = runner._json_safe_raw_output(output)
 
-    assert safe_output["truncated"] is True
-    assert safe_output["original_characters"] > runner._MAX_RAW_OUTPUT_JSON_CHARS
-    assert len(safe_output["preview"]) == runner._MAX_RAW_OUTPUT_JSON_CHARS
+        assert safe_output["omitted"] is True
+        assert safe_output["reason"] == "non_json_or_over_character_limit"
+        assert len(json.dumps(safe_output)) <= runner._MAX_RAW_OUTPUT_JSON_CHARS
 
 
 def test_score_counts_invalid_otter_output_as_a_false_positive():
