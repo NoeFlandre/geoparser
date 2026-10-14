@@ -143,6 +143,16 @@ def _row(run, corpus, pipeline, *, f1, acc, started="2026-01-01T00:00:00"):
     }
 
 
+def _missing_pipeline_card():
+    """Build a card that exercises the three missing-model descriptions."""
+    rows = [
+        _row("run-a", "geovirus", "swapped", f1=0.8, acc=0.7),
+        _row("run-a", "geovirus", "xlm-minilm", f1=0.7, acc=0.7),
+        _row("run-a", "geovirus", "otter-cross-minilm", f1=0.6, acc=0.7),
+    ]
+    return render_card(rows)
+
+
 class TestLatestResults:
     """Which run a cell of the compact tables comes from."""
 
@@ -276,24 +286,33 @@ class TestPipelineDescriptions:
         assert "fastino/gliner2.5-multi-v1" in card
         assert "dguzh/geo-all-MiniLM-L6-v2" in card
 
-    def test_missing_model_pipelines_appear_with_language_evidence(self):
-        """The first-five comparison includes its new models and support notes."""
-        rows = [
-            _row("run-a", "geovirus", "swapped", f1=0.8, acc=0.7),
-            _row("run-a", "geovirus", "xlm-minilm", f1=0.7, acc=0.7),
-            _row("run-a", "geovirus", "otter-cross-minilm", f1=0.6, acc=0.7),
-        ]
-
-        card = render_card(rows)
-
+    def test_missing_pipelines_appear_in_leaderboards(self):
+        """The two newly evaluated recognizers get comparison columns."""
+        card = _missing_pipeline_card()
         assert "| Corpus | Lang | swapped | xlm-minilm | otter-cross-minilm |" in card
+
+    def test_missing_models_are_named(self):
+        """The pipeline table names the recognizer model repositories."""
+        card = _missing_pipeline_card()
         assert "Davlan/xlm-roberta-base-ner-hrl" in card
         assert "whoisjones/otter-cross-mmbert" in card
+
+    def test_recognizer_language_evidence_is_explicit(self):
+        """The card separates fine-tuning languages from other transfers."""
+        card = _missing_pipeline_card()
         assert "cross-lingual transfer" in card
+        assert "supported languages are not exhaustively listed" in card
+
+    def test_models_and_pilot_keep_license_evidence(self):
+        """The model licenses and historical GeoVirus Jina pilot are retained."""
+        card = _missing_pipeline_card()
         assert "CC-BY-NC-4.0" in card
         assert "AFL-3.0" in card and "Apache-2.0" in card
         assert "GeoVirus pilot retained" in card
-        assert "supported languages are not exhaustively listed" in card
+
+    def test_card_qualifies_manifest_availability_and_failure_provenance(self):
+        """New manifests hold provenance while historical runs may lack them."""
+        card = _missing_pipeline_card()
         assert "per-document failures" in card
         assert "run-manifest.json" in card
         assert "historical runs may lack one" in card
