@@ -469,7 +469,7 @@ class TestMemoryLimit:
 
     def test_sysconf_memory_probe_reads_page_count_and_size(self, monkeypatch):
         values = {"SC_PHYS_PAGES": 100, "SC_PAGE_SIZE": 4096}
-        monkeypatch.setattr(os, "sysconf", lambda name: values[name])
+        monkeypatch.setattr(os, "sysconf", lambda name: values[name], raising=False)
         assert GazetteerBuilder._physical_memory_bytes_sysconf() == 409600
 
     def test_fallback_memory_diagnostics_are_explicit(self, monkeypatch):
