@@ -80,7 +80,7 @@ def test_g5k_submit_forwards_memory_ceiling(tmp_path):
     oarstat.chmod(0o755)
     oarsub = fake_bin / "oarsub"
     oarsub.write_text(
-        "#!/bin/sh\nprintf '%s\n' \"$@\" > \"$OARSUB_CAPTURE\"\n",
+        '#!/bin/sh\nprintf \'%s\n\' "$@" > "$OARSUB_CAPTURE"\n',
         encoding="utf-8",
     )
     oarsub.chmod(0o755)
