@@ -317,7 +317,7 @@ def test_phase_provenance_pins_only_models_used_by_each_phase(tmp_path):
     }
 
 
-def test_partial_limited_results_cannot_mark_the_run_complete(tmp_path):
+def _partial_manifest_fixture(tmp_path):
     manifest: dict[str, Any] = {
         "status": "running",
         "protocol": {
@@ -357,15 +357,24 @@ def test_partial_limited_results_cannot_mark_the_run_complete(tmp_path):
         [runner.RECOGNITION, runner.RESOLUTION],
     )
     benchmark_cli._finish_run_manifest(tmp_path, manifest, [])
+    return manifest, manifest["protocol"]["corpora"]["fixture"]
 
-    cell: Any = manifest["protocol"]["corpora"]["fixture"]
+
+def test_partial_limited_results_mark_slice_status(tmp_path):
+    _manifest, cell = _partial_manifest_fixture(tmp_path)
+
     assert cell["partial"] is True
+    assert cell["status"] == "partial"
+
+
+def test_partial_limited_results_mark_phase_status(tmp_path):
+    manifest, cell = _partial_manifest_fixture(tmp_path)
+
     assert cell["pipelines"]["swapped"]["phase_status"] == {
         runner.RECOGNITION: "partial",
         runner.RESOLUTION: "partial",
     }
     assert cell["pipelines"]["swapped"]["status"] == "partial"
-    assert cell["status"] == "partial"
     assert manifest["status"] == "partial"
 
 
