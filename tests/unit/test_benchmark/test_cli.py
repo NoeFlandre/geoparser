@@ -366,7 +366,7 @@ def test_partial_limited_results_cannot_mark_the_run_complete(tmp_path):
     }
     assert cell["pipelines"]["swapped"]["status"] == "partial"
     assert cell["status"] == "partial"
-    assert manifest["status"] == "incomplete"
+    assert manifest["status"] == "partial"
 
 
 def test_run_manifest_marks_explicit_document_failures():
