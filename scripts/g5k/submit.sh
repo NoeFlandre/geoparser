@@ -32,6 +32,10 @@ REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
 VENV="${VENV:-$HOME/geoparser-venv}"
 : "${RESULTS:?Set RESULTS to a durable shared filesystem path (for example Grid5000 Evergreen)}"
 CLUSTER="${CLUSTER:-}"
+if [[ -n "$CLUSTER" && ! "$CLUSTER" =~ ^[a-z0-9-]+$ ]]; then
+    echo "CLUSTER must be a simple Grid5000 cluster name" >&2
+    exit 2
+fi
 # besteffort takes GPUs that would otherwise sit idle, and gives them straight
 # back when someone with a claim on them asks. The job is killed rather than
 # queued behind, which is why it checkpoints per chunk; paired with OAR's
@@ -123,10 +127,12 @@ OPTIONS=()
 if [[ -n "$CLUSTER" ]]; then
     OPTIONS+=(-p "cluster='${CLUSTER}'")
 fi
-if [[ "$CLUSTER" == "ecotaxe" ]]; then
-    # Nantes lists ecotaxe as an exotic cluster; OAR requires this type.
-    OPTIONS+=(-t exotic)
-fi
+case "$CLUSTER" in
+    drac|ecotaxe|grouille|sirius|chicoree)
+        # These accelerator clusters are marked exotic in Grid5000's hardware catalog.
+        OPTIONS+=(-t exotic)
+        ;;
+esac
 # How long before the walltime OAR sends the checkpoint signal. besteffort
 # jobs are capped at a minute, which is enough: the run's own progress is
 # already on disk after every chunk, so this signal is a courtesy rather than
@@ -141,6 +147,24 @@ if [[ "$QUEUE" == "besteffort" ]]; then
 fi
 
 echo "submitting: oarsub -l ${RESOURCES} ${OPTIONS[*]-}"
+shell_quote() {
+    local value=${1//\'/\'\\\'\'}
+    printf "'%s'" "$value"
+}
+
+WORKER_COMMAND="REPO_ROOT=$(shell_quote "$REPO_ROOT")"
+WORKER_COMMAND+=" VENV=$(shell_quote "$VENV")"
+WORKER_COMMAND+=" RESULTS=$(shell_quote "$RESULTS")"
+WORKER_COMMAND+=" LIMIT=$(shell_quote "${LIMIT:-}")"
+WORKER_COMMAND+=" DEVICE=$(shell_quote "${DEVICE:-auto}")"
+WORKER_COMMAND+=" CHUNK_SIZE=$(shell_quote "${CHUNK_SIZE:-5}")"
+WORKER_COMMAND+=" MIN_SIMILARITY=$(shell_quote "${MIN_SIMILARITY:-0.0}")"
+WORKER_COMMAND+=" PIPELINES=$(shell_quote "$PIPELINES")"
+WORKER_COMMAND+=" CORPORA=$(shell_quote "$CORPORA")"
+WORKER_COMMAND+=" PHASES=$(shell_quote "$PHASES")"
+WORKER_COMMAND+=" GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB=$(shell_quote "$GAZETTEER_MEMORY_LIMIT_MB")"
+WORKER_COMMAND+=" bash $(shell_quote "$REPO_ROOT/scripts/g5k/run_benchmark.sh")"
+
 oarsub \
     -n "$JOB_NAME" \
     -l "$RESOURCES" \
@@ -149,11 +173,7 @@ oarsub \
     -E "$RESULTS/logs/%jobid%.err" \
     --checkpoint "$CHECKPOINT_SECONDS" \
     --signal 12 \
-    "REPO_ROOT='$REPO_ROOT' VENV='$VENV' RESULTS='$RESULTS' LIMIT='${LIMIT:-}' \
-DEVICE='${DEVICE:-auto}' CHUNK_SIZE='${CHUNK_SIZE:-5}' \
-MIN_SIMILARITY='${MIN_SIMILARITY:-0.0}' PIPELINES='$PIPELINES' CORPORA='$CORPORA' PHASES='$PHASES' \
-GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB='$GAZETTEER_MEMORY_LIMIT_MB' \
-bash $REPO_ROOT/scripts/g5k/run_benchmark.sh"
+    -- "$WORKER_COMMAND"
 
 echo
 echo "Watch it with:   oarstat -u"
