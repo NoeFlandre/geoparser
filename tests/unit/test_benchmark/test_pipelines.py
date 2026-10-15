@@ -445,13 +445,13 @@ def test_context_model_must_be_installed(monkeypatch):
 
 
 def test_xlm_recognizer_build_and_prediction_use_pinned_snapshot(monkeypatch, tmp_path):
-    class FakeRecognizer:
+    from geoparser.modules.module import Module
+
+    class FakeRecognizer(Module):
         NAME = None
 
         def __init__(self, model_name):
-            if self.NAME is None:
-                raise ValueError("Module must define a NAME class attribute")
-            self.name = self.NAME
+            super().__init__(model_name=model_name)
             self.model_name = model_name
 
     class FakeModel:
