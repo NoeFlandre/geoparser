@@ -278,6 +278,96 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
         resumed
     ) == benchmark_cli._manifest_identity(manifest)
 
+    different_gpu = json.loads(json.dumps(manifest))
+    different_gpu["protocol"]["accelerator"] = "T4"
+    assert benchmark_cli._manifest_identity(
+        different_gpu
+    ) != benchmark_cli._manifest_identity(manifest)
+
+
+def test_phase_provenance_pins_only_models_used_by_each_phase(tmp_path):
+    run, _result = _corpus_report_run(tmp_path)
+    identity = ckpt.RunIdentity(
+        pipeline="swapped",
+        corpus_digest="digest",
+        gazetteer="geonames",
+        min_similarity=0.0,
+        limit=None,
+        commit="commit",
+        model_pins={
+            "recognizer": "gliner@pin",
+            "resolver": "jina-embeddings@pin",
+            "reranker": "jina-reranker@pin",
+            "context_sentence_splitter": "xx-sent-ud-sm@pin",
+        },
+    )
+
+    recognition = benchmark_cli._phase_provenance(
+        run, "swapped", runner.RECOGNITION, identity
+    )
+    resolution = benchmark_cli._phase_provenance(
+        run, "swapped", runner.RESOLUTION, identity
+    )
+
+    assert recognition["model_pins"] == {"recognizer": "gliner@pin"}
+    assert resolution["model_pins"] == {
+        "resolver": "jina-embeddings@pin",
+        "reranker": "jina-reranker@pin",
+        "context_sentence_splitter": "xx-sent-ud-sm@pin",
+    }
+
+
+def test_partial_limited_results_cannot_mark_the_run_complete(tmp_path):
+    manifest: dict[str, Any] = {
+        "status": "running",
+        "protocol": {
+            "corpora": {"fixture": {"language": "en", "expected_documents": 229}},
+            "pipelines": {
+                "swapped": {
+                    "model_pins": {
+                        "recognizer": "gliner@pin",
+                        "resolver": "jina@pin",
+                    }
+                }
+            },
+        },
+    }
+    payload = {
+        "partial": True,
+        "corpus_digest": "fixture-digest",
+        "documents": 50,
+        "gold_toponyms": 80,
+        "environment": {"gpu": "T4"},
+        "pipelines": [
+            {
+                "name": "swapped",
+                "recognition": {"f1": 0.5},
+                "resolution": {"auc": 0.2},
+                "phase_elapsed_seconds": {"recognition": 1.0, "resolution": 2.0},
+                "phase_provenance": {},
+                "failures": {},
+            }
+        ],
+    }
+
+    benchmark_cli._record_manifest_cell(
+        manifest,
+        "fixture",
+        payload,
+        [runner.RECOGNITION, runner.RESOLUTION],
+    )
+    benchmark_cli._finish_run_manifest(tmp_path, manifest, [])
+
+    cell = manifest["protocol"]["corpora"]["fixture"]
+    assert cell["partial"] is True
+    assert cell["pipelines"]["swapped"]["phase_status"] == {
+        runner.RECOGNITION: "partial",
+        runner.RESOLUTION: "partial",
+    }
+    assert cell["pipelines"]["swapped"]["status"] == "partial"
+    assert cell["status"] == "partial"
+    assert manifest["status"] == "incomplete"
+
 
 def test_run_manifest_marks_explicit_document_failures():
     manifest: dict[str, Any] = {
