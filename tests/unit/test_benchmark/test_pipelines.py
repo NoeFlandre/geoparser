@@ -444,7 +444,8 @@ def test_context_model_must_be_installed(monkeypatch):
         pipelines._require_context_model()
 
 
-def test_xlm_recognizer_build_and_prediction_use_pinned_snapshot(monkeypatch, tmp_path):
+@pytest.fixture
+def xlm_recognizer_context(monkeypatch, tmp_path):
     from geoparser.modules.module import Module
 
     class FakeRecognizer(Module):
@@ -486,20 +487,37 @@ def test_xlm_recognizer_build_and_prediction_use_pinned_snapshot(monkeypatch, tm
     snapshot = tmp_path / pipelines.missing_matrix.MODEL_PINS["xlm_r"][1]
     monkeypatch.setattr(pipelines, "_snapshot", lambda _key: snapshot)
 
-    recognizer = pipelines._build_xlm_recognizer("cuda")
+    return SimpleNamespace(
+        recognizer=pipelines._build_xlm_recognizer("cuda"),
+        model=model,
+        tokenizer_factory=tokenizer_factory,
+        model_factory=model_factory,
+        transformers=transformers,
+        snapshot=snapshot,
+    )
 
-    assert recognizer.predict(["Zurich"]) == [[(0, 3), (4, 8)]]
+
+def test_xlm_recognizer_declares_module_identity(xlm_recognizer_context):
+    recognizer = xlm_recognizer_context.recognizer
     assert recognizer.NAME == "XLMBenchmarkRecognizer"
     assert recognizer.name == "XLMBenchmarkRecognizer"
-    assert recognizer.benchmark_model_pin == pipelines._pinned_name("xlm_r")
-    assert model.evaluated
-    tokenizer_factory.from_pretrained.assert_called_once_with(
-        str(snapshot), use_fast=True, local_files_only=True
+
+
+def test_xlm_prediction_filters_invalid_and_non_location_spans(xlm_recognizer_context):
+    assert xlm_recognizer_context.recognizer.predict(["Zurich"]) == [[(0, 3), (4, 8)]]
+
+
+def test_xlm_recognizer_uses_pinned_local_transformer_snapshot(xlm_recognizer_context):
+    context = xlm_recognizer_context
+    assert context.recognizer.benchmark_model_pin == pipelines._pinned_name("xlm_r")
+    assert context.model.evaluated
+    context.tokenizer_factory.from_pretrained.assert_called_once_with(
+        str(context.snapshot), use_fast=True, local_files_only=True
     )
-    model_factory.from_pretrained.assert_called_once_with(
-        str(snapshot), local_files_only=True
+    context.model_factory.from_pretrained.assert_called_once_with(
+        str(context.snapshot), local_files_only=True
     )
-    transformers.pipeline.assert_called_once()
+    context.transformers.pipeline.assert_called_once()
 
 
 def test_xlm_prediction_rejects_a_changed_document_count():
