@@ -22,6 +22,11 @@ set -euo pipefail
 VENV="${VENV:-$HOME/geoparser-venv}"
 REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
 : "${RESULTS:?Set RESULTS to a durable shared filesystem path (for example Grid5000 Evergreen)}"
+if [ ! -r "$VENV/bin/activate" ]; then
+    echo "missing environment: $VENV/bin/activate is not readable" >&2
+    echo "set VENV to an existing prepared environment" >&2
+    exit 2
+fi
 LIMIT="${LIMIT:-}"
 DEVICE="${DEVICE:-auto}"
 CHUNK_SIZE="${CHUNK_SIZE:-5}"
