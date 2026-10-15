@@ -433,6 +433,8 @@ def _build_xlm_recognizer(device: str) -> t.Any:
     class XLMBenchmarkRecognizer(Recognizer):
         """Map pinned XLM-R LOC groups to the project span representation."""
 
+        NAME = "XLMBenchmarkRecognizer"
+
         def __init__(self):
             super().__init__(model_name=model_id)
             self.model_name = model_id
