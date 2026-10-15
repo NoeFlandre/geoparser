@@ -40,7 +40,18 @@ def test_missing_venv_exits_2_before_side_effects(tmp_path: Path) -> None:
 @pytest.mark.skipif(os.name == "nt", reason="needs POSIX bash; Windows bash is WSL")
 @pytest.mark.parametrize(
     "cluster",
-    ["chicoree", "drac", "ecotaxe", "estats", "gemini", "grouille", "hydra", "neowise", "sirius", "vianden"],
+    [
+        "chicoree",
+        "drac",
+        "ecotaxe",
+        "estats",
+        "gemini",
+        "grouille",
+        "hydra",
+        "neowise",
+        "sirius",
+        "vianden",
+    ],
 )
 def test_submit_quotes_worker_command(tmp_path: Path, cluster: str) -> None:
     fake_bin = tmp_path / "bin"
