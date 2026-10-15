@@ -388,6 +388,15 @@ class TestEncodeArguments:
         # Assert
         assert resolver.transformer.encode.call_args.kwargs["convert_to_tensor"] is True
 
+    @pytest.mark.parametrize("role", ["context", "candidate"])
+    def test_embedding_batches_are_bounded_to_reduce_peak_memory(self, resolver, role):
+        """Both sides use a small explicit batch for the Qwen3-backed embedder."""
+        # Act
+        resolver._encode(["one", "two"], role=role)
+
+        # Assert
+        assert resolver.transformer.encode.call_args.kwargs["batch_size"] == 4
+
     def test_candidate_descriptions_are_embedded_under_the_document_prompt(
         self, resolver
     ):
