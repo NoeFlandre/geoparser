@@ -87,8 +87,7 @@ def test_submit_quotes_worker_command(tmp_path: Path) -> None:
     assert submission.returncode == 0, submission.stderr
     arguments = captured_arguments.read_text().splitlines()
     assert any(
-        left == "-t" and right == "exotic"
-        for left, right in pairwise(arguments)
+        left == "-t" and right == "exotic" for left, right in pairwise(arguments)
     )
 
     worker = subprocess.run(
