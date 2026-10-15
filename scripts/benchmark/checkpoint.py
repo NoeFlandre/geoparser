@@ -41,6 +41,7 @@ class RunIdentity:
     schema_version: int = SCHEMA_VERSION
     model_pins: dict[str, str] = field(default_factory=dict)
     gazetteer_sha256: str | None = None
+    accelerator: str | None = None
 
     def differences(self, other: RunIdentity) -> list[str]:
         """
