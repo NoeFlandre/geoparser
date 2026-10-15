@@ -77,6 +77,8 @@ def test_upstream_and_hybrid_use_the_same_minilm_resolver(monkeypatch, pipeline)
     )
     resolver_factory = Mock(return_value=resolver)
     _patch_module_classes(monkeypatch, SentenceTransformerResolver=resolver_factory)
+    require_context_model = Mock()
+    monkeypatch.setattr(pipelines, "_require_context_model", require_context_model)
     monkeypatch.setattr(pipelines, "GAZETTEER_NAME", "geonames")
     snapshot_factory = Mock(return_value=snapshot)
     monkeypatch.setattr(pipelines, "_snapshot", snapshot_factory)
@@ -84,6 +86,7 @@ def test_upstream_and_hybrid_use_the_same_minilm_resolver(monkeypatch, pipeline)
     result = pipelines.build_resolver(pipeline, device="cuda", min_similarity=0.0)
 
     assert result is resolver
+    require_context_model.assert_called_once_with()
     snapshot_factory.assert_called_once_with("minilm")
     resolver_factory.assert_called_once_with(
         model_name=str(snapshot),
@@ -102,7 +105,8 @@ def test_swapped_keeps_jina_resolver(monkeypatch):
         "jina_embeddings": Path("/cache/jina-embeddings"),
         "jina_reranker": Path("/cache/jina-reranker"),
     }
-    monkeypatch.setattr(pipelines, "_require_context_model", Mock())
+    require_context_model = Mock()
+    monkeypatch.setattr(pipelines, "_require_context_model", require_context_model)
     monkeypatch.setattr(pipelines, "_snapshot", lambda key: snapshots[key])
 
     result = pipelines.build_resolver(
@@ -110,6 +114,7 @@ def test_swapped_keeps_jina_resolver(monkeypatch):
     )
 
     assert result is resolver
+    require_context_model.assert_called_once_with()
     jina_factory.assert_called_once_with(
         model_name=str(snapshots["jina_embeddings"]),
         reranker_name=str(snapshots["jina_reranker"]),
@@ -163,6 +168,8 @@ def test_prior_uses_the_prior_resolver_on_the_upstream_model(monkeypatch):
     resolver = SimpleNamespace(transformer=Mock(), reranker=None)
     prior_factory = Mock(return_value=resolver)
     _patch_module_classes(monkeypatch, PriorResolver=prior_factory)
+    require_context_model = Mock()
+    monkeypatch.setattr(pipelines, "_require_context_model", require_context_model)
     monkeypatch.setattr(pipelines, "GAZETTEER_NAME", "geonames")
     snapshot_factory = Mock(return_value=snapshot)
     monkeypatch.setattr(pipelines, "_snapshot", snapshot_factory)
@@ -172,6 +179,7 @@ def test_prior_uses_the_prior_resolver_on_the_upstream_model(monkeypatch):
     )
 
     assert result is resolver
+    require_context_model.assert_called_once_with()
     snapshot_factory.assert_called_once_with("minilm")
     prior_factory.assert_called_once_with(
         model_name=str(snapshot),
@@ -210,6 +218,8 @@ def test_each_ablation_changes_one_setting(monkeypatch, pipeline, settings):
     resolver = SimpleNamespace(transformer=Mock(), reranker=None)
     prior_factory = Mock(return_value=resolver)
     _patch_module_classes(monkeypatch, PriorResolver=prior_factory)
+    require_context_model = Mock()
+    monkeypatch.setattr(pipelines, "_require_context_model", require_context_model)
     monkeypatch.setattr(pipelines, "GAZETTEER_NAME", "geonames")
     snapshot = Path("/cache/minilm-snapshot")
     snapshot_factory = Mock(return_value=snapshot)
@@ -217,6 +227,7 @@ def test_each_ablation_changes_one_setting(monkeypatch, pipeline, settings):
 
     pipelines.build_resolver(pipeline, device="cpu", min_similarity=0.0)
 
+    require_context_model.assert_called_once_with()
     snapshot_factory.assert_called_once_with("minilm")
     prior_factory.assert_called_once_with(
         model_name=str(snapshot),
@@ -444,6 +455,55 @@ def test_context_model_must_be_installed(monkeypatch):
         pipelines._require_context_model()
 
 
+@pytest.mark.parametrize(
+    ("installed", "expected_error"),
+    [("3.8.0", None), ("1.0.0", "Expected")],
+)
+def test_upstream_spacy_model_version_is_checked(
+    monkeypatch, installed, expected_error
+):
+    version = Mock(return_value=installed)
+    monkeypatch.setattr(pipelines.importlib.metadata, "version", version)
+
+    if expected_error:
+        with pytest.raises(RuntimeError, match=expected_error):
+            pipelines._require_upstream_spacy_model()
+    else:
+        pipelines._require_upstream_spacy_model()
+    version.assert_called_once_with("en-core-web-sm")
+
+
+def test_upstream_spacy_model_must_be_installed(monkeypatch):
+    version = Mock(side_effect=pipelines.importlib.metadata.PackageNotFoundError)
+    monkeypatch.setattr(pipelines.importlib.metadata, "version", version)
+
+    with pytest.raises(RuntimeError, match="Install the locked"):
+        pipelines._require_upstream_spacy_model()
+    version.assert_called_once_with("en-core-web-sm")
+
+
+@pytest.mark.parametrize("pipeline", pipelines.PIPELINES)
+def test_resolver_rejects_unpinned_context_model_before_loading(monkeypatch, pipeline):
+    require_context_model = Mock(side_effect=RuntimeError("splitter version mismatch"))
+    monkeypatch.setattr(pipelines, "_require_context_model", require_context_model)
+    snapshot = Mock()
+    monkeypatch.setattr(pipelines, "_snapshot", snapshot)
+    resolver_factory = Mock()
+    _patch_module_classes(
+        monkeypatch,
+        SentenceTransformerResolver=resolver_factory,
+        PriorResolver=resolver_factory,
+        JinaResolver=resolver_factory,
+    )
+
+    with pytest.raises(RuntimeError, match="splitter version mismatch"):
+        pipelines.build_resolver(pipeline, device="cpu", min_similarity=0.0)
+
+    require_context_model.assert_called_once_with()
+    snapshot.assert_not_called()
+    resolver_factory.assert_not_called()
+
+
 @pytest.fixture
 def xlm_recognizer_context(monkeypatch, tmp_path):
     from geoparser.modules.module import Module
@@ -570,6 +630,11 @@ def test_spacy_recognizer_uses_the_locked_model_with_optional_gpu(
     recognizer = object()
     factory = Mock(return_value=recognizer)
     _patch_module_classes(monkeypatch, SpacyRecognizer=factory)
+    monkeypatch.setattr(
+        pipelines.importlib.metadata,
+        "version",
+        lambda _name: pipelines.UPSTREAM_SPACY_MODEL_VERSION,
+    )
     spacy = ModuleType("spacy")
     require_gpu = Mock(
         side_effect=RuntimeError("GPU setup unavailable") if gpu_error else None
@@ -584,6 +649,29 @@ def test_spacy_recognizer_uses_the_locked_model_with_optional_gpu(
         require_gpu.assert_called_once_with()
     else:
         require_gpu.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("installed", "expected_error"),
+    [("1.0.0", "Expected"), (None, "Install the locked")],
+)
+def test_spacy_recognizer_rejects_unpinned_model_before_construction(
+    monkeypatch, installed, expected_error
+):
+    factory = Mock()
+    _patch_module_classes(monkeypatch, SpacyRecognizer=factory)
+
+    def version(_name):
+        if installed is None:
+            raise pipelines.importlib.metadata.PackageNotFoundError
+        return installed
+
+    monkeypatch.setattr(pipelines.importlib.metadata, "version", version)
+
+    with pytest.raises(RuntimeError, match=expected_error):
+        pipelines._build_spacy_recognizer("cpu")
+
+    factory.assert_not_called()
 
 
 def test_otter_source_entry_matches_the_retained_model_pin():
