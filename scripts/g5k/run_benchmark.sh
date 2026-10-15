@@ -39,6 +39,11 @@ SCRATCH="${SCRATCH:-/tmp/geoparser-${OAR_JOB_ID:-manual}}"
 echo "=== job ${OAR_JOB_ID:-manual} on $(hostname) at $(date -Is) ==="
 mkdir -p "$SCRATCH" "$RESULTS"
 
+# DuckDB installs extensions under "$HOME/.duckdb" by default. Grid'5000's
+# user home has a small quota, so keep home-based runtime caches on node scratch.
+export HOME="$SCRATCH/home"
+mkdir -p "$HOME"
+
 preserve_scratch() {
     echo "=== preserving task scratch until Grid'5000 reclaims the node at $(date -Is) ==="
     echo "scratch: $SCRATCH"
