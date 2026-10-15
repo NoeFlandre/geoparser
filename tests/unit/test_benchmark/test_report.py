@@ -5,6 +5,10 @@ A bug here does not crash, it prints a plausible number, so the round trip and
 the arithmetic are pinned rather than eyeballed.
 """
 
+import typing as t
+
+import pytest
+
 from geoparser.evaluation import Annotation
 from scripts.benchmark.report import (
     PipelineResult,
@@ -62,6 +66,40 @@ class TestScoring:
         scores = score_recognition(gold, gold)
 
         assert scores == {"precision": 1.0, "recall": 1.0, "f1": 1.0}
+
+    def test_invalid_output_adds_a_false_positive(self):
+        """Invalid model output lowers precision without changing recall."""
+        gold = [Annotation(0, 5, None, "d")]
+
+        scores = score_recognition(gold, gold, invalid_output_false_positives=1)
+
+        assert scores == {"precision": 0.5, "recall": 1.0, "f1": 2 / 3}
+
+    @pytest.mark.parametrize("invalid_count", [True, -1])
+    def test_recognition_rejects_invalid_output_count(self, invalid_count: t.Any):
+        with pytest.raises(ValueError, match="non-negative integer"):
+            score_recognition(
+                [],
+                [],
+                invalid_output_false_positives=invalid_count,
+            )
+
+    def test_recognition_defines_empty_input_metrics(self):
+        assert score_recognition([], []) == {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+        }
+
+    def test_recognition_zeroes_f1_when_no_spans_match(self):
+        expected = [Annotation(0, 5, None, "d")]
+        predicted = [Annotation(10, 15, None, "d")]
+
+        assert score_recognition(expected, predicted) == {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+        }
 
     def test_resolution_reports_the_four_figures(self):
         """Test a perfect resolution run."""
@@ -121,6 +159,20 @@ class TestRenderMarkdown:
         assert "- Gazetteer: geonames" in text
         assert "- Shared abstention threshold: 0.0" in text
 
+    def test_marks_a_limited_input_slice_as_partial(self):
+        """A reader can distinguish a smoke slice from a complete corpus result."""
+        text = render_markdown(
+            [self.result()],
+            corpus_name="GeoVirus",
+            documents=2,
+            gold_toponyms=14,
+            gazetteer="geonames",
+            min_similarity=0.0,
+            partial=True,
+        )
+
+        assert "- Input slice: partial" in text
+
     def test_lists_each_pipeline_in_both_tables(self):
         """Test that two pipelines are comparable side by side."""
         text = self.render([self.result("upstream"), self.result("swapped")])
@@ -163,6 +215,32 @@ class TestRenderMarkdown:
         text = self.render([self.result()])
 
         assert "gold spans" in text
+
+    def test_lists_explicit_unsupported_inputs(self):
+        result = self.result()
+        result.failures = {
+            "recognition": {
+                "article-1": {
+                    "kind": "unsupported_input",
+                    "reason": "sequence limit exceeded",
+                }
+            }
+        }
+
+        text = self.render([result])
+
+        assert "## Explicit failures" in text
+        assert "| swapped | recognition | article-1 | unsupported_input" in text
+        assert "sequence limit exceeded" in text
+
+    def test_resolution_table_uses_resolution_phase_time(self):
+        result = self.result()
+        result.elapsed_seconds = 50.0
+        result.phase_elapsed_seconds = {"recognition": 42.0, "resolution": 8.0}
+
+        text = self.render([result])
+
+        assert "| swapped | cuda | 0.500 | 123.4 | 12.3 | 0.250 | 8.0 |" in text
 
 
 class TestRenderSummary:

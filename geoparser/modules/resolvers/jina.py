@@ -32,6 +32,9 @@ if t.TYPE_CHECKING:
 # pair use the retrieval adapter; only the prompt differs.
 _ENCODE_TASK = "retrieval"
 _ROLE_PROMPTS = {"context": "query", "candidate": "document"}
+# The Qwen3-backed embedder can allocate very large attention tensors for
+# long context batches. Keep the per-call batch small to bound peak GPU memory.
+_JINA_ENCODE_BATCH_SIZE = 4
 
 
 class JinaResolver(SentenceTransformerResolver):
@@ -155,6 +158,7 @@ class JinaResolver(SentenceTransformerResolver):
         return self.transformer.encode(
             texts,
             convert_to_tensor=True,
+            batch_size=_JINA_ENCODE_BATCH_SIZE,
             task=_ENCODE_TASK,
             prompt_name=_ROLE_PROMPTS[role],
         )

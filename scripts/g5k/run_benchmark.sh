@@ -3,16 +3,15 @@
 #
 # Submitted by submit.sh. It does three things in order:
 #   1. builds the GeoNames gazetteer on the node's local disk
-#   2. runs the benchmark, checkpointing into $HOME as it goes
-#   3. leaves the node's local disk clean
+#   2. runs the benchmark, checkpointing into durable $RESULTS storage
+#   3. leaves node-local scratch to Grid'5000's normal job cleanup
 #
-# The gazetteer goes on local disk because it needs about 31 GB while building
-# and 10 GB afterwards, against a 24 GB /home quota. Local disk is wiped
-# between jobs, so it is rebuilt each time -- about 25 minutes, which is the
-# price of not filling a shared, un-backed-up filesystem.
+# The gazetteer is built on node-local disk because it needs about 31 GB while
+# building, against a 24 GB /home quota. The installed 10 GB database is copied
+# to durable $RESULTS/artifacts once, then reused byte-for-byte by later jobs.
 #
-# The benchmark checkpoints per chunk into $RESULTS, which IS on /home, so a
-# job that ends at its walltime is resumed rather than restarted by the next.
+# The benchmark checkpoints per chunk into $RESULTS, which should be on a
+# durable shared filesystem, so a job that ends at walltime resumes.
 #
 # submit.sh passes LIMIT, DEVICE, CHUNK_SIZE, MIN_SIMILARITY, PIPELINES,
 # CORPORA and PHASES through the OAR job environment. PIPELINES and CORPORA
@@ -22,7 +21,12 @@ set -euo pipefail
 
 VENV="${VENV:-$HOME/geoparser-venv}"
 REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
-RESULTS="${RESULTS:-$HOME/geoparser-bench}"
+: "${RESULTS:?Set RESULTS to a durable shared filesystem path (for example Grid5000 Evergreen)}"
+if [ ! -r "$VENV/bin/activate" ]; then
+    echo "missing environment: $VENV/bin/activate is not readable" >&2
+    echo "set VENV to an existing prepared environment" >&2
+    exit 2
+fi
 LIMIT="${LIMIT:-}"
 DEVICE="${DEVICE:-auto}"
 CHUNK_SIZE="${CHUNK_SIZE:-5}"
@@ -35,21 +39,29 @@ SCRATCH="${SCRATCH:-/tmp/geoparser-${OAR_JOB_ID:-manual}}"
 echo "=== job ${OAR_JOB_ID:-manual} on $(hostname) at $(date -Is) ==="
 mkdir -p "$SCRATCH" "$RESULTS"
 
-cleanup() {
-    # Only ever removes this job's own scratch directory.
-    echo "=== cleaning $SCRATCH at $(date -Is) ==="
-    rm -rf "$SCRATCH"
-    df -h /tmp | tail -1
+# DuckDB installs extensions under "$HOME/.duckdb" by default. Grid'5000's
+# user home has a small quota, so keep home-based runtime caches on node scratch.
+export HOME="$SCRATCH/home"
+mkdir -p "$HOME"
+
+preserve_scratch() {
+    echo "=== preserving task scratch until Grid'5000 reclaims the node at $(date -Is) ==="
+    echo "scratch: $SCRATCH"
+    df -h "$SCRATCH" | tail -1
 }
-trap cleanup EXIT
+trap preserve_scratch EXIT
 
 # Keep every large, regenerable artifact off /home.
 export GEOPARSER_GAZETTEERS_DIR="$SCRATCH/gazetteers"
+export GEOPARSER_CORPUS_CACHE_DIR="$SCRATCH/corpora"
 export XDG_DATA_HOME="$SCRATCH/share"
 export XDG_CACHE_HOME="$SCRATCH/cache"
 export HF_HOME="$SCRATCH/huggingface"
 export GEOPARSER_DB_PATH="$SCRATCH/benchmark.sqlite"
-mkdir -p "$GEOPARSER_GAZETTEERS_DIR" "$HF_HOME"
+export GEOPARSER_GAZETTEER_ARTIFACT_DIR="$RESULTS/artifacts"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-4}"
+mkdir -p "$GEOPARSER_GAZETTEERS_DIR" "$GEOPARSER_CORPUS_CACHE_DIR" "$HF_HOME"
 
 # shellcheck disable=SC1091
 source "$VENV/bin/activate"
@@ -59,6 +71,7 @@ echo "=== environment ==="
 python - <<'PY'
 import torch
 print(f"torch {torch.__version__}")
+print(f"torch CPU threads: {torch.get_num_threads()}")
 print(f"cuda available: {torch.cuda.is_available()}")
 if torch.cuda.is_available():
     print(f"gpu: {torch.cuda.get_device_name(0)}")
@@ -66,10 +79,8 @@ PY
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 df -h "$SCRATCH" | tail -1
 
-echo "=== building gazetteer on node-local disk ==="
-if [[ ! -e "$GEOPARSER_GAZETTEERS_DIR/geonames.duckdb" ]]; then
-    time python -m geoparser install geonames
-fi
+echo "=== preparing pinned gazetteer artifact ==="
+time "$REPO_ROOT/scripts/g5k/prepare_gazetteer.sh"
 python -m geoparser list
 
 echo "=== running benchmark ==="

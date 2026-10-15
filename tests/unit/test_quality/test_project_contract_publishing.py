@@ -114,7 +114,7 @@ def _benchmark_base_step() -> tuple[dict[str, Any], dict[str, Any]]:
     base_step = next(
         step
         for step in workflow["jobs"]["compare"]["steps"]
-        if step.get("name") == "Benchmark pull request base"
+        if step.get("name") == "Prepare pull request base"
     )
     return triggers["workflow_dispatch"], base_step
 
@@ -138,9 +138,20 @@ def test_benchmark_base_syncs_its_locked_environment() -> None:
     )
 
 
+def _benchmark_measurement_step() -> dict[str, Any]:
+    workflow = yaml.safe_load(
+        (PROJECT_ROOT / ".github/workflows/benchmark.yml").read_text(encoding="utf-8")
+    )
+    return next(
+        step
+        for step in workflow["jobs"]["compare"]["steps"]
+        if step.get("name") == "Measure base and head in counterbalanced order"
+    )
+
+
 def test_benchmark_base_uses_its_own_python() -> None:
-    _, base_step = _benchmark_base_step()
-    assert "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python" in base_step["run"]
+    measure_step = _benchmark_measurement_step()
+    assert "$GITHUB_WORKSPACE/.tmp/main/.venv/bin/python" in measure_step["run"]
 
 
 def test_coverage_preview_runs_after_successful_pull_request_tests() -> None:
