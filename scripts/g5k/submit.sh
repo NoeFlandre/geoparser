@@ -128,7 +128,7 @@ if [[ -n "$CLUSTER" ]]; then
     OPTIONS+=(-p "cluster='${CLUSTER}'")
 fi
 case "$CLUSTER" in
-    drac|ecotaxe|grouille|sirius|chicoree|neowise)
+    chicoree|drac|ecotaxe|estats|gemini|grouille|hydra|neowise|sirius|vianden)
         # These accelerator clusters are marked exotic in Grid5000's hardware catalog.
         OPTIONS+=(-t exotic)
         ;;
