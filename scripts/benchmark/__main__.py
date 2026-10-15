@@ -286,6 +286,7 @@ def run_corpus(
         gold_toponyms=gold_count,
         gazetteer=pipelines.GAZETTEER_NAME,
         min_similarity=arguments.min_similarity,
+        partial=_limit_is_partial(loaded.name, arguments.limit),
     )
     _write_corpus_reports(
         output_dir,
@@ -988,14 +989,18 @@ def _record_completed_corpus(
 
 def _finish_run_manifest(output_dir: Path, manifest: dict, rows: list[dict]) -> None:
     """Mark the run status, persist its completion time and render final scores."""
-    manifest["status"] = (
-        "complete"
-        if all(
-            cell["status"] in {"complete", "complete_with_document_failures"}
-            for cell in manifest["protocol"]["corpora"].values()
-        )
-        else "incomplete"
-    )
+    statuses = [
+        cell["status"] for cell in manifest["protocol"]["corpora"].values()
+    ]
+    completed_statuses = {
+        "complete",
+        "complete_with_document_failures",
+        "partial",
+    }
+    if all(status in completed_statuses for status in statuses):
+        manifest["status"] = "partial" if "partial" in statuses else "complete"
+    else:
+        manifest["status"] = "incomplete"
     manifest["completed_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     _persist_run_manifest(output_dir, manifest)
     print(report.render_summary(rows))
