@@ -114,7 +114,7 @@ def score_resolution(
     }
 
 
-def render_markdown(
+def render_markdown(  # noqa: PLR0913
     results: Sequence[PipelineResult],
     *,
     corpus_name: str,
