@@ -1,6 +1,5 @@
 import os
 import subprocess
-from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -100,10 +99,8 @@ def test_submit_quotes_worker_command(tmp_path: Path, cluster: str) -> None:
         check=False,
     )
     assert submission.returncode == 0, submission.stderr
-    arguments = captured_arguments.read_text().splitlines()
-    assert any(
-        left == "-t" and right == "exotic" for left, right in pairwise(arguments)
-    )
+    captured = captured_arguments.read_text()
+    assert "\n-t\nexotic\n" in f"\n{captured}\n"
 
     worker = subprocess.run(
         ["bash", "-c", captured_command.read_text()],
