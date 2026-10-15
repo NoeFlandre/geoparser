@@ -79,6 +79,11 @@ if ! oarstat_json="$(oarstat -u --json)"; then
     exit 1
 fi
 
+# Some OAR versions return an empty success response when the user has no jobs.
+if [[ -z "${oarstat_json//[[:space:]]/}" ]]; then
+    oarstat_json='[]'
+fi
+
 if ! existing="$(BENCHMARK_JOB_NAME="$JOB_NAME" python3 -c '
 import json, os, sys
 

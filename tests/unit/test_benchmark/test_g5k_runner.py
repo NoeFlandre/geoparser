@@ -119,3 +119,41 @@ def test_submit_quotes_worker_command(tmp_path: Path, cluster: str) -> None:
         execution_marker.exists(),
     )
     assert all(worker_checks), worker_checks
+
+
+@pytest.mark.skipif(os.name == "nt", reason="needs POSIX bash; Windows bash is WSL")
+def test_submit_accepts_empty_oar_json_when_no_jobs_exist(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    submission_marker = tmp_path / "oarsub-called"
+    oarstat = fake_bin / "oarstat"
+    oarstat.write_text("#!/bin/sh\nexit 0\n")
+    oarstat.chmod(0o755)
+    oarsub = fake_bin / "oarsub"
+    oarsub.write_text(f"#!/bin/sh\n: > '{submission_marker}'\n")
+    oarsub.chmod(0o755)
+
+    repo_root = tmp_path / "repo"
+    (repo_root / "scripts" / "g5k").mkdir(parents=True)
+    results = tmp_path / "results"
+    env = {
+        **os.environ,
+        "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+        "JOB_NAME": "empty-job-list",
+        "CLUSTER": "abacus27",
+        "REPO_ROOT": str(repo_root),
+        "VENV": str(tmp_path / "venv"),
+        "RESULTS": str(results),
+    }
+
+    result = subprocess.run(
+        ["bash", str(SUBMIT_SCRIPT)],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=tmp_path,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert submission_marker.exists()
