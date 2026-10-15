@@ -122,6 +122,7 @@ def render_markdown(
     gold_toponyms: int,
     gazetteer: str,
     min_similarity: float,
+    partial: bool = False,
 ) -> str:
     """
     Render the comparison as a report.
@@ -133,6 +134,7 @@ def render_markdown(
         gold_toponyms: How many gold toponyms were scored
         gazetteer: The gazetteer both pipelines resolved against
         min_similarity: The shared abstention threshold
+        partial: Whether this report covers only an input slice
 
     Returns:
         The report as Markdown
@@ -144,6 +146,7 @@ def render_markdown(
         f"- Gold toponyms: {gold_toponyms}",
         f"- Gazetteer: {gazetteer}",
         f"- Shared abstention threshold: {min_similarity}",
+        f"- Input slice: {'partial' if partial else 'complete'}",
         "",
         "## Recognition (each pipeline's own spans, exact match)",
         "",
