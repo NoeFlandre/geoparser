@@ -159,6 +159,20 @@ class TestRenderMarkdown:
         assert "- Gazetteer: geonames" in text
         assert "- Shared abstention threshold: 0.0" in text
 
+    def test_marks_a_limited_input_slice_as_partial(self):
+        """A reader can distinguish a smoke slice from a complete corpus result."""
+        text = render_markdown(
+            [self.result()],
+            corpus_name="GeoVirus",
+            documents=2,
+            gold_toponyms=14,
+            gazetteer="geonames",
+            min_similarity=0.0,
+            partial=True,
+        )
+
+        assert "- Input slice: partial" in text
+
     def test_lists_each_pipeline_in_both_tables(self):
         """Test that two pipelines are comparable side by side."""
         text = self.render([self.result("upstream"), self.result("swapped")])
