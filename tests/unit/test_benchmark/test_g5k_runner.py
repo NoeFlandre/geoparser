@@ -38,7 +38,8 @@ def test_missing_venv_exits_2_before_side_effects(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(os.name == "nt", reason="needs POSIX bash; Windows bash is WSL")
-def test_submit_quotes_worker_command(tmp_path: Path) -> None:
+@pytest.mark.parametrize("cluster", ["drac", "neowise"])
+def test_submit_quotes_worker_command(tmp_path: Path, cluster: str) -> None:
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     captured_command = tmp_path / "worker-command"
@@ -69,7 +70,7 @@ def test_submit_quotes_worker_command(tmp_path: Path) -> None:
         "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
         "CAPTURE_COMMAND": str(captured_command),
         "CAPTURE_ARGUMENTS": str(captured_arguments),
-        "CLUSTER": "drac",
+        "CLUSTER": cluster,
         "EXPECTED_EXECUTION_MARKER": str(execution_marker),
         "REPO_ROOT": str(repo_root),
         "VENV": str(tmp_path / "venv"),
