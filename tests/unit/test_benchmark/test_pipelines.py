@@ -446,7 +446,12 @@ def test_context_model_must_be_installed(monkeypatch):
 
 def test_xlm_recognizer_build_and_prediction_use_pinned_snapshot(monkeypatch, tmp_path):
     class FakeRecognizer:
+        NAME = None
+
         def __init__(self, model_name):
+            if self.NAME is None:
+                raise ValueError("Module must define a NAME class attribute")
+            self.name = self.NAME
             self.model_name = model_name
 
     class FakeModel:
@@ -484,6 +489,8 @@ def test_xlm_recognizer_build_and_prediction_use_pinned_snapshot(monkeypatch, tm
     recognizer = pipelines._build_xlm_recognizer("cuda")
 
     assert recognizer.predict(["Zurich"]) == [[(0, 3), (4, 8)]]
+    assert recognizer.NAME == "XLMBenchmarkRecognizer"
+    assert recognizer.name == "XLMBenchmarkRecognizer"
     assert recognizer.benchmark_model_pin == pipelines._pinned_name("xlm_r")
     assert model.evaluated
     tokenizer_factory.from_pretrained.assert_called_once_with(
