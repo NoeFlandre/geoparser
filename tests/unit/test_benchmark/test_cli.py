@@ -358,7 +358,7 @@ def test_partial_limited_results_cannot_mark_the_run_complete(tmp_path):
     )
     benchmark_cli._finish_run_manifest(tmp_path, manifest, [])
 
-    cell = manifest["protocol"]["corpora"]["fixture"]
+    cell: Any = manifest["protocol"]["corpora"]["fixture"]
     assert cell["partial"] is True
     assert cell["pipelines"]["swapped"]["phase_status"] == {
         runner.RECOGNITION: "partial",
