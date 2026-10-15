@@ -2,9 +2,12 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
 SCRIPT = Path(__file__).resolve().parents[3] / "scripts" / "g5k" / "run_benchmark.sh"
 
 
+@pytest.mark.skipif(os.name == "nt", reason="needs POSIX bash; Windows bash is WSL")
 def test_missing_venv_exits_2_before_side_effects(tmp_path: Path) -> None:
     venv = tmp_path / "missing-venv"
     results = tmp_path / "results"
