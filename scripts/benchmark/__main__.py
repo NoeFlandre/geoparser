@@ -821,18 +821,14 @@ def _manifest_phases_complete(phase_status: dict[str, str]) -> bool:
     return all(status == "complete" for status in phase_status.values())
 
 
-def _manifest_phases_partial(
-    phase_status: dict[str, str], *, partial: bool
-) -> bool:
+def _manifest_phases_partial(phase_status: dict[str, str], *, partial: bool) -> bool:
     """Return whether every requested phase has a permitted partial result."""
     return partial and all(
         status in {"complete", "partial"} for status in phase_status.values()
     )
 
 
-def _manifest_pipeline_status(
-    phase_status: dict[str, str], *, partial: bool
-) -> str:
+def _manifest_pipeline_status(phase_status: dict[str, str], *, partial: bool) -> str:
     """Summarize one pipeline's phase completion."""
     if _manifest_phases_partial(phase_status, partial=partial):
         return "partial"
