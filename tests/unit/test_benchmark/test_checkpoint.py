@@ -197,6 +197,12 @@ class TestRunIdentity:
 
         assert first.differences(second) == ["model_pins"]
 
+    def test_accelerator_is_load_bearing_for_resume(self):
+        first = identity(accelerator="NVIDIA A100")
+        second = identity(accelerator="NVIDIA T4")
+
+        assert first.differences(second) == ["accelerator"]
+
     def test_gold_span_resolution_reuse_requires_matching_provenance(self):
         common = {
             "corpus_digest": "same-corpus",
