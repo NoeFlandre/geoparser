@@ -41,12 +41,14 @@ def test_submit_quotes_worker_command(tmp_path: Path) -> None:
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     captured_command = tmp_path / "worker-command"
+    captured_arguments = tmp_path / "worker-arguments"
     oarstat = fake_bin / "oarstat"
     oarstat.write_text("#!/bin/sh\nprintf '[]\n'\n")
     oarstat.chmod(0o755)
     oarsub = fake_bin / "oarsub"
     oarsub.write_text(
         "#!/bin/sh\n"
+        'printf "%s\\n" "$@" > "$CAPTURE_ARGUMENTS"\n'
         "for arg do last=$arg; done\n"
         'printf "%s" "$last" > "$CAPTURE_COMMAND"\n'
     )
@@ -65,6 +67,8 @@ def test_submit_quotes_worker_command(tmp_path: Path) -> None:
         **os.environ,
         "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
         "CAPTURE_COMMAND": str(captured_command),
+        "CAPTURE_ARGUMENTS": str(captured_arguments),
+        "CLUSTER": "drac",
         "EXPECTED_EXECUTION_MARKER": str(execution_marker),
         "REPO_ROOT": str(repo_root),
         "VENV": str(tmp_path / "venv"),
@@ -80,6 +84,11 @@ def test_submit_quotes_worker_command(tmp_path: Path) -> None:
         check=False,
     )
     assert submission.returncode == 0, submission.stderr
+    arguments = captured_arguments.read_text().splitlines()
+    assert any(
+        left == "-t" and right == "exotic"
+        for left, right in zip(arguments, arguments[1:])
+    )
 
     worker = subprocess.run(
         ["bash", "-c", captured_command.read_text()],
