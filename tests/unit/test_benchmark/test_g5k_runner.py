@@ -42,13 +42,13 @@ def test_submit_quotes_worker_command(tmp_path: Path) -> None:
     fake_bin.mkdir()
     captured_command = tmp_path / "worker-command"
     oarstat = fake_bin / "oarstat"
-    oarstat.write_text("#!/bin/sh\\nprintf '[]\\n'\\n")
+    oarstat.write_text("#!/bin/sh\nprintf '[]\n'\n")
     oarstat.chmod(0o755)
     oarsub = fake_bin / "oarsub"
     oarsub.write_text(
-        "#!/bin/sh\\n"
-        "for arg do last=$arg; done\\n"
-        'printf "%s" "$last" > "$CAPTURE_COMMAND"\\n'
+        "#!/bin/sh\n"
+        "for arg do last=$arg; done\n"
+        'printf "%s" "$last" > "$CAPTURE_COMMAND"\n'
     )
     oarsub.chmod(0o755)
 
@@ -56,7 +56,7 @@ def test_submit_quotes_worker_command(tmp_path: Path) -> None:
     runner = repo_root / "scripts" / "g5k" / "run_benchmark.sh"
     runner.parent.mkdir(parents=True)
     execution_marker = tmp_path / "runner-executed"
-    runner.write_text('#!/bin/sh\\n: > "$EXPECTED_EXECUTION_MARKER"\\n')
+    runner.write_text('#!/bin/sh\n: > "$EXPECTED_EXECUTION_MARKER"\n')
     runner.chmod(0o755)
 
     injection_marker = tmp_path / "shell-injection-executed"
