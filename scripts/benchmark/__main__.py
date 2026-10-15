@@ -816,6 +816,49 @@ def _manifest_phase_status(
     }
 
 
+def _manifest_phases_complete(phase_status: dict[str, str]) -> bool:
+    """Return whether every requested phase completed."""
+    return all(status == "complete" for status in phase_status.values())
+
+
+def _manifest_phases_partial(
+    phase_status: dict[str, str], *, partial: bool
+) -> bool:
+    """Return whether every requested phase has a permitted partial result."""
+    return partial and all(
+        status in {"complete", "partial"} for status in phase_status.values()
+    )
+
+
+def _manifest_pipeline_status(
+    phase_status: dict[str, str], *, partial: bool
+) -> str:
+    """Summarize one pipeline's phase completion."""
+    if _manifest_phases_partial(phase_status, partial=partial):
+        return "partial"
+    if _manifest_phases_complete(phase_status):
+        return "complete"
+    return "incomplete"
+
+
+def _manifest_pipeline_metadata(name: str, language: str) -> dict:
+    """Return model metadata for benchmark pipelines that need it."""
+    return (
+        missing_matrix.pipeline_model_metadata(name, language)
+        if name in missing_matrix.MISSING_PIPELINES
+        else {}
+    )
+
+
+def _manifest_integration_provenance(name: str) -> dict:
+    """Return integration evidence only for the Otter pipeline."""
+    return (
+        pipelines.otter_integration_provenance()
+        if name == pipelines.OTTER_MINILM
+        else {}
+    )
+
+
 def _manifest_pipeline_cell(
     result: dict,
     manifest: dict,
@@ -828,25 +871,12 @@ def _manifest_pipeline_cell(
     name = result["name"]
     phase_status = _manifest_phase_status(result, phases, partial=partial)
     failures = result["failures"]
-    complete = all(status == "complete" for status in phase_status.values())
-    partial_complete = partial and all(
-        status in {"complete", "partial"} for status in phase_status.values()
-    )
-    status = "partial" if partial_complete else "complete" if complete else "incomplete"
     return {
-        "status": status,
+        "status": _manifest_pipeline_status(phase_status, partial=partial),
         "phase_status": phase_status,
         "model_pins": manifest["protocol"]["pipelines"][name]["model_pins"],
-        "model_metadata": (
-            missing_matrix.pipeline_model_metadata(name, language)
-            if name in missing_matrix.MISSING_PIPELINES
-            else {}
-        ),
-        "integration_provenance": (
-            pipelines.otter_integration_provenance()
-            if name == pipelines.OTTER_MINILM
-            else {}
-        ),
+        "model_metadata": _manifest_pipeline_metadata(name, language),
+        "integration_provenance": _manifest_integration_provenance(name),
         "recognition": result["recognition"],
         "resolution": result["resolution"],
         "phase_elapsed_seconds": result["phase_elapsed_seconds"],
@@ -856,14 +886,23 @@ def _manifest_pipeline_cell(
     }
 
 
+def _manifest_cell_records_scored(records: Sequence[dict]) -> bool:
+    """Return whether every pipeline produced requested phase results."""
+    return all(record["status"] in {"complete", "partial"} for record in records)
+
+
+def _manifest_cell_has_failures(records: Sequence[dict]) -> bool:
+    """Return whether any pipeline recorded failed documents."""
+    return any(record["failure_count"] for record in records)
+
+
 def _manifest_cell_status(records: Sequence[dict], *, partial: bool = False) -> str:
     """Summarize complete or partial pipeline rows, preserving failures."""
-    all_scored = all(record["status"] in {"complete", "partial"} for record in records)
-    if not all_scored:
+    if not _manifest_cell_records_scored(records):
         return "incomplete"
     if partial:
         return "partial"
-    if any(record["failure_count"] for record in records):
+    if _manifest_cell_has_failures(records):
         return "complete_with_document_failures"
     return "complete"
 
