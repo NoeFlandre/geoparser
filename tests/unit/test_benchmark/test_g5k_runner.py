@@ -1,5 +1,6 @@
 import os
 import subprocess
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -87,7 +88,7 @@ def test_submit_quotes_worker_command(tmp_path: Path) -> None:
     arguments = captured_arguments.read_text().splitlines()
     assert any(
         left == "-t" and right == "exotic"
-        for left, right in zip(arguments, arguments[1:])
+        for left, right in pairwise(arguments)
     )
 
     worker = subprocess.run(
