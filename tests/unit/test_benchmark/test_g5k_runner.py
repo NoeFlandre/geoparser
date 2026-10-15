@@ -58,14 +58,14 @@ def test_submit_quotes_worker_command(tmp_path: Path, cluster: str) -> None:
     captured_command = tmp_path / "worker-command"
     captured_arguments = tmp_path / "worker-arguments"
     oarstat = fake_bin / "oarstat"
-    oarstat.write_text("#!/bin/sh\nprintf '[]\n'\n")
+    oarstat.write_text("#!/bin/sh\\nprintf '[]\\n'\\n")
     oarstat.chmod(0o755)
     oarsub = fake_bin / "oarsub"
     oarsub.write_text(
-        "#!/bin/sh\n"
-        'printf "%s\\n" "$@" > "$CAPTURE_ARGUMENTS"\n'
-        "for arg do last=$arg; done\n"
-        'printf "%s" "$last" > "$CAPTURE_COMMAND"\n'
+        "#!/bin/sh\\n"
+        'printf "%s\\\\n" "$@" > "$CAPTURE_ARGUMENTS"\\n'
+        "for arg do last=$arg; done\\n"
+        'printf "%s" "$last" > "$CAPTURE_COMMAND"\\n'
     )
     oarsub.chmod(0o755)
 
@@ -73,7 +73,7 @@ def test_submit_quotes_worker_command(tmp_path: Path, cluster: str) -> None:
     runner = repo_root / "scripts" / "g5k" / "run_benchmark.sh"
     runner.parent.mkdir(parents=True)
     execution_marker = tmp_path / "runner-executed"
-    runner.write_text('#!/bin/sh\n: > "$EXPECTED_EXECUTION_MARKER"\n')
+    runner.write_text('#!/bin/sh\\n: > "$EXPECTED_EXECUTION_MARKER"\\n')
     runner.chmod(0o755)
 
     injection_marker = tmp_path / "shell-injection-executed"
@@ -98,9 +98,12 @@ def test_submit_quotes_worker_command(tmp_path: Path, cluster: str) -> None:
         cwd=tmp_path,
         check=False,
     )
-    assert submission.returncode == 0, submission.stderr
     captured = captured_arguments.read_text()
-    assert "\n-t\nexotic\n" in f"\n{captured}\n"
+    submission_checks = (
+        submission.returncode == 0,
+        "\\n-t\\nexotic\\n" in f"\\n{captured}\\n",
+    )
+    assert all(submission_checks), submission_checks
 
     worker = subprocess.run(
         ["bash", "-c", captured_command.read_text()],
@@ -110,6 +113,9 @@ def test_submit_quotes_worker_command(tmp_path: Path, cluster: str) -> None:
         cwd=tmp_path,
         check=False,
     )
-    assert worker.returncode == 0, worker.stderr
-    assert not injection_marker.exists()
-    assert execution_marker.exists()
+    worker_checks = (
+        worker.returncode == 0,
+        not injection_marker.exists(),
+        execution_marker.exists(),
+    )
+    assert all(worker_checks), worker_checks
