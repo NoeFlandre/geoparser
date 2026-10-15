@@ -809,9 +809,7 @@ def _manifest_phase_status(
         runner.RESOLUTION: result["resolution"],
     }
     return {
-        phase: (
-            "partial" if partial else "complete"
-        )
+        phase: ("partial" if partial else "complete")
         if metrics[phase]
         else "not_completed"
         for phase in phases
@@ -989,9 +987,7 @@ def _record_completed_corpus(
 
 def _finish_run_manifest(output_dir: Path, manifest: dict, rows: list[dict]) -> None:
     """Mark the run status, persist its completion time and render final scores."""
-    statuses = [
-        cell["status"] for cell in manifest["protocol"]["corpora"].values()
-    ]
+    statuses = [cell["status"] for cell in manifest["protocol"]["corpora"].values()]
     completed_statuses = {
         "complete",
         "complete_with_document_failures",
