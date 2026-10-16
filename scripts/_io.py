@@ -39,3 +39,25 @@ def write_json_atomic(
             handle.flush()
             os.fsync(handle.fileno())
     temporary.replace(path)
+
+
+def write_text_atomic(path: Path, value: str, *, fsync: bool = True) -> None:
+    """Write UTF-8 text so ``path`` only ever holds a complete document.
+
+    Text is written to a sibling temporary file and renamed over ``path``.
+    With ``fsync`` the bytes are synced first, so an interrupted write cannot
+    leave a truncated destination behind.
+
+    Args:
+        path: Destination, whose parent directory is created if missing
+        value: The UTF-8 text to write
+        fsync: Sync the data to disk before the rename
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        handle.write(value)
+        if fsync:
+            handle.flush()
+            os.fsync(handle.fileno())
+    temporary.replace(path)
