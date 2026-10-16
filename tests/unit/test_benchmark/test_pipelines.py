@@ -1,6 +1,7 @@
 """Factory tests for benchmark pipeline composition."""
 
 import hashlib
+import importlib.util
 import inspect
 import sys
 from pathlib import Path
@@ -41,16 +42,15 @@ def test_hybrid_is_a_distinct_benchmark_pipeline():
 
 @pytest.fixture
 def _runtime_batch_values(monkeypatch):
-    from spacy.language import Language
-
     from geoparser.modules.resolvers import jina, sentencetransformer
 
+    monkeypatch.setattr(pipelines, "_upstream_spacy_batch_size", lambda: 256)
     monkeypatch.setattr(sentencetransformer, "_ENCODE_BATCH_SIZE", 19)
     monkeypatch.setattr(jina, "_JINA_ENCODE_BATCH_SIZE", 7)
     monkeypatch.setattr(pipelines, "XLM_BATCH_SIZE", 11)
     monkeypatch.setattr(pipelines, "OTTER_BATCH_SIZE", 13)
     return {
-        "spacy": inspect.signature(Language).parameters["batch_size"].default,
+        "spacy": 256,
         "jina": 7,
         "sentence_transformer": 19,
         "xlm": 11,
@@ -89,13 +89,47 @@ def test_execution_settings_select_the_runtime_resolver_batch(
     }
 
 
-def test_upstream_execution_settings_use_spacy_batch_size(_runtime_batch_values):
+def test_upstream_execution_settings_use_model_batch_size(_runtime_batch_values):
     settings = pipelines.pipeline_execution_settings(pipelines.UPSTREAM, 6)
 
     assert settings["recognition"] == {
         "method": "spacy.Language.pipe",
         "batch_size": _runtime_batch_values["spacy"],
     }
+
+
+def test_upstream_batch_size_uses_pinned_model_config_not_constructor_default(
+    monkeypatch, tmp_path
+):
+    import spacy.util
+    from spacy.language import Language
+
+    model_data = (
+        tmp_path
+        / f"{pipelines.UPSTREAM_SPACY_MODEL}-{pipelines.UPSTREAM_SPACY_MODEL_VERSION}"
+    )
+    model_data.mkdir()
+    (model_data / "config.cfg").write_text(
+        '[nlp]\nlang = "en"\npipeline = []\nbatch_size = 256\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(pipelines, "_require_upstream_spacy_model", lambda: None)
+    monkeypatch.setattr(spacy.util, "get_package_path", lambda _name: tmp_path)
+
+    assert (
+        pipelines._upstream_spacy_batch_size(),
+        inspect.signature(Language).parameters["batch_size"].default,
+    ) == (256, 1000)
+
+
+def test_upstream_execution_settings_match_installed_recognizer_batch_size():
+    if importlib.util.find_spec(pipelines.UPSTREAM_SPACY_MODEL) is None:
+        pytest.skip("Pinned spaCy model is not installed in this environment")
+
+    recognizer = pipelines.build_recognizer(pipelines.UPSTREAM, device="cpu")
+    settings = pipelines.pipeline_execution_settings(pipelines.UPSTREAM, 6)
+
+    assert settings["recognition"]["batch_size"] == recognizer.nlp.batch_size
 
 
 @pytest.mark.parametrize(
