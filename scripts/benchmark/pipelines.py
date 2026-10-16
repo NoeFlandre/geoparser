@@ -729,15 +729,10 @@ def pipeline_model_pins(pipeline: str) -> dict[str, str]:
         raise ValueError(message) from error
 
 
-def pipeline_execution_settings(
+def _validate_execution_settings_inputs(
     pipeline: str, document_chunk_size: int
-) -> dict[str, t.Any]:
-    """Return the effective model batching and document checkpoint settings.
-
-    Values are read from the implementation that consumes them. This keeps
-    the manifest and checkpoint identity tied to the actual runtime settings
-    instead of a second set of benchmark-only constants.
-    """
+) -> None:
+    """Reject invalid execution settings before deriving their provenance."""
     if pipeline not in PIPELINES:
         message = f"Unknown benchmark pipeline: {pipeline}"
         raise ValueError(message)
@@ -745,34 +740,30 @@ def pipeline_execution_settings(
         message = f"chunk size must be at least 1, got {document_chunk_size}"
         raise ValueError(message)
 
+
+def _recognition_execution_settings(pipeline: str) -> dict[str, t.Any]:
+    """Read the effective recognition call size from its implementation."""
     if pipeline == UPSTREAM:
         import inspect
 
         from spacy.language import Language
 
-        recognition = {
+        return {
             "method": "spacy.Language.pipe",
             # SpacyRecognizer calls nlp.pipe(texts) without passing this
             # argument; spaCy then uses the Language instance's batch_size.
             "batch_size": inspect.signature(Language).parameters["batch_size"].default,
         }
-    elif pipeline in (SWAPPED, HYBRID, PRIOR, *ABLATIONS):
+    if pipeline in (SWAPPED, HYBRID, PRIOR, *ABLATIONS):
         # GLiNER2Recognizer.predict invokes the model once for each document.
-        recognition = {
-            "method": "per_document",
-            "documents_per_model_call": 1,
-        }
-    elif pipeline == XLM_MINILM:
-        recognition = {
-            "method": "transformers_pipeline",
-            "batch_size": XLM_BATCH_SIZE,
-        }
-    else:
-        recognition = {
-            "method": "otter_predict",
-            "batch_size": OTTER_BATCH_SIZE,
-        }
+        return {"method": "per_document", "documents_per_model_call": 1}
+    if pipeline == XLM_MINILM:
+        return {"method": "transformers_pipeline", "batch_size": XLM_BATCH_SIZE}
+    return {"method": "otter_predict", "batch_size": OTTER_BATCH_SIZE}
 
+
+def _resolution_execution_settings(pipeline: str) -> dict[str, t.Any]:
+    """Read the encoding batch size from the resolver selected by a pipeline."""
     if pipeline == SWAPPED:
         from geoparser.modules.resolvers import jina
 
@@ -783,10 +774,23 @@ def pipeline_execution_settings(
         encode_batch_size = sentencetransformer._ENCODE_BATCH_SIZE
 
     return {
+        "context_encoding_batch_size": encode_batch_size,
+        "candidate_encoding_batch_size": encode_batch_size,
+    }
+
+
+def pipeline_execution_settings(
+    pipeline: str, document_chunk_size: int
+) -> dict[str, t.Any]:
+    """Return the effective model batching and document checkpoint settings.
+
+    Values are read from the implementation that consumes them. This keeps
+    the manifest and checkpoint identity tied to the actual runtime settings
+    instead of a second set of benchmark-only constants.
+    """
+    _validate_execution_settings_inputs(pipeline, document_chunk_size)
+    return {
         "document_chunk_size": document_chunk_size,
-        "recognition": recognition,
-        "resolution": {
-            "context_encoding_batch_size": encode_batch_size,
-            "candidate_encoding_batch_size": encode_batch_size,
-        },
+        "recognition": _recognition_execution_settings(pipeline),
+        "resolution": _resolution_execution_settings(pipeline),
     }
