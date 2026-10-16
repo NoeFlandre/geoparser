@@ -60,6 +60,7 @@ UPSTREAM_RESOLVER_MODEL = "dguzh/geo-all-MiniLM-L6-v2"
 # The upstream recognizer. The transformer pipeline needs a plugin the library
 # does not install, so the small pipeline is what upstream runs out of the box.
 UPSTREAM_SPACY_MODEL = "en_core_web_sm"
+UPSTREAM_SPACY_MODEL_VERSION = "3.8.0"
 SPACY_CONTEXT_MODEL = "xx_sent_ud_sm"
 SPACY_CONTEXT_MODEL_VERSION = "3.8.0"
 XLM_BATCH_SIZE = 8
@@ -119,6 +120,25 @@ def _require_context_model() -> None:
         raise RuntimeError(message)
 
 
+def _require_upstream_spacy_model() -> None:
+    """Fail before inference if the upstream recognizer model is not locked."""
+    try:
+        installed = importlib.metadata.version("en-core-web-sm")
+    except importlib.metadata.PackageNotFoundError as error:
+        message = (
+            f"Install the locked {UPSTREAM_SPACY_MODEL}=="
+            f"{UPSTREAM_SPACY_MODEL_VERSION} package before running the upstream "
+            "recognizer."
+        )
+        raise RuntimeError(message) from error
+    if installed != UPSTREAM_SPACY_MODEL_VERSION:
+        message = (
+            f"Expected {UPSTREAM_SPACY_MODEL} {UPSTREAM_SPACY_MODEL_VERSION}; "
+            f"found {installed}"
+        )
+        raise RuntimeError(message)
+
+
 def _installed_context_model_version() -> str:
     """Read the required splitter package version with a useful error."""
     try:
@@ -140,7 +160,7 @@ def _pinned_name(model_key: str) -> str:
 _CONTEXT_MODEL_PIN = f"{SPACY_CONTEXT_MODEL}@{SPACY_CONTEXT_MODEL_VERSION}"
 _PIPELINE_MODEL_PINS = {
     UPSTREAM: {
-        "recognizer": f"{UPSTREAM_SPACY_MODEL}@3.8.0",
+        "recognizer": f"{UPSTREAM_SPACY_MODEL}@{UPSTREAM_SPACY_MODEL_VERSION}",
         "resolver": _pinned_name("minilm"),
         "context_sentence_splitter": _CONTEXT_MODEL_PIN,
     },
@@ -526,6 +546,7 @@ def describe_device(device: str) -> str:
 
 def _build_spacy_recognizer(device: str) -> t.Any:
     """Build the upstream small spaCy recognizer, optionally enabling GPU."""
+    _require_upstream_spacy_model()
     from geoparser.modules import SpacyRecognizer
 
     if device.startswith("cuda"):
@@ -593,6 +614,8 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
         msg = f"Unknown benchmark pipeline: {pipeline}"
         raise ValueError(msg)
 
+    _require_context_model()
+
     if pipeline in (UPSTREAM, HYBRID):
         from geoparser.modules import SentenceTransformerResolver
 
@@ -621,7 +644,6 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
     elif pipeline == SWAPPED:
         from geoparser.modules import JinaResolver
 
-        _require_context_model()
         embeddings_snapshot = _snapshot("jina_embeddings")
         reranker_snapshot = _snapshot("jina_reranker")
         with _offline_model_load():
@@ -636,7 +658,6 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
     else:
         from geoparser.modules import SentenceTransformerResolver
 
-        _require_context_model()
         snapshot = _snapshot("minilm")
         with _offline_model_load():
             resolver = SentenceTransformerResolver(
