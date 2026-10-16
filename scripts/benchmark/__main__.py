@@ -363,7 +363,7 @@ def _run_identity(run: _CorpusRun, pipeline_name: str) -> ckpt.RunIdentity:
         limit=run.arguments.limit,
         commit=run.commit,
         model_pins=pipelines.pipeline_model_pins(pipeline_name),
-        accelerator=run.facts.get("gpu"),
+        accelerator=pipelines.describe_device(run.device),
     )
 
 
@@ -762,7 +762,7 @@ def _assemble_run_manifest(plan: _ManifestPlan, cells: dict, model_runs: dict) -
             "limit": plan.arguments.limit,
             "chunk_size": plan.arguments.chunk_size,
             "device": plan.device,
-            "accelerator": plan.facts.get("gpu"),
+            "accelerator": pipelines.describe_device(plan.device),
             "phases": list(plan.phases),
             "pipelines": model_runs,
             "corpora": cells,
