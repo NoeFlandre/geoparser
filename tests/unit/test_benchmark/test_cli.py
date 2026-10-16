@@ -239,15 +239,14 @@ def test_corpus_summary_row_records_counts_and_scores(tmp_path):
     ]
 
 
-def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
+def _run_manifest_for_xlm_pipeline():
     arguments = argparse.Namespace(
         min_similarity=0.0,
         limit=None,
         chunk_size=5,
         device="cuda",
     )
-
-    manifest = benchmark_cli._run_manifest(
+    return benchmark_cli._run_manifest(
         _ManifestPlan(
             names=["newsli-ar"],
             pipeline_names=[pipelines.XLM_MINILM],
@@ -260,7 +259,11 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
         )
     )
 
+
+def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
+    manifest = _run_manifest_for_xlm_pipeline()
     cell = manifest["protocol"]["corpora"]["newsli-ar"]
+
     assert (
         cell["expected_documents"],
         cell["expected_gold_toponyms"],
@@ -270,9 +273,6 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
             "resolver"
         ].endswith("@d678769f195c194ffdc6f3735a9360118a855b43"),
     ) == (500, 3319, True, "a" * 40, True)
-    assert manifest["protocol"]["pipelines"][pipelines.XLM_MINILM][
-        "execution_settings"
-    ] == pipelines.pipeline_execution_settings(pipelines.XLM_MINILM, 5)
 
     resumed = json.loads(json.dumps(manifest))
     resumed["protocol"]["corpora"]["newsli-ar"].update(
@@ -288,10 +288,22 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
         different_gpu
     ) != benchmark_cli._manifest_identity(manifest)
 
+
+def test_run_manifest_records_effective_pipeline_execution_settings():
+    manifest = _run_manifest_for_xlm_pipeline()
+
+    assert manifest["protocol"]["pipelines"][pipelines.XLM_MINILM][
+        "execution_settings"
+    ] == pipelines.pipeline_execution_settings(pipelines.XLM_MINILM, 5)
+
+
+def test_run_manifest_identity_changes_when_batch_settings_change():
+    manifest = _run_manifest_for_xlm_pipeline()
     different_batch = json.loads(json.dumps(manifest))
     different_batch["protocol"]["pipelines"][pipelines.XLM_MINILM][
         "execution_settings"
     ]["recognition"]["batch_size"] += 1
+
     assert benchmark_cli._manifest_identity(
         different_batch
     ) != benchmark_cli._manifest_identity(manifest)
