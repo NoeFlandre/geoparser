@@ -1,6 +1,7 @@
 """Factory tests for benchmark pipeline composition."""
 
 import hashlib
+import inspect
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -36,6 +37,65 @@ def _patch_module_classes(monkeypatch, **classes):
 
 def test_hybrid_is_a_distinct_benchmark_pipeline():
     assert pipelines.DEFAULT_PIPELINES == ("upstream", "swapped", "hybrid", "prior")
+
+
+def test_execution_settings_follow_each_pipeline_runtime_batch(monkeypatch):
+    from spacy.language import Language
+
+    from geoparser.modules.resolvers import jina, sentencetransformer
+
+    assert sentencetransformer._ENCODE_BATCH_SIZE == 32
+    assert jina._JINA_ENCODE_BATCH_SIZE == 4
+    assert pipelines.XLM_BATCH_SIZE == 8
+    assert pipelines.OTTER_BATCH_SIZE == 8
+
+    monkeypatch.setattr(sentencetransformer, "_ENCODE_BATCH_SIZE", 19)
+    monkeypatch.setattr(jina, "_JINA_ENCODE_BATCH_SIZE", 7)
+    monkeypatch.setattr(pipelines, "XLM_BATCH_SIZE", 11)
+    monkeypatch.setattr(pipelines, "OTTER_BATCH_SIZE", 13)
+
+    spacy_batch_size = inspect.signature(Language).parameters["batch_size"].default
+    for pipeline in pipelines.PIPELINES:
+        settings = pipelines.pipeline_execution_settings(pipeline, 6)
+        assert settings["document_chunk_size"] == 6
+        assert settings["resolution"] == {
+            "context_encoding_batch_size": 7 if pipeline == pipelines.SWAPPED else 19,
+            "candidate_encoding_batch_size": 7 if pipeline == pipelines.SWAPPED else 19,
+        }
+
+        if pipeline == pipelines.UPSTREAM:
+            assert settings["recognition"] == {
+                "method": "spacy.Language.pipe",
+                "batch_size": spacy_batch_size,
+            }
+        elif pipeline in (
+            pipelines.SWAPPED,
+            pipelines.HYBRID,
+            pipelines.PRIOR,
+            *pipelines.ABLATIONS,
+        ):
+            assert settings["recognition"] == {
+                "method": "per_document",
+                "documents_per_model_call": 1,
+            }
+        elif pipeline == pipelines.XLM_MINILM:
+            assert settings["recognition"] == {
+                "method": "transformers_pipeline",
+                "batch_size": 11,
+            }
+        else:
+            assert settings["recognition"] == {
+                "method": "otter_predict",
+                "batch_size": 13,
+            }
+
+
+def test_execution_settings_reject_unknown_pipeline_and_invalid_chunk():
+    with pytest.raises(ValueError, match="Unknown benchmark pipeline"):
+        pipelines.pipeline_execution_settings("unknown", 5)
+
+    with pytest.raises(ValueError, match="chunk size must be at least 1"):
+        pipelines.pipeline_execution_settings(pipelines.UPSTREAM, 0)
 
 
 def test_cli_accepts_the_hybrid_pipeline():

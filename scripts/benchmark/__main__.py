@@ -125,7 +125,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--chunk-size",
         type=int,
-        default=5,
+        default=runner.DEFAULT_CHUNK_SIZE,
         help="Documents processed between checkpoint saves",
     )
     parser.add_argument(
@@ -363,6 +363,10 @@ def _run_identity(run: _CorpusRun, pipeline_name: str) -> ckpt.RunIdentity:
         limit=run.arguments.limit,
         commit=run.commit,
         model_pins=pipelines.pipeline_model_pins(pipeline_name),
+        execution_settings=pipelines.pipeline_execution_settings(
+            pipeline_name,
+            getattr(run.arguments, "chunk_size", runner.DEFAULT_CHUNK_SIZE),
+        ),
         accelerator=pipelines.describe_device(run.device),
     )
 
@@ -687,7 +691,7 @@ def _summary_rows(
 def _run_manifest(plan: _ManifestPlan) -> dict:
     """Build a reproducible, incrementally updated manifest for this run."""
     cells = _manifest_corpus_cells(plan.names)
-    model_runs = _manifest_pipeline_pins(plan.pipeline_names)
+    model_runs = _manifest_pipeline_pins(plan.pipeline_names, plan.arguments.chunk_size)
     return _assemble_run_manifest(plan, cells, model_runs)
 
 
@@ -730,11 +734,18 @@ def _manifest_corpus_cells(names: Sequence[str]) -> dict[str, dict]:
     return {name: _manifest_corpus_cell(name, fixed_cells.get(name)) for name in names}
 
 
-def _manifest_pipeline_pins(pipeline_names: Sequence[str]) -> dict[str, dict]:
-    """Record immutable model pins and retained integration evidence."""
+def _manifest_pipeline_pins(
+    pipeline_names: Sequence[str], chunk_size: int
+) -> dict[str, dict]:
+    """Record model pins, effective execution settings and integration evidence."""
     model_runs = {}
     for name in pipeline_names:
-        model_runs[name] = {"model_pins": pipelines.pipeline_model_pins(name)}
+        model_runs[name] = {
+            "model_pins": pipelines.pipeline_model_pins(name),
+            "execution_settings": pipelines.pipeline_execution_settings(
+                name, chunk_size
+            ),
+        }
         if name == pipelines.OTTER_MINILM:
             model_runs[name]["integration_provenance"] = (
                 pipelines.otter_integration_provenance()

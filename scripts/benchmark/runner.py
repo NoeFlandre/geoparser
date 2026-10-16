@@ -25,6 +25,7 @@ from scripts.benchmark.corpus import Document
 
 RECOGNITION = "recognition"
 RESOLUTION = "resolution"
+DEFAULT_CHUNK_SIZE = 5
 
 
 @dataclass(frozen=True)

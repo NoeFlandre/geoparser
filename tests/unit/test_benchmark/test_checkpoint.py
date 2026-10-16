@@ -131,6 +131,7 @@ class TestRefusalToResume:
             ("limit", 10),
             ("pipeline", "upstream"),
             ("schema_version", SCHEMA_VERSION + 1),
+            ("execution_settings", {"document_chunk_size": 7}),
         ],
     )
     def test_starts_fresh_when_the_run_changed(self, tmp_path, field, value):
@@ -216,11 +217,32 @@ class TestRunIdentity:
                 "resolver": "minilm@pin",
                 "context_sentence_splitter": "xx_sent_ud_sm@3.8.0",
             },
+            "execution_settings": {
+                "document_chunk_size": 5,
+                "recognition": {"batch_size": 8},
+                "resolution": {
+                    "context_encoding_batch_size": 32,
+                    "candidate_encoding_batch_size": 32,
+                },
+            },
         }
         first = identity(pipeline="xlm-minilm", **common)
         second = identity(pipeline="otter-cross-minilm", **common)
 
         assert resolution_reuse_compatible(first, second)
+        assert resolution_reuse_compatible(
+            first,
+            identity(
+                pipeline="otter-cross-minilm",
+                **{
+                    **common,
+                    "execution_settings": {
+                        **common["execution_settings"],
+                        "recognition": {"batch_size": 16},
+                    },
+                },
+            ),
+        )
         assert not resolution_reuse_compatible(
             first,
             identity(
@@ -237,6 +259,22 @@ class TestRunIdentity:
                     "model_pins": {
                         **common["model_pins"],
                         "resolver": "minilm@other",
+                    },
+                },
+            ),
+        )
+        assert not resolution_reuse_compatible(
+            first,
+            identity(
+                pipeline="otter-cross-minilm",
+                **{
+                    **common,
+                    "execution_settings": {
+                        **common["execution_settings"],
+                        "resolution": {
+                            **common["execution_settings"]["resolution"],
+                            "candidate_encoding_batch_size": 16,
+                        },
                     },
                 },
             ),

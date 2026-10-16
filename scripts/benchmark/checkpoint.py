@@ -40,6 +40,7 @@ class RunIdentity:
     commit: str
     schema_version: int = SCHEMA_VERSION
     model_pins: dict[str, str] = field(default_factory=dict)
+    execution_settings: dict[str, t.Any] = field(default_factory=dict)
     gazetteer_sha256: str | None = None
     accelerator: str | None = None
 
@@ -66,6 +67,8 @@ def resolution_reuse_compatible(first: RunIdentity, second: RunIdentity) -> bool
         _resolution_inputs_match(first, second)
         and "resolver" in _resolution_model_pins(first)
         and _resolution_model_pins(first) == _resolution_model_pins(second)
+        and _resolution_execution_settings(first)
+        == _resolution_execution_settings(second)
     )
 
 
@@ -89,6 +92,15 @@ def _resolution_model_pins(identity: RunIdentity) -> dict[str, str]:
     """Keep only the models used by deterministic resolution."""
     roles = {"resolver", "reranker", "context_sentence_splitter"}
     return {name: pin for name, pin in identity.model_pins.items() if name in roles}
+
+
+def _resolution_execution_settings(identity: RunIdentity) -> dict[str, t.Any]:
+    """Keep settings that can affect reusable resolution predictions."""
+    return {
+        key: identity.execution_settings[key]
+        for key in ("document_chunk_size", "resolution")
+        if key in identity.execution_settings
+    }
 
 
 @dataclass

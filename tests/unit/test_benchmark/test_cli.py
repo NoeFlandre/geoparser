@@ -270,6 +270,9 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
             "resolver"
         ].endswith("@d678769f195c194ffdc6f3735a9360118a855b43"),
     ) == (500, 3319, True, "a" * 40, True)
+    assert manifest["protocol"]["pipelines"][pipelines.XLM_MINILM][
+        "execution_settings"
+    ] == pipelines.pipeline_execution_settings(pipelines.XLM_MINILM, 5)
 
     resumed = json.loads(json.dumps(manifest))
     resumed["protocol"]["corpora"]["newsli-ar"].update(
@@ -283,6 +286,14 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
     different_gpu["protocol"]["accelerator"] = "T4"
     assert benchmark_cli._manifest_identity(
         different_gpu
+    ) != benchmark_cli._manifest_identity(manifest)
+
+    different_batch = json.loads(json.dumps(manifest))
+    different_batch["protocol"]["pipelines"][pipelines.XLM_MINILM][
+        "execution_settings"
+    ]["recognition"]["batch_size"] += 1
+    assert benchmark_cli._manifest_identity(
+        different_batch
     ) != benchmark_cli._manifest_identity(manifest)
 
 
