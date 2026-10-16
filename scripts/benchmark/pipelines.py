@@ -741,18 +741,29 @@ def _validate_execution_settings_inputs(
         raise ValueError(message)
 
 
+def _upstream_spacy_batch_size() -> int:
+    """Read the batch size configured by the installed, pinned spaCy model."""
+    _require_upstream_spacy_model()
+
+    from spacy.util import get_package_path, load_config
+
+    package_path = Path(get_package_path(UPSTREAM_SPACY_MODEL))
+    config_path = (
+        package_path
+        / f"{UPSTREAM_SPACY_MODEL}-{UPSTREAM_SPACY_MODEL_VERSION}"
+        / "config.cfg"
+    )
+    return load_config(config_path)["nlp"]["batch_size"]
+
+
 def _recognition_execution_settings(pipeline: str) -> dict[str, t.Any]:
     """Read the effective recognition call size from its implementation."""
     if pipeline == UPSTREAM:
-        import inspect
-
-        from spacy.language import Language
-
         return {
             "method": "spacy.Language.pipe",
-            # SpacyRecognizer calls nlp.pipe(texts) without passing this
-            # argument; spaCy then uses the Language instance's batch_size.
-            "batch_size": inspect.signature(Language).parameters["batch_size"].default,
+            # The recognizer calls nlp.pipe(texts) without overriding batch_size,
+            # so spaCy uses the model config loaded into Language.batch_size.
+            "batch_size": _upstream_spacy_batch_size(),
         }
     if pipeline in (SWAPPED, HYBRID, PRIOR, *ABLATIONS):
         # GLiNER2Recognizer.predict invokes the model once for each document.
