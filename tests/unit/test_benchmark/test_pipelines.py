@@ -39,61 +39,115 @@ def test_hybrid_is_a_distinct_benchmark_pipeline():
     assert pipelines.DEFAULT_PIPELINES == ("upstream", "swapped", "hybrid", "prior")
 
 
-def test_execution_settings_follow_each_pipeline_runtime_batch(monkeypatch):
+@pytest.fixture
+def _runtime_batch_values(monkeypatch):
     from spacy.language import Language
 
     from geoparser.modules.resolvers import jina, sentencetransformer
-
-    assert sentencetransformer._ENCODE_BATCH_SIZE == 32
-    assert jina._JINA_ENCODE_BATCH_SIZE == 4
-    assert pipelines.XLM_BATCH_SIZE == 8
-    assert pipelines.OTTER_BATCH_SIZE == 8
 
     monkeypatch.setattr(sentencetransformer, "_ENCODE_BATCH_SIZE", 19)
     monkeypatch.setattr(jina, "_JINA_ENCODE_BATCH_SIZE", 7)
     monkeypatch.setattr(pipelines, "XLM_BATCH_SIZE", 11)
     monkeypatch.setattr(pipelines, "OTTER_BATCH_SIZE", 13)
-
-    spacy_batch_size = inspect.signature(Language).parameters["batch_size"].default
-    for pipeline in pipelines.PIPELINES:
-        settings = pipelines.pipeline_execution_settings(pipeline, 6)
-        assert settings["document_chunk_size"] == 6
-        assert settings["resolution"] == {
-            "context_encoding_batch_size": 7 if pipeline == pipelines.SWAPPED else 19,
-            "candidate_encoding_batch_size": 7 if pipeline == pipelines.SWAPPED else 19,
-        }
-
-        if pipeline == pipelines.UPSTREAM:
-            assert settings["recognition"] == {
-                "method": "spacy.Language.pipe",
-                "batch_size": spacy_batch_size,
-            }
-        elif pipeline in (
-            pipelines.SWAPPED,
-            pipelines.HYBRID,
-            pipelines.PRIOR,
-            *pipelines.ABLATIONS,
-        ):
-            assert settings["recognition"] == {
-                "method": "per_document",
-                "documents_per_model_call": 1,
-            }
-        elif pipeline == pipelines.XLM_MINILM:
-            assert settings["recognition"] == {
-                "method": "transformers_pipeline",
-                "batch_size": 11,
-            }
-        else:
-            assert settings["recognition"] == {
-                "method": "otter_predict",
-                "batch_size": 13,
-            }
+    return {
+        "spacy": inspect.signature(Language).parameters["batch_size"].default,
+        "jina": 7,
+        "sentence_transformer": 19,
+        "xlm": 11,
+        "otter": 13,
+    }
 
 
-def test_execution_settings_reject_unknown_pipeline_and_invalid_chunk():
+def test_default_resolver_batch_sizes_are_expected():
+    from geoparser.modules.resolvers import jina, sentencetransformer
+
+    assert jina._JINA_ENCODE_BATCH_SIZE == 4
+    assert sentencetransformer._ENCODE_BATCH_SIZE == 32
+    assert pipelines.XLM_BATCH_SIZE == 8
+    assert pipelines.OTTER_BATCH_SIZE == 8
+
+
+@pytest.mark.parametrize(
+    ("pipeline", "batch_size"),
+    [
+        (pipelines.SWAPPED, 7),
+        *[
+            (pipeline, 19)
+            for pipeline in pipelines.PIPELINES
+            if pipeline != pipelines.SWAPPED
+        ],
+    ],
+)
+def test_execution_settings_select_the_runtime_resolver_batch(
+    pipeline, batch_size, _runtime_batch_values
+):
+    settings = pipelines.pipeline_execution_settings(pipeline, 6)
+
+    assert settings["resolution"] == {
+        "context_encoding_batch_size": batch_size,
+        "candidate_encoding_batch_size": batch_size,
+    }
+
+
+def test_upstream_execution_settings_use_spacy_batch_size(_runtime_batch_values):
+    settings = pipelines.pipeline_execution_settings(pipelines.UPSTREAM, 6)
+
+    assert settings["recognition"] == {
+        "method": "spacy.Language.pipe",
+        "batch_size": _runtime_batch_values["spacy"],
+    }
+
+
+@pytest.mark.parametrize(
+    "pipeline",
+    [
+        pipelines.SWAPPED,
+        pipelines.HYBRID,
+        pipelines.PRIOR,
+        *pipelines.ABLATIONS,
+    ],
+)
+def test_gliner_execution_settings_use_one_call_per_document(
+    pipeline, _runtime_batch_values
+):
+    settings = pipelines.pipeline_execution_settings(pipeline, 6)
+
+    assert settings["recognition"] == {
+        "method": "per_document",
+        "documents_per_model_call": 1,
+    }
+
+
+def test_xlm_execution_settings_use_transformers_batch_size(_runtime_batch_values):
+    settings = pipelines.pipeline_execution_settings(pipelines.XLM_MINILM, 6)
+
+    assert settings["recognition"] == {
+        "method": "transformers_pipeline",
+        "batch_size": _runtime_batch_values["xlm"],
+    }
+
+
+def test_otter_execution_settings_use_predict_batch_size(_runtime_batch_values):
+    settings = pipelines.pipeline_execution_settings(pipelines.OTTER_MINILM, 6)
+
+    assert settings["recognition"] == {
+        "method": "otter_predict",
+        "batch_size": _runtime_batch_values["otter"],
+    }
+
+
+def test_execution_settings_include_document_chunk_size():
+    settings = pipelines.pipeline_execution_settings(pipelines.XLM_MINILM, 6)
+
+    assert settings["document_chunk_size"] == 6
+
+
+def test_execution_settings_reject_unknown_pipeline():
     with pytest.raises(ValueError, match="Unknown benchmark pipeline"):
         pipelines.pipeline_execution_settings("unknown", 5)
 
+
+def test_execution_settings_reject_invalid_chunk_size():
     with pytest.raises(ValueError, match="chunk size must be at least 1"):
         pipelines.pipeline_execution_settings(pipelines.UPSTREAM, 0)
 
