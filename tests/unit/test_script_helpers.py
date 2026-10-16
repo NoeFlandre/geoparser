@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from geoparser.evaluation import Annotation, toponym_annotation
-from scripts._io import write_json_atomic
+from scripts._io import write_json_atomic, write_text_atomic
 
 
 def test_write_json_atomic_compact_default(tmp_path):
@@ -34,6 +36,41 @@ def test_write_json_atomic_replaces_existing(tmp_path):
     path.write_text("old")
     write_json_atomic(path, [1])
     assert path.read_text() == "[1]"
+
+
+@pytest.mark.parametrize(
+    ("writer", "new_value"),
+    [
+        (write_text_atomic, "new complete text\n"),
+        (write_json_atomic, {"new": "complete json"}),
+    ],
+)
+def test_atomic_writer_preserves_existing_output_when_replace_fails(
+    tmp_path, monkeypatch, writer, new_value
+):
+    path = tmp_path / "report"
+    original = "existing complete output\n"
+    path.write_text(original, encoding="utf-8")
+
+    def fail_replace(_self, _target):
+        raise OSError("simulated replacement failure")
+
+    monkeypatch.setattr(type(path), "replace", fail_replace)
+
+    with pytest.raises(OSError, match="simulated replacement failure"):
+        if writer is write_json_atomic:
+            writer(path, new_value, pretty=True)
+        else:
+            writer(path, new_value)
+
+    assert path.read_text(encoding="utf-8") == original
+
+
+def test_write_text_atomic_replaces_existing_and_creates_parent(tmp_path):
+    path = tmp_path / "nested" / "report.md"
+    write_text_atomic(path, "# Complete report\n")
+    assert path.read_text(encoding="utf-8") == "# Complete report\n"
+    assert list(path.parent.iterdir()) == [path]
 
 
 def _toponym(location):
