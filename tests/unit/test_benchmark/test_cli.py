@@ -312,19 +312,35 @@ def _device_provenance(device: str, host_gpu: str):
     return identity, benchmark_cli._run_manifest(plan)
 
 
-def test_cpu_provenance_ignores_an_unused_host_gpu(monkeypatch):
+def test_cpu_checkpoint_identity_ignores_an_unused_host_gpu(monkeypatch):
     monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda value: value)
 
-    a100_identity, a100_manifest = _device_provenance("cpu", "A100")
-    t4_identity, t4_manifest = _device_provenance("cpu", "T4")
+    a100_identity, _ = _device_provenance("cpu", "A100")
+    t4_identity, _ = _device_provenance("cpu", "T4")
 
     assert a100_identity.accelerator == t4_identity.accelerator == "cpu"
     assert a100_identity.differences(t4_identity) == []
+
+
+def test_cpu_manifest_identity_ignores_an_unused_host_gpu(monkeypatch):
+    monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda value: value)
+
+    _, a100_manifest = _device_provenance("cpu", "A100")
+    _, t4_manifest = _device_provenance("cpu", "T4")
+
     assert a100_manifest["protocol"]["accelerator"] == "cpu"
     assert t4_manifest["protocol"]["accelerator"] == "cpu"
     assert benchmark_cli._manifest_identity(a100_manifest) == (
         benchmark_cli._manifest_identity(t4_manifest)
     )
+
+
+def test_cpu_manifest_retains_host_gpu_as_environment_fact(monkeypatch):
+    monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda value: value)
+
+    _, a100_manifest = _device_provenance("cpu", "A100")
+    _, t4_manifest = _device_provenance("cpu", "T4")
+
     assert a100_manifest["environment"]["gpu"] == "A100"
     assert t4_manifest["environment"]["gpu"] == "T4"
 
