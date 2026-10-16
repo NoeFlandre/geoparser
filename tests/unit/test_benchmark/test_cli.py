@@ -8,6 +8,7 @@ checkpoints of two corpora must never be mistaken for one another.
 import argparse
 import json
 import os
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -283,6 +284,79 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
     assert benchmark_cli._manifest_identity(
         different_gpu
     ) != benchmark_cli._manifest_identity(manifest)
+
+
+def _device_provenance(device: str, host_gpu: str):
+    """Build checkpoint and run-manifest provenance for a selected device."""
+    arguments = argparse.Namespace(min_similarity=0.0, limit=None, chunk_size=5)
+    facts = {"started_at": "2026-10-13T00:00:00+00:00", "gpu": host_gpu}
+    run = benchmark_cli._CorpusRun(
+        LoadedCorpus("fixture", "en", [], "digest"),
+        arguments,
+        Path("."),
+        device,
+        "commit",
+        facts,
+    )
+    identity = benchmark_cli._run_identity(run, "swapped")
+    plan = _ManifestPlan(
+        names=["newsli-ar"],
+        pipeline_names=[pipelines.XLM_MINILM],
+        phases=[runner.RECOGNITION, runner.RESOLUTION],
+        arguments=arguments,
+        commit="short-sha",
+        full_commit="a" * 40,
+        facts=facts,
+        device=device,
+    )
+    return identity, benchmark_cli._run_manifest(plan)
+
+
+def test_cpu_checkpoint_identity_ignores_an_unused_host_gpu(monkeypatch):
+    monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda value: value)
+
+    a100_identity, _ = _device_provenance("cpu", "A100")
+    t4_identity, _ = _device_provenance("cpu", "T4")
+
+    assert a100_identity.accelerator == t4_identity.accelerator == "cpu"
+    assert a100_identity.differences(t4_identity) == []
+
+
+def test_cpu_manifest_identity_ignores_an_unused_host_gpu(monkeypatch):
+    monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda value: value)
+
+    _, a100_manifest = _device_provenance("cpu", "A100")
+    _, t4_manifest = _device_provenance("cpu", "T4")
+
+    assert a100_manifest["protocol"]["accelerator"] == "cpu"
+    assert t4_manifest["protocol"]["accelerator"] == "cpu"
+    assert benchmark_cli._manifest_identity(a100_manifest) == (
+        benchmark_cli._manifest_identity(t4_manifest)
+    )
+
+
+def test_cpu_manifest_retains_host_gpu_as_environment_fact(monkeypatch):
+    monkeypatch.setattr(benchmark_cli.pipelines, "describe_device", lambda value: value)
+
+    _, a100_manifest = _device_provenance("cpu", "A100")
+    _, t4_manifest = _device_provenance("cpu", "T4")
+
+    assert a100_manifest["environment"]["gpu"] == "A100"
+    assert t4_manifest["environment"]["gpu"] == "T4"
+
+
+def test_cuda_provenance_records_the_selected_gpu(monkeypatch):
+    monkeypatch.setattr(
+        benchmark_cli.pipelines,
+        "describe_device",
+        lambda value: "cuda (A100)" if value == "cuda" else value,
+    )
+
+    identity, manifest = _device_provenance("cuda", "A100")
+
+    assert identity.accelerator == "cuda (A100)"
+    assert manifest["protocol"]["accelerator"] == "cuda (A100)"
+    assert manifest["environment"]["gpu"] == "A100"
 
 
 def test_phase_provenance_pins_only_models_used_by_each_phase(tmp_path):
