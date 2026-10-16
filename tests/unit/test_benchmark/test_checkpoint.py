@@ -179,6 +179,33 @@ class TestRefusalToResume:
         assert any("gazetteer_sha256" in reason for reason in reasons)
 
 
+def _gold_span_resolution_reuse_pair():
+    common = {
+        "corpus_digest": "same-corpus",
+        "gazetteer": "geonames",
+        "gazetteer_sha256": "same-gazetteer-content",
+        "min_similarity": 0.0,
+        "limit": None,
+        "commit": "same-code",
+        "model_pins": {
+            "recognizer": "different-recognizer",
+            "resolver": "minilm@pin",
+            "context_sentence_splitter": "xx_sent_ud_sm@3.8.0",
+        },
+        "execution_settings": {
+            "document_chunk_size": 5,
+            "recognition": {"batch_size": 8},
+            "resolution": {
+                "context_encoding_batch_size": 32,
+                "candidate_encoding_batch_size": 32,
+            },
+        },
+    }
+    first = identity(pipeline="xlm-minilm", **common)
+    second = identity(pipeline="otter-cross-minilm", **common)
+    return common, first, second
+
+
 class TestRunIdentity:
     """Comparing two runs."""
 
@@ -205,80 +232,58 @@ class TestRunIdentity:
         assert first.differences(second) == ["accelerator"]
 
     def test_gold_span_resolution_reuse_requires_matching_provenance(self):
-        common = {
-            "corpus_digest": "same-corpus",
-            "gazetteer": "geonames",
-            "gazetteer_sha256": "same-gazetteer-content",
-            "min_similarity": 0.0,
-            "limit": None,
-            "commit": "same-code",
-            "model_pins": {
-                "recognizer": "different-recognizer",
-                "resolver": "minilm@pin",
-                "context_sentence_splitter": "xx_sent_ud_sm@3.8.0",
-            },
-            "execution_settings": {
-                "document_chunk_size": 5,
-                "recognition": {"batch_size": 8},
-                "resolution": {
-                    "context_encoding_batch_size": 32,
-                    "candidate_encoding_batch_size": 32,
-                },
-            },
-        }
-        first = identity(pipeline="xlm-minilm", **common)
-        second = identity(pipeline="otter-cross-minilm", **common)
+        _common, first, second = _gold_span_resolution_reuse_pair()
 
         assert resolution_reuse_compatible(first, second)
-        assert resolution_reuse_compatible(
-            first,
-            identity(
-                pipeline="otter-cross-minilm",
-                **{
-                    **common,
-                    "execution_settings": {
-                        **common["execution_settings"],
-                        "recognition": {"batch_size": 16},
-                    },
-                },
-            ),
+
+    def test_gold_span_resolution_reuse_allows_recognition_batch_changes(self):
+        common, first, _second = _gold_span_resolution_reuse_pair()
+        execution_settings = {
+            **common["execution_settings"],
+            "recognition": {"batch_size": 16},
+        }
+        changed = identity(
+            pipeline="otter-cross-minilm",
+            **{**common, "execution_settings": execution_settings},
         )
-        assert not resolution_reuse_compatible(
-            first,
-            identity(
-                pipeline="otter-cross-minilm",
-                **{**common, "corpus_digest": "other"},
-            ),
+
+        assert resolution_reuse_compatible(first, changed)
+
+    def test_gold_span_resolution_reuse_rejects_corpus_changes(self):
+        common, first, _second = _gold_span_resolution_reuse_pair()
+        changed = identity(
+            pipeline="otter-cross-minilm",
+            **{**common, "corpus_digest": "other"},
         )
-        assert not resolution_reuse_compatible(
-            first,
-            identity(
-                pipeline="otter-cross-minilm",
-                **{
-                    **common,
-                    "model_pins": {
-                        **common["model_pins"],
-                        "resolver": "minilm@other",
-                    },
-                },
-            ),
+
+        assert not resolution_reuse_compatible(first, changed)
+
+    def test_gold_span_resolution_reuse_rejects_resolver_changes(self):
+        common, first, _second = _gold_span_resolution_reuse_pair()
+        model_pins = {**common["model_pins"], "resolver": "minilm@other"}
+        changed = identity(
+            pipeline="otter-cross-minilm",
+            **{**common, "model_pins": model_pins},
         )
-        assert not resolution_reuse_compatible(
-            first,
-            identity(
-                pipeline="otter-cross-minilm",
-                **{
-                    **common,
-                    "execution_settings": {
-                        **common["execution_settings"],
-                        "resolution": {
-                            **common["execution_settings"]["resolution"],
-                            "candidate_encoding_batch_size": 16,
-                        },
-                    },
-                },
-            ),
+
+        assert not resolution_reuse_compatible(first, changed)
+
+    def test_gold_span_resolution_reuse_rejects_resolution_batch_changes(self):
+        common, first, _second = _gold_span_resolution_reuse_pair()
+        resolution = {
+            **common["execution_settings"]["resolution"],
+            "candidate_encoding_batch_size": 16,
+        }
+        execution_settings = {
+            **common["execution_settings"],
+            "resolution": resolution,
+        }
+        changed = identity(
+            pipeline="otter-cross-minilm",
+            **{**common, "execution_settings": execution_settings},
         )
+
+        assert not resolution_reuse_compatible(first, changed)
 
     def test_gold_span_resolution_reuse_requires_a_gazetteer_hash(self):
         first = identity(pipeline="xlm-minilm", gazetteer_sha256=None)
