@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from scripts._cli import EXIT_OK
-from scripts._io import PROJECT_ROOT, write_json_atomic
+from scripts._io import PROJECT_ROOT, write_json_atomic, write_text_atomic
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import (
     corpora,
@@ -655,10 +655,8 @@ def _limit_is_partial(name: str, limit: int | None) -> bool:
 
 def _write_corpus_reports(output_dir: Path, markdown: str, payload: dict) -> None:
     """Persist the human and machine-readable reports side by side."""
-    (output_dir / "benchmark-report.md").write_text(markdown, encoding="utf-8")
-    (output_dir / "benchmark-report.json").write_text(
-        json.dumps(payload, indent=2), encoding="utf-8"
-    )
+    write_text_atomic(output_dir / "benchmark-report.md", markdown)
+    write_json_atomic(output_dir / "benchmark-report.json", payload, pretty=True)
 
 
 def _summary_rows(
@@ -1008,15 +1006,11 @@ def _record_completed_corpus(
     payload = json.loads((folder / "benchmark-report.json").read_text(encoding="utf-8"))
     _record_manifest_cell(execution.manifest, name, payload, execution.phases)
     _persist_run_manifest(execution.output_dir, execution.manifest)
-    (execution.output_dir / "summary.md").write_text(
-        report.render_summary(rows), encoding="utf-8"
-    )
-    (execution.output_dir / "summary.json").write_text(
-        json.dumps(
-            {"commit": execution.commit, "environment": execution.facts, "rows": rows},
-            indent=2,
-        ),
-        encoding="utf-8",
+    write_text_atomic(execution.output_dir / "summary.md", report.render_summary(rows))
+    write_json_atomic(
+        execution.output_dir / "summary.json",
+        {"commit": execution.commit, "environment": execution.facts, "rows": rows},
+        pretty=True,
     )
 
 

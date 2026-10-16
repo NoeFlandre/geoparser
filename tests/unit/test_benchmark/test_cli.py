@@ -434,7 +434,7 @@ def test_corpus_report_writer_emits_markdown_and_json(tmp_path):
     benchmark_cli._write_corpus_reports(tmp_path, "# fixture report", payload)
 
     assert (tmp_path / "benchmark-report.md").read_text() == "# fixture report"
-    assert '"commit": "commit"' in (tmp_path / "benchmark-report.json").read_text()
+    assert json.loads((tmp_path / "benchmark-report.json").read_text()) == payload
 
 
 def _run_default_corpus_main(monkeypatch, tmp_path, capsys, *, corpus_cache=None):
@@ -520,7 +520,12 @@ def test_main_reports_provenance_and_corpus_summary(monkeypatch, tmp_path, capsy
         monkeypatch, tmp_path, capsys
     )
 
-    assert '"job_id": "job-17"' in (tmp_path / "summary.json").read_text()
+    summary = json.loads((tmp_path / "summary.json").read_text())
+    assert summary["environment"]["job_id"] == "job-17"
+    assert summary["rows"][0]["corpus"] == "geovirus"
+    assert (
+        "| geovirus | en | 1 | 2 | swapped |" in (tmp_path / "summary.md").read_text()
+    )
     assert "Gold toponyms: 2" in output
 
 
