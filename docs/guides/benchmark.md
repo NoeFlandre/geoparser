@@ -106,13 +106,21 @@ The sample of September 30 is in `benchmark-evidence/panx/feasibility-2026-09-30
 
 The submission wrapper checks for a duplicate active OAR job. It requests one GPU and a limited walltime, and it submits `run_benchmark.sh` to the node. The node script builds GeoNames on local scratch. It keeps the model caches and the database off the home quota. It writes the checkpoints to the results directory that you selected.
 
+If a manual Kadeploy launcher needs to contact a node from an interactive deploy job, wait for the post-deployment reboot before issuing remote commands. Keep the deploy shell open and run the readiness helper in place of an immediate `oarsh` probe:
+
+```bash
+python3 scripts/g5k/wait_for_node.py hydra-1
+```
+
+It retries the harmless `oarsh hydra-1 true` check every 10 seconds, with a 15-minute total timeout and a 10-second cap per probe. Transient connection refusals during reboot are retried; a timeout is reported as a failure. The normal benchmark path uses the passive `submit.sh` job and does not deploy a node.
+
 For example, use this command to run only the resolution phase of two pipelines on all corpora:
 
 ```bash
 CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
 ```
 
-`CORPORA`, `PIPELINES`, and `PHASES` accept names that are separated by commas. You can also set `LIMIT`, `DEVICE`, `CHUNK_SIZE`, `MIN_SIMILARITY`, `WALLTIME`, `GPUS`, `QUEUE`, `CLUSTER`, `REPO_ROOT`, and `RESULTS` when you submit. Run `usagepolicycheck -t` before and after you use Grid'5000.
+`CORPORA`, `PIPELINES`, and `PHASES` accept names that are separated by commas. You can also set `LIMIT`, `DEVICE`, `CHUNK_SIZE`, `MIN_SIMILARITY`, `WALLTIME`, `GPUS`, `QUEUE`, `CLUSTER`, `REPO_ROOT`, and `RESULTS` when you submit. Run `usagepolicycheck -t` before and after you use Grid'5000 to check current usage; `usagepolicycheck -l --detailed-limits` lists daily per-cluster limits. An omitted cluster in the `-t` usage summary is not evidence that the cluster has no allowance.
 
 ## Publish the results
 
