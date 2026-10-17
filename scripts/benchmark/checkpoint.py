@@ -20,12 +20,13 @@ from __future__ import annotations
 
 import json
 import typing as t
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 from scripts._io import write_json_atomic
 
 SCHEMA_VERSION = 1
+_PHASE_SETTINGS = ("recognition", "resolution")
 
 
 @dataclass(frozen=True)
@@ -54,21 +55,49 @@ class RunIdentity:
         Returns:
             Field names that differ, empty when the two describe one run
         """
-        return [
-            name
-            for name, value in asdict(self).items()
-            if value != asdict(other).get(name)
-        ]
+        fields = asdict(self)
+        other_fields = asdict(other)
+        differences = []
+        for name, value in fields.items():
+            if name == "execution_settings":
+                if not _execution_settings_match(value, other_fields.get(name)):
+                    differences.append(name)
+            elif value != other_fields.get(name):
+                differences.append(name)
+        return differences
+
+
+def _execution_settings_match(first: t.Any, second: t.Any) -> bool:
+    """Compare shared settings while allowing phases inactive in either run."""
+    required = {"document_chunk_size", *_PHASE_SETTINGS}
+    if not isinstance(first, dict) or not isinstance(second, dict):
+        return False
+    if not required.issubset(first) or not required.issubset(second):
+        return False
+    if first["document_chunk_size"] is None or second["document_chunk_size"] is None:
+        return False
+    if first.keys() != second.keys():
+        return False
+    for name, value in first.items():
+        other_value = second[name]
+        if name in _PHASE_SETTINGS and (value is None or other_value is None):
+            continue
+        if value != other_value:
+            return False
+    return True
 
 
 def resolution_reuse_compatible(first: RunIdentity, second: RunIdentity) -> bool:
     """Whether two runs can share gold-span resolution predictions exactly."""
+    first_settings = _resolution_execution_settings(first)
+    second_settings = _resolution_execution_settings(second)
     return (
         _resolution_inputs_match(first, second)
         and "resolver" in _resolution_model_pins(first)
         and _resolution_model_pins(first) == _resolution_model_pins(second)
-        and _resolution_execution_settings(first)
-        == _resolution_execution_settings(second)
+        and first_settings is not None
+        and second_settings is not None
+        and first_settings == second_settings
     )
 
 
@@ -94,13 +123,18 @@ def _resolution_model_pins(identity: RunIdentity) -> dict[str, str]:
     return {name: pin for name, pin in identity.model_pins.items() if name in roles}
 
 
-def _resolution_execution_settings(identity: RunIdentity) -> dict[str, t.Any]:
+def _resolution_execution_settings(
+    identity: RunIdentity,
+) -> dict[str, t.Any] | None:
     """Keep settings that can affect reusable resolution predictions."""
-    return {
-        key: identity.execution_settings[key]
-        for key in ("document_chunk_size", "resolution")
-        if key in identity.execution_settings
-    }
+    settings = identity.execution_settings
+    if (
+        not isinstance(settings, dict)
+        or settings.get("document_chunk_size") is None
+        or settings.get("resolution") is None
+    ):
+        return None
+    return {key: settings[key] for key in ("document_chunk_size", "resolution")}
 
 
 @dataclass
@@ -213,15 +247,42 @@ def load(path: Path, identity: RunIdentity) -> tuple[Checkpoint, list[str]]:
     if differences:
         return Checkpoint(identity), [f"changed: {', '.join(differences)}"]
 
+    expected_settings = identity.execution_settings
+    stored_settings = stored.execution_settings
+    resumed_settings = dict(expected_settings)
+    phases_to_reset = []
+    for phase in _PHASE_SETTINGS:
+        if expected_settings[phase] is None:
+            resumed_settings[phase] = stored_settings[phase]
+        elif stored_settings[phase] is None:
+            phases_to_reset.append(phase)
+
+    recognition = payload.get("recognition", {})
+    resolution = payload.get("resolution", {})
+    elapsed_seconds = payload.get("elapsed_seconds", 0.0)
+    phase_elapsed_seconds = payload.get("phase_elapsed_seconds", {})
+    failures = payload.get("failures", {})
+    phase_provenance = payload.get("phase_provenance", {})
+    for phase in phases_to_reset:
+        if phase == "recognition":
+            recognition = {}
+        else:
+            resolution = {}
+        elapsed_seconds = max(
+            0.0, elapsed_seconds - phase_elapsed_seconds.pop(phase, 0.0)
+        )
+        failures.pop(phase, None)
+        phase_provenance.pop(phase, None)
+
     return (
         Checkpoint(
-            identity,
-            recognition=payload.get("recognition", {}),
-            resolution=payload.get("resolution", {}),
-            elapsed_seconds=payload.get("elapsed_seconds", 0.0),
-            phase_elapsed_seconds=payload.get("phase_elapsed_seconds", {}),
-            failures=payload.get("failures", {}),
-            phase_provenance=payload.get("phase_provenance", {}),
+            replace(identity, execution_settings=resumed_settings),
+            recognition=recognition,
+            resolution=resolution,
+            elapsed_seconds=elapsed_seconds,
+            phase_elapsed_seconds=phase_elapsed_seconds,
+            failures=failures,
+            phase_provenance=phase_provenance,
         ),
         [],
     )

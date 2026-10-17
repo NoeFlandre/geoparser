@@ -309,6 +309,78 @@ def test_run_manifest_identity_changes_when_batch_settings_change():
     ) != benchmark_cli._manifest_identity(manifest)
 
 
+def test_resolution_only_manifest_does_not_require_upstream_recognizer(monkeypatch):
+    arguments = argparse.Namespace(min_similarity=0.0, limit=None, chunk_size=5)
+    plan = _ManifestPlan(
+        names=[],
+        pipeline_names=[pipelines.UPSTREAM],
+        phases=[runner.RESOLUTION],
+        arguments=arguments,
+        commit="short-sha",
+        full_commit="a" * 40,
+        facts={"started_at": "2026-10-13T00:00:00+00:00"},
+        device="cpu",
+    )
+
+    def fail_if_recognizer_settings_are_read():
+        raise AssertionError("resolution-only manifest read recognizer settings")
+
+    monkeypatch.setattr(
+        pipelines, "_upstream_spacy_batch_size", fail_if_recognizer_settings_are_read
+    )
+    monkeypatch.setattr(
+        pipelines,
+        "_resolution_execution_settings",
+        lambda _pipeline: {"context_encoding_batch_size": 32},
+    )
+    monkeypatch.setattr(pipelines, "describe_device", lambda _device: "cpu")
+
+    manifest = benchmark_cli._run_manifest(plan)
+
+    settings = manifest["protocol"]["pipelines"][pipelines.UPSTREAM][
+        "execution_settings"
+    ]
+    assert settings["recognition"] is None
+    assert "resolution" in settings
+
+
+def test_resolution_only_checkpoint_identity_does_not_require_upstream_recognizer(
+    monkeypatch, tmp_path
+):
+    arguments = argparse.Namespace(
+        min_similarity=0.0,
+        limit=None,
+        chunk_size=5,
+        phase=[runner.RESOLUTION],
+    )
+    run = benchmark_cli._CorpusRun(
+        LoadedCorpus("fixture", "en", [], "digest"),
+        arguments,
+        tmp_path,
+        "cpu",
+        "commit",
+        {},
+    )
+
+    def fail_if_recognizer_settings_are_read():
+        raise AssertionError("resolution-only checkpoint read recognizer settings")
+
+    monkeypatch.setattr(
+        pipelines, "_upstream_spacy_batch_size", fail_if_recognizer_settings_are_read
+    )
+    monkeypatch.setattr(
+        pipelines,
+        "_resolution_execution_settings",
+        lambda _pipeline: {"context_encoding_batch_size": 32},
+    )
+    monkeypatch.setattr(pipelines, "describe_device", lambda _device: "cpu")
+
+    identity = benchmark_cli._run_identity(run, pipelines.UPSTREAM)
+
+    assert identity.execution_settings["recognition"] is None
+    assert "resolution" in identity.execution_settings
+
+
 def _device_provenance(device: str, host_gpu: str):
     """Build checkpoint and run-manifest provenance for a selected device."""
     arguments = argparse.Namespace(min_similarity=0.0, limit=None, chunk_size=5)

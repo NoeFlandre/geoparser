@@ -791,7 +791,11 @@ def _resolution_execution_settings(pipeline: str) -> dict[str, t.Any]:
 
 
 def pipeline_execution_settings(
-    pipeline: str, document_chunk_size: int
+    pipeline: str,
+    document_chunk_size: int,
+    *,
+    include_recognition: bool = True,
+    include_resolution: bool = True,
 ) -> dict[str, t.Any]:
     """Return the effective model batching and document checkpoint settings.
 
@@ -802,6 +806,10 @@ def pipeline_execution_settings(
     _validate_execution_settings_inputs(pipeline, document_chunk_size)
     return {
         "document_chunk_size": document_chunk_size,
-        "recognition": _recognition_execution_settings(pipeline),
-        "resolution": _resolution_execution_settings(pipeline),
+        "recognition": (
+            _recognition_execution_settings(pipeline) if include_recognition else None
+        ),
+        "resolution": (
+            _resolution_execution_settings(pipeline) if include_resolution else None
+        ),
     }

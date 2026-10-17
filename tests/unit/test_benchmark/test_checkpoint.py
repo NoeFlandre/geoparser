@@ -32,6 +32,14 @@ def identity(**overrides: Any) -> RunIdentity:
         "min_similarity": 0.0,
         "limit": None,
         "commit": "deadbee",
+        "execution_settings": {
+            "document_chunk_size": 5,
+            "recognition": {"batch_size": 8},
+            "resolution": {
+                "context_encoding_batch_size": 32,
+                "candidate_encoding_batch_size": 32,
+            },
+        },
     }
     fields.update(overrides)
     return RunIdentity(**fields)
@@ -92,6 +100,69 @@ class TestRoundTrip:
         assert resumed.completed("resolution") == {"7"}
         assert resumed.elapsed_seconds == 12.5
         assert resumed.phase_elapsed_seconds == {"resolution": 8.0}
+
+    def test_phase_filtered_resume_retains_stored_settings_for_unrequested_phase(
+        self, tmp_path
+    ):
+        path = tmp_path / "checkpoint.json"
+        full_identity = identity()
+        state = Checkpoint(full_identity)
+        state.record("recognition", "1", [{"start": 0, "end": 1}])
+        state.record("resolution", "1", [{"start": 0, "end": 1, "kb_id": "Q1"}])
+        save(path, state)
+        resolution_identity = identity(
+            execution_settings={
+                **full_identity.execution_settings,
+                "recognition": None,
+            }
+        )
+
+        resumed, reasons = load(path, resolution_identity)
+
+        assert reasons == []
+        assert (
+            resumed.identity.execution_settings["recognition"]
+            == full_identity.execution_settings["recognition"]
+        )
+        assert resumed.completed("recognition") == {"1"}
+        assert resumed.completed("resolution") == {"1"}
+
+        save(path, resumed)
+        full_resume, reasons = load(path, full_identity)
+
+        assert reasons == []
+        assert full_resume.completed("recognition") == {"1"}
+        assert full_resume.completed("resolution") == {"1"}
+
+    def test_reenabling_phase_discards_data_without_active_stored_settings(
+        self, tmp_path
+    ):
+        path = tmp_path / "checkpoint.json"
+        full_identity = identity()
+        stored_identity = identity(
+            execution_settings={
+                **full_identity.execution_settings,
+                "recognition": None,
+            }
+        )
+        state = Checkpoint(stored_identity)
+        state.record("recognition", "stale", [])
+        state.record("resolution", "kept", [])
+        state.elapsed_seconds = 10.0
+        state.phase_elapsed_seconds = {"recognition": 3.0, "resolution": 7.0}
+        state.failures = {"recognition": {"stale": {"error": "old"}}}
+        state.phase_provenance = {"recognition": {"source_pipeline": "old"}}
+        save(path, state)
+
+        resumed, reasons = load(path, full_identity)
+
+        assert reasons == []
+        assert resumed.completed("recognition") == set()
+        assert resumed.completed("resolution") == {"kept"}
+        assert resumed.elapsed_seconds == 7.0
+        assert resumed.phase_elapsed_seconds == {"resolution": 7.0}
+        assert "recognition" not in resumed.failures
+        assert "recognition" not in resumed.phase_provenance
 
     def test_creates_parent_directories(self, tmp_path):
         """Test that a fresh output directory does not need to exist."""
@@ -166,6 +237,22 @@ class TestRefusalToResume:
         assert state.completed("resolution") == set()
         assert any("unreadable" in reason for reason in reasons)
 
+    def test_starts_fresh_when_phase_settings_are_missing(self, tmp_path):
+        path = tmp_path / "checkpoint.json"
+        payload = {
+            "identity": asdict(identity()),
+            "recognition": {"stale": []},
+            "resolution": {},
+        }
+        del payload["identity"]["execution_settings"]["recognition"]
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
+        state, reasons = load(path, identity())
+
+        assert state.completed("recognition") == set()
+        assert state.completed("resolution") == set()
+        assert any("execution_settings" in reason for reason in reasons)
+
     def test_starts_fresh_on_a_checkpoint_without_a_gazetteer_hash(self, tmp_path):
         """Old name-only gazetteer evidence cannot resume under a pinned run."""
         path = tmp_path / "checkpoint.json"
@@ -230,6 +317,37 @@ class TestRunIdentity:
         second = identity(accelerator="NVIDIA T4")
 
         assert first.differences(second) == ["accelerator"]
+
+    def test_phase_filtered_identity_matches_shared_active_settings(self):
+        full = identity()
+        resolution_only = identity(
+            execution_settings={
+                **full.execution_settings,
+                "recognition": None,
+            }
+        )
+
+        assert resolution_only.differences(full) == []
+
+    @pytest.mark.parametrize("phase", ["recognition", "resolution"])
+    def test_changed_active_phase_settings_are_load_bearing(self, phase):
+        original = identity().execution_settings
+        changed_settings = {
+            **original,
+            phase: {**original[phase], "changed": True},
+        }
+
+        assert "execution_settings" in identity().differences(
+            identity(execution_settings=changed_settings)
+        )
+
+    def test_legacy_identity_without_phase_keys_is_incompatible(self):
+        legacy_settings = identity().execution_settings.copy()
+        del legacy_settings["recognition"]
+
+        assert identity().differences(identity(execution_settings=legacy_settings)) == [
+            "execution_settings"
+        ]
 
     def test_gold_span_resolution_reuse_requires_matching_provenance(self):
         _common, first, second = _gold_span_resolution_reuse_pair()
@@ -296,3 +414,18 @@ class TestRunIdentity:
         second = identity(pipeline="otter-cross-minilm", gazetteer_sha256="hash-two")
 
         assert not resolution_reuse_compatible(first, second)
+
+    @pytest.mark.parametrize("inactive_key", ["document_chunk_size", "resolution"])
+    def test_gold_span_resolution_reuse_requires_active_resolution_settings(
+        self, inactive_key
+    ):
+        common, _first, second = _gold_span_resolution_reuse_pair()
+        settings = common["execution_settings"].copy()
+        settings[inactive_key] = None
+        inactive = identity(
+            pipeline="xlm-minilm",
+            **{**common, "execution_settings": settings},
+        )
+
+        assert not resolution_reuse_compatible(inactive, second)
+        assert not resolution_reuse_compatible(inactive, inactive)

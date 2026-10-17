@@ -98,6 +98,46 @@ def test_upstream_execution_settings_use_model_batch_size(_runtime_batch_values)
     }
 
 
+def test_resolution_only_settings_do_not_load_the_recognizer_model(monkeypatch):
+    def fail_if_recognizer_settings_are_read():
+        raise AssertionError("resolution-only run read recognizer settings")
+
+    monkeypatch.setattr(
+        pipelines, "_upstream_spacy_batch_size", fail_if_recognizer_settings_are_read
+    )
+    monkeypatch.setattr(
+        pipelines,
+        "_resolution_execution_settings",
+        lambda _pipeline: {"context_encoding_batch_size": 32},
+    )
+
+    settings = pipelines.pipeline_execution_settings(
+        pipelines.UPSTREAM, 6, include_recognition=False
+    )
+
+    assert settings["recognition"] is None
+    assert settings["document_chunk_size"] == 6
+    assert "resolution" in settings
+
+
+def test_recognition_only_settings_do_not_load_the_resolver(monkeypatch):
+    def fail_if_resolution_settings_are_read(_pipeline):
+        raise AssertionError("recognition-only run read resolver settings")
+
+    monkeypatch.setattr(
+        pipelines,
+        "_resolution_execution_settings",
+        fail_if_resolution_settings_are_read,
+    )
+
+    settings = pipelines.pipeline_execution_settings(
+        pipelines.XLM_MINILM, 6, include_resolution=False
+    )
+
+    assert settings["recognition"] is not None
+    assert settings["resolution"] is None
+
+
 def test_upstream_batch_size_uses_pinned_model_config_not_constructor_default(
     monkeypatch, tmp_path
 ):
