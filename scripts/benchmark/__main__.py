@@ -125,7 +125,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--chunk-size",
         type=int,
-        default=5,
+        default=runner.DEFAULT_CHUNK_SIZE,
         help="Documents processed between checkpoint saves",
     )
     parser.add_argument(
@@ -302,13 +302,18 @@ def _score_requested_pipelines(
 ) -> list[report.PipelineResult]:
     """Run each selected pipeline over the requested corpus phases."""
     pipelines_to_run = run.arguments.pipeline or list(pipelines.DEFAULT_PIPELINES)
-    phases = run.arguments.phase or [runner.RECOGNITION, runner.RESOLUTION]
+    phases = _requested_phases(getattr(run.arguments, "phase", None))
     shareable = {pipelines.XLM_MINILM, pipelines.OTTER_MINILM}
     drivers = _resolution_drivers(pipelines_to_run, phases, shareable)
     return [
         _score_one_requested_pipeline(run, name, phases, shareable, drivers)
         for name in pipelines_to_run
     ]
+
+
+def _requested_phases(phases: Sequence[str] | None) -> Sequence[str]:
+    """Return selected benchmark phases or the full phase set."""
+    return phases or (runner.RECOGNITION, runner.RESOLUTION)
 
 
 def _resolution_drivers(
@@ -354,6 +359,7 @@ def _score_one_requested_pipeline(
 
 def _run_identity(run: _CorpusRun, pipeline_name: str) -> ckpt.RunIdentity:
     """Build the complete checkpoint identity, including immutable model pins."""
+    phases = _requested_phases(getattr(run.arguments, "phase", None))
     return ckpt.RunIdentity(
         pipeline=pipeline_name,
         corpus_digest=run.loaded.digest,
@@ -363,7 +369,24 @@ def _run_identity(run: _CorpusRun, pipeline_name: str) -> ckpt.RunIdentity:
         limit=run.arguments.limit,
         commit=run.commit,
         model_pins=pipelines.pipeline_model_pins(pipeline_name),
+        execution_settings=_pipeline_execution_settings(
+            pipeline_name,
+            getattr(run.arguments, "chunk_size", runner.DEFAULT_CHUNK_SIZE),
+            phases,
+        ),
         accelerator=pipelines.describe_device(run.device),
+    )
+
+
+def _pipeline_execution_settings(
+    pipeline_name: str, chunk_size: int, phases: Sequence[str]
+) -> dict[str, Any]:
+    """Record settings only for phases selected by this benchmark run."""
+    return pipelines.pipeline_execution_settings(
+        pipeline_name,
+        chunk_size,
+        include_recognition=runner.RECOGNITION in phases,
+        include_resolution=runner.RESOLUTION in phases,
     )
 
 
@@ -687,7 +710,9 @@ def _summary_rows(
 def _run_manifest(plan: _ManifestPlan) -> dict:
     """Build a reproducible, incrementally updated manifest for this run."""
     cells = _manifest_corpus_cells(plan.names)
-    model_runs = _manifest_pipeline_pins(plan.pipeline_names)
+    model_runs = _manifest_pipeline_pins(
+        plan.pipeline_names, plan.arguments.chunk_size, plan.phases
+    )
     return _assemble_run_manifest(plan, cells, model_runs)
 
 
@@ -730,11 +755,18 @@ def _manifest_corpus_cells(names: Sequence[str]) -> dict[str, dict]:
     return {name: _manifest_corpus_cell(name, fixed_cells.get(name)) for name in names}
 
 
-def _manifest_pipeline_pins(pipeline_names: Sequence[str]) -> dict[str, dict]:
-    """Record immutable model pins and retained integration evidence."""
+def _manifest_pipeline_pins(
+    pipeline_names: Sequence[str], chunk_size: int, phases: Sequence[str]
+) -> dict[str, dict]:
+    """Record model pins, effective execution settings and integration evidence."""
     model_runs = {}
     for name in pipeline_names:
-        model_runs[name] = {"model_pins": pipelines.pipeline_model_pins(name)}
+        model_runs[name] = {
+            "model_pins": pipelines.pipeline_model_pins(name),
+            "execution_settings": _pipeline_execution_settings(
+                name, chunk_size, phases
+            ),
+        }
         if name == pipelines.OTTER_MINILM:
             model_runs[name]["integration_provenance"] = (
                 pipelines.otter_integration_provenance()

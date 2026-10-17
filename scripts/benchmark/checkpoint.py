@@ -20,12 +20,13 @@ from __future__ import annotations
 
 import json
 import typing as t
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 from scripts._io import write_json_atomic
 
 SCHEMA_VERSION = 1
+_PHASE_SETTINGS = ("recognition", "resolution")
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,7 @@ class RunIdentity:
     commit: str
     schema_version: int = SCHEMA_VERSION
     model_pins: dict[str, str] = field(default_factory=dict)
+    execution_settings: dict[str, t.Any] = field(default_factory=dict)
     gazetteer_sha256: str | None = None
     accelerator: str | None = None
 
@@ -53,19 +55,62 @@ class RunIdentity:
         Returns:
             Field names that differ, empty when the two describe one run
         """
-        return [
-            name
-            for name, value in asdict(self).items()
-            if value != asdict(other).get(name)
-        ]
+        fields = asdict(self)
+        other_fields = asdict(other)
+        differences = []
+        for name, value in fields.items():
+            if name == "execution_settings":
+                if not _execution_settings_match(value, other_fields.get(name)):
+                    differences.append(name)
+            elif value != other_fields.get(name):
+                differences.append(name)
+        return differences
+
+
+def _execution_settings_match(first: t.Any, second: t.Any) -> bool:
+    """Compare shared settings while allowing phases inactive in either run."""
+    if not _has_required_execution_settings(
+        first
+    ) or not _has_required_execution_settings(second):
+        return False
+    if first.keys() != second.keys():
+        return False
+    return _execution_settings_values_match(first, second)
+
+
+def _has_required_execution_settings(settings: t.Any) -> bool:
+    """Whether settings include a chunk size and both phase keys."""
+    required = {"document_chunk_size", *_PHASE_SETTINGS}
+    return (
+        isinstance(settings, dict)
+        and required.issubset(settings)
+        and settings["document_chunk_size"] is not None
+    )
+
+
+def _execution_setting_values_match(name: str, first: t.Any, second: t.Any) -> bool:
+    """Whether a shared value matches, allowing one inactive phase."""
+    if name in _PHASE_SETTINGS and (first is None or second is None):
+        return True
+    return first == second
+
+
+def _execution_settings_values_match(
+    first: dict[str, t.Any], second: dict[str, t.Any]
+) -> bool:
+    """Compare matching settings while treating inactive phases as wildcards."""
+    return all(
+        _execution_setting_values_match(name, value, second[name])
+        for name, value in first.items()
+    )
 
 
 def resolution_reuse_compatible(first: RunIdentity, second: RunIdentity) -> bool:
     """Whether two runs can share gold-span resolution predictions exactly."""
     return (
         _resolution_inputs_match(first, second)
-        and "resolver" in _resolution_model_pins(first)
-        and _resolution_model_pins(first) == _resolution_model_pins(second)
+        and _resolution_model_pins_match(first, second)
+        and _resolution_execution_settings_match(first, second)
     )
 
 
@@ -89,6 +134,37 @@ def _resolution_model_pins(identity: RunIdentity) -> dict[str, str]:
     """Keep only the models used by deterministic resolution."""
     roles = {"resolver", "reranker", "context_sentence_splitter"}
     return {name: pin for name, pin in identity.model_pins.items() if name in roles}
+
+
+def _resolution_model_pins_match(first: RunIdentity, second: RunIdentity) -> bool:
+    """Require the same resolution model pins, including a resolver pin."""
+    first_pins = _resolution_model_pins(first)
+    return "resolver" in first_pins and first_pins == _resolution_model_pins(second)
+
+
+def _resolution_execution_settings(
+    identity: RunIdentity,
+) -> dict[str, t.Any] | None:
+    """Keep settings that can affect reusable resolution predictions."""
+    settings = identity.execution_settings
+    if (
+        not isinstance(settings, dict)
+        or settings.get("document_chunk_size") is None
+        or settings.get("resolution") is None
+    ):
+        return None
+    return {key: settings[key] for key in ("document_chunk_size", "resolution")}
+
+
+def _resolution_execution_settings_match(
+    first: RunIdentity, second: RunIdentity
+) -> bool:
+    """Require matching active settings for the shared resolution phase."""
+    first_settings = _resolution_execution_settings(first)
+    return (
+        first_settings is not None
+        and first_settings == _resolution_execution_settings(second)
+    )
 
 
 @dataclass
@@ -191,25 +267,94 @@ def load(path: Path, identity: RunIdentity) -> tuple[Checkpoint, list[str]]:
     """
     if not path.exists():
         return Checkpoint(identity), []
+    return _load_existing_checkpoint(path, identity)
+
+
+def _load_existing_checkpoint(
+    path: Path, identity: RunIdentity
+) -> tuple[Checkpoint, list[str]]:
+    """Read an existing checkpoint and return a compatible resume or reason."""
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        stored = RunIdentity(**payload["identity"])
+        payload, stored = _read_checkpoint(path)
     except (OSError, ValueError, KeyError, TypeError) as error:
         return Checkpoint(identity), [f"unreadable checkpoint ({error})"]
 
+    return _resume_compatible_checkpoint(payload, identity, stored)
+
+
+def _read_checkpoint(path: Path) -> tuple[dict[str, t.Any], RunIdentity]:
+    """Read JSON and construct the identity stored in the checkpoint."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return payload, RunIdentity(**payload["identity"])
+
+
+def _resume_compatible_checkpoint(
+    payload: dict[str, t.Any], identity: RunIdentity, stored: RunIdentity
+) -> tuple[Checkpoint, list[str]]:
+    """Resume matching state or return a fresh checkpoint with its reason."""
     differences = identity.differences(stored)
     if differences:
         return Checkpoint(identity), [f"changed: {', '.join(differences)}"]
 
-    return (
-        Checkpoint(
-            identity,
-            recognition=payload.get("recognition", {}),
-            resolution=payload.get("resolution", {}),
-            elapsed_seconds=payload.get("elapsed_seconds", 0.0),
-            phase_elapsed_seconds=payload.get("phase_elapsed_seconds", {}),
-            failures=payload.get("failures", {}),
-            phase_provenance=payload.get("phase_provenance", {}),
-        ),
-        [],
+    return _resume_checkpoint(payload, identity, stored), []
+
+
+def _resume_checkpoint(
+    payload: dict[str, t.Any], identity: RunIdentity, stored: RunIdentity
+) -> Checkpoint:
+    """Build a compatible checkpoint, discarding stale inactive-phase state."""
+    resumed_settings, phases_to_reset = _resume_phase_settings(
+        identity.execution_settings, stored.execution_settings
     )
+    predictions = {phase: payload.get(phase, {}) for phase in _PHASE_SETTINGS}
+    elapsed_seconds = payload.get("elapsed_seconds", 0.0)
+    phase_elapsed_seconds = payload.get("phase_elapsed_seconds", {})
+    failures = payload.get("failures", {})
+    phase_provenance = payload.get("phase_provenance", {})
+    for phase in phases_to_reset:
+        predictions[phase] = {}
+        elapsed_seconds = _discard_phase_state(
+            phase,
+            elapsed_seconds,
+            phase_elapsed_seconds,
+            failures,
+            phase_provenance,
+        )
+
+    return Checkpoint(
+        replace(identity, execution_settings=resumed_settings),
+        recognition=predictions["recognition"],
+        resolution=predictions["resolution"],
+        elapsed_seconds=elapsed_seconds,
+        phase_elapsed_seconds=phase_elapsed_seconds,
+        failures=failures,
+        phase_provenance=phase_provenance,
+    )
+
+
+def _resume_phase_settings(
+    expected: dict[str, t.Any], stored: dict[str, t.Any]
+) -> tuple[dict[str, t.Any], list[str]]:
+    """Keep stored settings for unrequested phases; list phases to discard."""
+    resumed = dict(expected)
+    phases_to_reset = []
+    for phase in _PHASE_SETTINGS:
+        if expected[phase] is None:
+            resumed[phase] = stored[phase]
+        elif stored[phase] is None:
+            phases_to_reset.append(phase)
+    return resumed, phases_to_reset
+
+
+def _discard_phase_state(
+    phase: str,
+    elapsed_seconds: float,
+    phase_elapsed_seconds: dict[str, float],
+    failures: dict[str, t.Any],
+    phase_provenance: dict[str, t.Any],
+) -> float:
+    """Remove stale data and elapsed time for a phase that must be rerun."""
+    elapsed_seconds = max(0.0, elapsed_seconds - phase_elapsed_seconds.pop(phase, 0.0))
+    failures.pop(phase, None)
+    phase_provenance.pop(phase, None)
+    return elapsed_seconds

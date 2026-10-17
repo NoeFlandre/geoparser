@@ -28,7 +28,22 @@ def document(identifier="0"):
 
 def identity():
     """Build a run identity."""
-    return RunIdentity("swapped", "abc", "geonames", 0.0, None, "commit")
+    return RunIdentity(
+        "swapped",
+        "abc",
+        "geonames",
+        0.0,
+        None,
+        "commit",
+        execution_settings={
+            "document_chunk_size": 5,
+            "recognition": {"batch_size": 8},
+            "resolution": {
+                "context_encoding_batch_size": 32,
+                "candidate_encoding_batch_size": 32,
+            },
+        },
+    )
 
 
 class TestChunks:

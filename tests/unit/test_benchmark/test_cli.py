@@ -239,15 +239,14 @@ def test_corpus_summary_row_records_counts_and_scores(tmp_path):
     ]
 
 
-def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
+def _run_manifest_for_xlm_pipeline():
     arguments = argparse.Namespace(
         min_similarity=0.0,
         limit=None,
         chunk_size=5,
         device="cuda",
     )
-
-    manifest = benchmark_cli._run_manifest(
+    return benchmark_cli._run_manifest(
         _ManifestPlan(
             names=["newsli-ar"],
             pipeline_names=[pipelines.XLM_MINILM],
@@ -260,7 +259,11 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
         )
     )
 
+
+def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
+    manifest = _run_manifest_for_xlm_pipeline()
     cell = manifest["protocol"]["corpora"]["newsli-ar"]
+
     assert (
         cell["expected_documents"],
         cell["expected_gold_toponyms"],
@@ -284,6 +287,98 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
     assert benchmark_cli._manifest_identity(
         different_gpu
     ) != benchmark_cli._manifest_identity(manifest)
+
+
+def test_run_manifest_records_effective_pipeline_execution_settings():
+    manifest = _run_manifest_for_xlm_pipeline()
+
+    assert manifest["protocol"]["pipelines"][pipelines.XLM_MINILM][
+        "execution_settings"
+    ] == pipelines.pipeline_execution_settings(pipelines.XLM_MINILM, 5)
+
+
+def test_run_manifest_identity_changes_when_batch_settings_change():
+    manifest = _run_manifest_for_xlm_pipeline()
+    different_batch = json.loads(json.dumps(manifest))
+    different_batch["protocol"]["pipelines"][pipelines.XLM_MINILM][
+        "execution_settings"
+    ]["recognition"]["batch_size"] += 1
+
+    assert benchmark_cli._manifest_identity(
+        different_batch
+    ) != benchmark_cli._manifest_identity(manifest)
+
+
+def test_resolution_only_manifest_does_not_require_upstream_recognizer(monkeypatch):
+    arguments = argparse.Namespace(min_similarity=0.0, limit=None, chunk_size=5)
+    plan = _ManifestPlan(
+        names=[],
+        pipeline_names=[pipelines.UPSTREAM],
+        phases=[runner.RESOLUTION],
+        arguments=arguments,
+        commit="short-sha",
+        full_commit="a" * 40,
+        facts={"started_at": "2026-10-13T00:00:00+00:00"},
+        device="cpu",
+    )
+
+    def fail_if_recognizer_settings_are_read():
+        raise AssertionError("resolution-only manifest read recognizer settings")
+
+    monkeypatch.setattr(
+        pipelines, "_upstream_spacy_batch_size", fail_if_recognizer_settings_are_read
+    )
+    monkeypatch.setattr(
+        pipelines,
+        "_resolution_execution_settings",
+        lambda _pipeline: {"context_encoding_batch_size": 32},
+    )
+    monkeypatch.setattr(pipelines, "describe_device", lambda _device: "cpu")
+
+    manifest = benchmark_cli._run_manifest(plan)
+
+    settings = manifest["protocol"]["pipelines"][pipelines.UPSTREAM][
+        "execution_settings"
+    ]
+    assert settings["recognition"] is None
+    assert "resolution" in settings
+
+
+def test_resolution_only_checkpoint_identity_does_not_require_upstream_recognizer(
+    monkeypatch, tmp_path
+):
+    arguments = argparse.Namespace(
+        min_similarity=0.0,
+        limit=None,
+        chunk_size=5,
+        phase=[runner.RESOLUTION],
+    )
+    run = benchmark_cli._CorpusRun(
+        LoadedCorpus("fixture", "en", [], "digest"),
+        arguments,
+        tmp_path,
+        "cpu",
+        "commit",
+        {},
+    )
+
+    def fail_if_recognizer_settings_are_read():
+        raise AssertionError("resolution-only checkpoint read recognizer settings")
+
+    monkeypatch.setattr(
+        pipelines, "_upstream_spacy_batch_size", fail_if_recognizer_settings_are_read
+    )
+    monkeypatch.setattr(
+        pipelines,
+        "_resolution_execution_settings",
+        lambda _pipeline: {"context_encoding_batch_size": 32},
+    )
+    monkeypatch.setattr(pipelines, "describe_device", lambda _device: "cpu")
+
+    identity = benchmark_cli._run_identity(run, pipelines.UPSTREAM)
+
+    assert identity.execution_settings["recognition"] is None
+    assert "resolution" in identity.execution_settings
 
 
 def _device_provenance(device: str, host_gpu: str):

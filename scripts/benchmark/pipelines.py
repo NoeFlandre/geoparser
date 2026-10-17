@@ -727,3 +727,89 @@ def pipeline_model_pins(pipeline: str) -> dict[str, str]:
     except KeyError as error:
         message = f"Unknown benchmark pipeline: {pipeline}"
         raise ValueError(message) from error
+
+
+def _validate_execution_settings_inputs(
+    pipeline: str, document_chunk_size: int
+) -> None:
+    """Reject invalid execution settings before deriving their provenance."""
+    if pipeline not in PIPELINES:
+        message = f"Unknown benchmark pipeline: {pipeline}"
+        raise ValueError(message)
+    if document_chunk_size < 1:
+        message = f"chunk size must be at least 1, got {document_chunk_size}"
+        raise ValueError(message)
+
+
+def _upstream_spacy_batch_size() -> int:
+    """Read the batch size configured by the installed, pinned spaCy model."""
+    _require_upstream_spacy_model()
+
+    from spacy.util import get_package_path, load_config
+
+    package_path = Path(get_package_path(UPSTREAM_SPACY_MODEL))
+    config_path = (
+        package_path
+        / f"{UPSTREAM_SPACY_MODEL}-{UPSTREAM_SPACY_MODEL_VERSION}"
+        / "config.cfg"
+    )
+    return load_config(config_path)["nlp"]["batch_size"]
+
+
+def _recognition_execution_settings(pipeline: str) -> dict[str, t.Any]:
+    """Read the effective recognition call size from its implementation."""
+    if pipeline == UPSTREAM:
+        return {
+            "method": "spacy.Language.pipe",
+            # The recognizer calls nlp.pipe(texts) without overriding batch_size,
+            # so spaCy uses the model config loaded into Language.batch_size.
+            "batch_size": _upstream_spacy_batch_size(),
+        }
+    if pipeline in (SWAPPED, HYBRID, PRIOR, *ABLATIONS):
+        # GLiNER2Recognizer.predict invokes the model once for each document.
+        return {"method": "per_document", "documents_per_model_call": 1}
+    if pipeline == XLM_MINILM:
+        return {"method": "transformers_pipeline", "batch_size": XLM_BATCH_SIZE}
+    return {"method": "otter_predict", "batch_size": OTTER_BATCH_SIZE}
+
+
+def _resolution_execution_settings(pipeline: str) -> dict[str, t.Any]:
+    """Read the encoding batch size from the resolver selected by a pipeline."""
+    if pipeline == SWAPPED:
+        from geoparser.modules.resolvers import jina
+
+        encode_batch_size = jina._JINA_ENCODE_BATCH_SIZE
+    else:
+        from geoparser.modules.resolvers import sentencetransformer
+
+        encode_batch_size = sentencetransformer._ENCODE_BATCH_SIZE
+
+    return {
+        "context_encoding_batch_size": encode_batch_size,
+        "candidate_encoding_batch_size": encode_batch_size,
+    }
+
+
+def pipeline_execution_settings(
+    pipeline: str,
+    document_chunk_size: int,
+    *,
+    include_recognition: bool = True,
+    include_resolution: bool = True,
+) -> dict[str, t.Any]:
+    """Return the effective model batching and document checkpoint settings.
+
+    Values are read from the implementation that consumes them. This keeps
+    the manifest and checkpoint identity tied to the actual runtime settings
+    instead of a second set of benchmark-only constants.
+    """
+    _validate_execution_settings_inputs(pipeline, document_chunk_size)
+    return {
+        "document_chunk_size": document_chunk_size,
+        "recognition": (
+            _recognition_execution_settings(pipeline) if include_recognition else None
+        ),
+        "resolution": (
+            _resolution_execution_settings(pipeline) if include_resolution else None
+        ),
+    }
