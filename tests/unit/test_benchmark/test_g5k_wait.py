@@ -85,6 +85,25 @@ def test_wait_until_ready_stops_at_deadline_and_keeps_last_error() -> None:
     ) == (False, 3, "Connection refused", [10, 10, 5], [25, 15, 5])
 
 
+def test_wait_until_ready_rejects_success_returned_at_deadline() -> None:
+    clock = FakeClock()
+
+    def probe(remaining: float) -> tuple[bool, str]:
+        clock.now += remaining
+        return True, ""
+
+    result = wait_for_node.wait_until_ready(
+        probe,
+        timeout_seconds=5,
+        poll_interval_seconds=2,
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+    )
+
+    assert result == (False, 1, None)
+    assert clock.sleeps == []
+
+
 def test_wait_until_ready_does_not_sleep_after_probe_uses_remaining_time() -> None:
     clock = FakeClock()
 

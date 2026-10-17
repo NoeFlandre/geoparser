@@ -37,7 +37,9 @@ def wait_until_ready(
         attempts += 1
         ready, error = probe(remaining)
         if ready:
-            return True, attempts, None
+            if deadline - monotonic() > 0:
+                return True, attempts, None
+            return False, attempts, last_error
         if error:
             last_error = error
         remaining = deadline - monotonic()

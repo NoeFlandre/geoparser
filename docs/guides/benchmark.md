@@ -106,7 +106,7 @@ The sample of September 30 is in `benchmark-evidence/panx/feasibility-2026-09-30
 
 The submission wrapper checks for a duplicate active OAR job. It requests one GPU and a limited walltime, and it submits `run_benchmark.sh` to the node. The node script builds GeoNames on local scratch. It keeps the model caches and the database off the home quota. It writes the checkpoints to the results directory that you selected.
 
-If a manual Kadeploy launcher needs to contact a node from an interactive deploy job, wait for the post-deployment reboot before issuing remote commands. Keep the deploy shell open and run the readiness helper in place of an immediate `oarsh` probe:
+If a manual Kadeploy launcher needs to contact a node after deployment, first end the `-t deploy` reservation by exiting its deploy shell. Grid5000 then reboots the reserved nodes into the standard environment; this reboot can take up to 15 minutes ([Advanced Kadeploy](https://www.grid5000.fr/w/Advanced_Kadeploy)). From a frontend connection, run the readiness helper while that reboot completes:
 
 ```bash
 python3 scripts/g5k/wait_for_node.py hydra-1
