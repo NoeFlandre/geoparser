@@ -106,13 +106,13 @@ The sample of September 30 is in `benchmark-evidence/panx/feasibility-2026-09-30
 
 The submission wrapper checks for a duplicate active OAR job. It requests one GPU and a limited walltime, and it submits `run_benchmark.sh` to the node. The node script builds GeoNames on local scratch. It keeps the model caches and the database off the home quota. It writes the checkpoints to the results directory that you selected.
 
-If a manual Kadeploy launcher needs to contact a node after deployment, first end the `-t deploy` reservation by exiting its deploy shell. Grid5000 then reboots the reserved nodes into the standard environment; this reboot can take up to 15 minutes ([Advanced Kadeploy](https://www.grid5000.fr/w/Advanced_Kadeploy)). From a frontend connection, run the readiness helper while that reboot completes:
+Use the readiness helper only for a node that is still reserved by an active OAR job. `oarsh` identifies that job through `OAR_JOB_ID` or `OAR_JOB_KEY_FILE`; when running from a frontend shell outside the job shell, set one of those variables for the active job ([Advanced OAR](https://www.grid5000.fr/w/Advanced_OAR)). For example, while the target node remains in that allocation:
 
 ```bash
 python3 scripts/g5k/wait_for_node.py hydra-1
 ```
 
-It retries the harmless `oarsh hydra-1 true` check every 10 seconds, with a 15-minute total timeout and a 10-second cap per probe. Transient connection refusals during reboot are retried; a timeout is reported as a failure. The normal benchmark path uses the passive `submit.sh` job and does not deploy a node.
+It retries the harmless `oarsh hydra-1 true` check every 10 seconds, with a 15-minute total timeout and a 10-second cap per probe. Transient connection refusals are retried; a timeout is reported as a failure. An interactive `-t deploy` job ends when its shell is closed. Grid5000 then reboots the reserved nodes into the standard environment and releases them for another job ([Advanced Kadeploy](https://www.grid5000.fr/w/Advanced_Kadeploy)); the ended job's OAR context cannot be used to monitor that reboot. The normal benchmark path uses the passive `submit.sh` job and does not deploy a node.
 
 For example, use this command to run only the resolution phase of two pipelines on all corpora:
 
