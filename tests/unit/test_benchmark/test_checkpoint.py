@@ -45,6 +45,54 @@ def identity(**overrides: Any) -> RunIdentity:
     return RunIdentity(**fields)
 
 
+def _assert_phase_completed(state: Checkpoint, phase: str, document_id: str) -> None:
+    assert state.completed(phase) == {document_id}
+
+
+def _assert_phase_setting_retained(
+    state: Checkpoint, reference: RunIdentity, phase: str
+) -> None:
+    assert (
+        state.identity.execution_settings[phase] == reference.execution_settings[phase]
+    )
+
+
+def _assert_reenabled_phase_results(state: Checkpoint) -> None:
+    assert state.completed("recognition") == set()
+    assert state.completed("resolution") == {"kept"}
+
+
+def _assert_reenabled_phase_timing(state: Checkpoint) -> None:
+    assert state.elapsed_seconds == 7.0
+    assert state.phase_elapsed_seconds == {"resolution": 7.0}
+
+
+def _assert_reenabled_phase_diagnostics_cleared(state: Checkpoint) -> None:
+    assert "recognition" not in state.failures
+    assert "recognition" not in state.phase_provenance
+
+
+def _assert_inactive_phase_data_retained(state: Checkpoint) -> None:
+    assert state.elapsed_seconds == 13.0
+    assert state.phase_elapsed_seconds == {"recognition": 4.0, "resolution": 9.0}
+    assert state.failures == {"recognition": {"1": {"error": "preserve"}}}
+    assert state.phase_provenance == {"recognition": {"source_pipeline": "original"}}
+
+
+def _assert_serialized_checkpoint_schema(payload: dict[str, Any]) -> None:
+    assert set(payload) == {
+        "identity",
+        "recognition",
+        "resolution",
+        "elapsed_seconds",
+        "phase_elapsed_seconds",
+        "failures",
+        "phase_provenance",
+    }
+    assert set(payload["identity"]) == set(asdict(identity()))
+    assert payload["identity"]["schema_version"] == SCHEMA_VERSION
+
+
 class TestCheckpointState:
     """Recording and reading back per-document predictions."""
 
@@ -94,6 +142,7 @@ class TestRoundTrip:
         state.phase_elapsed_seconds["resolution"] = 8.0
         save(path, state)
 
+        _assert_serialized_checkpoint_schema(json.loads(path.read_text("utf-8")))
         resumed, reasons = load(path, identity())
 
         assert reasons == []
@@ -109,6 +158,10 @@ class TestRoundTrip:
         state = Checkpoint(full_identity)
         state.record("recognition", "1", [{"start": 0, "end": 1}])
         state.record("resolution", "1", [{"start": 0, "end": 1, "kb_id": "Q1"}])
+        state.elapsed_seconds = 13.0
+        state.phase_elapsed_seconds = {"recognition": 4.0, "resolution": 9.0}
+        state.failures = {"recognition": {"1": {"error": "preserve"}}}
+        state.phase_provenance = {"recognition": {"source_pipeline": "original"}}
         save(path, state)
         resolution_identity = identity(
             execution_settings={
@@ -120,19 +173,18 @@ class TestRoundTrip:
         resumed, reasons = load(path, resolution_identity)
 
         assert reasons == []
-        assert (
-            resumed.identity.execution_settings["recognition"]
-            == full_identity.execution_settings["recognition"]
-        )
-        assert resumed.completed("recognition") == {"1"}
-        assert resumed.completed("resolution") == {"1"}
+        _assert_phase_setting_retained(resumed, full_identity, "recognition")
+        _assert_phase_completed(resumed, "recognition", "1")
+        _assert_phase_completed(resumed, "resolution", "1")
+        _assert_inactive_phase_data_retained(resumed)
 
         save(path, resumed)
         full_resume, reasons = load(path, full_identity)
 
         assert reasons == []
-        assert full_resume.completed("recognition") == {"1"}
-        assert full_resume.completed("resolution") == {"1"}
+        _assert_phase_completed(full_resume, "recognition", "1")
+        _assert_phase_completed(full_resume, "resolution", "1")
+        _assert_inactive_phase_data_retained(full_resume)
 
     def test_reenabling_phase_discards_data_without_active_stored_settings(
         self, tmp_path
@@ -157,12 +209,9 @@ class TestRoundTrip:
         resumed, reasons = load(path, full_identity)
 
         assert reasons == []
-        assert resumed.completed("recognition") == set()
-        assert resumed.completed("resolution") == {"kept"}
-        assert resumed.elapsed_seconds == 7.0
-        assert resumed.phase_elapsed_seconds == {"resolution": 7.0}
-        assert "recognition" not in resumed.failures
-        assert "recognition" not in resumed.phase_provenance
+        _assert_reenabled_phase_results(resumed)
+        _assert_reenabled_phase_timing(resumed)
+        _assert_reenabled_phase_diagnostics_cleared(resumed)
 
     def test_creates_parent_directories(self, tmp_path):
         """Test that a fresh output directory does not need to exist."""
@@ -215,7 +264,7 @@ class TestRefusalToResume:
         resumed, reasons = load(path, identity(**{field: value}))
 
         assert resumed.completed("resolution") == set()
-        assert any(field in reason for reason in reasons)
+        assert reasons == [f"changed: {field}"]
 
     def test_starts_fresh_on_a_corrupt_checkpoint(self, tmp_path):
         """Test that a half-written file does not stop the run."""
@@ -328,6 +377,7 @@ class TestRunIdentity:
         )
 
         assert resolution_only.differences(full) == []
+        assert full.differences(resolution_only) == []
 
     @pytest.mark.parametrize("phase", ["recognition", "resolution"])
     def test_changed_active_phase_settings_are_load_bearing(self, phase):
@@ -349,10 +399,54 @@ class TestRunIdentity:
             "execution_settings"
         ]
 
+    @pytest.mark.parametrize(
+        "settings",
+        [
+            None,
+            {},
+            {
+                "document_chunk_size": None,
+                "recognition": {"batch_size": 8},
+                "resolution": {
+                    "context_encoding_batch_size": 32,
+                    "candidate_encoding_batch_size": 32,
+                },
+            },
+        ],
+    )
+    def test_incomplete_execution_settings_are_incompatible(self, settings):
+        assert "execution_settings" in identity().differences(
+            identity(execution_settings=settings)
+        )
+        assert "execution_settings" in identity(
+            execution_settings=settings
+        ).differences(identity())
+
+    def test_additional_execution_settings_are_load_bearing(self):
+        settings = {**identity().execution_settings, "extra": True}
+
+        assert "execution_settings" in identity().differences(
+            identity(execution_settings=settings)
+        )
+
+    def test_document_chunk_size_is_load_bearing(self):
+        settings = identity().execution_settings
+        settings["document_chunk_size"] = 6
+
+        assert "execution_settings" in identity().differences(
+            identity(execution_settings=settings)
+        )
+
     def test_gold_span_resolution_reuse_requires_matching_provenance(self):
         _common, first, second = _gold_span_resolution_reuse_pair()
 
         assert resolution_reuse_compatible(first, second)
+
+    def test_gold_span_resolution_reuse_requires_resolver_pin(self):
+        first = identity(model_pins={"reranker": "reranker@one"})
+        second = identity(model_pins={"reranker": "reranker@one"})
+
+        assert not resolution_reuse_compatible(first, second)
 
     def test_gold_span_resolution_reuse_allows_recognition_batch_changes(self):
         common, first, _second = _gold_span_resolution_reuse_pair()
@@ -376,12 +470,49 @@ class TestRunIdentity:
 
         assert not resolution_reuse_compatible(first, changed)
 
-    def test_gold_span_resolution_reuse_rejects_resolver_changes(self):
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("gazetteer", "other-gazetteer"),
+            ("min_similarity", 0.1),
+            ("limit", 10),
+            ("commit", "other-code"),
+            ("schema_version", SCHEMA_VERSION + 1),
+        ],
+    )
+    def test_gold_span_resolution_reuse_rejects_resolution_input_changes(
+        self, field, value
+    ):
         common, first, _second = _gold_span_resolution_reuse_pair()
-        model_pins = {**common["model_pins"], "resolver": "minilm@other"}
+        changed = identity(
+            pipeline="otter-cross-minilm",
+            **{**common, field: value},
+        )
+
+        assert not resolution_reuse_compatible(first, changed)
+
+    @pytest.mark.parametrize(
+        "role", ["resolver", "reranker", "context_sentence_splitter"]
+    )
+    def test_gold_span_resolution_reuse_rejects_resolution_model_changes(self, role):
+        common, first, _second = _gold_span_resolution_reuse_pair()
+        model_pins = {**common["model_pins"], role: "different-pin"}
         changed = identity(
             pipeline="otter-cross-minilm",
             **{**common, "model_pins": model_pins},
+        )
+
+        assert not resolution_reuse_compatible(first, changed)
+
+    def test_gold_span_resolution_reuse_rejects_document_chunk_size_changes(self):
+        common, first, _second = _gold_span_resolution_reuse_pair()
+        execution_settings = {
+            **common["execution_settings"],
+            "document_chunk_size": 10,
+        }
+        changed = identity(
+            pipeline="otter-cross-minilm",
+            **{**common, "execution_settings": execution_settings},
         )
 
         assert not resolution_reuse_compatible(first, changed)
