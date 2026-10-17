@@ -102,7 +102,8 @@ def _oarsh_probe(host: str, timeout_seconds: float) -> ProbeResult:
     )
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for the readiness wait."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("host", help="Grid'5000 node name, for example hydra-1")
     parser.add_argument(
@@ -117,7 +118,11 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_POLL_INTERVAL_SECONDS,
         help="seconds between probes (default: 10)",
     )
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     if shutil.which("oarsh") is None:
         print("oarsh is not available on this frontend", file=sys.stderr)
         return 2

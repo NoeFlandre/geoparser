@@ -18,6 +18,16 @@ class FakeClock:
         self.now += seconds
 
 
+def test_build_parser_exposes_the_readiness_wait_options() -> None:
+    args = wait_for_node.build_parser().parse_args(["hydra-1"])
+
+    assert (args.host, args.timeout, args.interval) == (
+        "hydra-1",
+        wait_for_node.DEFAULT_TIMEOUT_SECONDS,
+        wait_for_node.DEFAULT_POLL_INTERVAL_SECONDS,
+    )
+
+
 def test_wait_until_ready_retries_refused_connection_until_node_is_ready() -> None:
     clock = FakeClock()
     probe_timeouts: list[float] = []
