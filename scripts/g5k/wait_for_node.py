@@ -42,11 +42,27 @@ def wait_until_ready(
             return False, attempts, last_error
         if error:
             last_error = error
-        remaining = deadline - monotonic()
-        if remaining > 0:
-            sleep(min(poll_interval_seconds, remaining))
+        _sleep_before_next_probe(
+            deadline=deadline,
+            poll_interval_seconds=poll_interval_seconds,
+            monotonic=monotonic,
+            sleep=sleep,
+        )
 
     return False, attempts, last_error
+
+
+def _sleep_before_next_probe(
+    *,
+    deadline: float,
+    poll_interval_seconds: float,
+    monotonic: Callable[[], float],
+    sleep: Callable[[float], None],
+) -> None:
+    """Sleep for at most the polling interval and the remaining deadline."""
+    remaining = deadline - monotonic()
+    if remaining > 0:
+        sleep(min(poll_interval_seconds, remaining))
 
 
 def _validate_wait_options(

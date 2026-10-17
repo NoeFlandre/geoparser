@@ -28,6 +28,26 @@ def test_build_parser_exposes_the_readiness_wait_options() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("now", "expected_sleep"),
+    [(2.0, [3.0]), (5.0, [])],
+)
+def test_sleep_before_next_probe_caps_sleep_at_deadline(
+    now: float, expected_sleep: list[float]
+) -> None:
+    clock = FakeClock()
+    clock.now = now
+
+    wait_for_node._sleep_before_next_probe(
+        deadline=5.0,
+        poll_interval_seconds=10.0,
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+    )
+
+    assert clock.sleeps == expected_sleep
+
+
 def test_wait_until_ready_retries_refused_connection_until_node_is_ready() -> None:
     clock = FakeClock()
     probe_timeouts: list[float] = []
