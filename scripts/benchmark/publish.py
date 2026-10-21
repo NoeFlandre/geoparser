@@ -20,6 +20,7 @@ import csv
 import hashlib
 import io
 import json
+import math
 import typing as t
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -961,6 +962,12 @@ def _validate_inspection_collections(
             msg = f"{prefix} has malformed failure details"
             raise TypeError(msg)
         _require_inspection_fields(failure, {"kind", "reason"}, prefix, exact=False)
+        if any(not isinstance(item, str) for item in failure.values()):
+            msg = f"{prefix} has non-scalar failure details"
+            raise ValueError(msg)
+    if any(not isinstance(status, str) for status in statuses.values()):
+        msg = f"{prefix} has non-scalar phase status"
+        raise ValueError(msg)
     return prediction
 
 
@@ -971,6 +978,22 @@ def _validate_reference_spans(reference: list[t.Any], prefix: str) -> None:
             msg = f"{prefix} has an incomplete gold reference"
             raise TypeError(msg)
         _require_inspection_fields(span, INSPECTION_REFERENCE_FIELDS, prefix)
+        if type(span["start"]) is not int or type(span["end"]) is not int:
+            msg = f"{prefix} has non-scalar gold offsets"
+            raise ValueError(msg)
+        if not isinstance(span["name"], str):
+            msg = f"{prefix} has a non-scalar gold mention"
+            raise TypeError(msg)
+        if not _finite_number(span["latitude"]) or not _finite_number(
+            span["longitude"]
+        ):
+            msg = f"{prefix} has non-scalar gold coordinates"
+            raise ValueError(msg)
+
+
+def _finite_number(value: t.Any) -> bool:
+    """Return whether a value is a finite JSON number, excluding booleans."""
+    return type(value) in (int, float) and math.isfinite(value)
 
 
 def _require_inspection_fields(
@@ -1009,7 +1032,7 @@ def _validate_inspection_phase(
         msg = f"{prefix} has a malformed {phase} prediction"
         raise TypeError(msg)
     for item in predictions:
-        _require_inspection_fields(item, INSPECTION_PREDICTION_FIELDS, prefix)
+        _validate_inspection_prediction(item, phase, prefix)
     statuses = record.get("phase_status") or {}
     if not isinstance(statuses, dict):
         msg = f"{prefix} has malformed phase status"
@@ -1024,6 +1047,28 @@ def _validate_inspection_phase(
         raise TypeError(msg)
     if status == "failed" and phase not in failures:
         msg = f"{prefix} has an unrecorded {phase} failure"
+        raise ValueError(msg)
+
+
+def _validate_inspection_prediction(
+    item: dict[str, t.Any], phase: str, prefix: str
+) -> None:
+    """Require public scalar fields for one predicted annotation."""
+    _require_inspection_fields(item, INSPECTION_PREDICTION_FIELDS, prefix)
+    if type(item["start"]) is not int or type(item["end"]) is not int:
+        msg = f"{prefix} has non-scalar {phase} offsets"
+        raise ValueError(msg)
+    if any(
+        item[field] is not None and not isinstance(item[field], str)
+        for field in ("identifier", "document_id")
+    ):
+        msg = f"{prefix} has a non-scalar {phase} identifier"
+        raise ValueError(msg)
+    if any(
+        item[field] is not None and not _finite_number(item[field])
+        for field in ("latitude", "longitude")
+    ):
+        msg = f"{prefix} has non-scalar {phase} coordinates"
         raise ValueError(msg)
 
 

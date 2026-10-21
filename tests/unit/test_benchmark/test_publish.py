@@ -250,7 +250,7 @@ def test_report_validation_rejects_inspection_text(tmp_path, monkeypatch):
         publish._validate_current_report(report_path, data)
 
 
-@pytest.mark.parametrize("location", ["record", "prediction"])
+@pytest.mark.parametrize("location", ["record", "prediction", "prediction_value"])
 def test_report_validation_rejects_unknown_inspection_fields(
     tmp_path, monkeypatch, location
 ):
@@ -261,7 +261,7 @@ def test_report_validation_rejects_unknown_inspection_fields(
     record = json.loads(inspection.read_text())
     if location == "record":
         record["document_text"] = "private source text"
-    else:
+    elif location == "prediction":
         record["prediction"]["recognition"].append(
             {
                 "start": 0,
@@ -273,9 +273,25 @@ def test_report_validation_rejects_unknown_inspection_fields(
                 "document_text": "private source text",
             }
         )
+    else:
+        record["prediction"]["recognition"].append(
+            {
+                "start": 0,
+                "end": 4,
+                "identifier": {"document_text": "private source text"},
+                "document_id": "doc-1",
+                "latitude": None,
+                "longitude": None,
+            }
+        )
     inspection.write_text(json.dumps(record) + "\n")
 
-    with pytest.raises(ValueError, match="unsupported inspection fields"):
+    expected_error = (
+        "non-scalar"
+        if location == "prediction_value"
+        else "unsupported inspection fields"
+    )
+    with pytest.raises(ValueError, match=expected_error):
         publish._validate_current_report(report_path, data)
 
 
