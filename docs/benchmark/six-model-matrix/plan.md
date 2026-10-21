@@ -154,10 +154,13 @@ document coverage pass the new compatibility and provenance gates. The 19
 held jobs with no staged manifests/checkpoints are not resumable as-is. They do
 not block fresh, correctly pinned shards under new job/run IDs. The public 50
 rows are legacy three-pipeline evidence (29 strict-raw and 21
-dedup-view rows), not current six-pipeline coverage. Public candidates are
-NewsLi-SR GLiNER/Jina (job 4217426) and NewsLi-PL
-XLM/MiniLM (job 6981821); inspect both phases and their complete manifests
-before considering component reuse. Job 341320's Otter/NewsLi-PL checkpoint
+dedup-view rows), not current six-pipeline coverage. Inspect these legacy
+results before considering component reuse: NewsLi-SR GLiNER/Jina (job
+4217426), NewsLi-PL GLiNER/Jina (job 6981801), and NewsLi-PL XLM/MiniLM (job
+6981821). For job 6981801, the initial OAR wrapper exited 256, but the
+corrected worker attempt and result bundle both recorded exit 0 with matching
+hashes. Check both phases and each complete manifest against the new identity
+gate. Job 341320's Otter/NewsLi-PL checkpoint
 records all 186 documents and both phases but has 15 sequence-length failures;
 preserve those failures if it passes the new identity gate. Count no old
 checkpoint as reusable until it passes that gate. If none pass, plan for 27
