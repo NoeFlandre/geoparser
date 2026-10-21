@@ -118,7 +118,7 @@ The runner records source-byte SHA256 and parsed-corpus digest in each shard
 manifest. The Wikidata coordinate cache is pinned to SHA256
 `a6779144c089430c9c3b55067b5a1a3f766d0a2f13eab928d354c79c0ad481bb`; `uv.lock`
 is pinned to SHA256
-`7a9a5a4ff17c6bd1150b7aa42fdbd4eb3b5e8632501f9fd34857d59bc221754a` at this
+`4a3b13edc893cecab72784d9d7f3d1e297af57ce59b6eca8f84111b5eea8821e` at this
 plan revision. NewsLi's seven dedup shards use the same pinned archive as their
 strict counterparts, but have a distinct scoring-view identity and digest.
 Never reuse checkpoints between strict and dedup views.
