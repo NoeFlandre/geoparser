@@ -282,10 +282,12 @@ def run_corpus(
     require_clean_corpus(loaded)
     documents = loaded.documents
     gold_count = corpus.gold_toponym_count(documents)
+    scoring_spans = runner.scoring_span_count(documents)
     output_dir.mkdir(parents=True, exist_ok=True)
     print(
         f"{loaded.name} ({loaded.language}): {len(documents)} documents, "
-        f"{gold_count} gold toponyms, corpus {loaded.digest}, commit {commit}"
+        f"{gold_count} gold reference rows, {scoring_spans} distinct scoring spans, "
+        f"corpus {loaded.digest}, commit {commit}"
     )
     run = _CorpusRun(loaded, arguments, output_dir, device, commit, facts)
     results = _score_requested_pipelines(run)
@@ -299,14 +301,15 @@ def run_corpus(
         gazetteer=pipelines.GAZETTEER_NAME,
         min_similarity=arguments.min_similarity,
         partial=_limit_is_partial(loaded.name, arguments.limit),
+        scoring_spans=scoring_spans,
     )
     _write_corpus_reports(
         output_dir,
         text,
-        _corpus_report_payload(run, gold_count, results),
+        _corpus_report_payload(run, gold_count, results, scoring_spans=scoring_spans),
     )
     print(text)
-    return _summary_rows(run, gold_count, results)
+    return _summary_rows(run, gold_count, results, scoring_spans=scoring_spans)
 
 
 def _write_inspection_outputs(
@@ -840,6 +843,8 @@ def _corpus_report_payload(
     run: _CorpusRun,
     gold_count: int,
     results: Sequence[report.PipelineResult],
+    *,
+    scoring_spans: int,
 ) -> dict:
     """Return the metadata and pipeline measurements stored as JSON."""
     loaded = run.loaded
@@ -861,6 +866,7 @@ def _corpus_report_payload(
         "partial": _limit_is_partial(loaded.name, limit),
         "documents": len(loaded.documents),
         "gold_toponyms": gold_count,
+        "scoring_spans": scoring_spans,
         "gazetteer": pipelines.GAZETTEER_NAME,
         "gazetteer_sha256": run.facts.get("gazetteer_artifact_sha256"),
         "min_similarity": run.arguments.min_similarity,
@@ -915,6 +921,8 @@ def _summary_rows(
     run: _CorpusRun,
     gold_count: int,
     results: Sequence[report.PipelineResult],
+    *,
+    scoring_spans: int,
 ) -> list[dict]:
     """Flatten corpus metadata and pipeline scores for the root summary."""
     loaded = run.loaded
@@ -925,6 +933,7 @@ def _summary_rows(
             "language": loaded.language,
             "documents": len(documents),
             "gold_toponyms": gold_count,
+            "scoring_spans": scoring_spans,
             "pipeline": result.name,
             "recognition": result.recognition,
             "resolution": result.resolution,
@@ -971,6 +980,11 @@ def _manifest_corpus_cell(
     spec = corpora.CORPORA[name]
     documents = fixed.documents if fixed else spec.documents
     gold_toponyms = fixed.gold_toponyms if fixed else spec.gold_spans
+    exact_duplicates = (
+        missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED.get(spec.language, 0)
+        if getattr(spec, "kind", None) == corpora.NEWSLI
+        else 0
+    )
     if scoring_view == corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
         if (
             fixed is None
@@ -984,10 +998,18 @@ def _manifest_corpus_cell(
         )
         if limit is not None and limit < fixed.documents:
             documents, gold_toponyms = limit, None
+    scoring_spans = (
+        None
+        if gold_toponyms is None
+        or (fixed and limit is not None and limit < fixed.documents)
+        else gold_toponyms
+        - (exact_duplicates if scoring_view == corpora.STRICT_RAW_VIEW else 0)
+    )
     return {
         "language": spec.language,
         "expected_documents": documents,
         "expected_gold_toponyms": gold_toponyms,
+        "scoring_spans": scoring_spans,
         "pre_transform_gold_toponyms": (
             fixed.gold_toponyms
             if fixed
@@ -1095,6 +1117,7 @@ def _record_manifest_cell(
             "corpus_digest": payload["corpus_digest"],
             "documents": payload["documents"],
             "gold_toponyms": payload["gold_toponyms"],
+            "scoring_spans": payload.get("scoring_spans"),
             "scoring_view": payload.get("scoring_view", corpora.STRICT_RAW_VIEW),
             "pre_transform_gold_toponyms": payload.get("pre_transform_gold_toponyms"),
             "source_archive_sha256": payload.get("source_archive_sha256"),

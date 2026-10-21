@@ -70,6 +70,17 @@ def gold_annotations(documents: Sequence[Document]) -> list[t.Any]:
     ]
 
 
+def scoring_span_count(documents: Sequence[Document]) -> int:
+    """Count distinct document/span identities used by the set-based metrics."""
+    return len(
+        {
+            (document.identifier, span.start, span.end)
+            for document in documents
+            for span in document.gold
+        }
+    )
+
+
 def inspection_records(
     documents: Sequence[Document],
     state: ckpt.Checkpoint,

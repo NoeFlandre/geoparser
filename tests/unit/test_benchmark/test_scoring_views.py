@@ -4,7 +4,7 @@ import hashlib
 
 import pytest
 
-from scripts.benchmark import corpora
+from scripts.benchmark import checkpoint, corpora, runner
 from scripts.benchmark.corpus import Document, GoldSpan
 from scripts.benchmark.newsli import (
     EXACT_FULL_RECORD_DEDUP_VIEW,
@@ -121,3 +121,80 @@ def test_raw_protocol_retains_duplicates_and_records_release_hash(
     )
     assert loaded.exact_duplicate_records == 1
     assert loaded.duplicate_records_removed == 0
+
+
+def test_duplicate_reference_rows_remain_raw_but_metrics_score_span_identity_once():
+    duplicate = GoldSpan(4, 9, "Egipt", 27.0, 29.0)
+    raw_documents = [Document("ar-1", "Din Egipt vin.", (duplicate, duplicate))]
+    deduplicated, removed, _groups = deduplicate_exact_full_records(raw_documents)
+
+    def score(documents):
+        state = checkpoint.Checkpoint(
+            checkpoint.RunIdentity(
+                pipeline="gliner-minilm",
+                corpus_digest="corpus-pin",
+                gazetteer="geonames",
+                min_similarity=0.0,
+                limit=None,
+                commit="code-pin",
+            )
+        )
+        state.record(
+            runner.RECOGNITION,
+            "ar-1",
+            [
+                {
+                    "start": 4,
+                    "end": 9,
+                    "identifier": None,
+                    "document_id": "ar-1",
+                    "latitude": None,
+                    "longitude": None,
+                }
+            ],
+        )
+        state.record(
+            runner.RESOLUTION,
+            "ar-1",
+            [
+                {
+                    "start": 4,
+                    "end": 9,
+                    "identifier": "geonames:123",
+                    "document_id": "ar-1",
+                    "latitude": 27.0,
+                    "longitude": 29.0,
+                }
+            ],
+        )
+        return runner.score("gliner-minilm", documents, state, models={}, device="cpu")
+
+    raw_result = score(raw_documents)
+    dedup_result = score(deduplicated)
+
+    assert (len(raw_documents[0].gold), removed, len(deduplicated[0].gold)) == (
+        2,
+        1,
+        1,
+    )
+    assert runner.scoring_span_count(raw_documents) == 1
+    assert runner.scoring_span_count(deduplicated) == 1
+    assert (
+        raw_result.recognition
+        == dedup_result.recognition
+        == {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+        }
+    )
+    assert (
+        raw_result.resolution
+        == dedup_result.resolution
+        == {
+            "accuracy_at_161km": 1.0,
+            "mean_error_km": 0.0,
+            "median_error_km": 0.0,
+            "auc": 0.0,
+        }
+    )

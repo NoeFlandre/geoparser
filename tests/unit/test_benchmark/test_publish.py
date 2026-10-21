@@ -1,5 +1,6 @@
 """Publication gates, versioned artifacts, and single-commit Hub behavior."""
 
+import hashlib
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,11 +12,13 @@ from huggingface_hub import (
     CommitOperationDelete,
 )
 
-from scripts.benchmark import missing_matrix, pipelines, publish
+from scripts.benchmark import checkpoint, missing_matrix, pipelines, publish, runner
 from scripts.benchmark.corpora import EXACT_FULL_RECORD_DEDUP_VIEW, STRICT_RAW_VIEW
+from scripts.benchmark.corpus import Document, GoldSpan
 
 PARENT = "a" * 40
 HEAD = "b" * 40
+NEXT_HEAD = "c" * 40
 
 
 def _expected_totals(view):
@@ -95,6 +98,7 @@ def _write_evidence(root: Path, view: str, corpus_name: str) -> Path:
         "partial": False,
         "documents": 1,
         "gold_toponyms": 1,
+        "scoring_spans": 1,
         "corpus_digest": corpus_digest,
         "source_url": spec.url,
         "source_content_sha256": source_sha,
@@ -130,6 +134,7 @@ def _write_evidence(root: Path, view: str, corpus_name: str) -> Path:
                     "partial": False,
                     "documents": 1,
                     "gold_toponyms": 1,
+                    "scoring_spans": 1,
                     "source_url": spec.url,
                     "source_content_sha256": source_sha,
                     "source_archive_sha256": archive_sha,
@@ -159,37 +164,57 @@ class FakeApi:
         }
         self.tmp_path = tmp_path
         self.commit_calls = []
+        self.head_sha = PARENT
+        self.revisions = {PARENT: self.files.copy()}
+        self.fail_next_readback = False
 
-    def repo_info(self, repo_id, *, repo_type, revision=None):
+    def repo_info(self, repo_id, *, repo_type, revision=None, files_metadata=False):
         assert repo_type == "dataset"
-        return SimpleNamespace(sha=HEAD if revision == HEAD else PARENT)
+        sha = revision or self.head_sha
+        contents = self.revisions[sha]
+        siblings = [
+            SimpleNamespace(
+                rfilename=path,
+                blob_id=hashlib.sha1(
+                    f"blob {len(content)}\0".encode() + content
+                ).hexdigest(),
+                lfs=None,
+            )
+            for path, content in contents.items()
+        ]
+        return SimpleNamespace(sha=sha, siblings=siblings)
 
     def list_repo_files(self, repo_id, *, repo_type, revision):
         assert repo_type == "dataset"
-        assert revision in {PARENT, HEAD}
-        return sorted(self.files)
+        return sorted(self.revisions[revision])
 
     def create_commit(self, **kwargs):
         self.commit_calls.append(kwargs)
-        assert kwargs["parent_commit"] == PARENT
+        assert kwargs["parent_commit"] == self.head_sha
         assert kwargs["repo_type"] == "dataset"
-        original = self.files.copy()
+        original = self.revisions[kwargs["parent_commit"]]
+        contents = original.copy()
         for operation in kwargs["operations"]:
             if isinstance(operation, CommitOperationCopy):
-                self.files[operation.path_in_repo] = original[
-                    operation.src_path_in_repo
-                ]
+                contents[operation.path_in_repo] = original[operation.src_path_in_repo]
             elif isinstance(operation, CommitOperationAdd):
-                self.files[operation.path_in_repo] = operation.path_or_fileobj
+                contents[operation.path_in_repo] = operation.path_or_fileobj
             elif isinstance(operation, CommitOperationDelete):
-                self.files.pop(operation.path_in_repo, None)
-        return SimpleNamespace(oid=HEAD)
+                contents.pop(operation.path_in_repo, None)
+        new_sha = HEAD if len(self.commit_calls) == 1 else NEXT_HEAD
+        self.files = contents
+        self.head_sha = new_sha
+        self.revisions[new_sha] = contents.copy()
+        return SimpleNamespace(oid=new_sha)
 
     def hf_hub_download(self, repo_id, *, filename, repo_type, revision):
-        assert (repo_type, revision) == ("dataset", HEAD)
+        assert repo_type == "dataset"
+        if self.fail_next_readback:
+            self.fail_next_readback = False
+            raise OSError("temporary readback outage")
         path = self.tmp_path / filename
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(self.files[filename])
+        path.write_bytes(self.revisions[revision][filename])
         return str(path)
 
 
@@ -219,9 +244,17 @@ def test_card_is_minimal_and_keeps_viewer_configs_separate():
     assert "current/v2/strict-raw-v1/results.csv" in card
     assert "current/v2/newsli-exact-full-record-dedup-v1/results.csv" in card
     assert "gold toponym spans" in card
+    assert "distinct (document ID, start, end) spans" in card
+    assert "metric denominator" in card
     assert "end-to-end score is reported" in card
     assert "population prior" not in card
     assert "inflection" not in card
+    protocol = json.loads(publish.render_protocol_manifest(STRICT_RAW_VIEW))
+    assert (
+        protocol["scoring"]["unit"]
+        == "distinct (document_id, start, end) span identity"
+    )
+    assert "count once" in protocol["scoring"]["duplicate_identity_policy"]
 
 
 def test_report_validation_requires_every_expected_role_pin(tmp_path, monkeypatch):
@@ -234,6 +267,23 @@ def test_report_validation_requires_every_expected_role_pin(tmp_path, monkeypatc
     manifest_path.write_text(json.dumps(manifest))
 
     with pytest.raises(ValueError, match="missing or mispins a model role"):
+        publish._validate_current_report(report_path, data)
+
+
+def test_report_validation_checks_scoring_span_count_against_inspections(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(publish, "_expected_corpus_totals", _expected_totals)
+    report_path = _write_evidence(tmp_path, STRICT_RAW_VIEW, "geovirus")
+    data = json.loads(report_path.read_text())
+    data["scoring_spans"] = 2
+    report_path.write_text(json.dumps(data), encoding="utf-8")
+    manifest_path = report_path.parent.parent / "run-manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["protocol"]["corpora"]["geovirus"]["scoring_spans"] = 2
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="does not match its inspections"):
         publish._validate_current_report(report_path, data)
 
 
@@ -250,7 +300,10 @@ def test_report_validation_rejects_inspection_text(tmp_path, monkeypatch):
         publish._validate_current_report(report_path, data)
 
 
-@pytest.mark.parametrize("location", ["record", "prediction", "prediction_value"])
+@pytest.mark.parametrize(
+    "location",
+    ["record", "prediction", "prediction_value", "prediction_document_id"],
+)
 def test_report_validation_rejects_unknown_inspection_fields(
     tmp_path, monkeypatch, location
 ):
@@ -267,10 +320,20 @@ def test_report_validation_rejects_unknown_inspection_fields(
                 "start": 0,
                 "end": 4,
                 "identifier": None,
-                "document_id": "doc-1",
                 "latitude": None,
                 "longitude": None,
                 "document_text": "private source text",
+            }
+        )
+    elif location == "prediction_document_id":
+        record["prediction"]["recognition"].append(
+            {
+                "start": 0,
+                "end": 4,
+                "identifier": None,
+                "document_id": "doc-1",
+                "latitude": None,
+                "longitude": None,
             }
         )
     else:
@@ -279,7 +342,6 @@ def test_report_validation_rejects_unknown_inspection_fields(
                 "start": 0,
                 "end": 4,
                 "identifier": {"document_text": "private source text"},
-                "document_id": "doc-1",
                 "latitude": None,
                 "longitude": None,
             }
@@ -293,6 +355,77 @@ def test_report_validation_rejects_unknown_inspection_fields(
     )
     with pytest.raises(ValueError, match=expected_error):
         publish._validate_current_report(report_path, data)
+
+
+def test_publisher_accepts_nonempty_generated_inspection_records(tmp_path, monkeypatch):
+    monkeypatch.setattr(publish, "_expected_corpus_totals", _expected_totals)
+    report_path = _write_evidence(tmp_path, STRICT_RAW_VIEW, "geovirus")
+    data = json.loads(report_path.read_text())
+    pipeline = "gliner-minilm"
+    document = Document(
+        "doc-1",
+        "city",
+        (GoldSpan(0, 4, "city", 1.0, 2.0),),
+    )
+    state = checkpoint.Checkpoint(
+        checkpoint.RunIdentity(
+            pipeline=pipeline,
+            corpus_digest="corpus-pin",
+            gazetteer="geonames",
+            min_similarity=0.0,
+            limit=None,
+            commit="code-pin",
+        )
+    )
+    state.record(
+        runner.RECOGNITION,
+        "doc-1",
+        [
+            {
+                "start": 0,
+                "end": 4,
+                "identifier": None,
+                "document_id": "doc-1",
+                "latitude": None,
+                "longitude": None,
+            }
+        ],
+    )
+    state.record(
+        runner.RESOLUTION,
+        "doc-1",
+        [
+            {
+                "start": 0,
+                "end": 4,
+                "identifier": "geonames:1",
+                "document_id": "doc-1",
+                "latitude": 1.0,
+                "longitude": 2.0,
+            }
+        ],
+    )
+
+    record = runner.inspection_records(
+        [document],
+        state,
+        pipeline=pipeline,
+        scoring_view=STRICT_RAW_VIEW,
+    )[0]
+    assert record["prediction"][runner.RECOGNITION] == [
+        {
+            "start": 0,
+            "end": 4,
+            "identifier": None,
+            "latitude": None,
+            "longitude": None,
+        }
+    ]
+    assert record["prediction"][runner.RESOLUTION][0]["identifier"] == ("geonames:1")
+    inspection = report_path.parent / f"inspection-{pipeline}.jsonl"
+    inspection.write_text(json.dumps(record) + "\n", encoding="utf-8")
+
+    assert publish._validate_current_report(report_path, data) == STRICT_RAW_VIEW
 
 
 def test_bundle_writes_distinct_metrics_and_protocol_paths(tiny_evidence):
@@ -316,7 +449,11 @@ def test_publisher_uses_one_parent_guarded_commit_archives_and_reads_back(
 
     result = publish.publish(tiny_evidence, "me/results", api=api)
 
-    assert result == {"parent_sha": PARENT, "commit_sha": HEAD}
+    assert result == {
+        "parent_sha": PARENT,
+        "commit_sha": HEAD,
+        "status": "published",
+    }
     assert len(api.commit_calls) == 1
     call = api.commit_calls[0]
     assert call["parent_commit"] == PARENT
@@ -350,6 +487,69 @@ def test_publisher_uses_one_parent_guarded_commit_archives_and_reads_back(
         == b"stale current artifact"
     )
     assert "README.md" in api.files
+
+
+def test_identical_publish_is_a_noop_and_does_not_add_an_archive(
+    tiny_evidence, tmp_path
+):
+    api = FakeApi(tmp_path)
+
+    publish.publish(tiny_evidence, "me/results", api=api)
+    archived_paths = {path for path in api.files if path.startswith("archive/")}
+    result = publish.publish(tiny_evidence, "me/results", api=api)
+
+    assert result == {
+        "parent_sha": HEAD,
+        "commit_sha": HEAD,
+        "status": "unchanged",
+    }
+    assert len(api.commit_calls) == 1
+    assert {path for path in api.files if path.startswith("archive/")} == archived_paths
+
+
+def test_changed_bundle_creates_one_new_snapshot(tiny_evidence, tmp_path):
+    api = FakeApi(tmp_path)
+    publish.publish(tiny_evidence, "me/results", api=api)
+    report_path = (
+        tiny_evidence / f"run-{STRICT_RAW_VIEW}" / "geovirus" / publish.REPORT_NAME
+    )
+    data = json.loads(report_path.read_text())
+    data["pipelines"][0]["recognition"]["f1"] = 0.6
+    report_path.write_text(json.dumps(data), encoding="utf-8")
+
+    result = publish.publish(tiny_evidence, "me/results", api=api)
+
+    assert result == {
+        "parent_sha": HEAD,
+        "commit_sha": NEXT_HEAD,
+        "status": "published",
+    }
+    assert len(api.commit_calls) == 2
+    assert api.commit_calls[1]["parent_commit"] == HEAD
+    assert f"archive/snapshots/{HEAD}/ARCHIVE.json" in api.files
+
+
+def test_readback_failure_reconciles_successful_commit_and_retry_is_unchanged(
+    tiny_evidence, tmp_path
+):
+    api = FakeApi(tmp_path)
+    api.fail_next_readback = True
+
+    result = publish.publish(tiny_evidence, "me/results", api=api)
+    retry = publish.publish(tiny_evidence, "me/results", api=api)
+
+    assert result == {
+        "parent_sha": PARENT,
+        "commit_sha": HEAD,
+        "status": "reconciled",
+    }
+    assert retry == {
+        "parent_sha": HEAD,
+        "commit_sha": HEAD,
+        "status": "unchanged",
+    }
+    assert len(api.commit_calls) == 1
+    assert f"archive/snapshots/{PARENT}/ARCHIVE.json" in api.files
 
 
 def test_incomplete_bundle_fails_before_repo_mutation(tmp_path, monkeypatch):

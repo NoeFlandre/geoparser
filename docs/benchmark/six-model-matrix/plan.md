@@ -14,6 +14,19 @@ cells). The separate dedup view covers the seven affected NewsLi languages by
 six combinations (42 cells). Recognition and resolution remain independently
 scored; resolution uses gold spans. No end-to-end score is reported.
 
+## Scoring unit and duplicate rows
+
+Both metrics use distinct `(document_id, start, end)` span identities.
+Recognition computes set-based exact-match scores; resolution looks up one
+coordinate pair per distinct gold span identity. Exact duplicate reference
+rows in the strict-raw view stay in the inspected source evidence and row
+counts, but do not add to either metric denominator. The NewsLi dedup view
+removes the audited exact duplicate rows before scoring. Its record counts may
+differ from strict raw while its metric values match. Reports expose both the
+gold reference row count and the distinct scoring-span count. These counts
+expose the existing entity-unique scoring behavior while keeping reference row
+counts available for audit.
+
 ## Work units
 
 1. Add one declarative component registry for the six combinations, exact

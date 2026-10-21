@@ -69,7 +69,8 @@ INSPECTION_REFERENCE_FIELDS = frozenset(
     {"start", "end", "name", "latitude", "longitude"}
 )
 INSPECTION_PREDICTION_FIELDS = frozenset(
-    {"start", "end", "identifier", "document_id", "latitude", "longitude"}
+    # The enclosing inspection record carries document_id once.
+    {"start", "end", "identifier", "latitude", "longitude"}
 )
 # One flat table for the Hub's viewer: left to itself it tries to read every
 # JSON file in the repo as one dataset, and reports, checkpoints and
@@ -97,6 +98,7 @@ COLUMNS = (
     "language",
     "documents",
     "gold_toponyms",
+    "scoring_spans",
     "run_limit",
     "run_partial",
     "pipeline",
@@ -221,6 +223,7 @@ def _pipeline_row(
         "language": data.get("language", "en"),
         "documents": data["documents"],
         "gold_toponyms": data["gold_toponyms"],
+        "scoring_spans": data["scoring_spans"],
         "run_limit": data.get("limit"),
         # Reports written before the partial flag existed treated every
         # explicit limit as a smoke run. Keep that conservative behavior for
@@ -681,6 +684,11 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
         "limited to exact full-record matches; its scores are never combined "
         "with strict-raw results.",
         "",
+        "Both phases score distinct (document ID, start, end) spans. Strict raw "
+        "keeps exact duplicate reference rows inspectable, but each span identity "
+        "counts once in the metric denominator. The dedup view removes audited "
+        "duplicate rows before scoring, so its metric values can match strict raw.",
+        "",
         "## Results",
         "",
     ]
@@ -776,8 +784,12 @@ def render_protocol_manifest(scoring_view: str) -> str:
         },
         "legacy_pipeline_id_map": missing_matrix.LEGACY_PIPELINE_ID_MAP,
         "scoring": {
-            "recognition": "exact-match F1 on recognizer spans",
-            "resolution": "geodesic error and Acc@161km on gold spans",
+            "unit": "distinct (document_id, start, end) span identity",
+            "duplicate_identity_policy": (
+                "repeated gold or predicted rows with the same span identity count once"
+            ),
+            "recognition": "set-based exact-match F1 on recognizer span identities",
+            "resolution": "geodesic error and Acc@161km over distinct gold span identities",
             "end_to_end_score": None,
         },
         "transform": (
@@ -1058,10 +1070,7 @@ def _validate_inspection_prediction(
     if type(item["start"]) is not int or type(item["end"]) is not int:
         msg = f"{prefix} has non-scalar {phase} offsets"
         raise ValueError(msg)
-    if any(
-        item[field] is not None and not isinstance(item[field], str)
-        for field in ("identifier", "document_id")
-    ):
+    if item["identifier"] is not None and not isinstance(item["identifier"], str):
         msg = f"{prefix} has a non-scalar {phase} identifier"
         raise ValueError(msg)
     if any(
@@ -1089,6 +1098,9 @@ def _validate_report_scope(data: dict[str, t.Any]) -> tuple[str, str]:
         raise ValueError(msg)
     if data.get("gold_toponyms") != gold_toponyms:
         msg = f"{corpus_name} has the wrong gold toponym count"
+        raise ValueError(msg)
+    if type(data.get("scoring_spans")) is not int or data["scoring_spans"] < 0:
+        msg = f"{corpus_name} has an invalid scoring span count"
         raise ValueError(msg)
     if data.get("limit") is not None and data["limit"] < documents:
         msg = f"{corpus_name} was capped below its full size"
@@ -1220,9 +1232,11 @@ def _load_manifest_cell(
     if manifest_cell.get("partial") is not False:
         msg = f"{corpus_name} manifest marks the corpus as partial"
         raise ValueError(msg)
-    if manifest_cell.get("documents") != data.get("documents") or manifest_cell.get(
-        "gold_toponyms"
-    ) != data.get("gold_toponyms"):
+    if (
+        manifest_cell.get("documents") != data.get("documents")
+        or manifest_cell.get("gold_toponyms") != data.get("gold_toponyms")
+        or manifest_cell.get("scoring_spans") != data.get("scoring_spans")
+    ):
         msg = f"{corpus_name} report and manifest corpus counts differ"
         raise ValueError(msg)
     if manifest_cell.get("status") not in {
@@ -1320,6 +1334,13 @@ def _validate_current_report(path: Path, data: dict[str, t.Any]) -> str:
     first_references = next(iter(references_by_pipeline.values()))
     if any(refs != first_references for refs in references_by_pipeline.values()):
         msg = f"{corpus_name} pipelines inspect different gold references"
+        raise ValueError(msg)
+    scoring_spans = sum(
+        len({(span["start"], span["end"]) for span in reference})
+        for reference in first_references.values()
+    )
+    if data["scoring_spans"] != scoring_spans:
+        msg = f"{corpus_name} scoring span count does not match its inspections"
         raise ValueError(msg)
     _validate_dedup_count(data, scoring_view, spec.language, corpus_name)
     return scoring_view
@@ -1467,47 +1488,176 @@ def _stage_view(
     return rows
 
 
-def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> dict[str, str]:
-    """Publish a fully validated bundle in one parent-SHA-guarded Hub commit."""
-    files, _rows = _bundle_files(evidence_dir, repo_id)
-    info = api.repo_info(repo_id, repo_type="dataset")
-    parent_sha = info.sha
-    if not isinstance(parent_sha, str) or len(parent_sha) != 40:
-        msg = "dataset repository did not return a full parent commit SHA"
-        raise ValueError(msg)
-    existing = api.list_repo_files(repo_id, repo_type="dataset", revision=parent_sha)
-    archive_root = f"{ARCHIVE_PREFIX}/{parent_sha}"
-    archived_paths = {}
+def _metadata_value(value: t.Any, name: str) -> t.Any:
+    """Read a Hub metadata field from either its object or mapping form."""
+    if isinstance(value, dict):
+        return value.get(name)
+    return getattr(value, name, None)
+
+
+def _git_blob_digest(content: bytes, algorithm: str) -> str:
+    """Return the Git object digest for file content."""
+    header = f"blob {len(content)}\0".encode()
+    digest = hashlib.new(algorithm)
+    digest.update(header)
+    digest.update(content)
+    return digest.hexdigest()
+
+
+def _remote_file_matches(sibling: t.Any, content: bytes) -> bool:
+    """Compare desired bytes with the Hub's LFS or Git blob content hash."""
+    lfs = _metadata_value(sibling, "lfs")
+    lfs_sha256 = _metadata_value(lfs, "sha256") if lfs is not None else None
+    if isinstance(lfs_sha256, str):
+        return hashlib.sha256(content).hexdigest() == lfs_sha256
+
+    blob_id = _metadata_value(sibling, "blob_id")
+    if not isinstance(blob_id, str):
+        return False
+    algorithm = {40: "sha1", 64: "sha256"}.get(len(blob_id))
+    return algorithm is not None and _git_blob_digest(content, algorithm) == blob_id
+
+
+def _repository_matches_bundle(
+    info: t.Any,
+    repository_paths: t.AbstractSet[str],
+    bundle_files: dict[str, bytes],
+    *,
+    required_additions: dict[str, bytes] | None = None,
+    required_paths: t.AbstractSet[str] | None = None,
+) -> bool:
+    """Check the live tree and selected new files against exact desired bytes."""
+    live_paths = {
+        path
+        for path in repository_paths
+        if path != ".gitattributes" and not path.startswith("archive/")
+    }
+    if live_paths != set(bundle_files):
+        return False
+    if required_paths and not required_paths.issubset(repository_paths):
+        return False
+
+    siblings = getattr(info, "siblings", None)
+    if siblings is None:
+        return False
+    sibling_by_path = {
+        _metadata_value(sibling, "rfilename"): sibling for sibling in siblings
+    }
+    expected = dict(bundle_files)
+    if required_additions:
+        expected.update(required_additions)
+    return all(
+        path in sibling_by_path and _remote_file_matches(sibling_by_path[path], content)
+        for path, content in expected.items()
+    )
+
+
+def _matching_current_revision(
+    api: t.Any,
+    repo_id: str,
+    bundle_files: dict[str, bytes],
+    *,
+    required_additions: dict[str, bytes] | None = None,
+    required_paths: t.AbstractSet[str] | None = None,
+) -> str | None:
+    """Return the current SHA when an uncertain publish is fully present."""
+    info = api.repo_info(repo_id, repo_type="dataset", files_metadata=True)
+    sha = getattr(info, "sha", None)
+    if not isinstance(sha, str) or len(sha) != 40:
+        return None
+    paths = set(api.list_repo_files(repo_id, repo_type="dataset", revision=sha))
+    if not _repository_matches_bundle(
+        info,
+        paths,
+        bundle_files,
+        required_additions=required_additions,
+        required_paths=required_paths,
+    ):
+        return None
+    return sha
+
+
+@dataclass(frozen=True)
+class _PublishRecovery:
+    """Content needed to reconcile a response lost after a Hub commit."""
+
+    desired_files: dict[str, bytes]
+    archive_additions: dict[str, bytes]
+    archived_paths: dict[str, str]
+
+
+def _try_reconcile_publish(
+    api: t.Any,
+    repo_id: str,
+    desired_files: dict[str, bytes],
+    archive_additions: dict[str, bytes],
+    archived_paths: dict[str, str],
+) -> str | None:
+    """Best-effort check whether an uncertain Hub write fully landed."""
+    try:
+        return _matching_current_revision(
+            api,
+            repo_id,
+            desired_files,
+            required_additions=archive_additions,
+            required_paths=set(archived_paths.values()),
+        )
+    except OSError:
+        return None
+
+
+def _archive_paths(existing: Sequence[str], parent_sha: str) -> dict[str, str]:
+    """Map current and legacy files into a recoverable parent snapshot."""
+    root = f"{ARCHIVE_PREFIX}/{parent_sha}"
+    archived = {}
     for source in existing:
         if source == ".gitattributes" or source.startswith("archive/"):
             continue
         if source == "README.md":
-            destination = f"{archive_root}/legacy/README.md"
+            destination = f"{root}/legacy/README.md"
         elif source.startswith("current/"):
-            destination = f"{archive_root}/current/{source.removeprefix('current/')}"
+            destination = f"{root}/current/{source.removeprefix('current/')}"
         else:
-            destination = f"{archive_root}/legacy/{source}"
-        archived_paths[source] = destination
+            destination = f"{root}/legacy/{source}"
+        archived[source] = destination
+    return archived
+
+
+def _add_archive_metadata(
+    files: dict[str, bytes],
+    desired_files: dict[str, bytes],
+    parent_sha: str,
+    archived_paths: dict[str, str],
+) -> dict[str, bytes]:
+    """Add the snapshot index and return its new content for reconciliation."""
+    root = f"{ARCHIVE_PREFIX}/{parent_sha}"
     archive_record = {
         "schema": "geoparser-benchmark-archive-v1",
         "source_parent_sha": parent_sha,
-        "snapshot_prefix": archive_root,
+        "snapshot_prefix": root,
         "files": archived_paths,
         "note": "Previous public paths are recoverable under this snapshot prefix.",
     }
-    files[f"{archive_root}/ARCHIVE.json"] = (
+    archive_bytes = (
         json.dumps(archive_record, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
     ).encode("utf-8")
-    files[f"archive/index/{parent_sha}.json"] = (
-        json.dumps(archive_record, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
-    ).encode("utf-8")
+    files[f"{root}/ARCHIVE.json"] = archive_bytes
+    files[f"archive/index/{parent_sha}.json"] = archive_bytes
     files["archive/README.md"] = (
         b"# Archived benchmark evidence\n\n"
         b"Every publication records the exact previous Hub commit and maps its "
         b"old paths into `snapshots/<parent-sha>/`. The matching JSON index is "
         b"under `index/`; archived files remain available at their mapped paths.\n"
     )
+    return {
+        path: content for path, content in files.items() if path not in desired_files
+    }
 
+
+def _publish_operations(
+    files: dict[str, bytes], archived_paths: dict[str, str], parent_sha: str
+) -> list[t.Any]:
+    """Build one Hub transaction that snapshots old files and writes the bundle."""
     from huggingface_hub import (
         CommitOperationAdd,
         CommitOperationCopy,
@@ -1531,22 +1681,21 @@ def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> dict[str, str]:
         CommitOperationAdd(path_in_repo=path, path_or_fileobj=content)
         for path, content in files.items()
     )
-    result = api.create_commit(
-        repo_id=repo_id,
-        repo_type="dataset",
-        operations=operations,
-        commit_message="Publish validated benchmark matrix v2",
-        parent_commit=parent_sha,
-    )
-    commit_sha = getattr(result, "oid", None)
-    if not isinstance(commit_sha, str) or len(commit_sha) != 40:
-        msg = "Hub commit did not return a full commit SHA"
-        raise ValueError(msg)
+    return operations
+
+
+def _verify_publish_readback(
+    api: t.Any,
+    repo_id: str,
+    commit_sha: str,
+    files: dict[str, bytes],
+    archived_paths: dict[str, str],
+) -> None:
+    """Check required files and byte hashes after the atomic Hub commit."""
     paths_after = set(
         api.list_repo_files(repo_id, repo_type="dataset", revision=commit_sha)
     )
-    required_paths = set(files)
-    required_paths.update(archived_paths.values())
+    required_paths = set(files) | set(archived_paths.values())
     missing_paths = sorted(required_paths - paths_after)
     if missing_paths:
         msg = f"Hub readback is missing {missing_paths[:10]}"
@@ -1573,7 +1722,98 @@ def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> dict[str, str]:
         if hashlib.sha256(downloaded).digest() != hashlib.sha256(files[path]).digest():
             msg = f"Hub readback differs from committed artifact {path}"
             raise RuntimeError(msg)
-    return {"parent_sha": parent_sha, "commit_sha": commit_sha}
+
+
+def _create_publish_commit(
+    api: t.Any,
+    repo_id: str,
+    parent_sha: str,
+    operations: list[t.Any],
+    recovery: _PublishRecovery,
+) -> tuple[str, str]:
+    """Create the guarded commit or reconcile a response lost after it landed."""
+    try:
+        result = api.create_commit(
+            repo_id=repo_id,
+            repo_type="dataset",
+            operations=operations,
+            commit_message="Publish validated benchmark matrix v2",
+            parent_commit=parent_sha,
+        )
+    except Exception:
+        reconciled_sha = _try_reconcile_publish(
+            api,
+            repo_id,
+            recovery.desired_files,
+            recovery.archive_additions,
+            recovery.archived_paths,
+        )
+        if reconciled_sha is not None:
+            return reconciled_sha, "reconciled"
+        raise
+
+    commit_sha = getattr(result, "oid", None)
+    if not isinstance(commit_sha, str) or len(commit_sha) != 40:
+        error = ValueError("Hub commit did not return a full commit SHA")
+        reconciled_sha = _try_reconcile_publish(
+            api,
+            repo_id,
+            recovery.desired_files,
+            recovery.archive_additions,
+            recovery.archived_paths,
+        )
+        if reconciled_sha is not None:
+            return reconciled_sha, "reconciled"
+        raise error
+    return commit_sha, "published"
+
+
+def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> dict[str, str]:
+    """Publish a fully validated bundle once, with retries reconciled by hash."""
+    files, _rows = _bundle_files(evidence_dir, repo_id)
+    desired_files = dict(files)
+    info = api.repo_info(repo_id, repo_type="dataset", files_metadata=True)
+    parent_sha = info.sha
+    if not isinstance(parent_sha, str) or len(parent_sha) != 40:
+        msg = "dataset repository did not return a full parent commit SHA"
+        raise ValueError(msg)
+    existing = api.list_repo_files(repo_id, repo_type="dataset", revision=parent_sha)
+    if _repository_matches_bundle(info, set(existing), desired_files):
+        return {
+            "parent_sha": parent_sha,
+            "commit_sha": parent_sha,
+            "status": "unchanged",
+        }
+
+    archived_paths = _archive_paths(existing, parent_sha)
+    archive_additions = _add_archive_metadata(
+        files, desired_files, parent_sha, archived_paths
+    )
+    operations = _publish_operations(files, archived_paths, parent_sha)
+    recovery = _PublishRecovery(desired_files, archive_additions, archived_paths)
+    commit_sha, status = _create_publish_commit(
+        api,
+        repo_id,
+        parent_sha,
+        operations,
+        recovery,
+    )
+    if status == "published":
+        try:
+            _verify_publish_readback(api, repo_id, commit_sha, files, archived_paths)
+        except Exception:
+            reconciled_sha = _try_reconcile_publish(
+                api,
+                repo_id,
+                recovery.desired_files,
+                recovery.archive_additions,
+                recovery.archived_paths,
+            )
+            if reconciled_sha is None:
+                raise
+            commit_sha = reconciled_sha
+            status = "reconciled"
+    return {"parent_sha": parent_sha, "commit_sha": commit_sha, "status": status}
 
 
 def build_parser() -> argparse.ArgumentParser:
