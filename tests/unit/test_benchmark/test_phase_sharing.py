@@ -15,7 +15,7 @@ def _run(tmp_path, *, phases=None):
     ]
     loaded = corpora.LoadedCorpus("fixture", "en", documents, "same-corpus")
     arguments = Namespace(
-        pipeline=[pipelines.XLM_MINILM, pipelines.OTTER_MINILM],
+        pipeline=[pipelines.XLM_MINILM, "otter-minilm"],
         phase=phases,
         min_similarity=0.0,
         limit=None,
@@ -35,7 +35,7 @@ def test_only_one_minilm_resolution_phase_runs_for_both_recognizers(
 ):
     run = _run(tmp_path)
     xlm_result = report.PipelineResult(pipelines.XLM_MINILM)
-    otter_result = report.PipelineResult(pipelines.OTTER_MINILM)
+    otter_result = report.PipelineResult("otter-minilm")
     score_pipeline = Mock(side_effect=[xlm_result, otter_result])
     reuse_resolution = Mock(return_value=otter_result)
     monkeypatch.setattr(benchmark, "_score_pipeline", score_pipeline)
@@ -46,10 +46,10 @@ def test_only_one_minilm_resolution_phase_runs_for_both_recognizers(
     assert results == [xlm_result, otter_result]
     assert score_pipeline.call_args_list == [
         call(run, pipelines.XLM_MINILM, [runner.RECOGNITION, runner.RESOLUTION]),
-        call(run, pipelines.OTTER_MINILM, [runner.RECOGNITION]),
+        call(run, "otter-minilm", [runner.RECOGNITION]),
     ]
     reuse_resolution.assert_called_once_with(
-        run, pipelines.OTTER_MINILM, pipelines.XLM_MINILM, otter_result
+        run, "otter-minilm", pipelines.XLM_MINILM, otter_result
     )
 
 
@@ -57,7 +57,7 @@ def test_reused_resolution_predictions_are_pinned_and_labeled(tmp_path, monkeypa
     run = _run(tmp_path)
     run.output_dir.mkdir(exist_ok=True)
     source_identity = benchmark._run_identity(run, pipelines.XLM_MINILM)
-    target_identity = benchmark._run_identity(run, pipelines.OTTER_MINILM)
+    target_identity = benchmark._run_identity(run, "otter-minilm")
     source_state = ckpt.Checkpoint(source_identity)
     source_state.phase_elapsed_seconds[runner.RESOLUTION] = 12.5
     for document_id in ("0", "1"):
@@ -81,19 +81,17 @@ def test_reused_resolution_predictions_are_pinned_and_labeled(tmp_path, monkeypa
         "0",
         [{"start": 0, "end": 1, "latitude": 0.0, "longitude": 0.0}],
     )
-    target_path = run.output_dir / f"checkpoint-{pipelines.OTTER_MINILM}.json"
+    target_path = run.output_dir / "checkpoint-otter-minilm.json"
     ckpt.save(target_path, target_state)
 
     scored = report.PipelineResult(
-        name=pipelines.OTTER_MINILM,
+        name="otter-minilm",
         models={"recognizer": target_identity.model_pins["recognizer"]},
     )
-    score = Mock(return_value=report.PipelineResult(name=pipelines.OTTER_MINILM))
+    score = Mock(return_value=report.PipelineResult(name="otter-minilm"))
     monkeypatch.setattr(runner, "score", score)
 
-    benchmark._reuse_resolution(
-        run, pipelines.OTTER_MINILM, pipelines.XLM_MINILM, scored
-    )
+    benchmark._reuse_resolution(run, "otter-minilm", pipelines.XLM_MINILM, scored)
 
     copied, reasons = ckpt.load(target_path, target_identity)
     assert {
@@ -116,6 +114,7 @@ def test_reused_resolution_predictions_are_pinned_and_labeled(tmp_path, monkeypa
             "gazetteer": "geonames",
             "gazetteer_sha256": "same-gazetteer-content",
             "min_similarity": 0.0,
+            "scoring_view": "strict-raw-v1",
             "code_commit": "same-code",
             "model_pins": {
                 "resolver": target_identity.model_pins["resolver"],
@@ -132,13 +131,11 @@ def test_load_reusable_resolution_rejects_a_different_resolver(tmp_path):
     run = _run(tmp_path)
 
     try:
-        benchmark._load_reusable_resolution(
-            run, pipelines.OTTER_MINILM, pipelines.SWAPPED
-        )
+        benchmark._load_reusable_resolution(run, "otter-minilm", pipelines.SWAPPED)
     except RuntimeError as error:
-        assert (
-            f"Cannot reuse {pipelines.SWAPPED} resolution for {pipelines.OTTER_MINILM}"
-        ) in str(error)
+        assert (f"Cannot reuse {pipelines.SWAPPED} resolution for otter-minilm") in str(
+            error
+        )
     else:
         raise AssertionError("a different resolver must not be reused")
 
@@ -153,9 +150,7 @@ def test_load_reusable_resolution_rejects_checkpoint_load_reasons(
     monkeypatch.setattr(ckpt, "load", load)
 
     try:
-        benchmark._load_reusable_resolution(
-            run, pipelines.OTTER_MINILM, pipelines.XLM_MINILM
-        )
+        benchmark._load_reusable_resolution(run, "otter-minilm", pipelines.XLM_MINILM)
     except RuntimeError as error:
         assert "stale checkpoint" in str(error)
     else:
@@ -178,9 +173,7 @@ def test_load_reusable_resolution_rejects_incomplete_source(
     )
 
     try:
-        benchmark._load_reusable_resolution(
-            run, pipelines.OTTER_MINILM, pipelines.XLM_MINILM
-        )
+        benchmark._load_reusable_resolution(run, "otter-minilm", pipelines.XLM_MINILM)
     except RuntimeError as error:
         assert "Cannot reuse incomplete" in str(error)
         assert "0/2 documents" in str(error)

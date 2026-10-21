@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from geoparser.modules.recognizers.otter import PredictionOutputError
+from scripts._io import write_text_atomic
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import pipelines, report
 from scripts.benchmark.corpus import Document
@@ -67,6 +68,90 @@ def gold_annotations(documents: Sequence[Document]) -> list[t.Any]:
         for document in documents
         for span in document.gold
     ]
+
+
+def inspection_records(
+    documents: Sequence[Document],
+    state: ckpt.Checkpoint,
+    *,
+    pipeline: str,
+    scoring_view: str,
+) -> list[dict[str, t.Any]]:
+    """Return one text-free reference/prediction record per input document."""
+    records = []
+    for document in documents:
+        failures = {
+            phase: state.failures.get(phase, {}).get(document.identifier)
+            for phase in (RECOGNITION, RESOLUTION)
+        }
+        phase_status = {
+            phase: (
+                "failed"
+                if failures[phase]
+                else "complete"
+                if document.identifier in state.completed(phase)
+                else "incomplete"
+            )
+            for phase in (RECOGNITION, RESOLUTION)
+        }
+        safe_failures = {
+            phase: {key: failure[key] for key in ("kind", "reason") if key in failure}
+            for phase, failure in failures.items()
+            if failure
+        }
+        records.append(
+            {
+                "schema": "geoparser-prediction-inspection-v1",
+                "pipeline": pipeline,
+                "scoring_view": scoring_view,
+                "document_id": document.identifier,
+                "reference": [
+                    {
+                        "start": span.start,
+                        "end": span.end,
+                        "name": span.name,
+                        "latitude": span.latitude,
+                        "longitude": span.longitude,
+                    }
+                    for span in document.gold
+                ],
+                "resolution_input": "gold_reference",
+                "prediction": {
+                    phase: [
+                        {
+                            key: value
+                            for key, value in annotation.items()
+                            if key != "document_id"
+                        }
+                        for annotation in state._phase(phase).get(
+                            document.identifier, []
+                        )
+                    ]
+                    for phase in (RECOGNITION, RESOLUTION)
+                },
+                "phase_status": phase_status,
+                "failures": safe_failures,
+            }
+        )
+    return records
+
+
+def write_inspection(
+    path: Path,
+    documents: Sequence[Document],
+    state: ckpt.Checkpoint,
+    *,
+    pipeline: str,
+    scoring_view: str,
+) -> None:
+    """Write complete text-free per-document references and predictions."""
+    lines = [
+        json.dumps(record, ensure_ascii=False, allow_nan=False)
+        for record in inspection_records(
+            documents, state, pipeline=pipeline, scoring_view=scoring_view
+        )
+    ]
+    write_text_atomic(path, "\n".join(lines) + ("\n" if lines else ""))
 
 
 def predictions_by_document(

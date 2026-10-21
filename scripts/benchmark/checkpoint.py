@@ -25,7 +25,7 @@ from pathlib import Path
 
 from scripts._io import write_json_atomic
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 _PHASE_SETTINGS = ("recognition", "resolution")
 
 
@@ -40,6 +40,7 @@ class RunIdentity:
     limit: int | None
     commit: str
     schema_version: int = SCHEMA_VERSION
+    scoring_view: str = "strict-raw-v1"
     model_pins: dict[str, str] = field(default_factory=dict)
     execution_settings: dict[str, t.Any] = field(default_factory=dict)
     gazetteer_sha256: str | None = None
@@ -114,6 +115,66 @@ def resolution_reuse_compatible(first: RunIdentity, second: RunIdentity) -> bool
     )
 
 
+def recognition_reuse_compatible(first: RunIdentity, second: RunIdentity) -> bool:
+    """Whether two runs can share recognition predictions exactly."""
+    return (
+        _recognition_inputs_match(first, second)
+        and _recognition_model_pins_match(first, second)
+        and _recognition_execution_settings_match(first, second)
+    )
+
+
+def _recognition_inputs_match(first: RunIdentity, second: RunIdentity) -> bool:
+    """Check source identity and runtime context relevant to recognition."""
+    fields = (
+        "corpus_digest",
+        "limit",
+        "commit",
+        "schema_version",
+        "scoring_view",
+        "accelerator",
+    )
+    return all(getattr(first, field) == getattr(second, field) for field in fields)
+
+
+def _recognition_model_pins(identity: RunIdentity) -> dict[str, str]:
+    """Keep only the recognizer identity that determines span predictions."""
+    return {
+        name: pin for name, pin in identity.model_pins.items() if name == "recognizer"
+    }
+
+
+def _recognition_model_pins_match(first: RunIdentity, second: RunIdentity) -> bool:
+    """Require the same pinned recognizer on both sides of reuse."""
+    first_pins = _recognition_model_pins(first)
+    return "recognizer" in first_pins and first_pins == _recognition_model_pins(second)
+
+
+def _recognition_execution_settings(
+    identity: RunIdentity,
+) -> dict[str, t.Any] | None:
+    """Keep batching and document chunk settings for recognition reuse."""
+    settings = identity.execution_settings
+    if (
+        not isinstance(settings, dict)
+        or settings.get("document_chunk_size") is None
+        or settings.get("recognition") is None
+    ):
+        return None
+    return {key: settings[key] for key in ("document_chunk_size", "recognition")}
+
+
+def _recognition_execution_settings_match(
+    first: RunIdentity, second: RunIdentity
+) -> bool:
+    """Require identical execution settings for shared recognition output."""
+    first_settings = _recognition_execution_settings(first)
+    return (
+        first_settings is not None
+        and first_settings == _recognition_execution_settings(second)
+    )
+
+
 def _resolution_inputs_match(first: RunIdentity, second: RunIdentity) -> bool:
     """Check every non-model value that affects gold-span resolution."""
     fields = (
@@ -124,6 +185,8 @@ def _resolution_inputs_match(first: RunIdentity, second: RunIdentity) -> bool:
         "limit",
         "commit",
         "schema_version",
+        "scoring_view",
+        "accelerator",
     )
     return bool(first.gazetteer_sha256 and second.gazetteer_sha256) and all(
         getattr(first, field) == getattr(second, field) for field in fields

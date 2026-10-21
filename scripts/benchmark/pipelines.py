@@ -1,14 +1,10 @@
 """
 Build the benchmark pipelines and place them on a device.
 
-``upstream`` is what the library shipped before the module swap: spaCy for
-recognition and the thesis' fine-tuned MiniLM for resolution. ``swapped`` is
-the GLiNER2 and Jina v5 pair. ``hybrid`` keeps GLiNER2 recognition but uses
-the upstream MiniLM resolver. ``prior`` is ``hybrid`` with the
-``PriorResolver``: the same MiniLM encoder, plus a population prior on the
-ranking. Its default weight is 0.3 and inflection fallback is off. Seven
-ablation pipelines vary these options and are available by name, but are not
-included in the default run.
+The default comparison is a 3 by 2 matrix: GLiNER, XLM-R, and Otter recognition
+paired with either the MiniLM resolver or the Jina embedding/reranker stack.
+Historical pipeline IDs and prior/inflection ablations remain readable for old
+evidence, but are outside the current matrix.
 
 Device placement is done here rather than left to the libraries because they
 do not agree. ``SentenceTransformer`` selects CUDA by itself when it is
@@ -36,7 +32,11 @@ HYBRID = "hybrid"
 PRIOR = "prior"
 XLM_MINILM = "xlm-minilm"
 OTTER_MINILM = "otter-cross-minilm"
-DEFAULT_PIPELINES = (UPSTREAM, SWAPPED, HYBRID, PRIOR)
+GLINER_MINILM = "gliner-minilm"
+GLINER_JINA = "gliner-jina"
+XLM_JINA = "xlm-jina"
+OTTER_JINA = "otter-jina"
+DEFAULT_PIPELINES = missing_matrix.CURRENT_PIPELINES
 
 # PriorResolver settings as (population_weight, inflection_fallback). The
 # default prior uses population weight 0.3 with fallback off. The ablations
@@ -54,7 +54,15 @@ PRIOR_SETTINGS = {
     "population-1.0": (1.0, False),
 }
 ABLATIONS = tuple(name for name in PRIOR_SETTINGS if name != PRIOR)
-PIPELINES = (*DEFAULT_PIPELINES, XLM_MINILM, OTTER_MINILM, *ABLATIONS)
+LEGACY_PIPELINES = (
+    UPSTREAM,
+    SWAPPED,
+    HYBRID,
+    PRIOR,
+    OTTER_MINILM,
+    *ABLATIONS,
+)
+PIPELINES = tuple(dict.fromkeys((*DEFAULT_PIPELINES, *LEGACY_PIPELINES)))
 UPSTREAM_RESOLVER_MODEL = "dguzh/geo-all-MiniLM-L6-v2"
 
 # The upstream recognizer. The transformer pipeline needs a plugin the library
@@ -158,37 +166,43 @@ def _pinned_name(model_key: str) -> str:
 
 
 _CONTEXT_MODEL_PIN = f"{SPACY_CONTEXT_MODEL}@{SPACY_CONTEXT_MODEL_VERSION}"
+
+
+def _component_model_pins(recognizer: str, resolver: str) -> dict[str, str]:
+    """Return the immutable role pins for one declared model combination."""
+    pins = {
+        "recognizer": _pinned_name(recognizer),
+        "resolver": _pinned_name("jina_embeddings" if resolver == "jina" else "minilm"),
+        "context_sentence_splitter": _CONTEXT_MODEL_PIN,
+    }
+    if resolver == "jina":
+        pins["reranker"] = _pinned_name("jina_reranker")
+    return pins
+
+
 _PIPELINE_MODEL_PINS = {
-    UPSTREAM: {
-        "recognizer": f"{UPSTREAM_SPACY_MODEL}@{UPSTREAM_SPACY_MODEL_VERSION}",
-        "resolver": _pinned_name("minilm"),
-        "context_sentence_splitter": _CONTEXT_MODEL_PIN,
-    },
-    SWAPPED: {
-        "recognizer": _pinned_name("gliner"),
-        "resolver": _pinned_name("jina_embeddings"),
-        "reranker": _pinned_name("jina_reranker"),
-        "context_sentence_splitter": _CONTEXT_MODEL_PIN,
-    },
-    XLM_MINILM: {
-        "recognizer": _pinned_name("xlm_r"),
-        "resolver": _pinned_name("minilm"),
-        "context_sentence_splitter": _CONTEXT_MODEL_PIN,
-    },
-    OTTER_MINILM: {
-        "recognizer": _pinned_name("otter_cross"),
-        "resolver": _pinned_name("minilm"),
-        "context_sentence_splitter": _CONTEXT_MODEL_PIN,
-    },
+    pipeline: _component_model_pins(**components)
+    for pipeline, components in missing_matrix.PIPELINE_COMPONENTS.items()
 }
 _PIPELINE_MODEL_PINS.update(
     {
-        pipeline: {
-            "recognizer": _pinned_name("gliner"),
+        UPSTREAM: {
+            "recognizer": f"{UPSTREAM_SPACY_MODEL}@{UPSTREAM_SPACY_MODEL_VERSION}",
             "resolver": _pinned_name("minilm"),
             "context_sentence_splitter": _CONTEXT_MODEL_PIN,
-        }
-        for pipeline in (HYBRID, *PRIOR_SETTINGS)
+        },
+        SWAPPED: _PIPELINE_MODEL_PINS[GLINER_JINA].copy(),
+        HYBRID: _PIPELINE_MODEL_PINS[GLINER_MINILM].copy(),
+        XLM_MINILM: _PIPELINE_MODEL_PINS[XLM_MINILM].copy(),
+        OTTER_MINILM: _PIPELINE_MODEL_PINS["otter-minilm"].copy(),
+        **{
+            pipeline: {
+                "recognizer": _pinned_name("gliner"),
+                "resolver": _pinned_name("minilm"),
+                "context_sentence_splitter": _CONTEXT_MODEL_PIN,
+            }
+            for pipeline in PRIOR_SETTINGS
+        },
     }
 )
 
@@ -564,6 +578,11 @@ _RECOGNIZER_BUILDERS = {
     PRIOR: _build_gliner_recognizer,
     XLM_MINILM: _build_xlm_recognizer,
     OTTER_MINILM: _build_otter_recognizer,
+    GLINER_MINILM: _build_gliner_recognizer,
+    GLINER_JINA: _build_gliner_recognizer,
+    XLM_JINA: _build_xlm_recognizer,
+    "otter-minilm": _build_otter_recognizer,
+    OTTER_JINA: _build_otter_recognizer,
     **dict.fromkeys(ABLATIONS, _build_gliner_recognizer),
 }
 
@@ -616,18 +635,7 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
 
     _require_context_model()
 
-    if pipeline in (UPSTREAM, HYBRID):
-        from geoparser.modules import SentenceTransformerResolver
-
-        snapshot = _snapshot("minilm")
-        with _offline_model_load():
-            resolver = SentenceTransformerResolver(
-                model_name=str(snapshot),
-                gazetteer_name=GAZETTEER_NAME,
-                min_similarity=min_similarity,
-            )
-        resolver.benchmark_model_pin = _pinned_name("minilm")
-    elif pipeline in PRIOR_SETTINGS:
+    if pipeline in PRIOR_SETTINGS:
         from geoparser.modules import PriorResolver
 
         population_weight, inflection_fallback = PRIOR_SETTINGS[pipeline]
@@ -641,7 +649,7 @@ def build_resolver(pipeline: str, *, device: str, min_similarity: float) -> t.An
                 inflection_fallback=inflection_fallback,
             )
         resolver.benchmark_model_pin = _pinned_name("minilm")
-    elif pipeline == SWAPPED:
+    elif missing_matrix.resolver_family(pipeline) == "jina":
         from geoparser.modules import JinaResolver
 
         embeddings_snapshot = _snapshot("jina_embeddings")
@@ -756,26 +764,41 @@ def _upstream_spacy_batch_size() -> int:
     return load_config(config_path)["nlp"]["batch_size"]
 
 
+def _recognition_component(pipeline: str) -> str:
+    """Return the recognizer component selected by a current or legacy ID."""
+    components = missing_matrix.PIPELINE_COMPONENTS.get(pipeline)
+    if components is not None:
+        return components["recognizer"]
+    if pipeline == UPSTREAM:
+        return "spacy"
+    if pipeline in {XLM_MINILM, XLM_JINA}:
+        return "xlm_r"
+    if pipeline in {OTTER_MINILM, "otter-minilm", OTTER_JINA}:
+        return "otter_cross"
+    return "gliner"
+
+
 def _recognition_execution_settings(pipeline: str) -> dict[str, t.Any]:
     """Read the effective recognition call size from its implementation."""
-    if pipeline == UPSTREAM:
+    component = _recognition_component(pipeline)
+    if component == "spacy":
         return {
             "method": "spacy.Language.pipe",
             # The recognizer calls nlp.pipe(texts) without overriding batch_size,
             # so spaCy uses the model config loaded into Language.batch_size.
             "batch_size": _upstream_spacy_batch_size(),
         }
-    if pipeline in (SWAPPED, HYBRID, PRIOR, *ABLATIONS):
+    if component == "gliner":
         # GLiNER2Recognizer.predict invokes the model once for each document.
         return {"method": "per_document", "documents_per_model_call": 1}
-    if pipeline == XLM_MINILM:
+    if component == "xlm_r":
         return {"method": "transformers_pipeline", "batch_size": XLM_BATCH_SIZE}
     return {"method": "otter_predict", "batch_size": OTTER_BATCH_SIZE}
 
 
 def _resolution_execution_settings(pipeline: str) -> dict[str, t.Any]:
     """Read the encoding batch size from the resolver selected by a pipeline."""
-    if pipeline == SWAPPED:
+    if missing_matrix.resolver_family(pipeline) == "jina":
         from geoparser.modules.resolvers import jina
 
         encode_batch_size = jina._JINA_ENCODE_BATCH_SIZE

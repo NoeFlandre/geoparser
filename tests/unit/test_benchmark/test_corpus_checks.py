@@ -124,6 +124,21 @@ class TestDuplicatesAndOverlaps:
 
         assert _kinds(report) == [corpus_checks.DUPLICATE_SPAN]
 
+    def test_newsli_raw_can_retain_exact_duplicate_records(self):
+        report = corpus_checks.check_corpus(
+            [_document(PARIS, PARIS)], allow_exact_duplicate_records=True
+        )
+
+        assert report.clean
+
+    def test_newsli_raw_still_rejects_same_offsets_with_different_records(self):
+        changed = GoldSpan(0, 5, "Paris", 1.0, 2.35)
+        report = corpus_checks.check_corpus(
+            [_document(PARIS, changed)], allow_exact_duplicate_records=True
+        )
+
+        assert _kinds(report) == [corpus_checks.DUPLICATE_SPAN]
+
     def test_the_same_word_at_two_offsets_is_not_a_duplicate(self):
         """Two mentions of one name are two gold spans, as in the fixture text."""
         report = corpus_checks.check_corpus([_document(PARIS, PARIS_AGAIN)])

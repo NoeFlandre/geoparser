@@ -97,16 +97,29 @@ def _span_problems(document: Document, span: GoldSpan) -> list[Problem]:
     return found
 
 
-def _duplicate_problems(document: Document) -> list[Problem]:
+def _duplicate_problems(
+    document: Document, *, allow_exact_records: bool = False
+) -> list[Problem]:
     """Flag every gold span whose offsets repeat an earlier one."""
-    seen: set[tuple[int, int]] = set()
+    seen: dict[tuple[int, int], GoldSpan] = {}
     found: list[Problem] = []
     for span in document.gold:
         key = (span.start, span.end)
-        if key in seen:
+        previous = seen.get(key)
+        if previous is not None and not (
+            allow_exact_records
+            and (
+                previous.start,
+                previous.end,
+                previous.name,
+                previous.latitude,
+                previous.longitude,
+            )
+            == (span.start, span.end, span.name, span.latitude, span.longitude)
+        ):
             detail = f"{span.start}:{span.end} {span.name!r} repeats an earlier span"
             found.append(Problem(DUPLICATE_SPAN, document.identifier, detail))
-        seen.add(key)
+        seen.setdefault(key, span)
     return found
 
 
@@ -129,7 +142,9 @@ def _overlap_problems(document: Document) -> list[Problem]:
     return found
 
 
-def document_problems(document: Document) -> list[Problem]:
+def document_problems(
+    document: Document, *, allow_exact_duplicate_records: bool = False
+) -> list[Problem]:
     """Return every problem found in one document's gold."""
     if not document.gold:
         detail = "no gold toponyms"
@@ -137,7 +152,9 @@ def document_problems(document: Document) -> list[Problem]:
     found: list[Problem] = []
     for span in document.gold:
         found.extend(_span_problems(document, span))
-    found.extend(_duplicate_problems(document))
+    found.extend(
+        _duplicate_problems(document, allow_exact_records=allow_exact_duplicate_records)
+    )
     found.extend(_overlap_problems(document))
     return found
 
@@ -201,6 +218,7 @@ def check_corpus(
     expected_documents: int | None = None,
     expected_gold: int | None = None,
     dropped_gold: int = 0,
+    allow_exact_duplicate_records: bool = False,
 ) -> CorpusReport:
     """
     Check every document of a corpus and its totals against the source.
@@ -215,13 +233,20 @@ def check_corpus(
         expected_documents: The number of documents the source publishes
         expected_gold: The number of gold spans the source publishes
         dropped_gold: Gold entries the adapter read and discarded
+        allow_exact_duplicate_records: Retain repeated full records only when
+            the named raw protocol treats them as source data
 
     Returns:
         The totals and every problem found
     """
     loaded = list(documents)
     problems = [
-        problem for document in loaded for problem in document_problems(document)
+        problem
+        for document in loaded
+        for problem in document_problems(
+            document,
+            allow_exact_duplicate_records=allow_exact_duplicate_records,
+        )
     ]
     gold_spans = sum(len(document.gold) for document in loaded)
     problems.extend(_identifier_problems(loaded))

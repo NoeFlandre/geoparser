@@ -37,7 +37,14 @@ def _patch_module_classes(monkeypatch, **classes):
 
 
 def test_hybrid_is_a_distinct_benchmark_pipeline():
-    assert pipelines.DEFAULT_PIPELINES == ("upstream", "swapped", "hybrid", "prior")
+    assert pipelines.DEFAULT_PIPELINES == (
+        "gliner-minilm",
+        "gliner-jina",
+        "xlm-minilm",
+        "xlm-jina",
+        "otter-minilm",
+        "otter-jina",
+    )
 
 
 @pytest.fixture
@@ -70,12 +77,11 @@ def test_default_resolver_batch_sizes_are_expected():
 @pytest.mark.parametrize(
     ("pipeline", "batch_size"),
     [
-        (pipelines.SWAPPED, 7),
-        *[
-            (pipeline, 19)
-            for pipeline in pipelines.PIPELINES
-            if pipeline != pipelines.SWAPPED
-        ],
+        (
+            pipeline,
+            7 if pipelines.missing_matrix.resolver_family(pipeline) == "jina" else 19,
+        )
+        for pipeline in pipelines.PIPELINES
     ],
 )
 def test_execution_settings_select_the_runtime_resolver_batch(
@@ -237,6 +243,19 @@ def test_cli_accepts_each_missing_recognizer_pipeline(pipeline):
     arguments = build_parser().parse_args(["--pipeline", pipeline])
 
     assert arguments.pipeline == [pipeline]
+
+
+@pytest.mark.parametrize("pipeline", pipelines.DEFAULT_PIPELINES)
+def test_each_current_configuration_has_all_required_model_roles(pipeline):
+    pins = pipelines.pipeline_model_pins(pipeline)
+
+    assert "recognizer" in pins
+    assert "resolver" in pins
+    assert "context_sentence_splitter" in pins
+    if pipelines.missing_matrix.resolver_family(pipeline) == "jina":
+        assert "reranker" in pins
+    else:
+        assert "reranker" not in pins
 
 
 def test_hybrid_uses_gliner2_for_recognition(monkeypatch, tmp_path):

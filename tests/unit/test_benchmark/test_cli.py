@@ -80,21 +80,32 @@ def test_score_requested_pipelines_uses_defaults_and_explicit_choices(
 
     def score_pipeline(run, name, phases):
         scored.append((name, phases))
-        return name
+        return PipelineResult(name=name)
 
     monkeypatch.setattr(benchmark_cli, "_score_pipeline", score_pipeline)
+    monkeypatch.setattr(
+        benchmark_cli,
+        "_reuse_phase",
+        lambda _run, _name, _source, result, _phase: result,
+    )
 
     defaults = benchmark_cli._score_requested_pipelines(run)
     run.arguments.pipeline = ["swapped", "hybrid"]
     run.arguments.phase = [runner.RESOLUTION]
     selected = benchmark_cli._score_requested_pipelines(run)
 
-    assert defaults == list(pipelines.DEFAULT_PIPELINES)
-    assert selected == ["swapped", "hybrid"]
+    assert [result.name for result in defaults] == list(pipelines.DEFAULT_PIPELINES)
+    assert [result.name for result in selected] == ["swapped", "hybrid"]
     assert scored == [
-        (name, [runner.RECOGNITION, runner.RESOLUTION])
-        for name in pipelines.DEFAULT_PIPELINES
-    ] + [("swapped", [runner.RESOLUTION]), ("hybrid", [runner.RESOLUTION])]
+        ("gliner-minilm", [runner.RECOGNITION, runner.RESOLUTION]),
+        ("gliner-jina", [runner.RESOLUTION]),
+        ("xlm-minilm", [runner.RECOGNITION]),
+        ("xlm-jina", []),
+        ("otter-minilm", [runner.RECOGNITION]),
+        ("otter-jina", []),
+        ("swapped", [runner.RESOLUTION]),
+        ("hybrid", [runner.RESOLUTION]),
+    ]
 
 
 def _execute_score_pipeline(monkeypatch, tmp_path):

@@ -67,6 +67,38 @@ def test_missing_pipelines_and_model_pins_are_explicit():
     }
 
 
+def test_current_matrix_is_all_six_exact_component_pairs():
+    assert missing_matrix.CURRENT_PIPELINES == (
+        "gliner-minilm",
+        "gliner-jina",
+        "xlm-minilm",
+        "xlm-jina",
+        "otter-minilm",
+        "otter-jina",
+    )
+    assert missing_matrix.PIPELINE_COMPONENTS == {
+        "gliner-minilm": {"recognizer": "gliner", "resolver": "minilm"},
+        "gliner-jina": {"recognizer": "gliner", "resolver": "jina"},
+        "xlm-minilm": {"recognizer": "xlm_r", "resolver": "minilm"},
+        "xlm-jina": {"recognizer": "xlm_r", "resolver": "jina"},
+        "otter-minilm": {"recognizer": "otter_cross", "resolver": "minilm"},
+        "otter-jina": {"recognizer": "otter_cross", "resolver": "jina"},
+    }
+    assert missing_matrix.resolver_family("xlm-jina") == "jina"
+    assert missing_matrix.recognizer_family("xlm-jina") == "xlm_r"
+
+
+def test_legacy_display_aliases_map_to_exact_components_without_renaming_ids():
+    assert missing_matrix.LEGACY_PIPELINE_ID_MAP["swapped"] == (
+        "fastino/gliner2.5-multi-v1 + jinaai/jina-embeddings-v5-text-small + "
+        "jinaai/jina-reranker-v3.5"
+    )
+    assert missing_matrix.LEGACY_PIPELINE_ID_MAP["hybrid"] == (
+        "fastino/gliner2.5-multi-v1 + dguzh/geo-all-MiniLM-L6-v2"
+    )
+    assert "population prior" in missing_matrix.LEGACY_PIPELINE_ID_MAP["prior"]
+
+
 def test_xlm_support_distinguishes_finetuning_from_transfer():
     assert missing_matrix.language_coverage("xlm_r", "ar") == "fine_tuned"
     assert missing_matrix.language_coverage("xlm_r", "fi") == "cross_lingual_transfer"

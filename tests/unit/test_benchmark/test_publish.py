@@ -1,599 +1,306 @@
-"""
-Tests for publishing benchmark evidence to a Hugging Face dataset.
-
-The Hub client is replaced by a recorder, so these tests say what would be
-uploaded without any network access or token.
-"""
+"""Publication gates, versioned artifacts, and single-commit Hub behavior."""
 
 import json
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
-
-from scripts.benchmark.publish import (
-    CHART_FILES,
-    LICENSE,
-    PIPELINE_DESCRIPTIONS,
-    RESULTS_FILE,
-    collect_rows,
-    latest_results,
-    mark_best,
-    publish,
-    render_card,
-    render_csv,
+from huggingface_hub import (
+    CommitOperationAdd,
+    CommitOperationCopy,
+    CommitOperationDelete,
 )
 
+from scripts.benchmark import missing_matrix, pipelines, publish
+from scripts.benchmark.corpora import EXACT_FULL_RECORD_DEDUP_VIEW, STRICT_RAW_VIEW
 
-def report(
-    tmp_path,
-    folder,
-    corpus="geovirus",
-    language="en",
-    limit=None,
-    partial=None,
-    documents=2,
-):
-    """Write one corpus report and return its folder."""
-    path = tmp_path / folder
-    path.mkdir(parents=True)
-    payload = {
-        "corpus": corpus,
-        "language": language,
-        "limit": limit,
-        "documents": documents,
-        "gold_toponyms": 5,
-        "commit": "abc1234",
-        "pipelines": [
+PARENT = "a" * 40
+HEAD = "b" * 40
+
+
+def _expected_totals(view):
+    if view == STRICT_RAW_VIEW:
+        return {"geovirus": (1, 1)}
+    return {"newsli-ar": (1, 1)}
+
+
+def _write_evidence(root: Path, view: str, corpus_name: str) -> Path:
+    """Create a complete tiny current cell with all role pins and inspections."""
+    run = root / f"run-{view}"
+    cell = run / corpus_name
+    cell.mkdir(parents=True)
+    spec = publish.CORPORA[corpus_name]
+    source_sha = "c" * 64
+    archive_sha = source_sha if spec.kind == "newsli" else None
+    coordinate_sha = None
+    corpus_digest = "corpus-digest"
+    pipelines_payload = []
+    model_runs = {}
+    cell_pipelines = {}
+    for name in publish.MAIN_PIPELINES:
+        pins = pipelines.pipeline_model_pins(name)
+        pipelines_payload.append(
             {
-                "name": "hybrid",
-                "models": {"recognizer": "r-model", "resolver": "s-model"},
-                "recognition": {"f1": 0.5},
-                "resolution": {"accuracy_at_161km": 0.75, "auc": 0.25},
-                "elapsed_seconds": 3.0,
+                "name": name,
+                "models": pins,
+                "recognition": {"precision": 0.5, "recall": 0.5, "f1": 0.5},
+                "resolution": {
+                    "accuracy_at_161km": 0.5,
+                    "auc": 0.5,
+                    "median_error_km": 100.0,
+                    "mean_error_km": 100.0,
+                },
+                "elapsed_seconds": 1.0,
             }
-        ],
+        )
+        model_runs[name] = {
+            "model_pins": pins,
+            "execution_settings": {
+                "document_chunk_size": 16,
+                "recognition": {"method": "fixture"},
+                "resolution": {"batch_size": 16},
+            },
+        }
+        cell_pipelines[name] = {
+            "status": "complete",
+            "phase_status": {"recognition": "complete", "resolution": "complete"},
+            "model_pins": pins,
+        }
+        record = {
+            "schema": "geoparser-prediction-inspection-v1",
+            "pipeline": name,
+            "scoring_view": view,
+            "document_id": "doc-1",
+            "reference": [
+                {"start": 0, "end": 4, "name": "city", "latitude": 1, "longitude": 2}
+            ],
+            "resolution_input": "gold_reference",
+            "prediction": {"recognition": [], "resolution": []},
+            "phase_status": {"recognition": "complete", "resolution": "complete"},
+            "failures": {},
+        }
+        (cell / f"inspection-{name}.jsonl").write_text(
+            json.dumps(record) + "\n", encoding="utf-8"
+        )
+    removed = (
+        missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED["ar"]
+        if view == EXACT_FULL_RECORD_DEDUP_VIEW
+        else 0
+    )
+    report_data = {
+        "scoring_view": view,
+        "corpus": corpus_name,
+        "language": spec.language,
+        "limit": None,
+        "partial": False,
+        "documents": 1,
+        "gold_toponyms": 1,
+        "corpus_digest": corpus_digest,
+        "source_url": spec.url,
+        "source_content_sha256": source_sha,
+        "source_archive_sha256": archive_sha,
+        "coordinate_cache_sha256": coordinate_sha,
+        "duplicate_records_removed": removed,
+        "gazetteer": pipelines.GAZETTEER_NAME,
+        "gazetteer_sha256": "f" * 64,
+        "min_similarity": 0.0,
+        "commit": "d" * 40,
+        "environment": {"started_at": "2026-10-21T00:00:00Z"},
+        "pipelines": pipelines_payload,
     }
-    if partial is not None:
-        payload["partial"] = partial
-    (path / "benchmark-report.json").write_text(json.dumps(payload))
-    return path
+    (cell / publish.REPORT_NAME).write_text(json.dumps(report_data), encoding="utf-8")
+    (cell / "benchmark-report.md").write_text("report\n", encoding="utf-8")
+    manifest = {
+        "status": "complete",
+        "full_commit": "d" * 40,
+        "dependency_lock_sha256": "e" * 64,
+        "protocol": {
+            "scoring_view": view,
+            "phases": ["recognition", "resolution"],
+            "gazetteer": pipelines.GAZETTEER_NAME,
+            "gazetteer_artifact_sha256": "f" * 64,
+            "min_similarity": 0.0,
+            "chunk_size": 16,
+            "device": "cuda",
+            "accelerator": "T4",
+            "pipelines": model_runs,
+            "corpora": {
+                corpus_name: {
+                    "status": "complete",
+                    "partial": False,
+                    "documents": 1,
+                    "gold_toponyms": 1,
+                    "source_url": spec.url,
+                    "source_content_sha256": source_sha,
+                    "source_archive_sha256": archive_sha,
+                    "coordinate_cache_sha256": coordinate_sha,
+                    "corpus_digest": corpus_digest,
+                    "pipelines": cell_pipelines,
+                }
+            },
+        },
+    }
+    (run / "run-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return cell / publish.REPORT_NAME
 
 
 class FakeApi:
-    """Records what would have been sent to the Hub."""
+    """In-memory HF repository that records one atomic commit and its readback."""
 
-    def __init__(self):
-        self.calls = []
+    def __init__(self, tmp_path):
+        self.files = {
+            "README.md": b"old card",
+            "results.csv": b"old results",
+            "runs/old/report.json": b"historical report",
+            ".gitattributes": b"*.json filter=lfs diff=lfs merge=lfs -text\n",
+            "archive/README.md": b"prior archive info",
+        }
+        self.tmp_path = tmp_path
+        self.commit_calls = []
 
-    def create_repo(self, repo_id, **kwargs):
-        self.calls.append(("create_repo", repo_id, kwargs))
+    def repo_info(self, repo_id, *, repo_type, revision=None):
+        assert repo_type == "dataset"
+        return SimpleNamespace(sha=HEAD if revision == HEAD else PARENT)
 
-    def upload_folder(self, **kwargs):
-        self.calls.append(("upload_folder", kwargs["repo_id"], kwargs))
+    def list_repo_files(self, repo_id, *, repo_type, revision):
+        assert repo_type == "dataset"
+        assert revision in {PARENT, HEAD}
+        return sorted(self.files)
 
-    def upload_file(self, **kwargs):
-        self.calls.append(("upload_file", kwargs["repo_id"], kwargs))
+    def create_commit(self, **kwargs):
+        self.commit_calls.append(kwargs)
+        assert kwargs["parent_commit"] == PARENT
+        assert kwargs["repo_type"] == "dataset"
+        original = self.files.copy()
+        for operation in kwargs["operations"]:
+            if isinstance(operation, CommitOperationCopy):
+                self.files[operation.path_in_repo] = original[
+                    operation.src_path_in_repo
+                ]
+            elif isinstance(operation, CommitOperationAdd):
+                self.files[operation.path_in_repo] = operation.path_or_fileobj
+            elif isinstance(operation, CommitOperationDelete):
+                self.files.pop(operation.path_in_repo, None)
+        return SimpleNamespace(oid=HEAD)
 
-
-class TestCollectRows:
-    """Reading every report under an evidence folder."""
-
-    def test_reads_nested_reports_with_their_run(self, tmp_path):
-        """Test that each row names the run and corpus it came from."""
-        report(tmp_path, "run-a")
-        report(tmp_path, "run-b/hipe2020-de", corpus="hipe2020-de", language="de")
-
-        rows = collect_rows(tmp_path)
-
-        assert [(r["run"], r["corpus"], r["language"]) for r in rows] == [
-            ("run-a", "geovirus", "en"),
-            ("run-b", "hipe2020-de", "de"),
-        ]
-        assert rows[0]["f1"] == 0.5
-
-    def test_skips_baseline_copies(self, tmp_path):
-        """Test that a historical report kept for comparison is not a new row."""
-        report(tmp_path, "run-a/baseline-jina")
-
-        assert collect_rows(tmp_path) == []
-
-
-class TestRenderCard:
-    """The dataset card."""
-
-    def test_declares_a_neutral_license_for_mixed_sources(self):
-        """The card names a neutral metadata license and source terms by corpus."""
-        card = render_card([])
-
-        assert card.startswith("---\n")
-        assert f"license: {LICENSE}" in card
-        assert LICENSE == "other"
-
-    def test_lists_license_terms_for_each_corpus(self):
-        card = render_card([])
-        assert "license_name: Mixed corpus terms; see the dataset card" in card
-        assert "HIPE-2022: CC BY-NC-SA 4.0" in card
-        assert "GeoVirus and NewsLi: Apache-2.0" in card
-        assert "following HIPE-2022" not in card
-
-    def test_shows_one_compact_table_per_metric(self):
-        """The card has a small table per metric, not one row per run."""
-        rows = [
-            _row("r1", "geovirus", "upstream", f1=0.8, acc=0.83),
-            _row("r1", "geovirus", "hybrid", f1=0.9, acc=0.83),
-        ]
-
-        card = render_card(rows)
-
-        assert "### Resolution: Acc@161km" in card
-        assert "### Recognition: F1" in card
-        assert "| Corpus | Lang | upstream | hybrid |" in card
-        assert "| r1 |" not in card
+    def hf_hub_download(self, repo_id, *, filename, repo_type, revision):
+        assert (repo_type, revision) == ("dataset", HEAD)
+        path = self.tmp_path / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(self.files[filename])
+        return str(path)
 
 
-def _row(
-    run,
-    corpus,
-    pipeline,
-    *,
-    f1,
-    acc,
-    started="2026-01-01T00:00:00",
-    run_limit=None,
-    run_partial=False,
+@pytest.fixture
+def tiny_evidence(tmp_path, monkeypatch):
+    monkeypatch.setattr(publish, "_expected_corpus_totals", _expected_totals)
+    _write_evidence(tmp_path, STRICT_RAW_VIEW, "geovirus")
+    _write_evidence(tmp_path, EXACT_FULL_RECORD_DEDUP_VIEW, "newsli-ar")
+    return tmp_path
+
+
+def test_registry_has_only_the_six_exact_current_combinations():
+    assert tuple(publish.PIPELINE_DESCRIPTIONS) == missing_matrix.CURRENT_PIPELINES
+    assert len(publish.PIPELINE_DESCRIPTIONS) == 6
+    assert set(missing_matrix.LEGACY_PIPELINE_ID_MAP) >= {
+        "swapped",
+        "hybrid",
+        "prior",
+        "otter-cross-minilm",
+    }
+
+
+def test_card_is_minimal_and_keeps_viewer_configs_separate():
+    card = publish.render_card([])
+    assert "config_name: strict_raw" in card
+    assert "config_name: newsli_exact_record_dedup" in card
+    assert "current/v2/strict-raw-v1/results.csv" in card
+    assert "current/v2/newsli-exact-full-record-dedup-v1/results.csv" in card
+    assert "gold toponym spans" in card
+    assert "end-to-end score is reported" in card
+    assert "population prior" not in card
+    assert "inflection" not in card
+
+
+def test_report_validation_requires_every_expected_role_pin(tmp_path, monkeypatch):
+    monkeypatch.setattr(publish, "_expected_corpus_totals", _expected_totals)
+    report_path = _write_evidence(tmp_path, STRICT_RAW_VIEW, "geovirus")
+    data = json.loads(report_path.read_text())
+    manifest_path = report_path.parent.parent / "run-manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    del manifest["protocol"]["pipelines"]["gliner-jina"]["model_pins"]["reranker"]
+    manifest_path.write_text(json.dumps(manifest))
+
+    with pytest.raises(ValueError, match="missing or mispins a model role"):
+        publish._validate_current_report(report_path, data)
+
+
+def test_report_validation_rejects_inspection_text(tmp_path, monkeypatch):
+    monkeypatch.setattr(publish, "_expected_corpus_totals", _expected_totals)
+    report_path = _write_evidence(tmp_path, STRICT_RAW_VIEW, "geovirus")
+    data = json.loads(report_path.read_text())
+    inspection = report_path.parent / "inspection-gliner-minilm.jsonl"
+    record = json.loads(inspection.read_text())
+    record["text"] = "article body"
+    inspection.write_text(json.dumps(record) + "\n")
+
+    with pytest.raises(ValueError, match="includes private text"):
+        publish._validate_current_report(report_path, data)
+
+
+def test_bundle_writes_distinct_metrics_and_protocol_paths(tiny_evidence):
+    files, rows = publish._bundle_files(tiny_evidence, "me/results")
+
+    strict = "current/v2/strict-raw-v1/results.csv"
+    dedup = "current/v2/newsli-exact-full-record-dedup-v1/results.csv"
+    assert strict in files and dedup in files
+    assert len(rows) == 12
+    assert b"strict-raw-v1" in files[strict]
+    assert b"newsli-exact-full-record-dedup-v1" in files[dedup]
+    assert not any("checkpoint-" in path for path in files)
+    assert "README.md" in files
+    assert "current/v2/corpus-sources.md" in files
+
+
+def test_publisher_uses_one_parent_guarded_commit_archives_and_reads_back(
+    tiny_evidence, tmp_path
 ):
-    """One collected result row."""
-    return {
-        "run": run,
-        "corpus": corpus,
-        "language": "en",
-        "documents": 2,
-        "gold_toponyms": 5,
-        "run_limit": run_limit,
-        "run_partial": run_partial,
-        "pipeline": pipeline,
-        "recognizer": "",
-        "resolver": "",
-        "reranker": "",
-        "f1": f1,
-        "accuracy_at_161km": acc,
-        "auc": 0.3,
-        "elapsed_seconds": 1.0,
-        "commit": "abc",
-        "started_at": started,
-    }
-
-
-def _missing_pipeline_card():
-    """Build a card that exercises the three missing-model descriptions."""
-    rows = [
-        _row("run-a", "geovirus", "swapped", f1=0.8, acc=0.7),
-        _row("run-a", "geovirus", "xlm-minilm", f1=0.7, acc=0.7),
-        _row("run-a", "geovirus", "otter-cross-minilm", f1=0.6, acc=0.7),
-    ]
-    return render_card(rows)
-
-
-class TestLatestResults:
-    """Which run a cell of the compact tables comes from."""
-
-    def test_the_most_recently_started_run_wins(self):
-        """A later rerun replaces an earlier one, whatever its folder name."""
-        old = _row("z-partial", "geovirus", "hybrid", f1=0.1, acc=0.1, started="1")
-        new = _row("a-full", "geovirus", "hybrid", f1=0.9, acc=0.9, started="2")
-
-        assert latest_results([old, new]) == {("geovirus", "hybrid"): new}
-
-    def test_a_limited_smoke_run_cannot_replace_full_corpus_scores(self):
-        """Partial smoke evidence stays out of the card's latest full-run tables."""
-        full = _row("full", "geovirus", "hybrid", f1=0.9, acc=0.9, started="1")
-        partial = _row(
-            "smoke",
-            "geovirus",
-            "hybrid",
-            f1=0.1,
-            acc=0.1,
-            started="2",
-            run_limit=5,
-            run_partial=True,
-        )
-
-        assert latest_results([full, partial]) == {("geovirus", "hybrid"): full}
-
-    def test_limit_covering_the_complete_slice_stays_eligible(self):
-        """An explicit limit equal to the corpus size is not a partial result."""
-        full = _row("full", "geovirus", "hybrid", f1=0.8, acc=0.8, started="1")
-        capped_full = _row(
-            "full-limit",
-            "geovirus",
-            "hybrid",
-            f1=0.9,
-            acc=0.9,
-            started="2",
-            run_limit=229,
-        )
-
-        assert latest_results([full, capped_full]) == {
-            ("geovirus", "hybrid"): capped_full
-        }
-
-    def test_corpus_names_are_compared_case_insensitively(self):
-        """GeoVirus from an older report and geovirus are one corpus."""
-        old = _row("a", "GeoVirus", "hybrid", f1=0.1, acc=0.1, started="1")
-        new = _row("b", "geovirus", "hybrid", f1=0.9, acc=0.9, started="2")
-
-        assert list(latest_results([old, new])) == [("geovirus", "hybrid")]
-
-
-class TestMarkBest:
-    """Bold for the best score, underline for the second."""
-
-    def test_bolds_the_best_and_underlines_the_second(self):
-        """Higher is better by default."""
-        assert mark_best([0.5, 0.9, 0.7]) == ["0.500", "**0.900**", "<u>0.700</u>"]
-
-    def test_lower_can_be_better(self):
-        """For an error measure the smallest value is best."""
-        assert mark_best([0.5, 0.9, 0.7], higher_is_better=False) == [
-            "**0.500**",
-            "0.900",
-            "<u>0.700</u>",
-        ]
-
-    def test_ties_share_the_mark(self):
-        """Equal scores, as rounded, get the same emphasis."""
-        assert mark_best([0.9, 0.9, 0.7]) == ["**0.900**", "**0.900**", "<u>0.700</u>"]
-
-    def test_a_missing_score_is_a_dash(self):
-        """A pipeline that did not run on a corpus is shown as such."""
-        assert mark_best([None, 0.9]) == ["-", "**0.900**"]
-
-    def test_a_single_score_is_only_bold(self):
-        """With one value there is no second best."""
-        assert mark_best([0.9]) == ["**0.900**"]
-
-
-class TestPublish:
-    """What reaches the Hub."""
-
-    def test_publishes_a_public_dataset_repository(self, tmp_path):
-        api = _published_dataset(tmp_path)
-        create = api.calls[0][2]
-        assert create == {"repo_type": "dataset", "private": False, "exist_ok": True}
-
-    def test_publishes_the_evidence_folder(self, tmp_path):
-        api = _published_dataset(tmp_path)
-        folder = api.calls[1][2]
-        assert folder["folder_path"] == str(tmp_path)
-        assert folder["path_in_repo"] == "runs"
-        assert folder["repo_type"] == "dataset"
-
-    def test_uploads_the_results_table_charts_and_card(self, tmp_path):
-        api = _published_dataset(tmp_path)
-        kinds = [call[0] for call in api.calls]
-        paths = [call[2]["path_in_repo"] for call in api.calls[2:]]
-
-        assert kinds == [
-            "create_repo",
-            "upload_folder",
-            *["upload_file"] * (2 + len(CHART_FILES)),
-        ]
-        assert paths == [RESULTS_FILE, *CHART_FILES.values(), "README.md"]
-
-    def test_refuses_an_empty_evidence_folder(self, tmp_path):
-        """Test that nothing is published when there is nothing to show."""
-        with pytest.raises(ValueError):
-            publish(tmp_path, "me/results", api=FakeApi())
-
-
-def _published_dataset(tmp_path):
-    """Run the publishing flow against a recorder and return its evidence."""
-    report(tmp_path, "run-a")
-    api = FakeApi()
-    publish(tmp_path, "me/results", api=api)
-    return api
-
-
-class TestViewer:
-    """What the Hub's dataset viewer reads."""
-
-    def test_card_points_the_viewer_at_the_flat_table(self):
-        """Test that the viewer reads one CSV, not the mixed JSON files."""
-        card = render_card([])
-
-        assert "configs:" in card
-        assert f"path: {RESULTS_FILE}" in card
-        assert RESULTS_FILE == "results.csv"
-
-    def test_csv_has_one_row_per_result_with_models(self, tmp_path):
-        """Test that each row carries the models that produced it."""
-        report(tmp_path, "run-a")
-
-        lines = render_csv(collect_rows(tmp_path)).splitlines()
-
-        assert lines[0].startswith("run,corpus,language,")
-        assert "recognizer" in lines[0] and "resolver" in lines[0]
-        assert len(lines) == 2
-        assert "r-model" in lines[1] and "s-model" in lines[1]
-
-    def test_csv_identifies_limited_runs(self, tmp_path):
-        """The raw evidence table labels smoke rows even though the card skips them."""
-        report(tmp_path, "run-smoke", limit=5, partial=True)
-
-        lines = render_csv(collect_rows(tmp_path)).splitlines()
-
-        assert "run_limit" in lines[0]
-        assert "run_partial" in lines[0]
-        assert ",5," in lines[1]
-        assert ",True," in lines[1]
-
-    def test_legacy_limited_report_remains_excluded_from_card(self, tmp_path):
-        """Pre-flag smoke evidence stays excluded conservatively."""
-        report(tmp_path, "legacy-smoke", limit=5)
-
-        rows = collect_rows(tmp_path)
-
-        assert rows[0]["run_partial"] is True
-        assert latest_results(rows) == {}
-
-    def test_full_limit_is_written_as_complete_for_publication(self, tmp_path):
-        """A limit matching the frozen GeoVirus count remains a full table row."""
-        report(tmp_path, "run-full", limit=229, partial=False, documents=229)
-
-        rows = collect_rows(tmp_path)
-
-        assert rows[0]["run_partial"] is False
-        assert latest_results(rows)[("geovirus", "hybrid")] == rows[0]
-
-
-class TestPipelineDescriptions:
-    """Saying what each candidate is."""
-
-    def test_every_pipeline_is_described(self):
-        """Test that every benchmark pipeline has an explanation."""
-        assert set(PIPELINE_DESCRIPTIONS) == {
-            "upstream",
-            "swapped",
-            "hybrid",
-            "prior",
-            "xlm-minilm",
-            "otter-cross-minilm",
-        }
-
-    def test_card_explains_each_pipeline_and_its_models(self):
-        """The pipelines table names every pipeline and its real models."""
-        card = render_card([])
-
-        assert "## Pipelines" in card
-        assert "**hybrid**" in card
-        assert "fastino/gliner2.5-multi-v1" in card
-        assert "dguzh/geo-all-MiniLM-L6-v2" in card
-
-    def test_missing_pipelines_appear_in_leaderboards(self):
-        """The two newly evaluated recognizers get comparison columns."""
-        card = _missing_pipeline_card()
-        assert "| Corpus | Lang | swapped | xlm-minilm | otter-cross-minilm |" in card
-
-    def test_missing_models_are_named(self):
-        """The pipeline table names the recognizer model repositories."""
-        card = _missing_pipeline_card()
-        assert "Davlan/xlm-roberta-base-ner-hrl" in card
-        assert "whoisjones/otter-cross-mmbert" in card
-
-    def test_recognizer_language_evidence_is_explicit(self):
-        """The card separates fine-tuning languages from other transfers."""
-        card = _missing_pipeline_card()
-        assert "cross-lingual transfer" in card
-        assert "supported languages are not exhaustively listed" in card
-
-    def test_models_and_pilot_keep_license_evidence(self):
-        """The model licenses and historical GeoVirus Jina pilot are retained."""
-        card = _missing_pipeline_card()
-        assert "CC-BY-NC-4.0" in card
-        assert "AFL-3.0" in card and "Apache-2.0" in card
-        assert "GeoVirus pilot retained" in card
-
-    def test_card_qualifies_manifest_availability_and_failure_provenance(self):
-        """New manifests hold provenance while historical runs may lack them."""
-        card = _missing_pipeline_card()
-        assert "per-document failures" in card
-        assert "run-manifest.json" in card
-        assert "historical runs may lack one" in card
-
-    def test_prior_description_matches_the_default_configuration(self):
-        """The published card describes the no-trimming population prior."""
-        card = render_card([])
-
-        assert "no inflection fallback" in card
-        assert "0.3 population prior" in card
-        assert "ending trimmed" not in card
-
-
-class TestCharts:
-    """The card shows the results as charts, above the tables."""
-
-    def test_embeds_a_chart_per_metric_when_the_repo_is_known(self):
-        """Each chart is linked from the repo it is uploaded to."""
-        card = render_card(
-            [_row("r1", "geovirus", "hybrid", f1=0.9, acc=0.8)], repo_id="me/results"
-        )
-
-        for path in CHART_FILES.values():
-            assert (
-                f"https://huggingface.co/datasets/me/results/resolve/main/{path}"
-                in card
-            )
-
-    def test_uploaded_charts_are_svg(self, tmp_path):
-        """What is uploaded under the chart paths is an SVG document."""
-        report(tmp_path, "run-a")
-        api = FakeApi()
-
-        publish(tmp_path, "me/results", api=api)
-
-        uploads = {c[2]["path_in_repo"]: c[2]["path_or_fileobj"] for c in api.calls[2:]}
-        for path in CHART_FILES.values():
-            assert uploads[path].startswith(b"<svg")
-
-
-class TestMinimalCard:
-    """A short card: benchmarks, pipelines, results."""
-
-    def test_describes_each_benchmark_family_once(self):
-        """Every corpus family that ran gets one line, with its languages."""
-        rows = [
-            _row("r", "geovirus", "hybrid", f1=0.9, acc=0.8),
-            _row("r", "hipe2020-de", "hybrid", f1=0.9, acc=0.8),
-            _row("r", "hipe2020-fr", "hybrid", f1=0.9, acc=0.8),
-        ]
-        rows[1]["language"], rows[2]["language"] = "de", "fr"
-
-        card = render_card(rows)
-
-        assert "## Benchmarks" in card
-        assert card.count("| GeoVirus |") == 1
-        assert card.count("| HIPE-2020 |") == 1
-        assert "| HIPE-2020 | de, fr |" in card
-
-    def test_lists_pipelines_as_a_table(self):
-        """One row per pipeline, naming its recognizer and resolver."""
-        card = render_card([_row("r", "geovirus", "hybrid", f1=0.9, acc=0.8)])
-
-        assert "| Pipeline | Recognition | Resolution |" in card
-
-    def test_stays_short(self):
-        """The card is a summary; the detail lives in the files."""
-        rows = [
-            _row("r", corpus, pipeline, f1=0.9, acc=0.8)
-            for corpus in ("geovirus", "hipe2020-de", "newseye-fi")
-            for pipeline in ("upstream", "hybrid", "prior")
-        ]
-
-        assert len(render_card(rows).splitlines()) < 90
-
-
-class TestMetricCoverage:
-    """The card plots the metrics that matter, not accuracy alone."""
-
-    def test_charts_cover_accuracy_auc_median_error_and_f1(self):
-        """Four charts, each a separate file."""
-        assert set(CHART_FILES) == {
-            "accuracy_at_161km",
-            "auc",
-            "median_error_km",
-            "f1",
-        }
-
-    def test_rows_carry_the_distance_errors(self, tmp_path):
-        """Median and mean errors are collected for the charts and the CSV."""
-        report(tmp_path, "run-a")
-
-        (row,) = collect_rows(tmp_path)
-
-        assert "median_error_km" in row and "mean_error_km" in row
-
-    def test_auc_is_marked_lower_is_better(self):
-        """In the AUC table the smallest value is bold."""
-        rows = [
-            _row("r", "geovirus", "upstream", f1=0.8, acc=0.8),
-            _row("r", "geovirus", "hybrid", f1=0.8, acc=0.8),
-        ]
-        rows[0]["auc"], rows[1]["auc"] = 0.2, 0.4
-
-        card = render_card(rows)
-
-        assert "| geovirus | en | **0.200** | <u>0.400</u> |" in card
-
-
-def test_every_registered_corpus_family_is_described():
-    """A new corpus cannot reach the card without a description."""
-    from scripts.benchmark.corpora import CORPORA
-    from scripts.benchmark.publish import BENCHMARKS
-
-    assert {name.split("-")[0] for name in CORPORA} <= set(BENCHMARKS)
-
-
-class TestLatestPerMetric:
-    """A resolution-only rerun must not blank out recognition scores."""
-
-    def test_skips_rows_without_the_metric(self):
-        """The latest row that has the metric is the one shown."""
-        full = _row("full", "geovirus", "hybrid", f1=0.8, acc=0.7, started="1")
-        resolution_only = _row(
-            "ablation", "geovirus", "hybrid", f1=None, acc=0.75, started="2"
-        )
-
-        f1 = latest_results([full, resolution_only], metric="f1")
-        acc = latest_results([full, resolution_only], metric="accuracy_at_161km")
-
-        assert f1[("geovirus", "hybrid")]["f1"] == 0.8
-        assert acc[("geovirus", "hybrid")]["accuracy_at_161km"] == 0.75
-
-
-def _ablation_rows():
-    """Two corpora, every ablation cell, with known accuracies."""
-    acc = {
-        "hybrid": (0.50, 0.60),
-        "trim": (0.55, 0.60),
-        "population": (0.45, 0.70),
-        "prior": (0.60, 0.65),
-        "population-0.05": (0.50, 0.62),
-        "population-0.2": (0.40, 0.72),
-    }
-    rows = []
-    for pipeline, values in acc.items():
-        for corpus, value in zip(("geovirus", "newsli-tr"), values, strict=True):
-            row = _row("abl", corpus, pipeline, f1=None, acc=value, started="9")
-            row["auc"] = 1 - value
-            rows.append(row)
-    return rows
-
-
-class TestAblationSection:
-    """One factor at a time, summarised against hybrid."""
-
-    @pytest.mark.parametrize(
-        "variant_row",
-        (
-            "| hybrid | off | 0 |",
-            "| trim | on | 0 |",
-            "| population | off | 0.1 |",
-            "| prior | off | 0.3 |",
-            "| population-0.2 | off | 0.2 |",
-        ),
+    api = FakeApi(tmp_path)
+
+    result = publish.publish(tiny_evidence, "me/results", api=api)
+
+    assert result == {"parent_sha": PARENT, "commit_sha": HEAD}
+    assert len(api.commit_calls) == 1
+    call = api.commit_calls[0]
+    assert call["parent_commit"] == PARENT
+    operations = call["operations"]
+    assert any(
+        isinstance(operation, CommitOperationCopy)
+        and operation.src_path_in_repo == "runs/old/report.json"
+        and operation.path_in_repo.endswith("/legacy/runs/old/report.json")
+        for operation in operations
     )
-    def test_lists_each_variant_with_its_settings(self, variant_row):
-        """The table says which factor each row turns on."""
-        card = render_card(_ablation_rows())
-        assert "## Ablation" in card
-        assert variant_row in card
-
-    @pytest.mark.parametrize(
-        ("pipeline", "mean", "wins"),
-        [("trim", "0.575", "1 / 0"), ("population", "0.575", "1 / 1")],
+    assert any(
+        isinstance(operation, CommitOperationDelete)
+        and operation.path_in_repo == "runs/old/report.json"
+        for operation in operations
     )
-    def test_reports_means_and_wins_against_hybrid(self, pipeline, mean, wins):
-        """Mean Acc@161km over corpora, and corpora better or worse."""
-        card = render_card(_ablation_rows())
-        row = next(
-            line for line in card.splitlines() if line.startswith(f"| {pipeline} |")
-        )
-        assert mean in row
-        assert wins in row
+    assert any(isinstance(operation, CommitOperationAdd) for operation in operations)
+    assert "runs/old/report.json" not in api.files
+    assert any(path.startswith("archive/snapshots/") for path in api.files)
+    assert "current/v2/strict-raw-v1/results.csv" in api.files
+    assert "current/v2/newsli-exact-full-record-dedup-v1/results.csv" in api.files
+    assert "README.md" in api.files
 
-    def test_is_absent_without_ablation_results(self):
-        """A card without ablation runs has no empty section."""
-        card = render_card([_row("r", "geovirus", "hybrid", f1=0.9, acc=0.8)])
 
-        assert "## Ablation" not in card
+def test_incomplete_bundle_fails_before_repo_mutation(tmp_path, monkeypatch):
+    monkeypatch.setattr(publish, "_expected_corpus_totals", _expected_totals)
+    _write_evidence(tmp_path, STRICT_RAW_VIEW, "geovirus")
+    api = FakeApi(tmp_path)
+    before = api.files.copy()
 
-    def test_charts_the_factorial_cells(self):
-        """The ablation chart compares hybrid, trim, population and prior."""
-        from scripts.benchmark.publish import render_charts
+    with pytest.raises(ValueError, match="cannot publish"):
+        publish.publish(tmp_path, "me/results", api=api)
 
-        charts = render_charts(_ablation_rows())
-
-        assert "charts/ablation-acc161.svg" in charts
-        svg = charts["charts/ablation-acc161.svg"]
-        for name in ("hybrid", "trim", "population", "prior"):
-            assert f">{name}<" in svg
-        assert "population-0.2" not in svg
+    assert api.files == before
+    assert api.commit_calls == []

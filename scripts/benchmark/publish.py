@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 import typing as t
@@ -26,8 +27,13 @@ from pathlib import Path
 
 from scripts._cli import EXIT_OK
 from scripts._io import PROJECT_ROOT
+from scripts.benchmark import missing_matrix, pipelines
 from scripts.benchmark.chart import render_bar_chart
-from scripts.benchmark.corpora import CORPORA
+from scripts.benchmark.corpora import (
+    CORPORA,
+    EXACT_FULL_RECORD_DEDUP_VIEW,
+    STRICT_RAW_VIEW,
+)
 from scripts.benchmark.pipelines import HYBRID, PRIOR_SETTINGS
 from scripts.benchmark.report import _number
 
@@ -39,6 +45,12 @@ HIPE_DATA_URL = "https://github.com/hipe-eval/HIPE-2022-data"
 UNITOPRANK_DATA_URL = "https://figshare.com/articles/software/UniTopRank/30445541"
 REPORT_NAME = "benchmark-report.json"
 BASELINE_PREFIX = "baseline"
+CURRENT_PREFIX = "current/v2"
+ARCHIVE_PREFIX = "archive/snapshots"
+SCORING_VIEWS = (STRICT_RAW_VIEW, EXACT_FULL_RECORD_DEDUP_VIEW)
+PRIVATE_EVIDENCE_KEYS = frozenset(
+    {"text", "article", "raw_output", "raw_text", "source_text", "message"}
+)
 # One flat table for the Hub's viewer: left to itself it tries to read every
 # JSON file in the repo as one dataset, and reports, checkpoints and
 # summaries do not share a schema.
@@ -59,6 +71,7 @@ CHART_TITLES = {
 }
 CHART_SCALES = {"median_error_km": "log"}
 COLUMNS = (
+    "scoring_view",
     "run",
     "corpus",
     "language",
@@ -80,57 +93,45 @@ COLUMNS = (
 
 # name: (recognition, resolution, what it is), one line each on the card.
 PIPELINE_DESCRIPTIONS = {
-    "upstream": (
-        "spaCy `en_core_web_sm`",
-        "MiniLM `dguzh/geo-all-MiniLM-L6-v2`",
-        "The original geoparser pipeline.",
+    "gliner-minilm": (
+        "`fastino/gliner2.5-multi-v1`",
+        "`dguzh/geo-all-MiniLM-L6-v2`",
+        "GLiNER recognition with MiniLM resolution.",
     ),
-    "swapped": (
-        "GLiNER2 `fastino/gliner2.5-multi-v1`",
-        "Jina embeddings v5 + Jina reranker v3.5",
-        "GeoVirus pilot retained; GLiNER is Apache-2.0 with a multilingual claim, "
-        "while Jina is CC-BY-NC-4.0 with no exhaustive language list.",
-    ),
-    "hybrid": (
-        "GLiNER2 `fastino/gliner2.5-multi-v1`",
-        "MiniLM `dguzh/geo-all-MiniLM-L6-v2`",
-        "Multilingual recognition, upstream resolution; MiniLM license and "
-        "exhaustive language list are undeclared.",
-    ),
-    "prior": (
-        "GLiNER2 `fastino/gliner2.5-multi-v1`",
-        "MiniLM + weight-0.3 population prior (no inflection fallback)",
-        "hybrid, with a 0.3 log-population prior and exact matching only; "
-        "no inflection fallback or extra model; MiniLM license and exhaustive "
-        "language list are undeclared.",
+    "gliner-jina": (
+        "`fastino/gliner2.5-multi-v1`",
+        "Jina embeddings v5 + reranker v3.5",
+        "GLiNER recognition with the Jina resolver stack.",
     ),
     "xlm-minilm": (
-        "XLM-R `Davlan/xlm-roberta-base-ner-hrl`",
-        "MiniLM `dguzh/geo-all-MiniLM-L6-v2`",
-        "AFL-3.0; fine-tuned for ar, de, en, es, fr, it, lv, nl, pt and zh; "
-        "other selected languages are cross-lingual transfer.",
+        "`Davlan/xlm-roberta-base-ner-hrl`",
+        "`dguzh/geo-all-MiniLM-L6-v2`",
+        "XLM-R recognition with MiniLM resolution.",
     ),
-    "otter-cross-minilm": (
-        "Otter `whoisjones/otter-cross-mmbert`",
-        "MiniLM `dguzh/geo-all-MiniLM-L6-v2`",
-        "Apache-2.0; multilingual claim, but supported languages are not "
-        "exhaustively listed.",
+    "xlm-jina": (
+        "`Davlan/xlm-roberta-base-ner-hrl`",
+        "Jina embeddings v5 + reranker v3.5",
+        "XLM-R recognition with the Jina resolver stack.",
+    ),
+    "otter-minilm": (
+        "`whoisjones/otter-cross-mmbert`",
+        "`dguzh/geo-all-MiniLM-L6-v2`",
+        "Otter recognition with MiniLM resolution.",
+    ),
+    "otter-jina": (
+        "`whoisjones/otter-cross-mmbert`",
+        "Jina embeddings v5 + reranker v3.5",
+        "Otter recognition with the Jina resolver stack.",
     ),
 }
 
 # The pipelines the main tables and charts compare; the ablations get their
 # own section.
-MAIN_PIPELINES = tuple(PIPELINE_DESCRIPTIONS)
+MAIN_PIPELINES = missing_matrix.CURRENT_PIPELINES
 
 # Hybrid, then each ablation variant; the factorial cells are the first four.
-ABLATION_PIPELINES = (HYBRID, "trim", "population", "prior")
-SWEEP_PIPELINES = (
-    "population-0.05",
-    "population-0.2",
-    "population-0.3",
-    "population-0.5",
-    "population-1.0",
-)
+ABLATION_PIPELINES: tuple[str, ...] = ()
+SWEEP_PIPELINES: tuple[str, ...] = ()
 ABLATION_CHART = "charts/ablation-acc161.svg"
 
 # Corpus-name prefix: (display name, one-line description).
@@ -194,6 +195,7 @@ def _pipeline_row(
     resolution = pipeline.get("resolution") or {}
     models = pipeline.get("models") or {}
     return {
+        "scoring_view": data.get("scoring_view", "legacy-unscoped"),
         "run": relative.parts[0],
         "corpus": data["corpus"],
         "language": data.get("language", "en"),
@@ -618,14 +620,25 @@ def _ablation_chart_link(
 
 
 def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None) -> str:
-    """Return the dataset card, with compact results tables built from ``rows``."""
+    """Return a compact card that keeps the two scoring protocols separate."""
+    del rows
+    configs = [
+        ("strict_raw", STRICT_RAW_VIEW),
+        ("newsli_exact_record_dedup", EXACT_FULL_RECORD_DEDUP_VIEW),
+    ]
+    config_lines = ["configs:"]
+    for name, view in configs:
+        config_lines.extend(
+            [
+                f"- config_name: {name}",
+                "  data_files:",
+                "  - split: train",
+                f"    path: {CURRENT_PREFIX}/{view}/{RESULTS_FILE}",
+            ]
+        )
     lines = [
         "---",
-        "configs:",
-        "- config_name: default",
-        "  data_files:",
-        "  - split: train",
-        f"    path: {RESULTS_FILE}",
+        *config_lines,
         "language: [en, de, fr, fi, sv, ar, es, fa, ja, pl, ro, sr, ta, tr, uk]",
         "pretty_name: Geoparser benchmark results",
         f"license: {LICENSE}",
@@ -635,86 +648,815 @@ def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None)
         "",
         "# Geoparser benchmark results",
         "",
-        "Pipelines from [geoparser](https://github.com/NoeFlandre/geoparser) "
-        "scored on English and multilingual corpora on Grid'5000 (one Tesla T4).",
+        "Six recognizer/resolver combinations from "
+        "[geoparser](https://github.com/NoeFlandre/geoparser), evaluated as two "
+        "independent stages. Resolution is scored on gold toponym spans; no "
+        "end-to-end score is reported.",
         "",
-        *_benchmark_section(rows),
-        *_pipeline_section(),
+        "## Protocols",
+        "",
+        "The `strict_raw` config covers 20 corpus slices by 6 combinations. "
+        "The separate `newsli_exact_record_dedup` config covers the seven "
+        "affected NewsLi languages by 6 combinations. Duplicate removal is "
+        "limited to exact full-record matches; its scores are never combined "
+        "with strict-raw results.",
+        "",
         "## Results",
         "",
-        "Latest run per corpus and pipeline. **Resolution Acc@161km** is the share "
-        "of gold spans within 161 km; all resolvers see the same gold spans.",
-        "**Recognition** is exact-match F1. AUC summarises the log-scaled error "
-        "curve (lower is better). **Bold**/**underline** mark first/second.",
+    ]
+    if repo_id:
+        for _, view in configs:
+            root = f"{CURRENT_PREFIX}/{view}"
+            base = f"https://huggingface.co/datasets/{repo_id}/resolve/main/{root}"
+            lines.extend(
+                [
+                    f"### {view}",
+                    "",
+                    f"[Metrics CSV]({base}/{RESULTS_FILE}) · "
+                    f"[protocol and evidence index]({base}/protocol.json)",
+                    "",
+                    f"![Recognition F1]({base}/charts/recognition-f1.svg)",
+                    "",
+                    f"![Resolution Acc@161km]({base}/charts/resolution-acc161.svg)",
+                    "",
+                    f"[AUC chart]({base}/charts/resolution-auc.svg) · "
+                    f"[median error chart]({base}/charts/resolution-median-error.svg)",
+                    "",
+                ]
+            )
+    lines.extend(
+        [
+            "## Inspect and reproduce",
+            "",
+            f"Per-document gold references, predictions, phase status, and "
+            f"failures are under `{CURRENT_PREFIX}/<protocol>/runs/`. "
+            f"Model and configuration pins are in each `run-manifest.json`; "
+            f"corpus download links and terms are in "
+            f"[`corpus-sources.md`]({CURRENT_PREFIX}/corpus-sources.md). "
+            f"Article text is not redistributed.",
+            "",
+            "The `archive/` directory retains earlier public files by source "
+            "commit; see its README and index for recovery paths.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def render_source_instructions() -> str:
+    """Give retrieval links and terms for each selected corpus slice."""
+    lines = [
+        "# Corpus sources and retrieval",
         "",
-        "New `run-manifest.json` files pin model revisions, language evidence, "
-        "phase reuse and per-document failures; historical runs may lack one, "
-        "and absent claims do not mean unsupported.",
+        "Corpus article text is not included in this dataset. Download sources "
+        "from their maintainers and apply the source terms before reuse.",
         "",
-        *_chart_links(repo_id),
-        *_leaderboard(rows, "accuracy_at_161km", "Resolution: Acc@161km"),
-        *_leaderboard(
-            rows, "auc", "Resolution: AUC (lower is better)", higher_is_better=False
-        ),
-        *_leaderboard(rows, "f1", "Recognition: F1"),
-        *_ablation_section(rows),
-        *_ablation_chart_link(rows, repo_id),
-        "## Files",
+        "| Slices | Source | Retrieval | Terms |",
+        "| --- | --- | --- | --- |",
+        f"| GeoVirus (English) | [UniTopRank release]({UNITOPRANK_DATA_URL}) | "
+        "Download the release and select its GeoVirus XML corpus. | Apache-2.0 |",
+        f"| HIPE-2020, NewsEye, TopRes19th | [HIPE-2022 v2.1]({HIPE_DATA_URL}) | "
+        "Use the registered language-specific unmasked test TSV URL listed in "
+        "the run manifest. | CC BY-NC-SA 4.0 |",
+        f"| NewsLi | [UniTopRank release]({UNITOPRANK_DATA_URL}) | "
+        "Download `data.zip`; the adapter selects valid article identifiers "
+        "in sorted order, up to 500 per language. | Apache-2.0 |",
         "",
-        f"`{RESULTS_FILE}` (viewer) has every run's metrics and runtime; `runs/` "
-        "holds reports, checkpoints, manifests and job logs.",
-        "",
-        "## Corpus terms",
-        "",
-        f"HIPE-2022: CC BY-NC-SA 4.0 ([source]({HIPE_DATA_URL})); "
-        f"GeoVirus and NewsLi: Apache-2.0 ([UniTopRank release]({UNITOPRANK_DATA_URL})).",
-        "No source article text is uploaded here. The terms for each source corpus still apply when you obtain or reuse its files.",
+        "Each run manifest records the exact source URL, content SHA-256, "
+        "registered split, corpus digest, and (for HIPE-derived slices) the "
+        "coordinate-cache digest. The NewsLi dedup view also records its "
+        "pre-transform count and number of exact duplicate records removed.",
         "",
     ]
     return "\n".join(lines)
 
 
-def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> None:
-    """
-    Upload the evidence folder and a regenerated card to a public dataset.
-
-    Raises:
-        ValueError: When the folder holds no reports
-    """
-    rows = collect_rows(evidence_dir)
-    if not rows:
-        msg = f"no {REPORT_NAME} under {evidence_dir}"
+def render_protocol_manifest(scoring_view: str) -> str:
+    """Serialize protocol scope, component pins, and legacy display mappings."""
+    if scoring_view == STRICT_RAW_VIEW:
+        corpora = [missing_matrix.cell_name(cell) for cell in missing_matrix.MATRIX]
+    elif scoring_view == EXACT_FULL_RECORD_DEDUP_VIEW:
+        corpora = [
+            f"newsli-{language}"
+            for language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
+        ]
+    else:
+        msg = f"Unknown scoring view: {scoring_view}"
         raise ValueError(msg)
-    api.create_repo(repo_id, repo_type="dataset", private=False, exist_ok=True)
-    api.upload_folder(
-        repo_id=repo_id,
-        repo_type="dataset",
-        folder_path=str(evidence_dir),
-        path_in_repo="runs",
-        commit_message="Upload benchmark evidence",
+    value = {
+        "schema": "geoparser-benchmark-publication-v2",
+        "scoring_view": scoring_view,
+        "corpora": corpora,
+        "pipelines": {
+            name: {
+                "components": missing_matrix.PIPELINE_COMPONENTS[name],
+                "model_pins": pipelines.pipeline_model_pins(name),
+            }
+            for name in MAIN_PIPELINES
+        },
+        "legacy_pipeline_id_map": missing_matrix.LEGACY_PIPELINE_ID_MAP,
+        "scoring": {
+            "recognition": "exact-match F1 on recognizer spans",
+            "resolution": "geodesic error and Acc@161km on gold spans",
+            "end_to_end_score": None,
+        },
+        "transform": (
+            {
+                "record_key": ["start", "end", "name", "latitude", "longitude"],
+                "retained_occurrence": "first exact record in original order",
+            }
+            if scoring_view == EXACT_FULL_RECORD_DEDUP_VIEW
+            else None
+        ),
+        "archive": "Earlier public artifacts remain under archive/snapshots/<parent-sha>/.",
+    }
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+
+
+def _sha256_text(value: t.Any) -> bool:
+    """Return whether ``value`` looks like a lowercase 64-digit SHA-256."""
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
     )
-    api.upload_file(
-        repo_id=repo_id,
-        repo_type="dataset",
-        path_or_fileobj=render_csv(rows).encode("utf-8"),
-        path_in_repo=RESULTS_FILE,
-        commit_message="Regenerate results table",
-    )
-    for path, svg in render_charts(rows).items():
-        api.upload_file(
-            repo_id=repo_id,
-            repo_type="dataset",
-            path_or_fileobj=svg.encode("utf-8"),
-            path_in_repo=path,
-            commit_message="Regenerate results chart",
+
+
+def _contains_private_evidence(value: t.Any) -> bool:
+    """Detect fields that can contain source text or model echo output."""
+    if isinstance(value, dict):
+        return any(
+            key in PRIVATE_EVIDENCE_KEYS or _contains_private_evidence(item)
+            for key, item in value.items()
         )
-    api.upload_file(
+    if isinstance(value, list):
+        return any(_contains_private_evidence(item) for item in value)
+    return False
+
+
+def _public_json_bytes(data: dict[str, t.Any]) -> bytes:
+    """Serialize evidence after removing source text and unbounded model output."""
+
+    def clean(value: t.Any) -> t.Any:
+        if isinstance(value, dict):
+            return {
+                key: clean(item)
+                for key, item in value.items()
+                if key not in PRIVATE_EVIDENCE_KEYS
+            }
+        if isinstance(value, list):
+            return [clean(item) for item in value]
+        return value
+
+    return (json.dumps(clean(data), ensure_ascii=False, indent=2) + "\n").encode(
+        "utf-8"
+    )
+
+
+def _expected_corpus_totals(scoring_view: str) -> dict[str, tuple[int, int]]:
+    """Return the exact size of every full publication slice."""
+    if scoring_view == STRICT_RAW_VIEW:
+        return {
+            missing_matrix.cell_name(cell): (cell.documents, cell.gold_toponyms)
+            for cell in missing_matrix.MATRIX
+        }
+    if scoring_view == EXACT_FULL_RECORD_DEDUP_VIEW:
+        return {
+            f"newsli-{language}": (
+                cell.documents,
+                cell.gold_toponyms
+                - missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[language],
+            )
+            for cell in missing_matrix.MATRIX
+            if cell.corpus == "newsli"
+            and cell.language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
+            for language in (cell.language,)
+        }
+    msg = f"Unknown scoring view: {scoring_view}"
+    raise ValueError(msg)
+
+
+def _validate_inspection(
+    report_path: Path,
+    report_data: dict[str, t.Any],
+    scoring_view: str,
+    pipeline_name: str,
+) -> dict[str, list[dict[str, t.Any]]]:
+    """Require complete, text-free per-document evidence for one pipeline."""
+    path = report_path.parent / f"inspection-{pipeline_name}.jsonl"
+    if not path.is_file():
+        msg = f"missing {path.name}"
+        raise ValueError(msg)
+    references: dict[str, list[dict[str, t.Any]]] = {}
+    toponyms = 0
+    with path.open(encoding="utf-8") as stream:
+        for line_number, line in enumerate(stream, start=1):
+            toponyms += _validate_inspection_record(
+                json.loads(line),
+                path=path,
+                line_number=line_number,
+                scoring_view=scoring_view,
+                pipeline_name=pipeline_name,
+                references=references,
+            )
+    expected_documents = report_data["documents"]
+    expected_toponyms = report_data["gold_toponyms"]
+    if len(references) != expected_documents or toponyms != expected_toponyms:
+        msg = (
+            f"{path.name} covers {len(references)} documents/{toponyms} references; "
+            f"expected {expected_documents}/{expected_toponyms}"
+        )
+        raise ValueError(msg)
+    return references
+
+
+def _validate_inspection_record(
+    record: t.Any,
+    *,
+    path: Path,
+    line_number: int,
+    scoring_view: str,
+    pipeline_name: str,
+    references: dict[str, list[dict[str, t.Any]]],
+) -> int:
+    """Validate one inspectable example and return its reference count."""
+    if not isinstance(record, dict):
+        msg = f"{path.name}:{line_number} is not a JSON object"
+        raise TypeError(msg)
+    prefix = f"{path.name}:{line_number}"
+    if record.get("schema") != "geoparser-prediction-inspection-v1":
+        msg = f"{prefix} has an unknown schema"
+        raise ValueError(msg)
+    if record.get("pipeline") != pipeline_name:
+        msg = f"{prefix} has the wrong pipeline"
+        raise ValueError(msg)
+    if record.get("scoring_view") != scoring_view:
+        msg = f"{prefix} has the wrong protocol"
+        raise ValueError(msg)
+    if _contains_private_evidence(record):
+        msg = f"{prefix} includes private text"
+        raise ValueError(msg)
+    document_id = record.get("document_id")
+    if not isinstance(document_id, str) or document_id in references:
+        msg = f"{prefix} has a duplicate/invalid id"
+        raise ValueError(msg)
+    reference = record.get("reference")
+    prediction = record.get("prediction")
+    if not isinstance(reference, list) or not isinstance(prediction, dict):
+        msg = f"{prefix} lacks reference/prediction"
+        raise TypeError(msg)
+    if record.get("resolution_input") != "gold_reference":
+        msg = f"{prefix} does not identify gold-span resolution input"
+        raise ValueError(msg)
+    _validate_reference_spans(reference, prefix)
+    for phase in ("recognition", "resolution"):
+        _validate_inspection_phase(record, prediction, phase, prefix)
+    references[document_id] = reference
+    return len(reference)
+
+
+def _validate_reference_spans(reference: list[t.Any], prefix: str) -> None:
+    """Require offsets, mention, and coordinates for every reference span."""
+    required = {"start", "end", "name", "latitude", "longitude"}
+    for span in reference:
+        if not isinstance(span, dict) or not required <= span.keys():
+            msg = f"{prefix} has an incomplete gold reference"
+            raise ValueError(msg)
+
+
+def _validate_inspection_phase(
+    record: dict[str, t.Any],
+    prediction: dict[str, t.Any],
+    phase: str,
+    prefix: str,
+) -> None:
+    """Require a prediction and explicit complete/failure status per phase."""
+    predictions = prediction.get(phase)
+    if not isinstance(predictions, list):
+        msg = f"{prefix} lacks {phase} output"
+        raise TypeError(msg)
+    if any(not isinstance(item, dict) for item in predictions):
+        msg = f"{prefix} has a malformed {phase} prediction"
+        raise TypeError(msg)
+    statuses = record.get("phase_status") or {}
+    if not isinstance(statuses, dict):
+        msg = f"{prefix} has malformed phase status"
+        raise TypeError(msg)
+    status = statuses.get(phase)
+    if status not in {"complete", "failed"}:
+        msg = f"{prefix} has {phase}={status}"
+        raise ValueError(msg)
+    failures = record.get("failures") or {}
+    if not isinstance(failures, dict):
+        msg = f"{prefix} has malformed failure details"
+        raise TypeError(msg)
+    if status == "failed" and phase not in failures:
+        msg = f"{prefix} has an unrecorded {phase} failure"
+        raise ValueError(msg)
+
+
+def _validate_report_scope(data: dict[str, t.Any]) -> tuple[str, str]:
+    """Require a complete frozen corpus slice within a declared scoring view."""
+    scoring_view = data.get("scoring_view")
+    if scoring_view not in SCORING_VIEWS:
+        msg = "missing or unsupported scoring_view"
+        raise ValueError(msg)
+    totals = _expected_corpus_totals(scoring_view)
+    corpus_name = data.get("corpus")
+    if corpus_name not in totals:
+        msg = f"{corpus_name!r} is outside {scoring_view}"
+        raise ValueError(msg)
+    documents, gold_toponyms = totals[corpus_name]
+    if data.get("partial") is not False or data.get("documents") != documents:
+        msg = f"{corpus_name} is partial or has the wrong document count"
+        raise ValueError(msg)
+    if data.get("gold_toponyms") != gold_toponyms:
+        msg = f"{corpus_name} has the wrong gold toponym count"
+        raise ValueError(msg)
+    if data.get("limit") is not None and data["limit"] < documents:
+        msg = f"{corpus_name} was capped below its full size"
+        raise ValueError(msg)
+    return scoring_view, corpus_name
+
+
+def _validate_source_pins(
+    data: dict[str, t.Any], corpus_name: str, spec: t.Any
+) -> None:
+    """Require exact source URLs and content hashes for the loaded corpus."""
+    if data.get("source_url") != spec.url:
+        msg = f"{corpus_name} has no matching source URL pin"
+        raise ValueError(msg)
+    if not _sha256_text(data.get("source_content_sha256")):
+        msg = f"{corpus_name} has no SHA-256 source content pin"
+        raise ValueError(msg)
+    if spec.kind == "newsli" and data.get("source_archive_sha256") != data.get(
+        "source_content_sha256"
+    ):
+        msg = f"{corpus_name} has no matching NewsLi archive SHA-256"
+        raise ValueError(msg)
+    if spec.kind == "hipe" and not _sha256_text(data.get("coordinate_cache_sha256")):
+        msg = f"{corpus_name} has no coordinate-cache SHA-256"
+        raise ValueError(msg)
+    if not isinstance(data.get("corpus_digest"), str) or not data["corpus_digest"]:
+        msg = f"{corpus_name} has no parsed corpus digest"
+        raise ValueError(msg)
+
+
+def _validate_manifest_header(
+    manifest: dict[str, t.Any], protocol: dict[str, t.Any], view: str, corpus_name: str
+) -> None:
+    """Require immutable run pins and both independent scoring phases."""
+    if manifest.get("status") not in {"complete", "partial"}:
+        msg = f"{corpus_name} manifest is not complete"
+        raise ValueError(msg)
+    if protocol.get("scoring_view") != view:
+        msg = f"{corpus_name} manifest scoring_view does not match"
+        raise ValueError(msg)
+    full_commit = manifest.get("full_commit")
+    if not isinstance(full_commit, str) or len(full_commit) != 40:
+        msg = f"{corpus_name} manifest has no full source commit pin"
+        raise ValueError(msg)
+    if not _sha256_text(manifest.get("dependency_lock_sha256")):
+        msg = f"{corpus_name} manifest has no dependency-lock SHA-256"
+        raise ValueError(msg)
+    if set(protocol.get("phases", [])) != {"recognition", "resolution"}:
+        msg = f"{corpus_name} manifest did not request both phases"
+        raise ValueError(msg)
+    _validate_manifest_runtime(protocol, corpus_name)
+
+
+def _validate_manifest_runtime(protocol: dict[str, t.Any], corpus_name: str) -> None:
+    """Require fixed gazetteer, resolver, chunk, and device configuration pins."""
+    if protocol.get("gazetteer") != pipelines.GAZETTEER_NAME:
+        msg = f"{corpus_name} manifest has an unexpected gazetteer"
+        raise ValueError(msg)
+    if not _sha256_text(protocol.get("gazetteer_artifact_sha256")):
+        msg = f"{corpus_name} manifest has no gazetteer SHA-256"
+        raise ValueError(msg)
+    if not isinstance(protocol.get("min_similarity"), (int, float)):
+        msg = f"{corpus_name} manifest has no resolver similarity setting"
+        raise TypeError(msg)
+    if not isinstance(protocol.get("chunk_size"), int) or protocol["chunk_size"] < 1:
+        msg = f"{corpus_name} manifest has no valid checkpoint chunk size"
+        raise ValueError(msg)
+    if not isinstance(protocol.get("accelerator"), str) or not isinstance(
+        protocol.get("device"), str
+    ):
+        msg = f"{corpus_name} manifest has no device configuration"
+        raise TypeError(msg)
+
+
+def _validate_manifest_source(
+    manifest_cell: dict[str, t.Any],
+    data: dict[str, t.Any],
+    spec: t.Any,
+    corpus_name: str,
+) -> None:
+    """Match source pins between the run manifest and the corpus report."""
+    if manifest_cell.get("source_url") != spec.url:
+        msg = f"{corpus_name} manifest source URL does not match"
+        raise ValueError(msg)
+    if manifest_cell.get("source_content_sha256") != data["source_content_sha256"]:
+        msg = f"{corpus_name} source SHA-256 differs in its manifest"
+        raise ValueError(msg)
+    if manifest_cell.get("corpus_digest") != data["corpus_digest"]:
+        msg = f"{corpus_name} corpus digest differs in its manifest"
+        raise ValueError(msg)
+    for pin in ("coordinate_cache_sha256", "source_archive_sha256"):
+        if manifest_cell.get(pin) != data.get(pin):
+            msg = f"{corpus_name} {pin} differs in its manifest"
+            raise ValueError(msg)
+
+
+def _load_manifest_cell(
+    report_path: Path,
+    data: dict[str, t.Any],
+    scoring_view: str,
+    corpus_name: str,
+    spec: t.Any,
+) -> tuple[dict[str, t.Any], dict[str, t.Any], dict[str, t.Any]]:
+    """Load a run manifest and validate its source and six-pipeline sections."""
+    manifest_path = report_path.parent.parent / "run-manifest.json"
+    if not manifest_path.is_file():
+        msg = f"missing run-manifest.json for {corpus_name}"
+        raise ValueError(msg)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    protocol = manifest.get("protocol", {})
+    _validate_manifest_header(manifest, protocol, scoring_view, corpus_name)
+    if data.get("gazetteer") != protocol.get("gazetteer") or data.get(
+        "gazetteer_sha256"
+    ) != protocol.get("gazetteer_artifact_sha256"):
+        msg = f"{corpus_name} report and manifest gazetteer pins differ"
+        raise ValueError(msg)
+    if data.get("min_similarity") != protocol.get("min_similarity"):
+        msg = f"{corpus_name} report and manifest resolver settings differ"
+        raise ValueError(msg)
+    if data.get("commit") and not manifest["full_commit"].startswith(data["commit"]):
+        msg = f"{corpus_name} report and manifest commits do not match"
+        raise ValueError(msg)
+    model_runs = protocol.get("pipelines", {})
+    if set(model_runs) != set(MAIN_PIPELINES):
+        msg = f"{corpus_name} manifest must pin exactly six pipelines"
+        raise ValueError(msg)
+    manifest_cell = protocol.get("corpora", {}).get(corpus_name, {})
+    _validate_manifest_source(manifest_cell, data, spec, corpus_name)
+    if manifest_cell.get("partial") is not False:
+        msg = f"{corpus_name} manifest marks the corpus as partial"
+        raise ValueError(msg)
+    if manifest_cell.get("documents") != data.get("documents") or manifest_cell.get(
+        "gold_toponyms"
+    ) != data.get("gold_toponyms"):
+        msg = f"{corpus_name} report and manifest corpus counts differ"
+        raise ValueError(msg)
+    if manifest_cell.get("status") not in {
+        "complete",
+        "complete_with_document_failures",
+    }:
+        msg = f"{corpus_name} manifest corpus status is incomplete"
+        raise ValueError(msg)
+    cell_pipelines = manifest_cell.get("pipelines", {})
+    if set(cell_pipelines) != set(MAIN_PIPELINES):
+        msg = f"{corpus_name} manifest has incomplete pipeline status"
+        raise ValueError(msg)
+    return model_runs, cell_pipelines, manifest_cell
+
+
+def _validate_pipeline_evidence(
+    name: str,
+    report_path: Path,
+    report_data: dict[str, t.Any],
+    scoring_view: str,
+    evidence: tuple[dict[str, t.Any], dict[str, t.Any], dict[str, t.Any]],
+) -> dict[str, list[dict[str, t.Any]]]:
+    """Require all model-role pins, phase metrics, and inspection records."""
+    report_pipeline, manifest_pipeline, cell_pipeline = evidence
+    expected_pins = pipelines.pipeline_model_pins(name)
+    if manifest_pipeline.get("model_pins", {}) != expected_pins:
+        msg = f"{name} manifest is missing or mispins a model role"
+        raise ValueError(msg)
+    if report_pipeline.get("models") != expected_pins:
+        msg = f"{name} report does not carry every expected model role"
+        raise ValueError(msg)
+    settings = manifest_pipeline.get("execution_settings")
+    if not isinstance(settings, dict) or not all(
+        settings.get(role) for role in ("recognition", "resolution")
+    ):
+        msg = f"{name} manifest lacks execution settings"
+        raise ValueError(msg)
+    if not isinstance(settings.get("document_chunk_size"), int):
+        msg = f"{name} manifest lacks its document chunk setting"
+        raise TypeError(msg)
+    recognition = report_pipeline.get("recognition") or {}
+    resolution = report_pipeline.get("resolution") or {}
+    if not all(
+        recognition.get(metric) is not None for metric in ("precision", "recall", "f1")
+    ):
+        msg = f"{name} is missing recognition metrics"
+        raise ValueError(msg)
+    if not all(
+        resolution.get(metric) is not None
+        for metric in (
+            "accuracy_at_161km",
+            "auc",
+            "median_error_km",
+            "mean_error_km",
+        )
+    ):
+        msg = f"{name} is missing recognition or gold-span resolution"
+        raise ValueError(msg)
+    if cell_pipeline.get("model_pins") != expected_pins:
+        msg = f"{name} result manifest is missing expected model roles"
+        raise ValueError(msg)
+    if cell_pipeline.get("status") != "complete":
+        msg = f"{name} has incomplete phase status"
+        raise ValueError(msg)
+    if cell_pipeline.get("phase_status") != {
+        "recognition": "complete",
+        "resolution": "complete",
+    }:
+        msg = f"{name} is missing a completed scoring phase"
+        raise ValueError(msg)
+    return _validate_inspection(report_path, report_data, scoring_view, name)
+
+
+def _validate_current_report(path: Path, data: dict[str, t.Any]) -> str:
+    """Validate pins, source provenance, metrics, and inspections for a full cell."""
+    scoring_view, corpus_name = _validate_report_scope(data)
+    spec = CORPORA[corpus_name]
+    _validate_source_pins(data, corpus_name, spec)
+    results = {item.get("name"): item for item in data.get("pipelines", [])}
+    if set(results) != set(MAIN_PIPELINES):
+        msg = f"{corpus_name} must contain exactly the six current pipelines"
+        raise ValueError(msg)
+    model_runs, cell_pipelines, _manifest_cell = _load_manifest_cell(
+        path, data, scoring_view, corpus_name, spec
+    )
+    references_by_pipeline: dict[str, dict[str, list[dict[str, t.Any]]]] = {}
+    for name in MAIN_PIPELINES:
+        references_by_pipeline[name] = _validate_pipeline_evidence(
+            name,
+            path,
+            data,
+            scoring_view,
+            (results[name], model_runs[name], cell_pipelines[name]),
+        )
+    first_references = next(iter(references_by_pipeline.values()))
+    if any(refs != first_references for refs in references_by_pipeline.values()):
+        msg = f"{corpus_name} pipelines inspect different gold references"
+        raise ValueError(msg)
+    _validate_dedup_count(data, scoring_view, spec.language, corpus_name)
+    return scoring_view
+
+
+def _validate_dedup_count(
+    data: dict[str, t.Any], scoring_view: str, language: str, corpus_name: str
+) -> None:
+    """Check the reviewed full-slice exact-record removal count when applicable."""
+    if scoring_view != EXACT_FULL_RECORD_DEDUP_VIEW:
+        return
+    expected_removed = missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[language]
+    if data.get("duplicate_records_removed") != expected_removed:
+        msg = f"{corpus_name} does not match the reviewed dedup count"
+        raise ValueError(msg)
+
+
+def _bundle_files(
+    evidence_dir: Path, repo_id: str
+) -> tuple[dict[str, bytes], list[dict[str, t.Any]]]:
+    """Build the strict-raw and dedup artifacts after validating every cell."""
+    candidates, errors = _current_candidates(evidence_dir)
+    files: dict[str, bytes] = {}
+    all_rows = []
+    for view in SCORING_VIEWS:
+        rows = _stage_view(files, evidence_dir, candidates, errors, view)
+        all_rows.extend(rows)
+    files[f"{CURRENT_PREFIX}/corpus-sources.md"] = render_source_instructions().encode(
+        "utf-8"
+    )
+    files["README.md"] = render_card(all_rows, repo_id=repo_id).encode("utf-8")
+    return files, all_rows
+
+
+def _current_candidates(
+    evidence_dir: Path,
+) -> tuple[dict[tuple[str, str], tuple[str, Path, dict[str, t.Any]]], list[str]]:
+    """Find the latest complete, inspectable report for each current cell."""
+    candidates: dict[tuple[str, str], tuple[str, Path, dict[str, t.Any]]] = {}
+    errors = []
+    for path in sorted(evidence_dir.rglob(REPORT_NAME)):
+        relative = path.relative_to(evidence_dir)
+        if _is_baseline_path(relative):
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if data.get("scoring_view") not in SCORING_VIEWS:
+            continue
+        try:
+            scoring_view = _validate_current_report(path, data)
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+            errors.append(f"{path}: {error}")
+            continue
+        key = (scoring_view, data["corpus"])
+        started = data.get("environment", {}).get("started_at", "")
+        previous = candidates.get(key)
+        if previous is None or started >= previous[0]:
+            candidates[key] = (started, path, data)
+    return candidates, errors
+
+
+def _complete_view_candidates(
+    candidates: dict[tuple[str, str], tuple[str, Path, dict[str, t.Any]]],
+    errors: list[str],
+    view: str,
+) -> list[tuple[str, Path, dict[str, t.Any]]]:
+    """Return the complete view in registry order or explain its missing cells."""
+    expected = _expected_corpus_totals(view)
+    missing = sorted(
+        set(expected)
+        - {name for candidate_view, name in candidates if candidate_view == view}
+    )
+    if missing:
+        detail = "; ".join(errors[:5])
+        msg = (
+            f"cannot publish {view}: missing {len(missing)} complete corpus cells "
+            f"({', '.join(missing)}). {detail}"
+        )
+        raise ValueError(msg)
+    return [
+        (name, candidates[(view, name)][1], candidates[(view, name)][2])
+        for name in expected
+    ]
+
+
+def _stage_corpus_files(
+    files: dict[str, bytes],
+    evidence_dir: Path,
+    view_root: str,
+    corpus_name: str,
+    report_path: Path,
+    data: dict[str, t.Any],
+) -> list[dict[str, t.Any]]:
+    """Stage sanitized report, run manifest, and all six inspection files."""
+    run_path = report_path.parent.parent
+    run_name = run_path.name
+    manifest_path = run_path / "run-manifest.json"
+    manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    files[f"{view_root}/runs/{run_name}/run-manifest.json"] = _public_json_bytes(
+        manifest_data
+    )
+    report_base = f"{view_root}/runs/{run_name}/{corpus_name}"
+    files[f"{report_base}/{REPORT_NAME}"] = _public_json_bytes(data)
+    markdown = report_path.with_suffix(".md")
+    if markdown.is_file():
+        files[f"{report_base}/benchmark-report.md"] = markdown.read_bytes()
+    for pipeline in MAIN_PIPELINES:
+        inspection = report_path.parent / f"inspection-{pipeline}.jsonl"
+        records = [
+            json.loads(line)
+            for line in inspection.read_text(encoding="utf-8").splitlines()
+        ]
+        content = "\n".join(
+            json.dumps(record, ensure_ascii=False) for record in records
+        )
+        files[f"{report_base}/inspection/{pipeline}.jsonl"] = (content + "\n").encode(
+            "utf-8"
+        )
+    return _report_rows(report_path.relative_to(evidence_dir), data)
+
+
+def _stage_view(
+    files: dict[str, bytes],
+    evidence_dir: Path,
+    candidates: dict[tuple[str, str], tuple[str, Path, dict[str, t.Any]]],
+    errors: list[str],
+    view: str,
+) -> list[dict[str, t.Any]]:
+    """Stage one protocol's files, score table, plots, and protocol manifest."""
+    selected = _complete_view_candidates(candidates, errors, view)
+    root = f"{CURRENT_PREFIX}/{view}"
+    rows = []
+    for corpus_name, report_path, data in selected:
+        rows.extend(
+            _stage_corpus_files(
+                files, evidence_dir, root, corpus_name, report_path, data
+            )
+        )
+    files[f"{root}/{RESULTS_FILE}"] = render_csv(rows).encode("utf-8")
+    files[f"{root}/protocol.json"] = render_protocol_manifest(view).encode("utf-8")
+    for chart_path, svg in render_charts(rows).items():
+        files[f"{root}/{chart_path}"] = svg.encode("utf-8")
+    return rows
+
+
+def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> dict[str, str]:
+    """Publish a fully validated bundle in one parent-SHA-guarded Hub commit."""
+    files, _rows = _bundle_files(evidence_dir, repo_id)
+    info = api.repo_info(repo_id, repo_type="dataset")
+    parent_sha = info.sha
+    if not isinstance(parent_sha, str) or len(parent_sha) != 40:
+        msg = "dataset repository did not return a full parent commit SHA"
+        raise ValueError(msg)
+    existing = api.list_repo_files(repo_id, repo_type="dataset", revision=parent_sha)
+    archive_root = f"{ARCHIVE_PREFIX}/{parent_sha}"
+    archived_paths = {}
+    for source in existing:
+        if source == ".gitattributes" or source.startswith("archive/"):
+            continue
+        if source == "README.md":
+            destination = f"{archive_root}/legacy/README.md"
+        elif source.startswith("current/"):
+            destination = f"{archive_root}/current/{source.removeprefix('current/')}"
+        else:
+            destination = f"{archive_root}/legacy/{source}"
+        archived_paths[source] = destination
+    archive_record = {
+        "schema": "geoparser-benchmark-archive-v1",
+        "source_parent_sha": parent_sha,
+        "snapshot_prefix": archive_root,
+        "files": archived_paths,
+        "note": "Previous public paths are recoverable under this snapshot prefix.",
+    }
+    files[f"{archive_root}/ARCHIVE.json"] = (
+        json.dumps(archive_record, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+    ).encode("utf-8")
+    files[f"archive/index/{parent_sha}.json"] = (
+        json.dumps(archive_record, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+    ).encode("utf-8")
+    files["archive/README.md"] = (
+        b"# Archived benchmark evidence\n\n"
+        b"Every publication records the exact previous Hub commit and maps its "
+        b"old paths into `snapshots/<parent-sha>/`. The matching JSON index is "
+        b"under `index/`; archived files remain available at their mapped paths.\n"
+    )
+
+    from huggingface_hub import (
+        CommitOperationAdd,
+        CommitOperationCopy,
+        CommitOperationDelete,
+    )
+
+    operations = [
+        CommitOperationCopy(
+            src_path_in_repo=source,
+            path_in_repo=destination,
+            src_revision=parent_sha,
+        )
+        for source, destination in archived_paths.items()
+    ]
+    operations.extend(
+        CommitOperationAdd(path_in_repo=path, path_or_fileobj=content)
+        for path, content in files.items()
+    )
+    operations.extend(
+        CommitOperationDelete(path_in_repo=source)
+        for source in archived_paths
+        if source != "README.md"
+    )
+    result = api.create_commit(
         repo_id=repo_id,
         repo_type="dataset",
-        path_or_fileobj=render_card(rows, repo_id=repo_id).encode("utf-8"),
-        path_in_repo="README.md",
-        commit_message="Regenerate dataset card",
+        operations=operations,
+        commit_message="Publish validated benchmark matrix v2",
+        parent_commit=parent_sha,
     )
+    commit_sha = getattr(result, "oid", None)
+    if not isinstance(commit_sha, str) or len(commit_sha) != 40:
+        msg = "Hub commit did not return a full commit SHA"
+        raise ValueError(msg)
+    paths_after = set(
+        api.list_repo_files(repo_id, repo_type="dataset", revision=commit_sha)
+    )
+    required_paths = set(files)
+    required_paths.update(archived_paths.values())
+    missing_paths = sorted(required_paths - paths_after)
+    if missing_paths:
+        msg = f"Hub readback is missing {missing_paths[:10]}"
+        raise RuntimeError(msg)
+    inspection_sample = next(path for path in sorted(files) if "/inspection/" in path)
+    readback_paths = [
+        "README.md",
+        f"{CURRENT_PREFIX}/{STRICT_RAW_VIEW}/{RESULTS_FILE}",
+        f"{CURRENT_PREFIX}/{STRICT_RAW_VIEW}/protocol.json",
+        f"{CURRENT_PREFIX}/{EXACT_FULL_RECORD_DEDUP_VIEW}/{RESULTS_FILE}",
+        f"{CURRENT_PREFIX}/{EXACT_FULL_RECORD_DEDUP_VIEW}/protocol.json",
+        f"{CURRENT_PREFIX}/corpus-sources.md",
+        inspection_sample,
+    ]
+    for path in readback_paths:
+        downloaded = Path(
+            api.hf_hub_download(
+                repo_id,
+                filename=path,
+                repo_type="dataset",
+                revision=commit_sha,
+            )
+        ).read_bytes()
+        if hashlib.sha256(downloaded).digest() != hashlib.sha256(files[path]).digest():
+            msg = f"Hub readback differs from committed artifact {path}"
+            raise RuntimeError(msg)
+    return {"parent_sha": parent_sha, "commit_sha": commit_sha}
 
 
 def build_parser() -> argparse.ArgumentParser:

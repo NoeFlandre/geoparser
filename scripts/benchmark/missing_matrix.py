@@ -38,7 +38,87 @@ MATRIX = (
     CorpusLanguageCell("newsli", "uk", 164, 258),
 )
 
+CURRENT_PIPELINES = (
+    "gliner-minilm",
+    "gliner-jina",
+    "xlm-minilm",
+    "xlm-jina",
+    "otter-minilm",
+    "otter-jina",
+)
+
+# Every current row is one recognizer/resolver combination. These component
+# keys are the keys in MODEL_PINS and are also used to decide safe phase reuse.
+PIPELINE_COMPONENTS = {
+    "gliner-minilm": {"recognizer": "gliner", "resolver": "minilm"},
+    "gliner-jina": {"recognizer": "gliner", "resolver": "jina"},
+    "xlm-minilm": {"recognizer": "xlm_r", "resolver": "minilm"},
+    "xlm-jina": {"recognizer": "xlm_r", "resolver": "jina"},
+    "otter-minilm": {"recognizer": "otter_cross", "resolver": "minilm"},
+    "otter-jina": {"recognizer": "otter_cross", "resolver": "jina"},
+}
+
+# Historical IDs remain valid evidence keys. Values name the exact components
+# and settings that those IDs represented; reports are never rewritten in place.
+LEGACY_PIPELINE_ID_MAP = {
+    "upstream": "spacy:en_core_web_sm + dguzh/geo-all-MiniLM-L6-v2",
+    "swapped": (
+        "fastino/gliner2.5-multi-v1 + jinaai/jina-embeddings-v5-text-small + "
+        "jinaai/jina-reranker-v3.5"
+    ),
+    "hybrid": "fastino/gliner2.5-multi-v1 + dguzh/geo-all-MiniLM-L6-v2",
+    "prior": (
+        "fastino/gliner2.5-multi-v1 + dguzh/geo-all-MiniLM-L6-v2; "
+        "population prior weight=0.3, inflection fallback=false"
+    ),
+    "trim": (
+        "fastino/gliner2.5-multi-v1 + dguzh/geo-all-MiniLM-L6-v2; "
+        "population prior weight=0, inflection fallback=true"
+    ),
+    "population": (
+        "fastino/gliner2.5-multi-v1 + dguzh/geo-all-MiniLM-L6-v2; "
+        "population prior weight=0.1, inflection fallback=false"
+    ),
+    "population-0.05": (
+        "fastino/gliner2.5-multi-v1 + dguzh/geo-all-MiniLM-L6-v2; "
+        "population prior weight=0.05, inflection fallback=false"
+    ),
+    "population-0.2": (
+        "fastino/gliner2.5-multi-v1 + dguzh/geo-all-MiniLM-L6-v2; "
+        "population prior weight=0.2, inflection fallback=false"
+    ),
+    "population-0.3": (
+        "fastino/gliner2.5-multi-v1 + dguzh/geo-all-MiniLM-L6-v2; "
+        "population prior weight=0.3, inflection fallback=false"
+    ),
+    "population-0.5": (
+        "fastino/gliner2.5-multi-v1 + dguzh/geo-all-MiniLM-L6-v2; "
+        "population prior weight=0.5, inflection fallback=false"
+    ),
+    "population-1.0": (
+        "fastino/gliner2.5-multi-v1 + dguzh/geo-all-MiniLM-L6-v2; "
+        "population prior weight=1.0, inflection fallback=false"
+    ),
+    "xlm-minilm": "Davlan/xlm-roberta-base-ner-hrl + dguzh/geo-all-MiniLM-L6-v2",
+    "otter-cross-minilm": (
+        "whoisjones/otter-cross-mmbert + dguzh/geo-all-MiniLM-L6-v2"
+    ),
+}
+
+# Backward-compatible name for callers that used the earlier missing-cell
+# subset. New runs use CURRENT_PIPELINES.
 MISSING_PIPELINES = ("swapped", "xlm-minilm", "otter-cross-minilm")
+
+NEWSLI_EXACT_DEDUP_LANGUAGES = ("ar", "de", "es", "fa", "ja", "ta", "tr")
+NEWSLI_EXACT_DUPLICATES_REMOVED = {
+    "ar": 471,
+    "de": 4,
+    "es": 18,
+    "fa": 147,
+    "ja": 49,
+    "ta": 561,
+    "tr": 216,
+}
 
 # Immutable Hub revisions resolved from the public model API on 2026-10-13.
 MODEL_PINS = {
@@ -122,10 +202,16 @@ def language_coverage(model: str, language: str) -> str:
 
 def resolver_family(pipeline: str) -> str:
     """Return the resolver whose identity determines gold-span reuse."""
-    if pipeline in {"upstream", "hybrid", "xlm-minilm", "otter-cross-minilm"}:
-        return "minilm"
-    if pipeline == "swapped":
-        return "jina"
+    if pipeline in PIPELINE_COMPONENTS:
+        return PIPELINE_COMPONENTS[pipeline]["resolver"]
+    legacy_component = {
+        "upstream": "minilm",
+        "swapped": "jina",
+        "hybrid": "minilm",
+        "otter-cross-minilm": "minilm",
+    }
+    if pipeline in legacy_component:
+        return legacy_component[pipeline]
     if pipeline in {
         "prior",
         "trim",
@@ -137,6 +223,30 @@ def resolver_family(pipeline: str) -> str:
         "population-1.0",
     }:
         return "prior"
+    message = f"Unknown benchmark pipeline: {pipeline}"
+    raise KeyError(message)
+
+
+def recognizer_family(pipeline: str) -> str:
+    """Return the model key that determines reusable recognition output."""
+    if pipeline in PIPELINE_COMPONENTS:
+        return PIPELINE_COMPONENTS[pipeline]["recognizer"]
+    legacy = {
+        "upstream": "spacy",
+        "swapped": "gliner",
+        "hybrid": "gliner",
+        "prior": "gliner",
+        "trim": "gliner",
+        "population": "gliner",
+        "population-0.05": "gliner",
+        "population-0.2": "gliner",
+        "population-0.3": "gliner",
+        "population-0.5": "gliner",
+        "population-1.0": "gliner",
+        "otter-cross-minilm": "otter_cross",
+    }
+    if pipeline in legacy:
+        return legacy[pipeline]
     message = f"Unknown benchmark pipeline: {pipeline}"
     raise KeyError(message)
 
@@ -154,17 +264,34 @@ def resolver_pins(pipeline: str) -> tuple[tuple[str, str], ...]:
 def pipeline_model_metadata(pipeline: str, language: str) -> dict[str, dict[str, str]]:
     """Return license and documented language evidence for each model role."""
     roles = {
-        "swapped": {
-            "recognizer": "gliner",
-            "resolver": "jina_embeddings",
-            "reranker": "jina_reranker",
-        },
-        "xlm-minilm": {"recognizer": "xlm_r", "resolver": "minilm"},
-        "otter-cross-minilm": {
-            "recognizer": "otter_cross",
-            "resolver": "minilm",
-        },
+        pipeline: {
+            "recognizer": components["recognizer"],
+            **(
+                {
+                    "resolver": "jina_embeddings",
+                    "reranker": "jina_reranker",
+                }
+                if components["resolver"] == "jina"
+                else {"resolver": "minilm"}
+            ),
+        }
+        for pipeline, components in PIPELINE_COMPONENTS.items()
     }
+    roles.update(
+        {
+            "swapped": {
+                "recognizer": "gliner",
+                "resolver": "jina_embeddings",
+                "reranker": "jina_reranker",
+            },
+            "hybrid": {"recognizer": "gliner", "resolver": "minilm"},
+            "xlm-minilm": {"recognizer": "xlm_r", "resolver": "minilm"},
+            "otter-cross-minilm": {
+                "recognizer": "otter_cross",
+                "resolver": "minilm",
+            },
+        }
+    )
     try:
         selected = roles[pipeline]
     except KeyError as error:
