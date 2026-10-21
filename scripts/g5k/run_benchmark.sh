@@ -14,14 +14,16 @@
 # durable shared filesystem, so a job that ends at walltime resumes.
 #
 # submit.sh passes LIMIT, DEVICE, CHUNK_SIZE, MIN_SIMILARITY, PIPELINES,
-# CORPORA and PHASES through the OAR job environment. PIPELINES and CORPORA
-# take comma-separated names; PHASES accepts recognition and resolution.
+# CORPORA, PHASES, RUN_OUTPUT_DIR and SCORING_VIEW through the OAR job
+# environment. PIPELINES and CORPORA take comma-separated names; PHASES
+# accepts recognition and resolution.
 
 set -euo pipefail
 
 VENV="${VENV:-$HOME/geoparser-venv}"
 REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
 : "${RESULTS:?Set RESULTS to a durable shared filesystem path (for example Grid5000 Evergreen)}"
+RUN_OUTPUT_DIR="${RUN_OUTPUT_DIR:-$RESULTS}"
 if [ ! -r "$VENV/bin/activate" ]; then
     echo "missing environment: $VENV/bin/activate is not readable" >&2
     echo "set VENV to an existing prepared environment" >&2
@@ -31,6 +33,7 @@ LIMIT="${LIMIT:-}"
 DEVICE="${DEVICE:-auto}"
 CHUNK_SIZE="${CHUNK_SIZE:-5}"
 MIN_SIMILARITY="${MIN_SIMILARITY:-0.0}"
+SCORING_VIEW="${SCORING_VIEW:-strict-raw-v1}"
 
 # Node-local scratch. OAR gives each job a directory under /tmp; fall back to
 # a job-named directory so two jobs on one node cannot collide.
@@ -84,8 +87,8 @@ time "$REPO_ROOT/scripts/g5k/prepare_gazetteer.sh"
 python -m geoparser list
 
 echo "=== running benchmark ==="
-ARGS=(--output-dir "$RESULTS" --device "$DEVICE" --chunk-size "$CHUNK_SIZE"
-      --min-similarity "$MIN_SIMILARITY")
+ARGS=(--output-dir "$RUN_OUTPUT_DIR" --device "$DEVICE" --chunk-size "$CHUNK_SIZE"
+      --min-similarity "$MIN_SIMILARITY" --scoring-view "$SCORING_VIEW")
 if [[ -n "${PIPELINES:-}" ]]; then
     IFS=',' read -r -a selected_pipelines <<< "$PIPELINES"
     for pipeline in "${selected_pipelines[@]}"; do
@@ -113,4 +116,4 @@ fi
 stdbuf -oL -eL python -m scripts.benchmark "${ARGS[@]}"
 
 echo "=== done at $(date -Is) ==="
-ls -la "$RESULTS"
+ls -la "$RUN_OUTPUT_DIR"
