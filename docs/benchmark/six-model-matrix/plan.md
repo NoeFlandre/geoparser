@@ -139,13 +139,16 @@ job name per shard, and retain that name only for a deliberate resume after
 checking scheduler state. Run one small seed shard to build and hash the
 shared gazetteer artifact before starting parallel shards: use the complete
 eight-document `newseye-de` strict-raw shard, so it remains a target result
-instead of a disposable warm-up. Then schedule at most two one-corpus jobs at
-a time, one GPU/four cores each, with the existing two-hour walltime and
-Grid's usage policy. Use the existing Grid coordinator and credentials only;
-do not use paid Hugging Face Jobs or change access. A failed or length-limited
-document remains in the checkpoint and report with its explicit failure status
-and empty prediction where applicable; it is never dropped or silently
-truncated.
+instead of a disposable warm-up. After validating that seed, start with up to
+two concurrent one-corpus jobs as a conservative rollout level, not as a
+Grid'5000 policy limit. Increase safe parallelism across available sites only
+after checking live scheduler capacity and running `usagepolicycheck -t` for
+the planned reservations; do not make duplicate or speculative reservations.
+Keep each job at one GPU/four cores with the existing two-hour walltime. Use
+the existing Grid coordinator and credentials only; do not use paid Hugging
+Face Jobs or change access. A failed or length-limited document remains in
+the checkpoint and report with its explicit failure status and empty
+prediction where applicable; it is never dropped or silently truncated.
 
 Do not count old published rows as current coverage solely from their pipeline
 alias. Reuse an old checkpoint or result only after its source digest, view,
@@ -173,17 +176,19 @@ Each job writes only one corpus/view's checkpoints, reports, inspection files,
 and run manifest. Do not include article text, model caches, or the shared
 gazetteer in the transfer bundle. Keep model raw-output diagnostics at the
 runner's existing 4,096-character cap; full structured predictions and gold
-references remain available for inspection. Before transfer, build and list
-the exact bundle, report its compressed byte count and SHA256, and stop if it
-exceeds the approved private-staging limit of 16 MiB. Do not split or stage
-data until approval specifies whether that cap applies per shard or to the
-entire transfer. After authorized Hub upload, read back every object and verify
-its bytes/SHA256 before deleting the temporary staged copy; retain the
-canonical Grid checkpoints and archive.
+references remain available for inspection. Before any transfer, build and
+list the exact bundle and report its compressed byte count and SHA256. Private
+staging is still pending approval. The proposed limit is 16 MiB total staged
+transfer bytes at any one time across all active shards, with canonical Grid
+checkpoints retained separately under the storage ledger; this is a proposal,
+not an approved limit. Do not split or stage data until the workflow and cap
+are approved. Do not delete temporary staged files unless approval explicitly
+covers deletion after successful Hub readback. Retain the canonical Grid
+checkpoints and archive.
 
-Two permissions are still missing. Approve the proposed private staging
-workflow and confirm whether the 16 MiB cap applies per shard or to the whole
-transfer. Grant write access on the public dataset
+Two permissions are still missing. Approve the proposed private staging and
+cleanup workflow, including the proposed aggregate 16 MiB in-flight cap.
+Grant write access on the public dataset
 `NoeFlandre/geoparser-benchmark-results` to an already authorized token. Do
 not create credentials or change access settings. Once both are available,
 publish the validated current/archive tree in one parent-SHA-guarded Hub commit
