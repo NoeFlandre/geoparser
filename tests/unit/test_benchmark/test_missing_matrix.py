@@ -1,5 +1,7 @@
 """The first-five-corpora comparison is a fixed, reviewed experiment."""
 
+import pytest
+
 from scripts.benchmark import missing_matrix
 
 
@@ -134,3 +136,8 @@ def test_model_metadata_records_license_and_cell_specific_language_coverage():
         True,
         "unspecified",
     )
+
+
+def test_model_metadata_rejects_unknown_pipeline_names():
+    with pytest.raises(KeyError, match="No frozen missing-cell metadata"):
+        missing_matrix.pipeline_model_metadata("unknown-pipeline", "en")

@@ -249,13 +249,9 @@ def test_cli_accepts_each_missing_recognizer_pipeline(pipeline):
 def test_each_current_configuration_has_all_required_model_roles(pipeline):
     pins = pipelines.pipeline_model_pins(pipeline)
 
-    assert "recognizer" in pins
-    assert "resolver" in pins
-    assert "context_sentence_splitter" in pins
-    if pipelines.missing_matrix.resolver_family(pipeline) == "jina":
-        assert "reranker" in pins
-    else:
-        assert "reranker" not in pins
+    required = {"recognizer", "resolver", "context_sentence_splitter"}
+    has_reranker = pipelines.missing_matrix.resolver_family(pipeline) == "jina"
+    assert required.issubset(pins) and ("reranker" in pins) is has_reranker
 
 
 def test_hybrid_uses_gliner2_for_recognition(monkeypatch, tmp_path):

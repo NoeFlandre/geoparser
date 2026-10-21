@@ -35,8 +35,6 @@ from scripts.benchmark.corpora import (
     EXACT_FULL_RECORD_DEDUP_VIEW,
     STRICT_RAW_VIEW,
 )
-from scripts.benchmark.pipelines import HYBRID, PRIOR_SETTINGS
-from scripts.benchmark.report import _number
 
 if t.TYPE_CHECKING:
     from huggingface_hub import CommitOperation
@@ -255,46 +253,6 @@ def render_csv(rows: Sequence[dict[str, t.Any]]) -> str:
     return buffer.getvalue()
 
 
-def _benchmark_section(rows: Sequence[dict[str, t.Any]]) -> list[str]:
-    """One line per corpus family that ran, with its languages and size."""
-    families: dict[str, dict[str, t.Any]] = {}
-    for (corpus, _), row in latest_results(rows).items():
-        prefix = corpus.split("-")[0]
-        family = families.setdefault(prefix, {"languages": {}, "sizes": {}})
-        family["languages"][row["language"]] = None
-        family["sizes"][corpus] = (row["documents"], row["gold_toponyms"])
-    lines = [
-        "## Benchmarks",
-        "",
-        "| Benchmark | Languages | Docs | Toponyms | Source |",
-        "| --- | --- | ---: | ---: | --- |",
-    ]
-    for prefix, family in families.items():
-        name, description = BENCHMARKS.get(prefix, (prefix, ""))
-        documents = sum(size[0] for size in family["sizes"].values())
-        toponyms = sum(size[1] for size in family["sizes"].values())
-        languages = ", ".join(family["languages"])
-        lines.append(
-            f"| {name} | {languages} | {documents} | {toponyms} | {description} |"
-        )
-    return [*lines, ""]
-
-
-def _pipeline_section() -> list[str]:
-    """One row per pipeline: its two stages and what it is."""
-    lines = [
-        "## Pipelines",
-        "",
-        "| Pipeline | Recognition | Resolution | Notes |",
-        "| --- | --- | --- | --- |",
-    ]
-    lines += [
-        f"| **{name}** | {recognition} | {resolution} | {note} |"
-        for name, (recognition, resolution, note) in PIPELINE_DESCRIPTIONS.items()
-    ]
-    return [*lines, "", "All resolve against GeoNames.", ""]
-
-
 def latest_results(
     rows: Sequence[dict[str, t.Any]],
     *,
@@ -339,238 +297,10 @@ def _excluded_pipeline(row: dict[str, t.Any], pipelines: Sequence[str] | None) -
     return pipelines is not None and row["pipeline"] not in pipelines
 
 
-def mark_best(
-    values: Sequence[float | None], *, higher_is_better: bool = True
-) -> list[str]:
-    """
-    Format scores, bolding the best and underlining the second best.
-
-    Scores are compared as displayed, to three decimals, so values that look
-    equal share their emphasis.
-
-    Returns:
-        One Markdown cell per value, a dash for a missing one
-    """
-    shown = [_display_score(value) for value in values]
-    emphasis = _score_emphasis(shown, higher_is_better=higher_is_better)
-    return [_emphasized_score(cell, emphasis) for cell in shown]
-
-
-def _display_score(value: float | None) -> str | None:
-    """Format one score to the precision used in the result tables."""
-    return None if value is None else _number(value)
-
-
-def _score_emphasis(
-    shown: Sequence[str | None], *, higher_is_better: bool
-) -> dict[str, str]:
-    """Choose displayed best and second-best score formatting."""
-    ranked = sorted(
-        {cell for cell in shown if cell is not None},
-        key=float,
-        reverse=higher_is_better,
-    )
-    return dict(zip(ranked, ("**{}**", "<u>{}</u>"), strict=False))
-
-
-def _emphasized_score(cell: str | None, emphasis: dict[str, str]) -> str:
-    """Render a missing, best, second-best, or ordinary table cell."""
-    if cell is None:
-        return "-"
-    return emphasis.get(cell, "{}").format(cell)
-
-
 def _corpus_order(corpora: set[str]) -> list[str]:
     """Registry order first, then any corpus the registry no longer lists."""
     known = [name for name in CORPORA if name in corpora]
     return known + sorted(corpora - set(known))
-
-
-def _leaderboard(
-    rows: Sequence[dict[str, t.Any]],
-    metric: str,
-    title: str,
-    *,
-    higher_is_better: bool = True,
-) -> list[str]:
-    """One compact table: a row per corpus, a column per main pipeline."""
-    latest = latest_results(rows, metric=metric, pipelines=MAIN_PIPELINES)
-    pipelines = _leaderboard_pipelines(latest)
-    corpora = _corpus_order({corpus for corpus, _ in latest})
-    lines = [
-        f"### {title}",
-        "",
-        *_leaderboard_header(pipelines),
-    ]
-    lines.extend(
-        _leaderboard_row(
-            corpus, pipelines, latest, metric, higher_is_better=higher_is_better
-        )
-        for corpus in corpora
-    )
-    return [*lines, ""]
-
-
-def _leaderboard_pipelines(
-    latest: dict[tuple[str, str], dict[str, t.Any]],
-) -> list[str]:
-    """Order only pipeline columns with a result row."""
-    available = {pipeline for _, pipeline in latest}
-    return [name for name in PIPELINE_DESCRIPTIONS if name in available]
-
-
-def _leaderboard_header(pipelines: list[str]) -> tuple[str, str]:
-    """Render the Markdown column heading and separator rows."""
-    return (
-        "| Corpus | Lang | " + " | ".join(pipelines) + " |",
-        "| --- | --- | " + " | ".join("---:" for _ in pipelines) + " |",
-    )
-
-
-def _leaderboard_row(
-    corpus: str,
-    pipelines: list[str],
-    latest: dict[tuple[str, str], dict[str, t.Any]],
-    metric: str,
-    *,
-    higher_is_better: bool,
-) -> str:
-    """Render one corpus's scores and language label."""
-    cells = _leaderboard_cells(corpus, pipelines, latest)
-    language = next(row["language"] for row in cells if row)
-    values = _leaderboard_values(cells, metric)
-    marked = mark_best(values, higher_is_better=higher_is_better)
-    return f"| {corpus} | {language} | " + " | ".join(marked) + " |"
-
-
-def _leaderboard_cells(
-    corpus: str,
-    pipelines: list[str],
-    latest: dict[tuple[str, str], dict[str, t.Any]],
-) -> list[dict[str, t.Any] | None]:
-    """Look up the requested pipeline rows for one corpus."""
-    return [latest.get((corpus, pipeline)) for pipeline in pipelines]
-
-
-def _leaderboard_values(
-    cells: Sequence[dict[str, t.Any] | None], metric: str
-) -> list[float | None]:
-    """Select one metric from each available pipeline row."""
-    return [row[metric] if row else None for row in cells]
-
-
-def _settings(pipeline: str) -> tuple[str, str]:
-    """A variant's (inflection trimming, population weight), as shown."""
-    weight, fallback = PRIOR_SETTINGS.get(pipeline, (0.0, False))
-    return ("on" if fallback else "off"), f"{weight:g}"
-
-
-@dataclass(frozen=True)
-class _AblationData:
-    """Latest score tables and common corpora for one ablation card section."""
-
-    accuracy: dict[tuple[str, str], dict[str, t.Any]]
-    auc: dict[tuple[str, str], dict[str, t.Any]]
-    present: tuple[str, ...]
-    corpora: tuple[str, ...]
-
-
-def _ablation_data(rows: Sequence[dict[str, t.Any]]) -> _AblationData | None:
-    """Select the variant rows and corpora shared by every available variant."""
-    variants = [*ABLATION_PIPELINES, *SWEEP_PIPELINES]
-    accuracy = latest_results(rows, metric="accuracy_at_161km", pipelines=variants)
-    auc = latest_results(rows, metric="auc", pipelines=variants)
-    present = _present_variants(variants, accuracy)
-    if len(present) < 2 or HYBRID not in present:
-        return None
-    corpora = _shared_corpora(accuracy, present)
-    return _AblationData(accuracy, auc, present, corpora)
-
-
-def _present_variants(
-    variants: Sequence[str],
-    accuracy: dict[tuple[str, str], dict[str, t.Any]],
-) -> tuple[str, ...]:
-    """Keep configured variants with at least one latest accuracy row."""
-    return tuple(
-        name for name in variants if any(pipeline == name for _, pipeline in accuracy)
-    )
-
-
-def _shared_corpora(
-    accuracy: dict[tuple[str, str], dict[str, t.Any]], present: tuple[str, ...]
-) -> tuple[str, ...]:
-    """Return corpora with a score for every present ablation variant."""
-    common = {corpus for corpus, _ in accuracy}
-    for name in present:
-        common.intersection_update(
-            corpus for corpus, pipeline in accuracy if pipeline == name
-        )
-    return tuple(sorted(common))
-
-
-def _ablation_value(
-    table: dict[tuple[str, str], dict[str, t.Any]],
-    corpus: str,
-    name: str,
-    metric: str,
-) -> float:
-    """Return one displayed score, rounded to the card's precision."""
-    return round(float(table[(corpus, name)][metric]), 3)
-
-
-def _ablation_mean(
-    table: dict[tuple[str, str], dict[str, t.Any]],
-    corpora: tuple[str, ...],
-    name: str,
-    metric: str,
-) -> float:
-    """Average a variant's displayed score over its common corpora."""
-    return sum(
-        _ablation_value(table, corpus, name, metric) for corpus in corpora
-    ) / len(corpora)
-
-
-def _ablation_win_counts(data: _AblationData, name: str) -> tuple[int, int]:
-    """Count corpora where this variant beats or trails the hybrid."""
-    deltas = [
-        _ablation_value(data.accuracy, corpus, name, "accuracy_at_161km")
-        - _ablation_value(data.accuracy, corpus, HYBRID, "accuracy_at_161km")
-        for corpus in data.corpora
-    ]
-    return sum(delta > 0 for delta in deltas), sum(delta < 0 for delta in deltas)
-
-
-def _ablation_row(data: _AblationData, name: str) -> str:
-    """Render one variant's metrics and wins against the hybrid."""
-    trimming, weight = _settings(name)
-    mean_acc = _ablation_mean(data.accuracy, data.corpora, name, "accuracy_at_161km")
-    mean_auc = _ablation_mean(data.auc, data.corpora, name, "auc")
-    better, worse = _ablation_win_counts(data, name)
-    return (
-        f"| {name} | {trimming} | {weight} | {mean_acc:.3f} | {mean_auc:.3f} "
-        f"| {better} / {worse} |"
-    )
-
-
-def _ablation_section(rows: Sequence[dict[str, t.Any]]) -> list[str]:
-    """Hybrid and each variant, over the corpora every one of them ran on."""
-    data = _ablation_data(rows)
-    if data is None:
-        return []
-    return [
-        "## Ablation",
-        "",
-        "hybrid with one change at a time, recognition held fixed. Means are",
-        f"over the {len(data.corpora)} corpora every variant ran on; the last column",
-        "counts corpora where Acc@161km beats / trails hybrid.",
-        "",
-        "| Variant | Trimming | Prior weight | Mean Acc@161km | Mean AUC "
-        "| Better / worse |",
-        "| --- | --- | ---: | ---: | ---: | ---: |",
-        *(_ablation_row(data, name) for name in data.present),
-        "",
-    ]
 
 
 def _main_charts(
@@ -622,27 +352,6 @@ def render_charts(rows: Sequence[dict[str, t.Any]]) -> dict[str, str]:
     if ablation is not None:
         charts[ABLATION_CHART] = ablation
     return charts
-
-
-def _chart_links(repo_id: str | None) -> list[str]:
-    """Image links to the uploaded charts, or nothing when the repo is unknown."""
-    if repo_id is None:
-        return []
-    base = f"https://huggingface.co/datasets/{repo_id}/resolve/main"
-    return [
-        f"![{CHART_TITLES[metric]}]({base}/{path})\n"
-        for metric, path in CHART_FILES.items()
-    ]
-
-
-def _ablation_chart_link(
-    rows: Sequence[dict[str, t.Any]], repo_id: str | None
-) -> list[str]:
-    """The ablation chart's image link, when there is an ablation to show."""
-    if repo_id is None or not _ablation_section(rows):
-        return []
-    base = f"https://huggingface.co/datasets/{repo_id}/resolve/main"
-    return [f"![Ablation: Acc@161km]({base}/{ABLATION_CHART})", ""]
 
 
 def render_card(rows: Sequence[dict[str, t.Any]], *, repo_id: str | None = None) -> str:
@@ -764,16 +473,7 @@ def render_source_instructions() -> str:
 
 def render_protocol_manifest(scoring_view: str) -> str:
     """Serialize protocol scope, component pins, and legacy display mappings."""
-    if scoring_view == STRICT_RAW_VIEW:
-        corpora = [missing_matrix.cell_name(cell) for cell in missing_matrix.MATRIX]
-    elif scoring_view == EXACT_FULL_RECORD_DEDUP_VIEW:
-        corpora = [
-            f"newsli-{language}"
-            for language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
-        ]
-    else:
-        msg = f"Unknown scoring view: {scoring_view}"
-        raise ValueError(msg)
+    corpora = _protocol_corpora(scoring_view)
     value = {
         "schema": "geoparser-benchmark-publication-v2",
         "scoring_view": scoring_view,
@@ -795,17 +495,36 @@ def render_protocol_manifest(scoring_view: str) -> str:
             "resolution": "geodesic error and Acc@161km over distinct gold span identities",
             "end_to_end_score": None,
         },
-        "transform": (
-            {
-                "record_key": ["start", "end", "name", "latitude", "longitude"],
-                "retained_occurrence": "first exact record in original order",
-            }
-            if scoring_view == EXACT_FULL_RECORD_DEDUP_VIEW
-            else None
-        ),
+        "transform": _protocol_transform(scoring_view),
         "archive": "Earlier public artifacts remain under archive/snapshots/<parent-sha>/.",
     }
     return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+
+
+def _protocol_corpora(scoring_view: str) -> list[str]:
+    builders = {
+        STRICT_RAW_VIEW: lambda: [
+            missing_matrix.cell_name(cell) for cell in missing_matrix.MATRIX
+        ],
+        EXACT_FULL_RECORD_DEDUP_VIEW: lambda: [
+            f"newsli-{language}"
+            for language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
+        ],
+    }
+    try:
+        return builders[scoring_view]()
+    except KeyError as error:
+        message = f"Unknown scoring view: {scoring_view}"
+        raise ValueError(message) from error
+
+
+def _protocol_transform(scoring_view: str) -> dict[str, list[str] | str] | None:
+    if scoring_view != EXACT_FULL_RECORD_DEDUP_VIEW:
+        return None
+    return {
+        "record_key": ["start", "end", "name", "latitude", "longitude"],
+        "retained_occurrence": "first exact record in original order",
+    }
 
 
 def _sha256_text(value: t.Any) -> bool:
@@ -817,58 +536,90 @@ def _sha256_text(value: t.Any) -> bool:
     )
 
 
+def _require_condition(
+    condition: t.Any,
+    message: str,
+    error_type: type[Exception] = ValueError,
+) -> None:
+    """Raise the requested validation error when a condition is false."""
+    if not condition:
+        raise error_type(message)
+
+
 def _contains_private_evidence(value: t.Any) -> bool:
     """Detect fields that can contain source text or model echo output."""
     if isinstance(value, dict):
-        return any(
-            key in PRIVATE_EVIDENCE_KEYS or _contains_private_evidence(item)
-            for key, item in value.items()
-        )
-    if isinstance(value, list):
-        return any(_contains_private_evidence(item) for item in value)
-    return False
+        return _mapping_contains_private_evidence(value)
+    return _sequence_contains_private_evidence(value)
+
+
+def _mapping_contains_private_evidence(value: dict[str, t.Any]) -> bool:
+    return any(
+        key in PRIVATE_EVIDENCE_KEYS or _contains_private_evidence(item)
+        for key, item in value.items()
+    )
+
+
+def _sequence_contains_private_evidence(value: t.Any) -> bool:
+    if not isinstance(value, list):
+        return False
+    return any(_contains_private_evidence(item) for item in value)
 
 
 def _public_json_bytes(data: dict[str, t.Any]) -> bytes:
     """Serialize evidence after removing source text and unbounded model output."""
+    clean = _clean_public_value(data)
+    return (json.dumps(clean, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
-    def clean(value: t.Any) -> t.Any:
-        if isinstance(value, dict):
-            return {
-                key: clean(item)
-                for key, item in value.items()
-                if key not in PRIVATE_EVIDENCE_KEYS
-            }
-        if isinstance(value, list):
-            return [clean(item) for item in value]
-        return value
 
-    return (json.dumps(clean(data), ensure_ascii=False, indent=2) + "\n").encode(
-        "utf-8"
-    )
+def _clean_public_value(value: t.Any) -> t.Any:
+    if isinstance(value, dict):
+        return _clean_public_mapping(value)
+    if isinstance(value, list):
+        return [_clean_public_value(item) for item in value]
+    return value
+
+
+def _clean_public_mapping(value: dict[str, t.Any]) -> dict[str, t.Any]:
+    return {
+        key: _clean_public_value(item)
+        for key, item in value.items()
+        if key not in PRIVATE_EVIDENCE_KEYS
+    }
 
 
 def _expected_corpus_totals(scoring_view: str) -> dict[str, tuple[int, int]]:
     """Return the exact size of every full publication slice."""
-    if scoring_view == STRICT_RAW_VIEW:
-        return {
-            missing_matrix.cell_name(cell): (cell.documents, cell.gold_toponyms)
-            for cell in missing_matrix.MATRIX
-        }
-    if scoring_view == EXACT_FULL_RECORD_DEDUP_VIEW:
-        return {
-            f"newsli-{language}": (
-                cell.documents,
-                cell.gold_toponyms
-                - missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[language],
-            )
-            for cell in missing_matrix.MATRIX
-            if cell.corpus == "newsli"
-            and cell.language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
-            for language in (cell.language,)
-        }
-    msg = f"Unknown scoring view: {scoring_view}"
-    raise ValueError(msg)
+    builders = {
+        STRICT_RAW_VIEW: _strict_raw_corpus_totals,
+        EXACT_FULL_RECORD_DEDUP_VIEW: _deduplicated_corpus_totals,
+    }
+    try:
+        builder = builders[scoring_view]
+    except KeyError as error:
+        message = f"Unknown scoring view: {scoring_view}"
+        raise ValueError(message) from error
+    return builder()
+
+
+def _strict_raw_corpus_totals() -> dict[str, tuple[int, int]]:
+    return {
+        missing_matrix.cell_name(cell): (cell.documents, cell.gold_toponyms)
+        for cell in missing_matrix.MATRIX
+    }
+
+
+def _deduplicated_corpus_totals() -> dict[str, tuple[int, int]]:
+    return {
+        f"newsli-{cell.language}": (
+            cell.documents,
+            cell.gold_toponyms
+            - missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[cell.language],
+        )
+        for cell in missing_matrix.MATRIX
+        if cell.corpus == "newsli"
+        and cell.language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
+    }
 
 
 def _validate_inspection(
@@ -915,35 +666,43 @@ def _validate_inspection_record(
     references: dict[str, list[dict[str, t.Any]]],
 ) -> int:
     """Validate one inspectable example and return its reference count."""
-    if not isinstance(record, dict):
-        msg = f"{path.name}:{line_number} is not a JSON object"
-        raise TypeError(msg)
+    _require_condition(
+        isinstance(record, dict),
+        f"{path.name}:{line_number} is not a JSON object",
+        TypeError,
+    )
+    record = t.cast(dict[str, t.Any], record)
     prefix = f"{path.name}:{line_number}"
-    if record.get("schema") != "geoparser-prediction-inspection-v1":
-        msg = f"{prefix} has an unknown schema"
-        raise ValueError(msg)
-    if record.get("pipeline") != pipeline_name:
-        msg = f"{prefix} has the wrong pipeline"
-        raise ValueError(msg)
-    if record.get("scoring_view") != scoring_view:
-        msg = f"{prefix} has the wrong protocol"
-        raise ValueError(msg)
-    if _contains_private_evidence(record):
-        msg = f"{prefix} includes private text"
-        raise ValueError(msg)
+    _require_condition(
+        record.get("schema") == "geoparser-prediction-inspection-v1",
+        f"{prefix} has an unknown schema",
+    )
+    _require_condition(
+        record.get("pipeline") == pipeline_name, f"{prefix} has the wrong pipeline"
+    )
+    _require_condition(
+        record.get("scoring_view") == scoring_view, f"{prefix} has the wrong protocol"
+    )
+    _require_condition(
+        not _contains_private_evidence(record), f"{prefix} includes private text"
+    )
     _require_inspection_fields(record, INSPECTION_RECORD_FIELDS, prefix)
     document_id = record.get("document_id")
-    if not isinstance(document_id, str) or document_id in references:
-        msg = f"{prefix} has a duplicate/invalid id"
-        raise ValueError(msg)
+    _require_condition(
+        isinstance(document_id, str) and document_id not in references,
+        f"{prefix} has a duplicate/invalid id",
+    )
+    document_id = t.cast(str, document_id)
     reference = record.get("reference")
-    if not isinstance(reference, list):
-        msg = f"{prefix} lacks reference/prediction"
-        raise TypeError(msg)
+    _require_condition(
+        isinstance(reference, list), f"{prefix} lacks reference/prediction", TypeError
+    )
+    reference = t.cast(list[t.Any], reference)
     prediction = _validate_inspection_collections(record, prefix)
-    if record.get("resolution_input") != "gold_reference":
-        msg = f"{prefix} does not identify gold-span resolution input"
-        raise ValueError(msg)
+    _require_condition(
+        record.get("resolution_input") == "gold_reference",
+        f"{prefix} does not identify gold-span resolution input",
+    )
     _validate_reference_spans(reference, prefix)
     for phase in ("recognition", "resolution"):
         _validate_inspection_phase(record, prediction, phase, prefix)
@@ -956,54 +715,69 @@ def _validate_inspection_collections(
 ) -> dict[str, t.Any]:
     """Validate prediction, status, and failure containers in an inspection."""
     prediction = record.get("prediction")
-    if not isinstance(prediction, dict):
-        msg = f"{prefix} lacks reference/prediction"
-        raise TypeError(msg)
+    _require_condition(
+        isinstance(prediction, dict), f"{prefix} lacks reference/prediction", TypeError
+    )
+    prediction = t.cast(dict[str, t.Any], prediction)
     _require_inspection_fields(prediction, {"recognition", "resolution"}, prefix)
     statuses = record["phase_status"]
-    if not isinstance(statuses, dict):
-        msg = f"{prefix} has malformed phase status"
-        raise TypeError(msg)
+    _require_condition(
+        isinstance(statuses, dict), f"{prefix} has malformed phase status", TypeError
+    )
+    statuses = t.cast(dict[str, t.Any], statuses)
     _require_inspection_fields(statuses, {"recognition", "resolution"}, prefix)
     failures = record["failures"]
-    if not isinstance(failures, dict):
-        msg = f"{prefix} has malformed failure details"
-        raise TypeError(msg)
+    _require_condition(
+        isinstance(failures, dict), f"{prefix} has malformed failure details", TypeError
+    )
+    failures = t.cast(dict[str, t.Any], failures)
     _require_inspection_fields(
         failures, {"recognition", "resolution"}, prefix, exact=False
     )
     for failure in failures.values():
-        if not isinstance(failure, dict):
-            msg = f"{prefix} has malformed failure details"
-            raise TypeError(msg)
+        _require_condition(
+            isinstance(failure, dict),
+            f"{prefix} has malformed failure details",
+            TypeError,
+        )
+        failure = t.cast(dict[str, t.Any], failure)
         _require_inspection_fields(failure, {"kind", "reason"}, prefix, exact=False)
-        if any(not isinstance(item, str) for item in failure.values()):
-            msg = f"{prefix} has non-scalar failure details"
-            raise ValueError(msg)
-    if any(not isinstance(status, str) for status in statuses.values()):
-        msg = f"{prefix} has non-scalar phase status"
-        raise ValueError(msg)
+        _require_condition(
+            all(isinstance(item, str) for item in failure.values()),
+            f"{prefix} has non-scalar failure details",
+        )
+    _require_condition(
+        all(isinstance(status, str) for status in statuses.values()),
+        f"{prefix} has non-scalar phase status",
+    )
     return prediction
 
 
 def _validate_reference_spans(reference: list[t.Any], prefix: str) -> None:
     """Require offsets, mention, and coordinates for every reference span."""
     for span in reference:
-        if not isinstance(span, dict):
-            msg = f"{prefix} has an incomplete gold reference"
-            raise TypeError(msg)
-        _require_inspection_fields(span, INSPECTION_REFERENCE_FIELDS, prefix)
-        if type(span["start"]) is not int or type(span["end"]) is not int:
-            msg = f"{prefix} has non-scalar gold offsets"
-            raise ValueError(msg)
-        if not isinstance(span["name"], str):
-            msg = f"{prefix} has a non-scalar gold mention"
-            raise TypeError(msg)
-        if not _finite_number(span["latitude"]) or not _finite_number(
-            span["longitude"]
-        ):
-            msg = f"{prefix} has non-scalar gold coordinates"
-            raise ValueError(msg)
+        _validate_reference_span(span, prefix)
+
+
+def _validate_reference_span(span: t.Any, prefix: str) -> None:
+    _require_condition(
+        isinstance(span, dict), f"{prefix} has an incomplete gold reference", TypeError
+    )
+    span = t.cast(dict[str, t.Any], span)
+    _require_inspection_fields(span, INSPECTION_REFERENCE_FIELDS, prefix)
+    _require_condition(
+        type(span["start"]) is int and type(span["end"]) is int,
+        f"{prefix} has non-scalar gold offsets",
+    )
+    _require_condition(
+        isinstance(span["name"], str),
+        f"{prefix} has a non-scalar gold mention",
+        TypeError,
+    )
+    _require_condition(
+        _finite_number(span["latitude"]) and _finite_number(span["longitude"]),
+        f"{prefix} has non-scalar gold coordinates",
+    )
 
 
 def _finite_number(value: t.Any) -> bool:
@@ -1022,14 +796,22 @@ def _require_inspection_fields(
     fields = value.keys()
     extra = fields - allowed
     missing = allowed - fields if exact else set()
-    if extra or missing:
-        details = []
-        if extra:
-            details.append(f"unexpected {sorted(extra)}")
-        if missing:
-            details.append(f"missing {sorted(missing)}")
-        msg = f"{prefix} has unsupported inspection fields: {', '.join(details)}"
-        raise ValueError(msg)
+    details = _inspection_field_details(extra, missing)
+    _require_condition(
+        not details,
+        f"{prefix} has unsupported inspection fields: {', '.join(details)}",
+    )
+
+
+def _inspection_field_details(
+    extra: t.AbstractSet[str], missing: t.AbstractSet[str]
+) -> list[str]:
+    details = []
+    if extra:
+        details.append(f"unexpected {sorted(extra)}")
+    if missing:
+        details.append(f"missing {sorted(missing)}")
+    return details
 
 
 def _validate_inspection_phase(
@@ -1039,30 +821,51 @@ def _validate_inspection_phase(
     prefix: str,
 ) -> None:
     """Require a prediction and explicit complete/failure status per phase."""
-    predictions = prediction.get(phase)
-    if not isinstance(predictions, list):
-        msg = f"{prefix} lacks {phase} output"
-        raise TypeError(msg)
-    if any(not isinstance(item, dict) for item in predictions):
-        msg = f"{prefix} has a malformed {phase} prediction"
-        raise TypeError(msg)
-    for item in predictions:
-        _validate_inspection_prediction(item, phase, prefix)
+    _validated_phase_predictions(prediction, phase, prefix)
     statuses = record.get("phase_status") or {}
-    if not isinstance(statuses, dict):
-        msg = f"{prefix} has malformed phase status"
-        raise TypeError(msg)
-    status = statuses.get(phase)
-    if status not in {"complete", "failed"}:
-        msg = f"{prefix} has {phase}={status}"
-        raise ValueError(msg)
     failures = record.get("failures") or {}
-    if not isinstance(failures, dict):
-        msg = f"{prefix} has malformed failure details"
-        raise TypeError(msg)
-    if status == "failed" and phase not in failures:
-        msg = f"{prefix} has an unrecorded {phase} failure"
-        raise ValueError(msg)
+    status = _validated_phase_status(statuses, phase, prefix)
+    failures = _validated_phase_failures(failures, prefix)
+    _require_condition(
+        status != "failed" or phase in failures,
+        f"{prefix} has an unrecorded {phase} failure",
+    )
+
+
+def _validated_phase_predictions(
+    prediction: dict[str, t.Any], phase: str, prefix: str
+) -> list[dict[str, t.Any]]:
+    values = prediction.get(phase)
+    _require_condition(
+        isinstance(values, list), f"{prefix} lacks {phase} output", TypeError
+    )
+    predictions = t.cast(list[t.Any], values)
+    for item in predictions:
+        _require_condition(
+            isinstance(item, dict),
+            f"{prefix} has a malformed {phase} prediction",
+            TypeError,
+        )
+        _validate_inspection_prediction(t.cast(dict[str, t.Any], item), phase, prefix)
+    return t.cast(list[dict[str, t.Any]], predictions)
+
+
+def _validated_phase_status(statuses: t.Any, phase: str, prefix: str) -> str:
+    _require_condition(
+        isinstance(statuses, dict), f"{prefix} has malformed phase status", TypeError
+    )
+    status = t.cast(dict[str, t.Any], statuses).get(phase)
+    _require_condition(
+        status in {"complete", "failed"}, f"{prefix} has {phase}={status}"
+    )
+    return t.cast(str, status)
+
+
+def _validated_phase_failures(failures: t.Any, prefix: str) -> dict[str, t.Any]:
+    _require_condition(
+        isinstance(failures, dict), f"{prefix} has malformed failure details", TypeError
+    )
+    return t.cast(dict[str, t.Any], failures)
 
 
 def _validate_inspection_prediction(
@@ -1070,44 +873,55 @@ def _validate_inspection_prediction(
 ) -> None:
     """Require public scalar fields for one predicted annotation."""
     _require_inspection_fields(item, INSPECTION_PREDICTION_FIELDS, prefix)
-    if type(item["start"]) is not int or type(item["end"]) is not int:
-        msg = f"{prefix} has non-scalar {phase} offsets"
-        raise ValueError(msg)
-    if item["identifier"] is not None and not isinstance(item["identifier"], str):
-        msg = f"{prefix} has a non-scalar {phase} identifier"
-        raise ValueError(msg)
-    if any(
-        item[field] is not None and not _finite_number(item[field])
-        for field in ("latitude", "longitude")
-    ):
-        msg = f"{prefix} has non-scalar {phase} coordinates"
-        raise ValueError(msg)
+    _require_condition(
+        type(item["start"]) is int and type(item["end"]) is int,
+        f"{prefix} has non-scalar {phase} offsets",
+    )
+    _require_condition(
+        item["identifier"] is None or isinstance(item["identifier"], str),
+        f"{prefix} has a non-scalar {phase} identifier",
+    )
+    _require_condition(
+        all(
+            item[field] is None or _finite_number(item[field])
+            for field in ("latitude", "longitude")
+        ),
+        f"{prefix} has non-scalar {phase} coordinates",
+    )
 
 
 def _validate_report_scope(data: dict[str, t.Any]) -> tuple[str, str]:
     """Require a complete frozen corpus slice within a declared scoring view."""
     scoring_view = data.get("scoring_view")
-    if scoring_view not in SCORING_VIEWS:
-        msg = "missing or unsupported scoring_view"
-        raise ValueError(msg)
+    _require_condition(
+        scoring_view in SCORING_VIEWS, "missing or unsupported scoring_view"
+    )
+    scoring_view = t.cast(str, scoring_view)
     totals = _expected_corpus_totals(scoring_view)
     corpus_name = data.get("corpus")
-    if corpus_name not in totals:
-        msg = f"{corpus_name!r} is outside {scoring_view}"
-        raise ValueError(msg)
+    _require_condition(
+        corpus_name in totals, f"{corpus_name!r} is outside {scoring_view}"
+    )
+    corpus_name = t.cast(str, corpus_name)
     documents, gold_toponyms = totals[corpus_name]
-    if data.get("partial") is not False or data.get("documents") != documents:
-        msg = f"{corpus_name} is partial or has the wrong document count"
-        raise ValueError(msg)
-    if data.get("gold_toponyms") != gold_toponyms:
-        msg = f"{corpus_name} has the wrong gold toponym count"
-        raise ValueError(msg)
-    if type(data.get("scoring_spans")) is not int or data["scoring_spans"] < 0:
-        msg = f"{corpus_name} has an invalid scoring span count"
-        raise ValueError(msg)
-    if data.get("limit") is not None and data["limit"] < documents:
-        msg = f"{corpus_name} was capped below its full size"
-        raise ValueError(msg)
+    _require_condition(
+        data.get("partial") is False and data.get("documents") == documents,
+        f"{corpus_name} is partial or has the wrong document count",
+    )
+    _require_condition(
+        data.get("gold_toponyms") == gold_toponyms,
+        f"{corpus_name} has the wrong gold toponym count",
+    )
+    scoring_spans = data.get("scoring_spans")
+    _require_condition(
+        type(scoring_spans) is int and scoring_spans >= 0,
+        f"{corpus_name} has an invalid scoring span count",
+    )
+    limit = data.get("limit")
+    _require_condition(
+        limit is None or limit >= documents,
+        f"{corpus_name} was capped below its full size",
+    )
     return scoring_view, corpus_name
 
 
@@ -1115,67 +929,90 @@ def _validate_source_pins(
     data: dict[str, t.Any], corpus_name: str, spec: t.Any
 ) -> None:
     """Require exact source URLs and content hashes for the loaded corpus."""
-    if data.get("source_url") != spec.url:
-        msg = f"{corpus_name} has no matching source URL pin"
-        raise ValueError(msg)
-    if not _sha256_text(data.get("source_content_sha256")):
-        msg = f"{corpus_name} has no SHA-256 source content pin"
-        raise ValueError(msg)
-    if spec.kind == "newsli" and data.get("source_archive_sha256") != data.get(
-        "source_content_sha256"
-    ):
-        msg = f"{corpus_name} has no matching NewsLi archive SHA-256"
-        raise ValueError(msg)
-    if spec.kind == "hipe" and not _sha256_text(data.get("coordinate_cache_sha256")):
-        msg = f"{corpus_name} has no coordinate-cache SHA-256"
-        raise ValueError(msg)
-    if not isinstance(data.get("corpus_digest"), str) or not data["corpus_digest"]:
-        msg = f"{corpus_name} has no parsed corpus digest"
-        raise ValueError(msg)
+    _require_condition(
+        data.get("source_url") == spec.url,
+        f"{corpus_name} has no matching source URL pin",
+    )
+    _require_condition(
+        _sha256_text(data.get("source_content_sha256")),
+        f"{corpus_name} has no SHA-256 source content pin",
+    )
+    _validate_optional_source_hashes(data, corpus_name, spec)
+    digest = data.get("corpus_digest")
+    _require_condition(
+        isinstance(digest, str) and digest,
+        f"{corpus_name} has no parsed corpus digest",
+    )
+
+
+def _validate_optional_source_hashes(
+    data: dict[str, t.Any], corpus_name: str, spec: t.Any
+) -> None:
+    if spec.kind == "newsli":
+        _require_condition(
+            data.get("source_archive_sha256") == data.get("source_content_sha256"),
+            f"{corpus_name} has no matching NewsLi archive SHA-256",
+        )
+    if spec.kind == "hipe":
+        _require_condition(
+            _sha256_text(data.get("coordinate_cache_sha256")),
+            f"{corpus_name} has no coordinate-cache SHA-256",
+        )
 
 
 def _validate_manifest_header(
     manifest: dict[str, t.Any], protocol: dict[str, t.Any], view: str, corpus_name: str
 ) -> None:
     """Require immutable run pins and both independent scoring phases."""
-    if manifest.get("status") not in {"complete", "partial"}:
-        msg = f"{corpus_name} manifest is not complete"
-        raise ValueError(msg)
-    if protocol.get("scoring_view") != view:
-        msg = f"{corpus_name} manifest scoring_view does not match"
-        raise ValueError(msg)
+    _require_condition(
+        manifest.get("status") in {"complete", "partial"},
+        f"{corpus_name} manifest is not complete",
+    )
+    _require_condition(
+        protocol.get("scoring_view") == view,
+        f"{corpus_name} manifest scoring_view does not match",
+    )
     full_commit = manifest.get("full_commit")
-    if not isinstance(full_commit, str) or len(full_commit) != 40:
-        msg = f"{corpus_name} manifest has no full source commit pin"
-        raise ValueError(msg)
-    if not _sha256_text(manifest.get("dependency_lock_sha256")):
-        msg = f"{corpus_name} manifest has no dependency-lock SHA-256"
-        raise ValueError(msg)
-    if set(protocol.get("phases", [])) != {"recognition", "resolution"}:
-        msg = f"{corpus_name} manifest did not request both phases"
-        raise ValueError(msg)
+    _require_condition(
+        isinstance(full_commit, str) and len(full_commit) == 40,
+        f"{corpus_name} manifest has no full source commit pin",
+    )
+    _require_condition(
+        _sha256_text(manifest.get("dependency_lock_sha256")),
+        f"{corpus_name} manifest has no dependency-lock SHA-256",
+    )
+    _require_condition(
+        set(protocol.get("phases", [])) == {"recognition", "resolution"},
+        f"{corpus_name} manifest did not request both phases",
+    )
     _validate_manifest_runtime(protocol, corpus_name)
 
 
 def _validate_manifest_runtime(protocol: dict[str, t.Any], corpus_name: str) -> None:
     """Require fixed gazetteer, resolver, chunk, and device configuration pins."""
-    if protocol.get("gazetteer") != pipelines.GAZETTEER_NAME:
-        msg = f"{corpus_name} manifest has an unexpected gazetteer"
-        raise ValueError(msg)
-    if not _sha256_text(protocol.get("gazetteer_artifact_sha256")):
-        msg = f"{corpus_name} manifest has no gazetteer SHA-256"
-        raise ValueError(msg)
-    if not isinstance(protocol.get("min_similarity"), (int, float)):
-        msg = f"{corpus_name} manifest has no resolver similarity setting"
-        raise TypeError(msg)
-    if not isinstance(protocol.get("chunk_size"), int) or protocol["chunk_size"] < 1:
-        msg = f"{corpus_name} manifest has no valid checkpoint chunk size"
-        raise ValueError(msg)
-    if not isinstance(protocol.get("accelerator"), str) or not isinstance(
-        protocol.get("device"), str
-    ):
-        msg = f"{corpus_name} manifest has no device configuration"
-        raise TypeError(msg)
+    _require_condition(
+        protocol.get("gazetteer") == pipelines.GAZETTEER_NAME,
+        f"{corpus_name} manifest has an unexpected gazetteer",
+    )
+    _require_condition(
+        _sha256_text(protocol.get("gazetteer_artifact_sha256")),
+        f"{corpus_name} manifest has no gazetteer SHA-256",
+    )
+    _require_condition(
+        isinstance(protocol.get("min_similarity"), (int, float)),
+        f"{corpus_name} manifest has no resolver similarity setting",
+        TypeError,
+    )
+    _require_condition(
+        isinstance(protocol.get("chunk_size"), int) and protocol["chunk_size"] >= 1,
+        f"{corpus_name} manifest has no valid checkpoint chunk size",
+    )
+    _require_condition(
+        isinstance(protocol.get("accelerator"), str)
+        and isinstance(protocol.get("device"), str),
+        f"{corpus_name} manifest has no device configuration",
+        TypeError,
+    )
 
 
 def _validate_manifest_source(
@@ -1185,19 +1022,18 @@ def _validate_manifest_source(
     corpus_name: str,
 ) -> None:
     """Match source pins between the run manifest and the corpus report."""
-    if manifest_cell.get("source_url") != spec.url:
-        msg = f"{corpus_name} manifest source URL does not match"
-        raise ValueError(msg)
-    if manifest_cell.get("source_content_sha256") != data["source_content_sha256"]:
-        msg = f"{corpus_name} source SHA-256 differs in its manifest"
-        raise ValueError(msg)
-    if manifest_cell.get("corpus_digest") != data["corpus_digest"]:
-        msg = f"{corpus_name} corpus digest differs in its manifest"
-        raise ValueError(msg)
-    for pin in ("coordinate_cache_sha256", "source_archive_sha256"):
-        if manifest_cell.get(pin) != data.get(pin):
-            msg = f"{corpus_name} {pin} differs in its manifest"
-            raise ValueError(msg)
+    pins = {
+        "source_url": spec.url,
+        "source_content_sha256": data["source_content_sha256"],
+        "corpus_digest": data["corpus_digest"],
+        "coordinate_cache_sha256": data.get("coordinate_cache_sha256"),
+        "source_archive_sha256": data.get("source_archive_sha256"),
+    }
+    for pin, expected in pins.items():
+        _require_condition(
+            manifest_cell.get(pin) == expected,
+            f"{corpus_name} {pin} differs in its manifest",
+        )
 
 
 def _load_manifest_cell(
@@ -1209,50 +1045,64 @@ def _load_manifest_cell(
 ) -> tuple[dict[str, t.Any], dict[str, t.Any], dict[str, t.Any]]:
     """Load a run manifest and validate its source and six-pipeline sections."""
     manifest_path = report_path.parent.parent / "run-manifest.json"
-    if not manifest_path.is_file():
-        msg = f"missing run-manifest.json for {corpus_name}"
-        raise ValueError(msg)
+    _require_condition(
+        manifest_path.is_file(), f"missing run-manifest.json for {corpus_name}"
+    )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     protocol = manifest.get("protocol", {})
     _validate_manifest_header(manifest, protocol, scoring_view, corpus_name)
-    if data.get("gazetteer") != protocol.get("gazetteer") or data.get(
-        "gazetteer_sha256"
-    ) != protocol.get("gazetteer_artifact_sha256"):
-        msg = f"{corpus_name} report and manifest gazetteer pins differ"
-        raise ValueError(msg)
-    if data.get("min_similarity") != protocol.get("min_similarity"):
-        msg = f"{corpus_name} report and manifest resolver settings differ"
-        raise ValueError(msg)
-    if data.get("commit") and not manifest["full_commit"].startswith(data["commit"]):
-        msg = f"{corpus_name} report and manifest commits do not match"
-        raise ValueError(msg)
+    _validate_report_manifest_runtime(data, protocol, manifest, corpus_name)
     model_runs = protocol.get("pipelines", {})
-    if set(model_runs) != set(MAIN_PIPELINES):
-        msg = f"{corpus_name} manifest must pin exactly six pipelines"
-        raise ValueError(msg)
+    _require_condition(
+        set(model_runs) == set(MAIN_PIPELINES),
+        f"{corpus_name} manifest must pin exactly six pipelines",
+    )
     manifest_cell = protocol.get("corpora", {}).get(corpus_name, {})
     _validate_manifest_source(manifest_cell, data, spec, corpus_name)
-    if manifest_cell.get("partial") is not False:
-        msg = f"{corpus_name} manifest marks the corpus as partial"
-        raise ValueError(msg)
-    if (
-        manifest_cell.get("documents") != data.get("documents")
-        or manifest_cell.get("gold_toponyms") != data.get("gold_toponyms")
-        or manifest_cell.get("scoring_spans") != data.get("scoring_spans")
-    ):
-        msg = f"{corpus_name} report and manifest corpus counts differ"
-        raise ValueError(msg)
-    if manifest_cell.get("status") not in {
-        "complete",
-        "complete_with_document_failures",
-    }:
-        msg = f"{corpus_name} manifest corpus status is incomplete"
-        raise ValueError(msg)
+    _require_condition(
+        manifest_cell.get("partial") is False,
+        f"{corpus_name} manifest marks the corpus as partial",
+    )
+    _require_condition(
+        manifest_cell.get("documents") == data.get("documents")
+        and manifest_cell.get("gold_toponyms") == data.get("gold_toponyms")
+        and manifest_cell.get("scoring_spans") == data.get("scoring_spans"),
+        f"{corpus_name} report and manifest corpus counts differ",
+    )
+    _require_condition(
+        manifest_cell.get("status") in {"complete", "complete_with_document_failures"},
+        f"{corpus_name} manifest corpus status is incomplete",
+    )
     cell_pipelines = manifest_cell.get("pipelines", {})
-    if set(cell_pipelines) != set(MAIN_PIPELINES):
-        msg = f"{corpus_name} manifest has incomplete pipeline status"
-        raise ValueError(msg)
+    _require_condition(
+        set(cell_pipelines) == set(MAIN_PIPELINES),
+        f"{corpus_name} manifest has incomplete pipeline status",
+    )
     return model_runs, cell_pipelines, manifest_cell
+
+
+def _validate_report_manifest_runtime(
+    data: dict[str, t.Any],
+    protocol: dict[str, t.Any],
+    manifest: dict[str, t.Any],
+    corpus_name: str,
+) -> None:
+    gazetteer_matches = data.get("gazetteer") == protocol.get("gazetteer") and data.get(
+        "gazetteer_sha256"
+    ) == protocol.get("gazetteer_artifact_sha256")
+    _require_condition(
+        gazetteer_matches,
+        f"{corpus_name} report and manifest gazetteer pins differ",
+    )
+    _require_condition(
+        data.get("min_similarity") == protocol.get("min_similarity"),
+        f"{corpus_name} report and manifest resolver settings differ",
+    )
+    commit = data.get("commit")
+    _require_condition(
+        not commit or manifest["full_commit"].startswith(commit),
+        f"{corpus_name} report and manifest commits do not match",
+    )
 
 
 def _validate_pipeline_evidence(
@@ -1265,52 +1115,77 @@ def _validate_pipeline_evidence(
     """Require all model-role pins, phase metrics, and inspection records."""
     report_pipeline, manifest_pipeline, cell_pipeline = evidence
     expected_pins = pipelines.pipeline_model_pins(name)
-    if manifest_pipeline.get("model_pins", {}) != expected_pins:
-        msg = f"{name} manifest is missing or mispins a model role"
-        raise ValueError(msg)
-    if report_pipeline.get("models") != expected_pins:
-        msg = f"{name} report does not carry every expected model role"
-        raise ValueError(msg)
+    _require_condition(
+        manifest_pipeline.get("model_pins", {}) == expected_pins,
+        f"{name} manifest is missing or mispins a model role",
+    )
+    _require_condition(
+        report_pipeline.get("models") == expected_pins,
+        f"{name} report does not carry every expected model role",
+    )
     settings = manifest_pipeline.get("execution_settings")
-    if not isinstance(settings, dict) or not all(
-        settings.get(role) for role in ("recognition", "resolution")
-    ):
-        msg = f"{name} manifest lacks execution settings"
-        raise ValueError(msg)
-    if not isinstance(settings.get("document_chunk_size"), int):
-        msg = f"{name} manifest lacks its document chunk setting"
-        raise TypeError(msg)
+    _require_condition(
+        isinstance(settings, dict), f"{name} manifest lacks execution settings"
+    )
+    settings = t.cast(dict[str, t.Any], settings)
+    _validate_pipeline_execution_settings(settings, name)
     recognition = report_pipeline.get("recognition") or {}
     resolution = report_pipeline.get("resolution") or {}
-    if not all(
-        recognition.get(metric) is not None for metric in ("precision", "recall", "f1")
-    ):
-        msg = f"{name} is missing recognition metrics"
-        raise ValueError(msg)
-    if not all(
-        resolution.get(metric) is not None
-        for metric in (
-            "accuracy_at_161km",
-            "auc",
-            "median_error_km",
-            "mean_error_km",
-        )
-    ):
-        msg = f"{name} is missing recognition or gold-span resolution"
-        raise ValueError(msg)
-    if cell_pipeline.get("model_pins") != expected_pins:
-        msg = f"{name} result manifest is missing expected model roles"
-        raise ValueError(msg)
-    if cell_pipeline.get("status") != "complete":
-        msg = f"{name} has incomplete phase status"
-        raise ValueError(msg)
-    if cell_pipeline.get("phase_status") != {
-        "recognition": "complete",
-        "resolution": "complete",
-    }:
-        msg = f"{name} is missing a completed scoring phase"
-        raise ValueError(msg)
+    _validate_pipeline_metrics(recognition, resolution, name)
+    _validate_cell_pipeline_status(cell_pipeline, expected_pins, name)
     return _validate_inspection(report_path, report_data, scoring_view, name)
+
+
+def _validate_pipeline_execution_settings(
+    settings: dict[str, t.Any], name: str
+) -> None:
+    _require_condition(
+        all(settings.get(role) for role in ("recognition", "resolution")),
+        f"{name} manifest lacks execution settings",
+    )
+    _require_condition(
+        isinstance(settings.get("document_chunk_size"), int),
+        f"{name} manifest lacks its document chunk setting",
+        TypeError,
+    )
+
+
+def _validate_pipeline_metrics(
+    recognition: dict[str, t.Any], resolution: dict[str, t.Any], name: str
+) -> None:
+    recognition_metrics = ("precision", "recall", "f1")
+    resolution_metrics = (
+        "accuracy_at_161km",
+        "auc",
+        "median_error_km",
+        "mean_error_km",
+    )
+    _require_condition(
+        all(recognition.get(metric) is not None for metric in recognition_metrics),
+        f"{name} is missing recognition metrics",
+    )
+    _require_condition(
+        all(resolution.get(metric) is not None for metric in resolution_metrics),
+        f"{name} is missing recognition or gold-span resolution",
+    )
+
+
+def _validate_cell_pipeline_status(
+    cell_pipeline: dict[str, t.Any], expected_pins: dict[str, str], name: str
+) -> None:
+    _require_condition(
+        cell_pipeline.get("model_pins") == expected_pins,
+        f"{name} result manifest is missing expected model roles",
+    )
+    _require_condition(
+        cell_pipeline.get("status") == "complete",
+        f"{name} has incomplete phase status",
+    )
+    _require_condition(
+        cell_pipeline.get("phase_status")
+        == {"recognition": "complete", "resolution": "complete"},
+        f"{name} is missing a completed scoring phase",
+    )
 
 
 def _validate_current_report(path: Path, data: dict[str, t.Any]) -> str:
@@ -1319,9 +1194,10 @@ def _validate_current_report(path: Path, data: dict[str, t.Any]) -> str:
     spec = CORPORA[corpus_name]
     _validate_source_pins(data, corpus_name, spec)
     results = {item.get("name"): item for item in data.get("pipelines", [])}
-    if set(results) != set(MAIN_PIPELINES):
-        msg = f"{corpus_name} must contain exactly the six current pipelines"
-        raise ValueError(msg)
+    _require_condition(
+        set(results) == set(MAIN_PIPELINES),
+        f"{corpus_name} must contain exactly the six current pipelines",
+    )
     model_runs, cell_pipelines, _manifest_cell = _load_manifest_cell(
         path, data, scoring_view, corpus_name, spec
     )
@@ -1334,19 +1210,37 @@ def _validate_current_report(path: Path, data: dict[str, t.Any]) -> str:
             scoring_view,
             (results[name], model_runs[name], cell_pipelines[name]),
         )
-    first_references = next(iter(references_by_pipeline.values()))
-    if any(refs != first_references for refs in references_by_pipeline.values()):
-        msg = f"{corpus_name} pipelines inspect different gold references"
-        raise ValueError(msg)
-    scoring_spans = sum(
-        len({(span["start"], span["end"]) for span in reference})
-        for reference in first_references.values()
+    first_references = _matching_pipeline_references(
+        references_by_pipeline, corpus_name
     )
-    if data["scoring_spans"] != scoring_spans:
-        msg = f"{corpus_name} scoring span count does not match its inspections"
-        raise ValueError(msg)
+    scoring_spans = _scoring_span_total(first_references)
+    _require_condition(
+        data["scoring_spans"] == scoring_spans,
+        f"{corpus_name} scoring span count does not match its inspections",
+    )
     _validate_dedup_count(data, scoring_view, spec.language, corpus_name)
     return scoring_view
+
+
+def _matching_pipeline_references(
+    references_by_pipeline: dict[str, dict[str, list[dict[str, t.Any]]]],
+    corpus_name: str,
+) -> dict[str, list[dict[str, t.Any]]]:
+    first_references = next(iter(references_by_pipeline.values()))
+    _require_condition(
+        all(refs == first_references for refs in references_by_pipeline.values()),
+        f"{corpus_name} pipelines inspect different gold references",
+    )
+    return first_references
+
+
+def _scoring_span_total(
+    references_by_document: dict[str, list[dict[str, t.Any]]],
+) -> int:
+    return sum(
+        len({(span["start"], span["end"]) for span in reference})
+        for reference in references_by_document.values()
+    )
 
 
 def _validate_dedup_count(
@@ -1385,26 +1279,47 @@ def _current_candidates(
     candidates: dict[tuple[str, str], tuple[str, Path, dict[str, t.Any]]] = {}
     errors = []
     for path in sorted(evidence_dir.rglob(REPORT_NAME)):
-        relative = path.relative_to(evidence_dir)
-        if _is_baseline_path(relative):
-            continue
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        if data.get("scoring_view") not in SCORING_VIEWS:
-            continue
-        try:
-            scoring_view = _validate_current_report(path, data)
-        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
-            errors.append(f"{path}: {error}")
-            continue
-        key = (scoring_view, data["corpus"])
-        started = data.get("environment", {}).get("started_at", "")
-        previous = candidates.get(key)
-        if previous is None or started >= previous[0]:
-            candidates[key] = (started, path, data)
+        _consider_current_report(path, evidence_dir, candidates, errors)
     return candidates, errors
+
+
+def _consider_current_report(
+    path: Path,
+    evidence_dir: Path,
+    candidates: dict[tuple[str, str], tuple[str, Path, dict[str, t.Any]]],
+    errors: list[str],
+) -> None:
+    if _is_baseline_path(path.relative_to(evidence_dir)):
+        return
+    data = _read_candidate_report(path)
+    if data is None or data.get("scoring_view") not in SCORING_VIEWS:
+        return
+    try:
+        scoring_view = _validate_current_report(path, data)
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+        errors.append(f"{path}: {error}")
+        return
+    _keep_latest_candidate(path, data, scoring_view, candidates)
+
+
+def _read_candidate_report(path: Path) -> dict[str, t.Any] | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _keep_latest_candidate(
+    path: Path,
+    data: dict[str, t.Any],
+    scoring_view: str,
+    candidates: dict[tuple[str, str], tuple[str, Path, dict[str, t.Any]]],
+) -> None:
+    key = (scoring_view, data["corpus"])
+    started = data.get("environment", {}).get("started_at", "")
+    previous = candidates.get(key)
+    if previous is None or started >= previous[0]:
+        candidates[key] = (started, path, data)
 
 
 def _complete_view_candidates(
@@ -1530,19 +1445,35 @@ def _repository_matches_bundle(
     required_paths: t.AbstractSet[str] | None = None,
 ) -> bool:
     """Check the live tree and selected new files against exact desired bytes."""
-    live_paths = {
+    if _live_repository_paths(repository_paths) != set(bundle_files):
+        return False
+    if not _required_paths_present(repository_paths, required_paths):
+        return False
+    siblings = getattr(info, "siblings", None)
+    if siblings is None:
+        return False
+    return _bundle_siblings_match(siblings, bundle_files, required_additions)
+
+
+def _live_repository_paths(repository_paths: t.AbstractSet[str]) -> set[str]:
+    return {
         path
         for path in repository_paths
         if path != ".gitattributes" and not path.startswith("archive/")
     }
-    if live_paths != set(bundle_files):
-        return False
-    if required_paths and not set(required_paths).issubset(repository_paths):
-        return False
 
-    siblings = getattr(info, "siblings", None)
-    if siblings is None:
-        return False
+
+def _required_paths_present(
+    repository_paths: t.AbstractSet[str], required_paths: t.AbstractSet[str] | None
+) -> bool:
+    return required_paths is None or set(required_paths).issubset(repository_paths)
+
+
+def _bundle_siblings_match(
+    siblings: Sequence[t.Any],
+    bundle_files: dict[str, bytes],
+    required_additions: dict[str, bytes] | None,
+) -> bool:
     sibling_by_path = {
         _metadata_value(sibling, "rfilename"): sibling for sibling in siblings
     }
@@ -1612,18 +1543,23 @@ def _try_reconcile_publish(
 def _archive_paths(existing: Sequence[str], parent_sha: str) -> dict[str, str]:
     """Map current and legacy files into a recoverable parent snapshot."""
     root = f"{ARCHIVE_PREFIX}/{parent_sha}"
-    archived = {}
-    for source in existing:
-        if source == ".gitattributes" or source.startswith("archive/"):
-            continue
-        if source == "README.md":
-            destination = f"{root}/legacy/README.md"
-        elif source.startswith("current/"):
-            destination = f"{root}/current/{source.removeprefix('current/')}"
-        else:
-            destination = f"{root}/legacy/{source}"
-        archived[source] = destination
-    return archived
+    return {
+        source: _archive_destination(source, root)
+        for source in existing
+        if _should_archive(source)
+    }
+
+
+def _should_archive(source: str) -> bool:
+    return source != ".gitattributes" and not source.startswith("archive/")
+
+
+def _archive_destination(source: str, root: str) -> str:
+    if source == "README.md":
+        return f"{root}/legacy/README.md"
+    if source.startswith("current/"):
+        return f"{root}/current/{source.removeprefix('current/')}"
+    return f"{root}/legacy/{source}"
 
 
 def _add_archive_metadata(
@@ -1667,24 +1603,45 @@ def _publish_operations(
         CommitOperationDelete,
     )
 
-    operations: list[CommitOperation] = [
-        CommitOperationCopy(
+    return [
+        *_archive_copy_operations(archived_paths, parent_sha, CommitOperationCopy),
+        *_archive_delete_operations(archived_paths, files, CommitOperationDelete),
+        *_bundle_add_operations(files, CommitOperationAdd),
+    ]
+
+
+def _archive_copy_operations(
+    archived_paths: dict[str, str], parent_sha: str, operation_type: t.Any
+) -> list[CommitOperation]:
+    return [
+        operation_type(
             src_path_in_repo=source,
             path_in_repo=destination,
             src_revision=parent_sha,
         )
         for source, destination in archived_paths.items()
     ]
-    operations.extend(
-        CommitOperationDelete(path_in_repo=source)
+
+
+def _archive_delete_operations(
+    archived_paths: dict[str, str],
+    files: dict[str, bytes],
+    operation_type: t.Any,
+) -> list[CommitOperation]:
+    return [
+        operation_type(path_in_repo=source)
         for source in archived_paths
         if source != "README.md" and source not in files
-    )
-    operations.extend(
-        CommitOperationAdd(path_in_repo=path, path_or_fileobj=content)
+    ]
+
+
+def _bundle_add_operations(
+    files: dict[str, bytes], operation_type: t.Any
+) -> list[CommitOperation]:
+    return [
+        operation_type(path_in_repo=path, path_or_fileobj=content)
         for path, content in files.items()
-    )
-    return operations
+    ]
 
 
 def _verify_publish_readback(
@@ -1700,19 +1657,13 @@ def _verify_publish_readback(
     )
     required_paths = set(files) | set(archived_paths.values())
     missing_paths = sorted(required_paths - paths_after)
-    if missing_paths:
-        msg = f"Hub readback is missing {missing_paths[:10]}"
-        raise RuntimeError(msg)
+    _require_condition(
+        not missing_paths,
+        f"Hub readback is missing {missing_paths[:10]}",
+        RuntimeError,
+    )
     inspection_sample = next(path for path in sorted(files) if "/inspection/" in path)
-    readback_paths = [
-        "README.md",
-        f"{CURRENT_PREFIX}/{STRICT_RAW_VIEW}/{RESULTS_FILE}",
-        f"{CURRENT_PREFIX}/{STRICT_RAW_VIEW}/protocol.json",
-        f"{CURRENT_PREFIX}/{EXACT_FULL_RECORD_DEDUP_VIEW}/{RESULTS_FILE}",
-        f"{CURRENT_PREFIX}/{EXACT_FULL_RECORD_DEDUP_VIEW}/protocol.json",
-        f"{CURRENT_PREFIX}/corpus-sources.md",
-        inspection_sample,
-    ]
+    readback_paths = _readback_sample_paths(inspection_sample)
     for path in readback_paths:
         downloaded = Path(
             api.hf_hub_download(
@@ -1722,9 +1673,23 @@ def _verify_publish_readback(
                 revision=commit_sha,
             )
         ).read_bytes()
-        if hashlib.sha256(downloaded).digest() != hashlib.sha256(files[path]).digest():
-            msg = f"Hub readback differs from committed artifact {path}"
-            raise RuntimeError(msg)
+        _require_condition(
+            hashlib.sha256(downloaded).digest() == hashlib.sha256(files[path]).digest(),
+            f"Hub readback differs from committed artifact {path}",
+            RuntimeError,
+        )
+
+
+def _readback_sample_paths(inspection_sample: str) -> list[str]:
+    return [
+        "README.md",
+        f"{CURRENT_PREFIX}/{STRICT_RAW_VIEW}/{RESULTS_FILE}",
+        f"{CURRENT_PREFIX}/{STRICT_RAW_VIEW}/protocol.json",
+        f"{CURRENT_PREFIX}/{EXACT_FULL_RECORD_DEDUP_VIEW}/{RESULTS_FILE}",
+        f"{CURRENT_PREFIX}/{EXACT_FULL_RECORD_DEDUP_VIEW}/protocol.json",
+        f"{CURRENT_PREFIX}/corpus-sources.md",
+        inspection_sample,
+    ]
 
 
 def _create_publish_commit(
@@ -1743,32 +1708,60 @@ def _create_publish_commit(
             commit_message="Publish validated benchmark matrix v2",
             parent_commit=parent_sha,
         )
-    except Exception:
-        reconciled_sha = _try_reconcile_publish(
-            api,
-            repo_id,
-            recovery.desired_files,
-            recovery.archive_additions,
-            recovery.archived_paths,
+    except Exception as error:  # noqa: BLE001 -- commit transport errors can leave outcome uncertain.
+        return (
+            _reconcile_or_raise(
+                api,
+                repo_id,
+                recovery,
+                error,
+            ),
+            "reconciled",
         )
-        if reconciled_sha is not None:
-            return reconciled_sha, "reconciled"
-        raise
-
     commit_sha = getattr(result, "oid", None)
+    return _publish_commit_result(
+        commit_sha,
+        api,
+        repo_id,
+        recovery,
+    )
+
+
+def _publish_commit_result(
+    commit_sha: t.Any,
+    api: t.Any,
+    repo_id: str,
+    recovery: _PublishRecovery,
+) -> tuple[str, str]:
     if not isinstance(commit_sha, str) or len(commit_sha) != 40:
-        error = ValueError("Hub commit did not return a full commit SHA")
-        reconciled_sha = _try_reconcile_publish(
-            api,
-            repo_id,
-            recovery.desired_files,
-            recovery.archive_additions,
-            recovery.archived_paths,
+        return (
+            _reconcile_or_raise(
+                api,
+                repo_id,
+                recovery,
+                ValueError("Hub commit did not return a full commit SHA"),
+            ),
+            "reconciled",
         )
-        if reconciled_sha is not None:
-            return reconciled_sha, "reconciled"
-        raise error
     return commit_sha, "published"
+
+
+def _reconcile_or_raise(
+    api: t.Any,
+    repo_id: str,
+    recovery: _PublishRecovery,
+    error: Exception,
+) -> str:
+    reconciled_sha = _try_reconcile_publish(
+        api,
+        repo_id,
+        recovery.desired_files,
+        recovery.archive_additions,
+        recovery.archived_paths,
+    )
+    if reconciled_sha is None:
+        raise error
+    return reconciled_sha
 
 
 def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> dict[str, str]:
@@ -1776,18 +1769,38 @@ def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> dict[str, str]:
     files, _rows = _bundle_files(evidence_dir, repo_id)
     desired_files = dict(files)
     info = api.repo_info(repo_id, repo_type="dataset", files_metadata=True)
-    parent_sha = info.sha
-    if not isinstance(parent_sha, str) or len(parent_sha) != 40:
-        msg = "dataset repository did not return a full parent commit SHA"
-        raise ValueError(msg)
-    existing = api.list_repo_files(repo_id, repo_type="dataset", revision=parent_sha)
+    parent_sha = _validate_parent_sha(info)
+    existing = list(
+        api.list_repo_files(repo_id, repo_type="dataset", revision=parent_sha)
+    )
     if _repository_matches_bundle(info, set(existing), desired_files):
-        return {
-            "parent_sha": parent_sha,
-            "commit_sha": parent_sha,
-            "status": "unchanged",
-        }
+        return _unchanged_publish_result(parent_sha)
+    return _publish_changed_bundle(
+        api, repo_id, parent_sha, existing, files, desired_files
+    )
 
+
+def _validate_parent_sha(info: t.Any) -> str:
+    parent_sha = getattr(info, "sha", None)
+    _require_condition(
+        isinstance(parent_sha, str) and len(parent_sha) == 40,
+        "dataset repository did not return a full parent commit SHA",
+    )
+    return t.cast(str, parent_sha)
+
+
+def _unchanged_publish_result(parent_sha: str) -> dict[str, str]:
+    return {"parent_sha": parent_sha, "commit_sha": parent_sha, "status": "unchanged"}
+
+
+def _publish_changed_bundle(
+    api: t.Any,
+    repo_id: str,
+    parent_sha: str,
+    existing: Sequence[str],
+    files: dict[str, bytes],
+    desired_files: dict[str, bytes],
+) -> dict[str, str]:
     archived_paths = _archive_paths(existing, parent_sha)
     archive_additions = _add_archive_metadata(
         files, desired_files, parent_sha, archived_paths
@@ -1802,21 +1815,35 @@ def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> dict[str, str]:
         recovery,
     )
     if status == "published":
-        try:
-            _verify_publish_readback(api, repo_id, commit_sha, files, archived_paths)
-        except Exception:
-            reconciled_sha = _try_reconcile_publish(
-                api,
-                repo_id,
-                recovery.desired_files,
-                recovery.archive_additions,
-                recovery.archived_paths,
-            )
-            if reconciled_sha is None:
-                raise
-            commit_sha = reconciled_sha
-            status = "reconciled"
+        commit_sha, status = _verify_or_reconcile_publish(
+            api, repo_id, commit_sha, files, recovery
+        )
     return {"parent_sha": parent_sha, "commit_sha": commit_sha, "status": status}
+
+
+def _verify_or_reconcile_publish(
+    api: t.Any,
+    repo_id: str,
+    commit_sha: str,
+    files: dict[str, bytes],
+    recovery: _PublishRecovery,
+) -> tuple[str, str]:
+    try:
+        _verify_publish_readback(
+            api, repo_id, commit_sha, files, recovery.archived_paths
+        )
+    except Exception:
+        reconciled_sha = _try_reconcile_publish(
+            api,
+            repo_id,
+            recovery.desired_files,
+            recovery.archive_additions,
+            recovery.archived_paths,
+        )
+        if reconciled_sha is None:
+            raise
+        return reconciled_sha, "reconciled"
+    return commit_sha, "published"
 
 
 def build_parser() -> argparse.ArgumentParser:

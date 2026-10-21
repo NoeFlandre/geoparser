@@ -155,12 +155,15 @@ class TestRenderMarkdown:
         """Test that the header carries what the numbers depend on."""
         text = self.render([self.result()])
 
-        assert "- Documents: 2" in text
-        assert "- Gold reference rows: 14" in text
-        assert "- Distinct scoring spans: 14" in text
-        assert "Exact duplicate reference rows retained by strict raw" in text
-        assert "- Gazetteer: geonames" in text
-        assert "- Shared abstention threshold: 0.0" in text
+        expected_parameters = (
+            "- Documents: 2",
+            "- Gold reference rows: 14",
+            "- Distinct scoring spans: 14",
+            "Exact duplicate reference rows retained by strict raw",
+            "- Gazetteer: geonames",
+            "- Shared abstention threshold: 0.0",
+        )
+        assert all(parameter in text for parameter in expected_parameters)
 
     def test_marks_a_limited_input_slice_as_partial(self):
         """A reader can distinguish a smoke slice from a complete corpus result."""

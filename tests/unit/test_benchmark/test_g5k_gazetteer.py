@@ -70,6 +70,19 @@ def test_g5k_gazetteer_helper_is_executable():
 SUBMIT_SCRIPT = Path(__file__).resolve().parents[3] / "scripts/g5k/submit.sh"
 
 
+def _run_submit(env):
+    bash = shutil.which("bash")
+    if bash is None:
+        raise RuntimeError("The Grid5000 submit regression requires Bash")
+    return subprocess.run(
+        [bash, str(SUBMIT_SCRIPT)],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
 @pytest.mark.skipif(os.name == "nt", reason="Grid5000 submission requires POSIX shell")
 def test_g5k_submit_forwards_memory_ceiling(tmp_path):
     """A configured installer memory cap reaches the OAR job command."""
@@ -107,22 +120,16 @@ def test_g5k_submit_forwards_memory_ceiling(tmp_path):
             "GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB": "6144",
         }
     )
-    bash = shutil.which("bash")
-    if bash is None:
-        raise RuntimeError("The Grid5000 submit regression requires Bash")
-    subprocess.run(
-        [bash, str(SUBMIT_SCRIPT)],
-        check=True,
-        capture_output=True,
-        text=True,
-        env=env,
-    )
+    _run_submit(env)
 
     command = (tmp_path / "oarsub-args.txt").read_text(encoding="utf-8")
-    assert "host=1/gpu=1/core=4,walltime=2:00" in command
-    assert "GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB='6144'" in command
-    assert f"RUN_OUTPUT_DIR='{tmp_path}/results/evidence/shard-a'" in command
-    assert "SCORING_VIEW='newsli-exact-full-record-dedup-v1'" in command
+    expected = (
+        "host=1/gpu=1/core=4,walltime=2:00",
+        "GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB='6144'",
+        f"RUN_OUTPUT_DIR='{tmp_path}/results/evidence/shard-a'",
+        "SCORING_VIEW='newsli-exact-full-record-dedup-v1'",
+    )
+    assert all(argument in command for argument in expected)
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Grid5000 submission requires POSIX shell")
@@ -227,13 +234,20 @@ def test_g5k_worker_forwards_view_and_shard_output_dir(tmp_path):
     assert result.returncode == 0, result.stderr
     captured = (tmp_path / "benchmark-args.bin").read_bytes().split(b"\0")[:-1]
     args = [part.decode() for part in captured]
-    assert args[:2] == ["-m", "scripts.benchmark"]
-    assert args[args.index("--output-dir") + 1] == str(run_output)
-    assert args[args.index("--scoring-view") + 1] == (
-        "newsli-exact-full-record-dedup-v1"
+    forwarded = (
+        args[:2],
+        args[args.index("--output-dir") + 1],
+        args[args.index("--scoring-view") + 1],
+        args[args.index("--corpus") + 1],
+        args[args.index("--chunk-size") + 1],
     )
-    assert args[args.index("--corpus") + 1] == "newsli-fa"
-    assert args[args.index("--chunk-size") + 1] == "5"
+    assert forwarded == (
+        ["-m", "scripts.benchmark"],
+        str(run_output),
+        "newsli-exact-full-record-dedup-v1",
+        "newsli-fa",
+        "5",
+    )
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Grid5000 submission requires POSIX shell")

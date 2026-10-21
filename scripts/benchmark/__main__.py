@@ -88,6 +88,17 @@ class _CorpusExecution:
     manifest: dict
 
 
+@dataclass(frozen=True)
+class _PhaseReusePlan:
+    """The selected phases and drivers for one pipeline's reuse checks."""
+
+    phases: Sequence[str]
+    selected: Sequence[str]
+    recognition_drivers: dict[str, str]
+    resolver_drivers: dict[str, str]
+    shareable: set[str]
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Return the argument parser for the benchmark CLI."""
     parser = argparse.ArgumentParser(
@@ -391,17 +402,24 @@ def _phases_for_pipeline(
     recognition_drivers: dict[str, str] | None = None,
 ) -> list[str]:
     """Skip phases whose exact model components already have a driver."""
-    selected = list(phases)
-    if name in shareable:
-        if drivers.get(missing_matrix.resolver_family(name), name) != name:
-            selected = [phase for phase in selected if phase != runner.RESOLUTION]
-        recognition_drivers = recognition_drivers or {}
-        if (
-            recognition_drivers.get(missing_matrix.recognizer_family(name), name)
-            != name
-        ):
-            selected = [phase for phase in selected if phase != runner.RECOGNITION]
-    return selected
+    if name not in shareable:
+        return list(phases)
+    selected = _remove_shared_resolver_phase(name, phases, drivers)
+    return _remove_shared_recognition_phase(name, selected, recognition_drivers or {})
+
+
+def _remove_shared_resolver_phase(
+    name: str, phases: Sequence[str], drivers: dict[str, str]
+) -> list[str]:
+    driver = drivers.get(missing_matrix.resolver_family(name), name)
+    return [phase for phase in phases if phase != runner.RESOLUTION or driver == name]
+
+
+def _remove_shared_recognition_phase(
+    name: str, phases: Sequence[str], drivers: dict[str, str]
+) -> list[str]:
+    driver = drivers.get(missing_matrix.recognizer_family(name), name)
+    return [phase for phase in phases if phase != runner.RECOGNITION or driver == name]
 
 
 def _score_one_requested_pipeline(
@@ -418,18 +436,55 @@ def _score_one_requested_pipeline(
         name, phases, shareable, drivers, recognition_drivers
     )
     result = _score_pipeline(run, name, selected)
-    if name in shareable:
-        reuse_sources = (
-            (
-                runner.RECOGNITION,
-                recognition_drivers.get(missing_matrix.recognizer_family(name)),
-            ),
-            (runner.RESOLUTION, drivers.get(missing_matrix.resolver_family(name))),
-        )
-        for phase, source in reuse_sources:
-            if phase in phases and phase not in selected and source and source != name:
-                result = _reuse_phase(run, name, source, result, phase)
+    plan = _PhaseReusePlan(
+        phases=phases,
+        selected=selected,
+        recognition_drivers=recognition_drivers,
+        resolver_drivers=drivers,
+        shareable=shareable,
+    )
+    return _reuse_skipped_phases(run, name, result, plan)
+
+
+def _reuse_skipped_phases(
+    run: _CorpusRun,
+    name: str,
+    result: report.PipelineResult,
+    plan: _PhaseReusePlan,
+) -> report.PipelineResult:
+    if name not in plan.shareable:
+        return result
+    sources = (
+        (
+            runner.RECOGNITION,
+            plan.recognition_drivers.get(missing_matrix.recognizer_family(name)),
+        ),
+        (
+            runner.RESOLUTION,
+            plan.resolver_drivers.get(missing_matrix.resolver_family(name)),
+        ),
+    )
+    for phase, source in sources:
+        result = _reuse_phase_if_needed(run, name, phase, source, result, plan)
     return result
+
+
+def _reuse_phase_if_needed(
+    run: _CorpusRun,
+    name: str,
+    phase: str,
+    source: str | None,
+    result: report.PipelineResult,
+    plan: _PhaseReusePlan,
+) -> report.PipelineResult:
+    if (
+        phase not in plan.phases
+        or phase in plan.selected
+        or not source
+        or source == name
+    ):
+        return result
+    return _reuse_phase(run, name, source, result, phase)
 
 
 def _run_identity(run: _CorpusRun, pipeline_name: str) -> ckpt.RunIdentity:
@@ -978,64 +1033,142 @@ def _manifest_corpus_cell(
 ) -> dict:
     """Describe expected counts and split rules for one requested corpus."""
     spec = corpora.CORPORA[name]
-    documents = fixed.documents if fixed else spec.documents
-    gold_toponyms = fixed.gold_toponyms if fixed else spec.gold_spans
-    exact_duplicates = (
-        missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED.get(spec.language, 0)
-        if getattr(spec, "kind", None) == corpora.NEWSLI
-        else 0
+    counts = _manifest_counts(name, spec, fixed, scoring_view, limit)
+    return _manifest_cell_data(name, spec, fixed, scoring_view, limit, counts)
+
+
+def _manifest_base_counts(spec: Any, fixed: Any) -> tuple[int | None, int | None]:
+    if fixed is not None:
+        return fixed.documents, fixed.gold_toponyms
+    return spec.documents, spec.gold_spans
+
+
+def _manifest_counts(
+    name: str,
+    spec: Any,
+    fixed: Any,
+    scoring_view: str,
+    limit: int | None,
+) -> tuple[int | None, int | None]:
+    documents, gold_toponyms = _manifest_base_counts(spec, fixed)
+    if scoring_view != corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
+        return documents, gold_toponyms
+    gold_toponyms = _deduplicated_gold_count(name, spec, fixed)
+    documents, gold_toponyms = _cap_deduplicated_totals(
+        fixed, limit, documents, gold_toponyms
     )
-    if scoring_view == corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
-        if (
-            fixed is None
-            or spec.language not in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
-        ):
-            msg = f"{name} is outside the NewsLi exact-dedup matrix"
-            raise ValueError(msg)
-        gold_toponyms = (
-            fixed.gold_toponyms
-            - missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[spec.language]
-        )
-        if limit is not None and limit < fixed.documents:
-            documents, gold_toponyms = limit, None
-    scoring_spans = (
-        None
-        if gold_toponyms is None
-        or (fixed and limit is not None and limit < fixed.documents)
-        else gold_toponyms
-        - (exact_duplicates if scoring_view == corpora.STRICT_RAW_VIEW else 0)
+    return documents, gold_toponyms
+
+
+def _deduplicated_gold_count(name: str, spec: Any, fixed: Any) -> int:
+    if (
+        fixed is None
+        or spec.language not in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
+    ):
+        message = f"{name} is outside the NewsLi exact-dedup matrix"
+        raise ValueError(message)
+    return (
+        fixed.gold_toponyms
+        - missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[spec.language]
     )
+
+
+def _cap_deduplicated_totals(
+    fixed: Any,
+    limit: int | None,
+    documents: int | None,
+    gold_toponyms: int,
+) -> tuple[int | None, int | None]:
+    if fixed is not None and limit is not None and limit < fixed.documents:
+        return limit, None
+    return documents, gold_toponyms
+
+
+def _manifest_exact_duplicate_count(spec: Any) -> int:
+    if getattr(spec, "kind", None) != corpora.NEWSLI:
+        return 0
+    return missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED.get(spec.language, 0)
+
+
+def _manifest_scoring_spans(
+    gold_toponyms: int | None,
+    fixed: Any,
+    scoring_view: str,
+    limit: int | None,
+    exact_duplicates: int,
+) -> int | None:
+    if _manifest_spans_unknown(gold_toponyms, fixed, limit):
+        return None
+    return _manifest_span_count(gold_toponyms, scoring_view, exact_duplicates)
+
+
+def _manifest_spans_unknown(
+    gold_toponyms: int | None, fixed: Any, limit: int | None
+) -> bool:
+    return gold_toponyms is None or (
+        fixed is not None and limit is not None and limit < fixed.documents
+    )
+
+
+def _manifest_span_count(
+    gold_toponyms: int | None, scoring_view: str, exact_duplicates: int
+) -> int | None:
+    if gold_toponyms is None:
+        return None
+    if scoring_view == corpora.STRICT_RAW_VIEW:
+        return gold_toponyms - exact_duplicates
+    return gold_toponyms
+
+
+def _manifest_cell_data(
+    name: str,
+    spec: Any,
+    fixed: Any,
+    scoring_view: str,
+    limit: int | None,
+    counts: tuple[int | None, int | None],
+) -> dict:
+    documents, gold_toponyms = counts
+    exact_duplicates = _manifest_exact_duplicate_count(spec)
     return {
         "language": spec.language,
         "expected_documents": documents,
         "expected_gold_toponyms": gold_toponyms,
-        "scoring_spans": scoring_spans,
-        "pre_transform_gold_toponyms": (
-            fixed.gold_toponyms
-            if fixed
-            and scoring_view == corpora.EXACT_FULL_RECORD_DEDUP_VIEW
-            and (limit is None or limit >= fixed.documents)
-            else None
+        "scoring_spans": _manifest_scoring_spans(
+            gold_toponyms, fixed, scoring_view, limit, exact_duplicates
         ),
-        "exact_duplicate_records": (
-            missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED.get(spec.language, 0)
-            if getattr(spec, "kind", None) == corpora.NEWSLI
-            else 0
+        "pre_transform_gold_toponyms": _manifest_pretransform_gold(
+            fixed, scoring_view, limit
         ),
-        "duplicate_records_removed": (
-            missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[spec.language]
-            if scoring_view == corpora.EXACT_FULL_RECORD_DEDUP_VIEW
-            else 0
-        ),
-        "evaluation_rule": (
-            "frozen first-five-corpora matrix"
-            if fixed
-            else "registered benchmark adapter"
-        ),
+        "exact_duplicate_records": exact_duplicates,
+        "duplicate_records_removed": _manifest_removed_duplicates(spec, scoring_view),
+        "evaluation_rule": _manifest_evaluation_rule(fixed),
         "source_split": _manifest_source_split(name),
         "source_url": getattr(spec, "url", None),
         "status": "pending",
     }
+
+
+def _manifest_pretransform_gold(
+    fixed: Any, scoring_view: str, limit: int | None
+) -> int | None:
+    if fixed is None or scoring_view != corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
+        return None
+    if limit is not None and limit < fixed.documents:
+        return None
+    return fixed.gold_toponyms
+
+
+def _manifest_removed_duplicates(spec: Any, scoring_view: str) -> int:
+    if scoring_view != corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
+        return 0
+    return missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[spec.language]
+
+
+def _manifest_evaluation_rule(fixed: Any) -> str:
+    if fixed is not None:
+        return "frozen first-five-corpora matrix"
+    return "registered corpus adapter"
 
 
 def _manifest_corpus_cells(
@@ -1448,29 +1581,44 @@ def _manifest_plan(arguments: argparse.Namespace) -> _ManifestPlan:
 def _requested_corpus_names(arguments: argparse.Namespace) -> list[str]:
     """Expand the all-corpora selector and preserve unique request order."""
     scoring_view = getattr(arguments, "scoring_view", corpora.STRICT_RAW_VIEW)
-    requested = arguments.corpus or (
-        ["all"]
-        if scoring_view == corpora.EXACT_FULL_RECORD_DEDUP_VIEW
-        else list(corpora.DEFAULT)
-    )
+    requested = _corpus_request(arguments, scoring_view)
+    names = _expand_corpus_request(requested, scoring_view)
+    _validate_dedup_corpus_names(names, scoring_view)
+    return list(dict.fromkeys(names))
+
+
+def _corpus_request(arguments: argparse.Namespace, scoring_view: str) -> list[str]:
+    if arguments.corpus:
+        return arguments.corpus
+    if scoring_view == corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
+        return ["all"]
+    return list(corpora.DEFAULT)
+
+
+def _expand_corpus_request(requested: list[str], scoring_view: str) -> list[str]:
     if "all" in requested and scoring_view == corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
-        names = [
+        return [
             f"newsli-{language}"
             for language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
         ]
-    else:
-        names = list(corpora.CORPORA) if "all" in requested else requested
-    if scoring_view == corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
-        allowed = {
-            f"newsli-{language}"
-            for language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
-        }
-        invalid = [name for name in names if name not in allowed]
-        if invalid:
-            raise ValueError(
-                "NewsLi exact-record dedup cannot score: " + ", ".join(invalid)
-            )
-    return list(dict.fromkeys(names))
+    return list(corpora.CORPORA) if "all" in requested else requested
+
+
+def _validate_dedup_corpus_names(names: Sequence[str], scoring_view: str) -> None:
+    if scoring_view != corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
+        return
+    allowed = {
+        f"newsli-{language}" for language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
+    }
+    invalid = [name for name in names if name not in allowed]
+    _require_requested_corpus_names(invalid)
+
+
+def _require_requested_corpus_names(invalid: list[str]) -> None:
+    if invalid:
+        raise ValueError(
+            "NewsLi exact-record dedup cannot score: " + ", ".join(invalid)
+        )
 
 
 if __name__ == "__main__":

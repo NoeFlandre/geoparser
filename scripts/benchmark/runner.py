@@ -89,62 +89,102 @@ def inspection_records(
     scoring_view: str,
 ) -> list[dict[str, t.Any]]:
     """Return one text-free reference/prediction record per input document."""
-    records = []
-    for document in documents:
-        failures = {
-            phase: state.failures.get(phase, {}).get(document.identifier)
-            for phase in (RECOGNITION, RESOLUTION)
+    return [
+        _inspection_record(document, state, pipeline, scoring_view)
+        for document in documents
+    ]
+
+
+def _inspection_record(
+    document: Document,
+    state: ckpt.Checkpoint,
+    pipeline: str,
+    scoring_view: str,
+) -> dict[str, t.Any]:
+    failures = _document_phase_failures(document, state)
+    return {
+        "schema": "geoparser-prediction-inspection-v1",
+        "pipeline": pipeline,
+        "scoring_view": scoring_view,
+        "document_id": document.identifier,
+        "reference": _inspection_references(document),
+        "resolution_input": "gold_reference",
+        "prediction": _inspection_predictions(document, state),
+        "phase_status": _document_phase_status(document, state, failures),
+        "failures": _public_phase_failures(failures),
+    }
+
+
+def _document_phase_failures(
+    document: Document, state: ckpt.Checkpoint
+) -> dict[str, dict[str, t.Any] | None]:
+    return {
+        phase: state.failures.get(phase, {}).get(document.identifier)
+        for phase in (RECOGNITION, RESOLUTION)
+    }
+
+
+def _document_phase_status(
+    document: Document,
+    state: ckpt.Checkpoint,
+    failures: dict[str, dict[str, t.Any] | None],
+) -> dict[str, str]:
+    return {
+        phase: _phase_status(document, state, phase, failures[phase])
+        for phase in (RECOGNITION, RESOLUTION)
+    }
+
+
+def _phase_status(
+    document: Document,
+    state: ckpt.Checkpoint,
+    phase: str,
+    failure: dict[str, t.Any] | None,
+) -> str:
+    if failure:
+        return "failed"
+    return "complete" if document.identifier in state.completed(phase) else "incomplete"
+
+
+def _public_phase_failures(
+    failures: dict[str, dict[str, t.Any] | None],
+) -> dict[str, dict[str, t.Any]]:
+    return {
+        phase: {key: failure[key] for key in ("kind", "reason") if key in failure}
+        for phase, failure in failures.items()
+        if failure
+    }
+
+
+def _inspection_references(document: Document) -> list[dict[str, t.Any]]:
+    return [
+        {
+            "start": span.start,
+            "end": span.end,
+            "name": span.name,
+            "latitude": span.latitude,
+            "longitude": span.longitude,
         }
-        phase_status = {
-            phase: (
-                "failed"
-                if failures[phase]
-                else "complete"
-                if document.identifier in state.completed(phase)
-                else "incomplete"
-            )
-            for phase in (RECOGNITION, RESOLUTION)
-        }
-        safe_failures = {
-            phase: {key: failure[key] for key in ("kind", "reason") if key in failure}
-            for phase, failure in failures.items()
-            if failure
-        }
-        records.append(
-            {
-                "schema": "geoparser-prediction-inspection-v1",
-                "pipeline": pipeline,
-                "scoring_view": scoring_view,
-                "document_id": document.identifier,
-                "reference": [
-                    {
-                        "start": span.start,
-                        "end": span.end,
-                        "name": span.name,
-                        "latitude": span.latitude,
-                        "longitude": span.longitude,
-                    }
-                    for span in document.gold
-                ],
-                "resolution_input": "gold_reference",
-                "prediction": {
-                    phase: [
-                        {
-                            key: value
-                            for key, value in annotation.items()
-                            if key != "document_id"
-                        }
-                        for annotation in state._phase(phase).get(
-                            document.identifier, []
-                        )
-                    ]
-                    for phase in (RECOGNITION, RESOLUTION)
-                },
-                "phase_status": phase_status,
-                "failures": safe_failures,
-            }
-        )
-    return records
+        for span in document.gold
+    ]
+
+
+def _inspection_predictions(
+    document: Document, state: ckpt.Checkpoint
+) -> dict[str, list[dict[str, t.Any]]]:
+    return {
+        phase: _phase_predictions(document, state, phase)
+        for phase in (RECOGNITION, RESOLUTION)
+    }
+
+
+def _phase_predictions(
+    document: Document, state: ckpt.Checkpoint, phase: str
+) -> list[dict[str, t.Any]]:
+    return [
+        {key: value for key, value in annotation.items() if key != "document_id"}
+        for annotation in state._phase(phase).get(document.identifier, [])
+    ]
 
 
 def write_inspection(

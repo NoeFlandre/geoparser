@@ -63,27 +63,37 @@ def test_inspection_record_contains_gold_both_predictions_and_failure_state(tmp_
         scoring_view="strict-raw-v1",
     )
 
-    assert len(records) == 1
-    assert records[0]["reference"] == [
-        {
-            "start": 0,
-            "end": 5,
-            "name": "Paris",
-            "latitude": 48.8566,
-            "longitude": 2.3522,
-        }
-    ]
-    assert records[0]["prediction"][runner.RECOGNITION][0]["end"] == 5
-    assert records[0]["prediction"][runner.RESOLUTION][0]["identifier"] == (
-        "geonames:2988507"
-    )
-    assert records[0]["resolution_input"] == "gold_reference"
-    assert records[0]["phase_status"] == {
-        runner.RECOGNITION: "failed",
-        runner.RESOLUTION: "complete",
-    }
-    assert "raw_output" not in records[0]["failures"][runner.RECOGNITION]
-    assert "message" not in records[0]["failures"][runner.RECOGNITION]
+    record = records[0]
     payload = json.loads(path.read_text(encoding="utf-8"))
-    assert payload == records[0]
-    assert "Paris is here." not in path.read_text(encoding="utf-8")
+    serialized = path.read_text(encoding="utf-8")
+    assert (
+        len(records),
+        record["reference"],
+        record["prediction"][runner.RECOGNITION][0]["end"],
+        record["prediction"][runner.RESOLUTION][0]["identifier"],
+        record["resolution_input"],
+        record["phase_status"],
+        "raw_output" in record["failures"][runner.RECOGNITION],
+        "message" in record["failures"][runner.RECOGNITION],
+        payload == record,
+        "Paris is here." in serialized,
+    ) == (
+        1,
+        [
+            {
+                "start": 0,
+                "end": 5,
+                "name": "Paris",
+                "latitude": 48.8566,
+                "longitude": 2.3522,
+            }
+        ],
+        5,
+        "geonames:2988507",
+        "gold_reference",
+        {runner.RECOGNITION: "failed", runner.RESOLUTION: "complete"},
+        False,
+        False,
+        True,
+        False,
+    )

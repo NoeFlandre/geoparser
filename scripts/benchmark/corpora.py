@@ -250,6 +250,23 @@ def load(
         KeyError: When the name is not registered
     """
     spec = CORPORA[name]
+    _validate_scoring_view(spec, scoring_view)
+    documents, gold = expected_totals(spec, limit)
+    loaded = _load_expected_slice(
+        spec, cache_dir, limit, coordinate_cache, scoring_view, gold
+    )
+    if scoring_view == EXACT_FULL_RECORD_DEDUP_VIEW:
+        documents, gold = _exact_dedup_expected_totals(spec, limit)
+    return replace(
+        loaded,
+        expected_documents=documents,
+        expected_gold=gold,
+        limit=limit,
+        scoring_view=scoring_view,
+    )
+
+
+def _validate_scoring_view(spec: CorpusSpec, scoring_view: str) -> None:
     if scoring_view not in {STRICT_RAW_VIEW, EXACT_FULL_RECORD_DEDUP_VIEW}:
         msg = f"Unknown scoring view: {scoring_view}"
         raise ValueError(msg)
@@ -262,13 +279,22 @@ def load(
             "NewsLi languages."
         )
         raise ValueError(msg)
-    documents, gold = expected_totals(spec, limit)
+
+
+def _load_expected_slice(
+    spec: CorpusSpec,
+    cache_dir: Path,
+    limit: int | None,
+    coordinate_cache: Path,
+    scoring_view: str,
+    gold: int | None,
+) -> LoadedCorpus:
     if limit is not None and gold is None and spec.kind != NEWSLI:
         # A cap makes the subset's gold total unknown, but must not also hide
         # gold lost while parsing the registered source. Validate its pinned
         # full-load totals before selecting the documents to score.
         full = _load_parsed(spec, cache_dir, None, coordinate_cache, scoring_view)
-        loaded = replace(
+        return replace(
             full,
             documents=full.documents[:limit],
             integrity_report=corpus_checks.check_corpus(
@@ -278,17 +304,7 @@ def load(
                 dropped_gold=full.dropped_gold,
             ),
         )
-    else:
-        loaded = _load_parsed(spec, cache_dir, limit, coordinate_cache, scoring_view)
-    if scoring_view == EXACT_FULL_RECORD_DEDUP_VIEW:
-        documents, gold = _exact_dedup_expected_totals(spec, limit)
-    return replace(
-        loaded,
-        expected_documents=documents,
-        expected_gold=gold,
-        limit=limit,
-        scoring_view=scoring_view,
-    )
+    return _load_parsed(spec, cache_dir, limit, coordinate_cache, scoring_view)
 
 
 def _load_parsed(

@@ -127,6 +127,66 @@ def test_reused_resolution_predictions_are_pinned_and_labeled(tmp_path, monkeypa
     }
 
 
+def test_reused_recognition_predictions_are_pinned_and_labeled(tmp_path, monkeypatch):
+    run = _run(tmp_path)
+    run.output_dir.mkdir(exist_ok=True)
+    source_identity = benchmark._run_identity(run, pipelines.GLINER_MINILM)
+    target_identity = benchmark._run_identity(run, pipelines.GLINER_JINA)
+    source_state = ckpt.Checkpoint(source_identity)
+    source_state.phase_elapsed_seconds[runner.RECOGNITION] = 4.5
+    for document_id in ("0", "1"):
+        source_state.record(
+            runner.RECOGNITION,
+            document_id,
+            [{"start": 0, "end": 1, "identifier": None}],
+        )
+    ckpt.save(
+        run.output_dir / f"checkpoint-{pipelines.GLINER_MINILM}.json", source_state
+    )
+    scored = report.PipelineResult(name=pipelines.GLINER_JINA)
+    expected_result = report.PipelineResult(name=pipelines.GLINER_JINA)
+    score = Mock(return_value=expected_result)
+    monkeypatch.setattr(runner, "score", score)
+
+    result = benchmark._reuse_recognition(
+        run, pipelines.GLINER_JINA, pipelines.GLINER_MINILM, scored
+    )
+
+    target_path = run.output_dir / f"checkpoint-{pipelines.GLINER_JINA}.json"
+    copied, reasons = ckpt.load(target_path, target_identity)
+    assert (
+        result is expected_result,
+        reasons,
+        copied.completed(runner.RECOGNITION),
+        copied.recognition,
+        copied.phase_elapsed_seconds[runner.RECOGNITION],
+        copied.phase_provenance[runner.RECOGNITION],
+        score.call_args.kwargs["models"]["recognizer"],
+    ) == (
+        True,
+        [],
+        {"0", "1"},
+        source_state.recognition,
+        4.5,
+        {
+            "reused": True,
+            "source_pipeline": pipelines.GLINER_MINILM,
+            "documents": 2,
+            "corpus_digest": "same-corpus",
+            "scoring_view": "strict-raw-v1",
+            "code_commit": "same-code",
+            "model_pins": {"recognizer": source_identity.model_pins["recognizer"]},
+            "execution_settings": {
+                "document_chunk_size": source_identity.execution_settings[
+                    "document_chunk_size"
+                ],
+                "recognition": source_identity.execution_settings["recognition"],
+            },
+        },
+        target_identity.model_pins["recognizer"],
+    )
+
+
 def test_load_reusable_resolution_rejects_a_different_resolver(tmp_path):
     run = _run(tmp_path)
 

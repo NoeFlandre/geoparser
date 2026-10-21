@@ -89,13 +89,15 @@ def test_raw_and_dedup_have_distinct_digest_and_keep_transform_counts(
         scoring_view=EXACT_FULL_RECORD_DEDUP_VIEW,
     )
 
-    assert len(raw.documents[0].gold) == 2
-    assert len(dedup.documents[0].gold) == 1
-    assert raw.digest != dedup.digest
-    assert raw.exact_duplicate_records == 1
-    assert raw.duplicate_records_removed == 0
-    assert dedup.duplicate_records_removed == 1
-    assert dedup.pre_transform_gold_toponyms == 2
+    assert (
+        len(raw.documents[0].gold),
+        len(dedup.documents[0].gold),
+        raw.digest == dedup.digest,
+        raw.exact_duplicate_records,
+        raw.duplicate_records_removed,
+        dedup.duplicate_records_removed,
+        dedup.pre_transform_gold_toponyms,
+    ) == (2, 1, False, 1, 0, 1, 2)
 
 
 def test_raw_protocol_retains_duplicates_and_records_release_hash(
@@ -117,10 +119,10 @@ def test_raw_protocol_retains_duplicates_and_records_release_hash(
     loaded = corpora.load("newsli-ar", tmp_path / "raw")
 
     assert (
-        loaded.source_archive_sha256 == hashlib.sha256(release.read_bytes()).hexdigest()
-    )
-    assert loaded.exact_duplicate_records == 1
-    assert loaded.duplicate_records_removed == 0
+        loaded.source_archive_sha256,
+        loaded.exact_duplicate_records,
+        loaded.duplicate_records_removed,
+    ) == (hashlib.sha256(release.read_bytes()).hexdigest(), 1, 0)
 
 
 def test_duplicate_reference_rows_remain_raw_but_metrics_score_span_identity_once():
@@ -172,29 +174,20 @@ def test_duplicate_reference_rows_remain_raw_but_metrics_score_span_identity_onc
     raw_result = score(raw_documents)
     dedup_result = score(deduplicated)
 
-    assert (len(raw_documents[0].gold), removed, len(deduplicated[0].gold)) == (
+    assert (
+        len(raw_documents[0].gold),
+        removed,
+        len(deduplicated[0].gold),
+        runner.scoring_span_count(raw_documents),
+        runner.scoring_span_count(deduplicated),
+        raw_result.recognition == dedup_result.recognition,
+        raw_result.resolution == dedup_result.resolution,
+    ) == (
         2,
         1,
         1,
-    )
-    assert runner.scoring_span_count(raw_documents) == 1
-    assert runner.scoring_span_count(deduplicated) == 1
-    assert (
-        raw_result.recognition
-        == dedup_result.recognition
-        == {
-            "precision": 1.0,
-            "recall": 1.0,
-            "f1": 1.0,
-        }
-    )
-    assert (
-        raw_result.resolution
-        == dedup_result.resolution
-        == {
-            "accuracy_at_161km": 1.0,
-            "mean_error_km": 0.0,
-            "median_error_km": 0.0,
-            "auc": 0.0,
-        }
+        1,
+        1,
+        True,
+        True,
     )

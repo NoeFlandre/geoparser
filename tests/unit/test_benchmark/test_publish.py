@@ -27,6 +27,27 @@ def _expected_totals(view):
     return {"newsli-ar": (1, 1)}
 
 
+def _has_legacy_report_copy(operations):
+    return any(
+        isinstance(operation, CommitOperationCopy)
+        and operation.src_path_in_repo == "runs/old/report.json"
+        and operation.path_in_repo.endswith("/legacy/runs/old/report.json")
+        for operation in operations
+    )
+
+
+def _has_legacy_report_delete(operations):
+    return any(
+        isinstance(operation, CommitOperationDelete)
+        and operation.path_in_repo == "runs/old/report.json"
+        for operation in operations
+    )
+
+
+def _archive_snapshot_paths(files):
+    return {path for path in files if path.startswith("archive/snapshots/")}
+
+
 def _write_evidence(root: Path, view: str, corpus_name: str) -> Path:
     """Create a complete tiny current cell with all role pins and inspections."""
     run = root / f"run-{view}"
@@ -190,22 +211,28 @@ class FakeApi:
 
     def create_commit(self, **kwargs):
         self.commit_calls.append(kwargs)
-        assert kwargs["parent_commit"] == self.head_sha
-        assert kwargs["repo_type"] == "dataset"
+        assert (kwargs["parent_commit"], kwargs["repo_type"]) == (
+            self.head_sha,
+            "dataset",
+        )
         original = self.revisions[kwargs["parent_commit"]]
         contents = original.copy()
         for operation in kwargs["operations"]:
-            if isinstance(operation, CommitOperationCopy):
-                contents[operation.path_in_repo] = original[operation.src_path_in_repo]
-            elif isinstance(operation, CommitOperationAdd):
-                contents[operation.path_in_repo] = operation.path_or_fileobj
-            elif isinstance(operation, CommitOperationDelete):
-                contents.pop(operation.path_in_repo, None)
+            self._apply_operation(contents, original, operation)
         new_sha = HEAD if len(self.commit_calls) == 1 else NEXT_HEAD
         self.files = contents
         self.head_sha = new_sha
         self.revisions[new_sha] = contents.copy()
         return SimpleNamespace(oid=new_sha)
+
+    @staticmethod
+    def _apply_operation(contents, original, operation):
+        if isinstance(operation, CommitOperationCopy):
+            contents[operation.path_in_repo] = original[operation.src_path_in_repo]
+        elif isinstance(operation, CommitOperationAdd):
+            contents[operation.path_in_repo] = operation.path_or_fileobj
+        elif isinstance(operation, CommitOperationDelete):
+            contents.pop(operation.path_in_repo, None)
 
     def hf_hub_download(self, repo_id, *, filename, repo_type, revision):
         assert repo_type == "dataset"
@@ -239,22 +266,29 @@ def test_registry_has_only_the_six_exact_current_combinations():
 
 def test_card_is_minimal_and_keeps_viewer_configs_separate():
     card = publish.render_card([])
-    assert "config_name: strict_raw" in card
-    assert "config_name: newsli_exact_record_dedup" in card
-    assert "current/v2/strict-raw-v1/results.csv" in card
-    assert "current/v2/newsli-exact-full-record-dedup-v1/results.csv" in card
-    assert "gold toponym spans" in card
-    assert "distinct (document ID, start, end) spans" in card
-    assert "metric denominator" in card
-    assert "end-to-end score is reported" in card
-    assert "population prior" not in card
-    assert "inflection" not in card
+    fragments = (
+        "config_name: strict_raw",
+        "config_name: newsli_exact_record_dedup",
+        "current/v2/strict-raw-v1/results.csv",
+        "current/v2/newsli-exact-full-record-dedup-v1/results.csv",
+        "gold toponym spans",
+        "distinct (document ID, start, end) spans",
+        "metric denominator",
+        "end-to-end score is reported",
+    )
+    assert tuple(fragment in card for fragment in fragments) == (True,) * len(fragments)
+    assert tuple(term not in card for term in ("population prior", "inflection")) == (
+        True,
+        True,
+    )
     protocol = json.loads(publish.render_protocol_manifest(STRICT_RAW_VIEW))
     assert (
-        protocol["scoring"]["unit"]
-        == "distinct (document_id, start, end) span identity"
+        protocol["scoring"]["unit"],
+        "count once" in protocol["scoring"]["duplicate_identity_policy"],
+    ) == (
+        "distinct (document_id, start, end) span identity",
+        True,
     )
-    assert "count once" in protocol["scoring"]["duplicate_identity_policy"]
 
 
 def test_report_validation_requires_every_expected_role_pin(tmp_path, monkeypatch):
@@ -433,13 +467,15 @@ def test_bundle_writes_distinct_metrics_and_protocol_paths(tiny_evidence):
 
     strict = "current/v2/strict-raw-v1/results.csv"
     dedup = "current/v2/newsli-exact-full-record-dedup-v1/results.csv"
-    assert strict in files and dedup in files
-    assert len(rows) == 12
-    assert b"strict-raw-v1" in files[strict]
-    assert b"newsli-exact-full-record-dedup-v1" in files[dedup]
-    assert not any("checkpoint-" in path for path in files)
-    assert "README.md" in files
-    assert "current/v2/corpus-sources.md" in files
+    assert (
+        strict in files and dedup in files,
+        len(rows),
+        b"strict-raw-v1" in files[strict],
+        b"newsli-exact-full-record-dedup-v1" in files[dedup],
+        any("checkpoint-" in path for path in files),
+        "README.md" in files,
+        "current/v2/corpus-sources.md" in files,
+    ) == (True, 12, True, True, False, True, True)
 
 
 def test_publisher_uses_one_parent_guarded_commit_archives_and_reads_back(
@@ -449,44 +485,42 @@ def test_publisher_uses_one_parent_guarded_commit_archives_and_reads_back(
 
     result = publish.publish(tiny_evidence, "me/results", api=api)
 
-    assert result == {
-        "parent_sha": PARENT,
-        "commit_sha": HEAD,
-        "status": "published",
-    }
-    assert len(api.commit_calls) == 1
+    assert result == {"parent_sha": PARENT, "commit_sha": HEAD, "status": "published"}
     call = api.commit_calls[0]
-    assert call["parent_commit"] == PARENT
     operations = call["operations"]
-    assert any(
-        isinstance(operation, CommitOperationCopy)
-        and operation.src_path_in_repo == "runs/old/report.json"
-        and operation.path_in_repo.endswith("/legacy/runs/old/report.json")
-        for operation in operations
+    observed = (
+        len(api.commit_calls),
+        call["parent_commit"],
+        _has_legacy_report_copy(operations),
+        _has_legacy_report_delete(operations),
+        any(isinstance(operation, CommitOperationAdd) for operation in operations),
+        "runs/old/report.json" in api.files,
+        bool(_archive_snapshot_paths(api.files)),
+        "current/v2/strict-raw-v1/results.csv" in api.files,
+        "current/v2/newsli-exact-full-record-dedup-v1/results.csv" in api.files,
+        api.files["current/v2/strict-raw-v1/results.csv"]
+        == b"previous current results",
+        "current/v2/obsolete.txt" in api.files,
+        api.files[f"archive/snapshots/{PARENT}/current/v2/strict-raw-v1/results.csv"],
+        api.files[f"archive/snapshots/{PARENT}/current/v2/obsolete.txt"],
+        "README.md" in api.files,
     )
-    assert any(
-        isinstance(operation, CommitOperationDelete)
-        and operation.path_in_repo == "runs/old/report.json"
-        for operation in operations
+    assert observed == (
+        1,
+        PARENT,
+        True,
+        True,
+        True,
+        False,
+        True,
+        True,
+        True,
+        False,
+        False,
+        b"previous current results",
+        b"stale current artifact",
+        True,
     )
-    assert any(isinstance(operation, CommitOperationAdd) for operation in operations)
-    assert "runs/old/report.json" not in api.files
-    assert any(path.startswith("archive/snapshots/") for path in api.files)
-    assert "current/v2/strict-raw-v1/results.csv" in api.files
-    assert "current/v2/newsli-exact-full-record-dedup-v1/results.csv" in api.files
-    assert (
-        api.files["current/v2/strict-raw-v1/results.csv"] != b"previous current results"
-    )
-    assert "current/v2/obsolete.txt" not in api.files
-    assert (
-        api.files[f"archive/snapshots/{PARENT}/current/v2/strict-raw-v1/results.csv"]
-        == b"previous current results"
-    )
-    assert (
-        api.files[f"archive/snapshots/{PARENT}/current/v2/obsolete.txt"]
-        == b"stale current artifact"
-    )
-    assert "README.md" in api.files
 
 
 def test_identical_publish_is_a_noop_and_does_not_add_an_archive(
@@ -498,13 +532,15 @@ def test_identical_publish_is_a_noop_and_does_not_add_an_archive(
     archived_paths = {path for path in api.files if path.startswith("archive/")}
     result = publish.publish(tiny_evidence, "me/results", api=api)
 
-    assert result == {
-        "parent_sha": HEAD,
-        "commit_sha": HEAD,
-        "status": "unchanged",
-    }
-    assert len(api.commit_calls) == 1
-    assert {path for path in api.files if path.startswith("archive/")} == archived_paths
+    assert (
+        result,
+        len(api.commit_calls),
+        {path for path in api.files if path.startswith("archive/")},
+    ) == (
+        {"parent_sha": HEAD, "commit_sha": HEAD, "status": "unchanged"},
+        1,
+        archived_paths,
+    )
 
 
 def test_changed_bundle_creates_one_new_snapshot(tiny_evidence, tmp_path):
