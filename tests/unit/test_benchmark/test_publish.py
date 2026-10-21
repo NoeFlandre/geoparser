@@ -151,6 +151,8 @@ class FakeApi:
         self.files = {
             "README.md": b"old card",
             "results.csv": b"old results",
+            "current/v2/strict-raw-v1/results.csv": b"previous current results",
+            "current/v2/obsolete.txt": b"stale current artifact",
             "runs/old/report.json": b"historical report",
             ".gitattributes": b"*.json filter=lfs diff=lfs merge=lfs -text\n",
             "archive/README.md": b"prior archive info",
@@ -248,6 +250,35 @@ def test_report_validation_rejects_inspection_text(tmp_path, monkeypatch):
         publish._validate_current_report(report_path, data)
 
 
+@pytest.mark.parametrize("location", ["record", "prediction"])
+def test_report_validation_rejects_unknown_inspection_fields(
+    tmp_path, monkeypatch, location
+):
+    monkeypatch.setattr(publish, "_expected_corpus_totals", _expected_totals)
+    report_path = _write_evidence(tmp_path, STRICT_RAW_VIEW, "geovirus")
+    data = json.loads(report_path.read_text())
+    inspection = report_path.parent / "inspection-gliner-minilm.jsonl"
+    record = json.loads(inspection.read_text())
+    if location == "record":
+        record["document_text"] = "private source text"
+    else:
+        record["prediction"]["recognition"].append(
+            {
+                "start": 0,
+                "end": 4,
+                "identifier": None,
+                "document_id": "doc-1",
+                "latitude": None,
+                "longitude": None,
+                "document_text": "private source text",
+            }
+        )
+    inspection.write_text(json.dumps(record) + "\n")
+
+    with pytest.raises(ValueError, match="unsupported inspection fields"):
+        publish._validate_current_report(report_path, data)
+
+
 def test_bundle_writes_distinct_metrics_and_protocol_paths(tiny_evidence):
     files, rows = publish._bundle_files(tiny_evidence, "me/results")
 
@@ -290,6 +321,18 @@ def test_publisher_uses_one_parent_guarded_commit_archives_and_reads_back(
     assert any(path.startswith("archive/snapshots/") for path in api.files)
     assert "current/v2/strict-raw-v1/results.csv" in api.files
     assert "current/v2/newsli-exact-full-record-dedup-v1/results.csv" in api.files
+    assert (
+        api.files["current/v2/strict-raw-v1/results.csv"] != b"previous current results"
+    )
+    assert "current/v2/obsolete.txt" not in api.files
+    assert (
+        api.files[f"archive/snapshots/{PARENT}/current/v2/strict-raw-v1/results.csv"]
+        == b"previous current results"
+    )
+    assert (
+        api.files[f"archive/snapshots/{PARENT}/current/v2/obsolete.txt"]
+        == b"stale current artifact"
+    )
     assert "README.md" in api.files
 
 

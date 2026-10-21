@@ -51,6 +51,25 @@ SCORING_VIEWS = (STRICT_RAW_VIEW, EXACT_FULL_RECORD_DEDUP_VIEW)
 PRIVATE_EVIDENCE_KEYS = frozenset(
     {"text", "article", "raw_output", "raw_text", "source_text", "message"}
 )
+INSPECTION_RECORD_FIELDS = frozenset(
+    {
+        "schema",
+        "pipeline",
+        "scoring_view",
+        "document_id",
+        "reference",
+        "resolution_input",
+        "prediction",
+        "phase_status",
+        "failures",
+    }
+)
+INSPECTION_REFERENCE_FIELDS = frozenset(
+    {"start", "end", "name", "latitude", "longitude"}
+)
+INSPECTION_PREDICTION_FIELDS = frozenset(
+    {"start", "end", "identifier", "document_id", "latitude", "longitude"}
+)
 # One flat table for the Hub's viewer: left to itself it tries to read every
 # JSON file in the repo as one dataset, and reports, checkpoints and
 # summaries do not share a schema.
@@ -896,15 +915,16 @@ def _validate_inspection_record(
     if _contains_private_evidence(record):
         msg = f"{prefix} includes private text"
         raise ValueError(msg)
+    _require_inspection_fields(record, INSPECTION_RECORD_FIELDS, prefix)
     document_id = record.get("document_id")
     if not isinstance(document_id, str) or document_id in references:
         msg = f"{prefix} has a duplicate/invalid id"
         raise ValueError(msg)
     reference = record.get("reference")
-    prediction = record.get("prediction")
-    if not isinstance(reference, list) or not isinstance(prediction, dict):
+    if not isinstance(reference, list):
         msg = f"{prefix} lacks reference/prediction"
         raise TypeError(msg)
+    prediction = _validate_inspection_collections(record, prefix)
     if record.get("resolution_input") != "gold_reference":
         msg = f"{prefix} does not identify gold-span resolution input"
         raise ValueError(msg)
@@ -915,13 +935,63 @@ def _validate_inspection_record(
     return len(reference)
 
 
+def _validate_inspection_collections(
+    record: dict[str, t.Any], prefix: str
+) -> dict[str, t.Any]:
+    """Validate prediction, status, and failure containers in an inspection."""
+    prediction = record.get("prediction")
+    if not isinstance(prediction, dict):
+        msg = f"{prefix} lacks reference/prediction"
+        raise TypeError(msg)
+    _require_inspection_fields(prediction, {"recognition", "resolution"}, prefix)
+    statuses = record["phase_status"]
+    if not isinstance(statuses, dict):
+        msg = f"{prefix} has malformed phase status"
+        raise TypeError(msg)
+    _require_inspection_fields(statuses, {"recognition", "resolution"}, prefix)
+    failures = record["failures"]
+    if not isinstance(failures, dict):
+        msg = f"{prefix} has malformed failure details"
+        raise TypeError(msg)
+    _require_inspection_fields(
+        failures, {"recognition", "resolution"}, prefix, exact=False
+    )
+    for failure in failures.values():
+        if not isinstance(failure, dict):
+            msg = f"{prefix} has malformed failure details"
+            raise TypeError(msg)
+        _require_inspection_fields(failure, {"kind", "reason"}, prefix, exact=False)
+    return prediction
+
+
 def _validate_reference_spans(reference: list[t.Any], prefix: str) -> None:
     """Require offsets, mention, and coordinates for every reference span."""
-    required = {"start", "end", "name", "latitude", "longitude"}
     for span in reference:
-        if not isinstance(span, dict) or not required <= span.keys():
+        if not isinstance(span, dict):
             msg = f"{prefix} has an incomplete gold reference"
-            raise ValueError(msg)
+            raise TypeError(msg)
+        _require_inspection_fields(span, INSPECTION_REFERENCE_FIELDS, prefix)
+
+
+def _require_inspection_fields(
+    value: dict[str, t.Any],
+    allowed: t.AbstractSet[str],
+    prefix: str,
+    *,
+    exact: bool = True,
+) -> None:
+    """Reject inspection fields outside the public, text-free schema."""
+    fields = value.keys()
+    extra = fields - allowed
+    missing = allowed - fields if exact else set()
+    if extra or missing:
+        details = []
+        if extra:
+            details.append(f"unexpected {sorted(extra)}")
+        if missing:
+            details.append(f"missing {sorted(missing)}")
+        msg = f"{prefix} has unsupported inspection fields: {', '.join(details)}"
+        raise ValueError(msg)
 
 
 def _validate_inspection_phase(
@@ -938,6 +1008,8 @@ def _validate_inspection_phase(
     if any(not isinstance(item, dict) for item in predictions):
         msg = f"{prefix} has a malformed {phase} prediction"
         raise TypeError(msg)
+    for item in predictions:
+        _require_inspection_fields(item, INSPECTION_PREDICTION_FIELDS, prefix)
     statuses = record.get("phase_status") or {}
     if not isinstance(statuses, dict):
         msg = f"{prefix} has malformed phase status"
@@ -1406,13 +1478,13 @@ def publish(evidence_dir: Path, repo_id: str, *, api: t.Any) -> dict[str, str]:
         for source, destination in archived_paths.items()
     ]
     operations.extend(
-        CommitOperationAdd(path_in_repo=path, path_or_fileobj=content)
-        for path, content in files.items()
-    )
-    operations.extend(
         CommitOperationDelete(path_in_repo=source)
         for source in archived_paths
-        if source != "README.md"
+        if source != "README.md" and source not in files
+    )
+    operations.extend(
+        CommitOperationAdd(path_in_repo=path, path_or_fileobj=content)
+        for path, content in files.items()
     )
     result = api.create_commit(
         repo_id=repo_id,
