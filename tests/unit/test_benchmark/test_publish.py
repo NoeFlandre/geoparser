@@ -188,6 +188,7 @@ class FakeApi:
         self.head_sha = PARENT
         self.revisions = {PARENT: self.files.copy()}
         self.fail_next_readback = False
+        self.fail_after_commit = False
 
     def repo_info(self, repo_id, *, repo_type, revision=None, files_metadata=False):
         assert repo_type == "dataset"
@@ -223,6 +224,9 @@ class FakeApi:
         self.files = contents
         self.head_sha = new_sha
         self.revisions[new_sha] = contents.copy()
+        if self.fail_after_commit:
+            self.fail_after_commit = False
+            raise OSError("commit response lost after server commit")
         return SimpleNamespace(oid=new_sha)
 
     @staticmethod
@@ -289,6 +293,69 @@ def test_card_is_minimal_and_keeps_viewer_configs_separate():
         "distinct (document_id, start, end) span identity",
         True,
     )
+    dedup_protocol = json.loads(
+        publish.render_protocol_manifest(EXACT_FULL_RECORD_DEDUP_VIEW)
+    )
+    assert (
+        dedup_protocol["corpora"][0],
+        dedup_protocol["scoring_view"],
+        dedup_protocol["transform"]["retained_occurrence"],
+    ) == (
+        "newsli-ar",
+        EXACT_FULL_RECORD_DEDUP_VIEW,
+        "first exact record in original order",
+    )
+
+
+def test_expected_totals_are_frozen_for_both_scoring_views():
+    strict = publish._expected_corpus_totals(STRICT_RAW_VIEW)
+    dedup = publish._expected_corpus_totals(EXACT_FULL_RECORD_DEDUP_VIEW)
+
+    assert (
+        len(strict),
+        strict["geovirus"],
+        len(dedup),
+        dedup["newsli-ar"],
+        dedup["newsli-ja"],
+    ) == (
+        20,
+        (229, 2167),
+        7,
+        (500, 3319 - missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED["ar"]),
+        (500, 1577 - missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED["ja"]),
+    )
+
+
+def test_protocol_helpers_reject_unknown_scoring_views():
+    with pytest.raises(ValueError, match="Unknown scoring view"):
+        publish._protocol_corpora("unsupported")
+    with pytest.raises(ValueError, match="Unknown scoring view"):
+        publish._expected_corpus_totals("unsupported")
+
+
+def test_collect_rows_flattens_current_reports_and_keeps_scoring_views_distinct(
+    tiny_evidence,
+):
+    rows = publish.collect_rows(tiny_evidence)
+
+    assert (
+        len(rows),
+        {row["scoring_view"] for row in rows},
+        {row["pipeline"] for row in rows} == set(publish.PIPELINE_DESCRIPTIONS),
+    ) == (12, {STRICT_RAW_VIEW, EXACT_FULL_RECORD_DEDUP_VIEW}, True)
+
+
+def test_ablation_corpus_filter_keeps_only_scored_corpora():
+    corpora = ["newsli-ar", "geovirus", "hipe2020-de"]
+    ablation = {
+        ("geovirus", "hybrid"): {"accuracy_at_161km": 0.5},
+        ("hipe2020-de", "hybrid"): {"accuracy_at_161km": 0.6},
+    }
+
+    assert publish._ablation_corpora(corpora, ablation) == [
+        "geovirus",
+        "hipe2020-de",
+    ]
 
 
 def test_report_validation_requires_every_expected_role_pin(tmp_path, monkeypatch):
@@ -584,6 +651,28 @@ def test_readback_failure_reconciles_successful_commit_and_retry_is_unchanged(
         "commit_sha": HEAD,
         "status": "unchanged",
     }
+
+
+def test_lost_commit_response_reconciles_and_retry_is_unchanged(
+    tiny_evidence, tmp_path
+):
+    api = FakeApi(tmp_path)
+    api.fail_after_commit = True
+
+    result = publish.publish(tiny_evidence, "me/results", api=api)
+    retry = publish.publish(tiny_evidence, "me/results", api=api)
+
+    assert (
+        result,
+        retry,
+        len(api.commit_calls),
+        bool(_archive_snapshot_paths(api.files)),
+    ) == (
+        {"parent_sha": PARENT, "commit_sha": HEAD, "status": "reconciled"},
+        {"parent_sha": HEAD, "commit_sha": HEAD, "status": "unchanged"},
+        1,
+        True,
+    )
     assert len(api.commit_calls) == 1
     assert f"archive/snapshots/{PARENT}/ARCHIVE.json" in api.files
 

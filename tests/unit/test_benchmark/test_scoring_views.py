@@ -1,10 +1,12 @@
 """The NewsLi transform has its own identity and never edits strict raw."""
 
 import hashlib
+from argparse import Namespace
 
 import pytest
 
-from scripts.benchmark import checkpoint, corpora, runner
+from scripts.benchmark import __main__ as benchmark
+from scripts.benchmark import checkpoint, corpora, missing_matrix, runner
 from scripts.benchmark.corpus import Document, GoldSpan
 from scripts.benchmark.newsli import (
     EXACT_FULL_RECORD_DEDUP_VIEW,
@@ -64,6 +66,60 @@ def test_dedup_view_is_restricted_to_the_seven_audited_newsli_languages(tmp_path
             tmp_path,
             scoring_view=EXACT_FULL_RECORD_DEDUP_VIEW,
         )
+
+
+def test_requested_dedup_view_expands_only_to_the_seven_audited_languages():
+    arguments = Namespace(corpus=None, scoring_view=EXACT_FULL_RECORD_DEDUP_VIEW)
+
+    names = benchmark._requested_corpus_names(arguments)
+
+    assert names == [
+        f"newsli-{language}" for language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
+    ]
+
+
+def test_requested_dedup_view_rejects_non_newsli_corpora():
+    arguments = Namespace(
+        corpus=["geovirus"], scoring_view=EXACT_FULL_RECORD_DEDUP_VIEW
+    )
+
+    with pytest.raises(ValueError, match="geovirus"):
+        benchmark._requested_corpus_names(arguments)
+
+
+def test_manifest_counts_report_deduped_gold_and_unknown_capped_totals():
+    fixed = next(
+        cell
+        for cell in missing_matrix.MATRIX
+        if cell.corpus == "newsli" and cell.language == "ar"
+    )
+    removed = missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED["ar"]
+    full = benchmark._manifest_corpus_cell(
+        "newsli-ar", fixed, scoring_view=EXACT_FULL_RECORD_DEDUP_VIEW
+    )
+    capped = benchmark._manifest_corpus_cell(
+        "newsli-ar", fixed, scoring_view=EXACT_FULL_RECORD_DEDUP_VIEW, limit=100
+    )
+
+    assert (
+        full["expected_gold_toponyms"],
+        full["scoring_spans"],
+        full["pre_transform_gold_toponyms"],
+        full["duplicate_records_removed"],
+        capped["expected_documents"],
+        capped["expected_gold_toponyms"],
+        capped["scoring_spans"],
+        capped["pre_transform_gold_toponyms"],
+    ) == (
+        fixed.gold_toponyms - removed,
+        fixed.gold_toponyms - removed,
+        fixed.gold_toponyms,
+        removed,
+        100,
+        None,
+        None,
+        None,
+    )
 
 
 def test_raw_and_dedup_have_distinct_digest_and_keep_transform_counts(

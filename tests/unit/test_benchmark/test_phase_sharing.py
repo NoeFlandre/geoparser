@@ -3,6 +3,8 @@
 from argparse import Namespace
 from unittest.mock import Mock, call
 
+import pytest
+
 from scripts.benchmark import __main__ as benchmark
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import corpora, corpus, pipelines, report, runner
@@ -185,6 +187,44 @@ def test_reused_recognition_predictions_are_pinned_and_labeled(tmp_path, monkeyp
         },
         target_identity.model_pins["recognizer"],
     )
+
+
+def test_load_reusable_recognition_rejects_a_different_recognizer(tmp_path):
+    run = _run(tmp_path)
+
+    with pytest.raises(RuntimeError, match="the corpus, recognizer"):
+        benchmark._load_reusable_recognition(
+            run, pipelines.GLINER_JINA, pipelines.XLM_JINA
+        )
+
+
+def test_load_reusable_recognition_rejects_checkpoint_load_reasons(
+    monkeypatch, tmp_path
+):
+    run = _run(tmp_path)
+    source_identity = benchmark._run_identity(run, pipelines.GLINER_MINILM)
+    load = Mock(return_value=(ckpt.Checkpoint(source_identity), ["stale checkpoint"]))
+    monkeypatch.setattr(ckpt, "load", load)
+
+    with pytest.raises(RuntimeError, match="stale checkpoint"):
+        benchmark._load_reusable_recognition(
+            run, pipelines.GLINER_JINA, pipelines.GLINER_MINILM
+        )
+
+
+def test_load_reusable_recognition_rejects_an_incomplete_source(tmp_path):
+    run = _run(tmp_path)
+    run.output_dir.mkdir(exist_ok=True)
+    source_identity = benchmark._run_identity(run, pipelines.GLINER_MINILM)
+    ckpt.save(
+        run.output_dir / f"checkpoint-{pipelines.GLINER_MINILM}.json",
+        ckpt.Checkpoint(source_identity),
+    )
+
+    with pytest.raises(RuntimeError, match="Cannot reuse incomplete"):
+        benchmark._load_reusable_recognition(
+            run, pipelines.GLINER_JINA, pipelines.GLINER_MINILM
+        )
 
 
 def test_load_reusable_resolution_rejects_a_different_resolver(tmp_path):

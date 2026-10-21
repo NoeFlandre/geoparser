@@ -1292,14 +1292,21 @@ def _consider_current_report(
     if _is_baseline_path(path.relative_to(evidence_dir)):
         return
     data = _read_candidate_report(path)
-    if data is None or data.get("scoring_view") not in SCORING_VIEWS:
+    if not _is_current_candidate(data):
         return
+    data = t.cast(dict[str, t.Any], data)
     try:
         scoring_view = _validate_current_report(path, data)
     except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
         errors.append(f"{path}: {error}")
         return
     _keep_latest_candidate(path, data, scoring_view, candidates)
+
+
+def _is_current_candidate(data: dict[str, t.Any] | None) -> bool:
+    if data is None:
+        return False
+    return data.get("scoring_view") in SCORING_VIEWS
 
 
 def _read_candidate_report(path: Path) -> dict[str, t.Any] | None:
