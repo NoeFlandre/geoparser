@@ -38,6 +38,9 @@ from scripts.benchmark.corpora import (
 from scripts.benchmark.pipelines import HYBRID, PRIOR_SETTINGS
 from scripts.benchmark.report import _number
 
+if t.TYPE_CHECKING:
+    from huggingface_hub import CommitOperation
+
 DEFAULT_REPO_ID = "NoeFlandre/geoparser-benchmark-results"
 EVIDENCE_DIR = PROJECT_ROOT / "benchmark-evidence"
 LICENSE = "other"
@@ -1534,7 +1537,7 @@ def _repository_matches_bundle(
     }
     if live_paths != set(bundle_files):
         return False
-    if required_paths and not required_paths.issubset(repository_paths):
+    if required_paths and not set(required_paths).issubset(repository_paths):
         return False
 
     siblings = getattr(info, "siblings", None)
@@ -1656,7 +1659,7 @@ def _add_archive_metadata(
 
 def _publish_operations(
     files: dict[str, bytes], archived_paths: dict[str, str], parent_sha: str
-) -> list[t.Any]:
+) -> list[CommitOperation]:
     """Build one Hub transaction that snapshots old files and writes the bundle."""
     from huggingface_hub import (
         CommitOperationAdd,
@@ -1664,7 +1667,7 @@ def _publish_operations(
         CommitOperationDelete,
     )
 
-    operations = [
+    operations: list[CommitOperation] = [
         CommitOperationCopy(
             src_path_in_repo=source,
             path_in_repo=destination,
