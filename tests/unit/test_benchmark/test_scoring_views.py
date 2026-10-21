@@ -230,29 +230,28 @@ def test_duplicate_reference_rows_remain_raw_but_metrics_score_span_identity_onc
     raw_result = score(raw_documents)
     dedup_result = score(deduplicated)
 
-    assert (len(raw_documents[0].gold), removed, len(deduplicated[0].gold)) == (
-        2,
-        1,
-        1,
-    )
-    assert runner.scoring_span_count(raw_documents) == 1
-    assert runner.scoring_span_count(deduplicated) == 1
     assert (
-        raw_result.recognition
-        == dedup_result.recognition
-        == {
-            "precision": 1.0,
-            "recall": 1.0,
-            "f1": 1.0,
-        }
-    )
+        len(raw_documents[0].gold),
+        removed,
+        len(deduplicated[0].gold),
+        runner.scoring_span_count(raw_documents),
+        runner.scoring_span_count(deduplicated),
+    ) == (2, 1, 1, 1, 1)
+    expected_recognition = {"precision": 1.0, "recall": 1.0, "f1": 1.0}
+    expected_resolution = {
+        "accuracy_at_161km": 1.0,
+        "mean_error_km": 0.0,
+        "median_error_km": 0.0,
+        "auc": 0.0,
+    }
     assert (
-        raw_result.resolution
-        == dedup_result.resolution
-        == {
-            "accuracy_at_161km": 1.0,
-            "mean_error_km": 0.0,
-            "median_error_km": 0.0,
-            "auc": 0.0,
-        }
+        raw_result.recognition,
+        dedup_result.recognition,
+        raw_result.resolution,
+        dedup_result.resolution,
+    ) == (
+        expected_recognition,
+        expected_recognition,
+        expected_resolution,
+        expected_resolution,
     )
