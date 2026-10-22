@@ -1145,6 +1145,7 @@ def _manifest_cell_data(
         "evaluation_rule": _manifest_evaluation_rule(fixed),
         "source_split": _manifest_source_split(name),
         "source_url": getattr(spec, "url", None),
+        "expected_source_content_sha256": getattr(spec, "expected_source_sha256", None),
         "status": "pending",
     }
 
@@ -1245,6 +1246,7 @@ def _record_manifest_cell(
 ) -> None:
     """Record counts, metrics, and any explicit per-document failures."""
     cell = manifest["protocol"]["corpora"][name]
+    cell.pop("reason", None)
     cell.update(
         {
             "corpus_digest": payload["corpus_digest"],
@@ -1429,6 +1431,7 @@ def _manifest_identity(manifest: dict) -> dict:
                         "evaluation_rule",
                         "source_split",
                         "source_url",
+                        "expected_source_content_sha256",
                     )
                 }
                 for name, value in protocol["corpora"].items()
@@ -1456,6 +1459,18 @@ def _prepare_run_manifest(output_dir: Path, plan: _ManifestPlan) -> dict:
     return manifest
 
 
+def _record_rejected_corpus(
+    execution: _CorpusExecution, name: str, reason: str
+) -> None:
+    """Persist a corpus rejection without replacing its reports or checkpoints."""
+    execution.manifest["protocol"]["corpora"][name].update(
+        {"status": "rejected", "reason": reason}
+    )
+    execution.manifest["status"] = "rejected"
+    execution.manifest.pop("completed_at", None)
+    _persist_run_manifest(execution.output_dir, execution.manifest)
+
+
 def _run_requested_corpora(
     names: Sequence[str],
     execution: _CorpusExecution,
@@ -1472,7 +1487,12 @@ def _run_requested_corpora(
         load_options = {"limit": execution.arguments.limit}
         if scoring_view != corpora.STRICT_RAW_VIEW:
             load_options["scoring_view"] = scoring_view
-        loaded = corpora.load(name, cache_root / name, **load_options)
+        try:
+            loaded = corpora.load(name, cache_root / name, **load_options)
+        except corpora.SourceHashError as error:
+            print(error, file=sys.stderr)
+            _record_rejected_corpus(execution, name, str(error))
+            return 1, rows
         try:
             rows += run_corpus(
                 loaded,
@@ -1484,11 +1504,7 @@ def _run_requested_corpora(
             )
         except CorpusRejectedError as error:
             print(error, file=sys.stderr)
-            execution.manifest["protocol"]["corpora"][name].update(
-                {"status": "rejected", "reason": str(error)}
-            )
-            execution.manifest["status"] = "rejected"
-            _persist_run_manifest(output_dir, execution.manifest)
+            _record_rejected_corpus(execution, name, str(error))
             return 1, rows
         _record_completed_corpus(execution, folder, name, rows)
     return EXIT_OK, rows

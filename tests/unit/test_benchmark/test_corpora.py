@@ -6,6 +6,8 @@ the report never need to know which one they are scoring.
 """
 
 import hashlib
+import io
+from dataclasses import replace
 
 import pytest
 
@@ -24,6 +26,18 @@ def pin_release(monkeypatch, release):
     )
     monkeypatch.setattr(
         corpora, "NEWSLI_RELEASE_SHA256", hashlib.sha256(data).hexdigest()
+    )
+
+
+def pin_source(monkeypatch, name, source_bytes):
+    spec = corpora.CORPORA[name]
+    monkeypatch.setitem(
+        corpora.CORPORA,
+        name,
+        replace(
+            spec,
+            expected_source_sha256=hashlib.sha256(source_bytes).hexdigest(),
+        ),
     )
 
 
@@ -49,24 +63,217 @@ class TestRegistry:
                 assert "-test-" in spec.url, name
                 assert "masked" not in spec.url, name
 
+    def test_geovirus_and_hipe_sources_have_full_sha256_pins(self):
+        sources = {
+            name: spec.expected_source_sha256
+            for name, spec in corpora.CORPORA.items()
+            if spec.kind in {corpora.GEOVIRUS, corpora.HIPE}
+        }
+
+        assert sources == corpora.GEOVIRUS_HIPE_SOURCE_SHA256
+        assert all(
+            source_sha256 is not None
+            and len(source_sha256) == 64
+            and set(source_sha256) <= set("0123456789abcdef")
+            for source_sha256 in sources.values()
+        )
+
     def test_unknown_corpus_is_an_error(self, tmp_path):
         """Test that a typo does not silently fall back."""
         with pytest.raises(KeyError):
             corpora.load("nope", tmp_path)
 
 
+def _stage_cached_source(monkeypatch, cache_path, source_bytes):
+    """Stage a cached corpus source."""
+    cache_path.write_bytes(source_bytes)
+
+
+def _stage_fetched_source(monkeypatch, cache_path, source_bytes):
+    """Stub a corpus download with the given bytes."""
+    monkeypatch.setattr(
+        corpora.corpus.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: io.BytesIO(source_bytes),
+    )
+
+
+def _stage_geovirus_parser(monkeypatch, parser_calls):
+    """Record GeoVirus parser calls without reading model data."""
+    monkeypatch.setattr(
+        corpora.corpus,
+        "parse_corpus",
+        lambda *args, **kwargs: parser_calls.append("parse") or [],
+    )
+
+
+def _stage_hipe_parsers(monkeypatch, parser_calls):
+    """Record each HIPE parsing stage without loading coordinates."""
+    monkeypatch.setattr(
+        corpora,
+        "hipe_qids",
+        lambda path: parser_calls.append("qids") or set(),
+    )
+    monkeypatch.setattr(
+        corpora,
+        "load_coordinates",
+        lambda *args, **kwargs: parser_calls.append("coordinates") or {},
+    )
+    monkeypatch.setattr(
+        corpora,
+        "parse_hipe",
+        lambda *args, **kwargs: parser_calls.append("parse") or [],
+    )
+
+
+def _stage_pinned_source(
+    monkeypatch, tmp_path, *, name, kind, fetched, source_bytes, pinned_bytes
+):
+    """Stage a pinned source and parser spies for one loader regression case."""
+    original_spec = corpora.CORPORA[name]
+    spec = replace(
+        original_spec,
+        documents=None,
+        gold_spans=None,
+        expected_source_sha256=hashlib.sha256(pinned_bytes).hexdigest(),
+    )
+    monkeypatch.setitem(corpora.CORPORA, name, spec)
+    cache_path = tmp_path / spec.filename
+    {False: _stage_cached_source, True: _stage_fetched_source}[fetched](
+        monkeypatch, cache_path, source_bytes
+    )
+
+    parser_calls = []
+    {
+        corpora.GEOVIRUS: _stage_geovirus_parser,
+        corpora.HIPE: _stage_hipe_parsers,
+    }[kind](monkeypatch, parser_calls)
+    return name, parser_calls
+
+
 class TestLoad:
     """Loading a HIPE corpus through the registry."""
+
+    @pytest.mark.parametrize(
+        ("name", "kind"),
+        [("geovirus", corpora.GEOVIRUS), ("hipe2020-en", corpora.HIPE)],
+    )
+    @pytest.mark.parametrize("fetched", [False, True], ids=["cached", "fetched"])
+    def test_changed_source_hash_is_checked_before_parsing(
+        self, tmp_path, monkeypatch, name, kind, fetched
+    ):
+        name, parser_calls = _stage_pinned_source(
+            monkeypatch,
+            tmp_path,
+            name=name,
+            kind=kind,
+            fetched=fetched,
+            source_bytes=b"<source />",
+            pinned_bytes=b"<different source />",
+        )
+
+        with pytest.raises(corpora.SourceHashError, match=f"{name}.*SHA-256 mismatch"):
+            corpora.load(name, tmp_path)
+
+        assert parser_calls == []
+
+    @pytest.mark.parametrize(
+        ("name", "kind"),
+        [("geovirus", corpora.GEOVIRUS), ("hipe2020-en", corpora.HIPE)],
+    )
+    @pytest.mark.parametrize("fetched", [False, True], ids=["cached", "fetched"])
+    def test_matching_source_hash_allows_parsing(
+        self, tmp_path, monkeypatch, name, kind, fetched
+    ):
+        source_bytes = b"<source />"
+        name, parser_calls = _stage_pinned_source(
+            monkeypatch,
+            tmp_path,
+            name=name,
+            kind=kind,
+            fetched=fetched,
+            source_bytes=source_bytes,
+            pinned_bytes=source_bytes,
+        )
+
+        loaded = corpora.load(name, tmp_path)
+
+        assert loaded.source_content_sha256 == hashlib.sha256(source_bytes).hexdigest()
+        assert parser_calls
+
+    @pytest.mark.parametrize(
+        "pin", [None, "z" * 64, "0" * 63], ids=["missing", "non-hex", "short"]
+    )
+    def test_missing_or_malformed_pin_is_rejected_before_parsing(
+        self, tmp_path, monkeypatch, pin
+    ):
+        name = "geovirus"
+        original_spec = corpora.CORPORA[name]
+        source_bytes = b"<articles />"
+        monkeypatch.setitem(
+            corpora.CORPORA,
+            name,
+            replace(
+                original_spec,
+                expected_source_sha256=pin,
+            ),
+        )
+        (tmp_path / original_spec.filename).write_bytes(source_bytes)
+        parser_calls = []
+        monkeypatch.setattr(
+            corpora.corpus,
+            "parse_corpus",
+            lambda *args, **kwargs: parser_calls.append("parse") or [],
+        )
+
+        with pytest.raises(
+            corpora.SourceHashError, match="expected source SHA-256 pin"
+        ):
+            corpora.load(name, tmp_path)
+
+        assert parser_calls == []
+
+    def test_parser_receives_the_same_bytes_that_were_verified(
+        self, tmp_path, monkeypatch
+    ):
+        name = "geovirus"
+        original_spec = corpora.CORPORA[name]
+        source_bytes = b"<articles />"
+        path = tmp_path / original_spec.filename
+        path.write_bytes(source_bytes)
+        pin_source(monkeypatch, name, source_bytes)
+        original_verify = corpora._verify_source_sha256
+        parser_inputs = []
+
+        def verify_then_mutate(spec, verified_bytes):
+            digest = original_verify(spec, verified_bytes)
+            path.write_bytes(b"<mutated after verification />")
+            return digest
+
+        monkeypatch.setattr(corpora, "_verify_source_sha256", verify_then_mutate)
+        monkeypatch.setattr(
+            corpora.corpus,
+            "parse_corpus",
+            lambda source, **kwargs: parser_inputs.append(source) or [],
+        )
+
+        loaded = corpora.load(name, tmp_path)
+
+        assert parser_inputs == [source_bytes]
+        assert loaded.source_content_sha256 == hashlib.sha256(source_bytes).hexdigest()
+        assert path.read_bytes() != source_bytes
 
     def test_loads_a_hipe_corpus_from_cache(self, tmp_path, monkeypatch):
         """Test that a cached TSV is parsed with committed coordinates."""
         spec = corpora.CORPORA["hipe2020-fr"]
-        (tmp_path / spec.filename).write_text(
+        source = (
             "TOKEN\tNE-COARSE-LIT\tA\tB\tC\tD\tE\tNEL-LIT\tF\tMISC\n"
             "# hipe2022:document_id = d\n"
-            "Paris\tB-loc\tO\tO\tO\tO\tO\tQ90\t_\t_\n",
-            encoding="utf-8",
+            "Paris\tB-loc\tO\tO\tO\tO\tO\tQ90\t_\t_\n"
         )
+        source_bytes = source.encode("utf-8")
+        (tmp_path / spec.filename).write_bytes(source_bytes)
+        pin_source(monkeypatch, spec.name, source_bytes)
         monkeypatch.setattr(
             corpora, "load_coordinates", lambda qids, cache, **_: {"Q90": (48.85, 2.35)}
         )
@@ -83,12 +290,14 @@ class TestLoad:
     def test_digest_changes_with_coordinates(self, tmp_path, monkeypatch):
         """Test that a checkpoint cannot resume across a gold change."""
         spec = corpora.CORPORA["hipe2020-fr"]
-        (tmp_path / spec.filename).write_text(
+        source = (
             "TOKEN\tNE-COARSE-LIT\tA\tB\tC\tD\tE\tNEL-LIT\tF\tMISC\n"
             "# hipe2022:document_id = d\n"
-            "Paris\tB-loc\tO\tO\tO\tO\tO\tQ90\t_\t_\n",
-            encoding="utf-8",
+            "Paris\tB-loc\tO\tO\tO\tO\tO\tQ90\t_\t_\n"
         )
+        source_bytes = source.encode("utf-8")
+        (tmp_path / spec.filename).write_bytes(source_bytes)
+        pin_source(monkeypatch, spec.name, source_bytes)
         monkeypatch.setattr(
             corpora, "load_coordinates", lambda qids, cache, **_: {"Q90": (48.85, 2.35)}
         )

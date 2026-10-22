@@ -6,8 +6,10 @@ checkpoints of two corpora must never be mistaken for one another.
 """
 
 import argparse
+import hashlib
 import json
 import os
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -251,25 +253,27 @@ def test_corpus_summary_row_records_counts_and_scores(tmp_path):
     ]
 
 
-def _run_manifest_for_xlm_pipeline():
+def _manifest_plan_for_xlm_pipeline(corpus_name="newsli-ar"):
     arguments = argparse.Namespace(
         min_similarity=0.0,
         limit=None,
         chunk_size=5,
         device="cuda",
     )
-    return benchmark_cli._run_manifest(
-        _ManifestPlan(
-            names=["newsli-ar"],
-            pipeline_names=[pipelines.XLM_MINILM],
-            phases=[runner.RECOGNITION, runner.RESOLUTION],
-            arguments=arguments,
-            commit="short-sha",
-            full_commit="a" * 40,
-            facts={"started_at": "2026-10-13T00:00:00+00:00", "gpu": "A100"},
-            device="cuda",
-        )
+    return _ManifestPlan(
+        names=[corpus_name],
+        pipeline_names=[pipelines.XLM_MINILM],
+        phases=[runner.RECOGNITION, runner.RESOLUTION],
+        arguments=arguments,
+        commit="short-sha",
+        full_commit="a" * 40,
+        facts={"started_at": "2026-10-13T00:00:00+00:00", "gpu": "A100"},
+        device="cuda",
     )
+
+
+def _run_manifest_for_xlm_pipeline(corpus_name="newsli-ar"):
+    return benchmark_cli._run_manifest(_manifest_plan_for_xlm_pipeline(corpus_name))
 
 
 def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
@@ -299,6 +303,47 @@ def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
     assert benchmark_cli._manifest_identity(
         different_gpu
     ) != benchmark_cli._manifest_identity(manifest)
+
+
+def test_run_manifest_identity_binds_expected_source_hash():
+    manifest = _run_manifest_for_xlm_pipeline("geovirus")
+    cell = manifest["protocol"]["corpora"]["geovirus"]
+
+    assert cell["expected_source_content_sha256"] == (
+        corpora.CORPORA["geovirus"].expected_source_sha256
+    )
+
+    different_pin = json.loads(json.dumps(manifest))
+    different_pin["protocol"]["corpora"]["geovirus"][
+        "expected_source_content_sha256"
+    ] = "0" * 64
+    assert benchmark_cli._manifest_identity(
+        different_pin
+    ) != benchmark_cli._manifest_identity(manifest)
+
+
+def test_legacy_manifest_without_source_pin_is_refused_without_rewriting(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(
+        benchmark_cli.pipelines,
+        "pipeline_execution_settings",
+        lambda *args, **kwargs: {},
+    )
+    monkeypatch.setattr(
+        benchmark_cli.pipelines, "describe_device", lambda device: device
+    )
+    plan = _manifest_plan_for_xlm_pipeline("geovirus")
+    legacy = benchmark_cli._run_manifest(plan)
+    del legacy["protocol"]["corpora"]["geovirus"]["expected_source_content_sha256"]
+    manifest_bytes = json.dumps(legacy).encode()
+    manifest_path = tmp_path / "run-manifest.json"
+    manifest_path.write_bytes(manifest_bytes)
+
+    with pytest.raises(RuntimeError, match="different experiment"):
+        benchmark_cli._prepare_run_manifest(tmp_path, plan)
+
+    assert manifest_path.read_bytes() == manifest_bytes
 
 
 def test_run_manifest_records_effective_pipeline_execution_settings():
@@ -961,21 +1006,252 @@ def _record_phase_calls(monkeypatch) -> list:
     return phase_calls
 
 
-def _write_geovirus(folder, articles: int) -> None:
+def _pin_source(monkeypatch, name: str, source_bytes: bytes) -> None:
+    spec = corpora.CORPORA[name]
+    monkeypatch.setitem(
+        corpora.CORPORA,
+        name,
+        replace(
+            spec,
+            expected_source_sha256=hashlib.sha256(source_bytes).hexdigest(),
+        ),
+    )
+
+
+def _write_geovirus(folder, articles: int, monkeypatch) -> None:
     """Write a GeoVirus file holding the first `articles` articles of the source."""
     folder.mkdir(parents=True, exist_ok=True)
     body = "".join(_geovirus_article(index) for index in range(articles))
-    (folder / "GeoVirus.xml").write_text(
-        f"<articles>{body}</articles>", encoding="utf-8"
-    )
+    source_bytes = f"<articles>{body}</articles>".encode()
+    (folder / "GeoVirus.xml").write_bytes(source_bytes)
+    _pin_source(monkeypatch, "geovirus", source_bytes)
 
 
 class TestSourceTotalsGate:
     """A GeoVirus file that is not the whole source is refused, not benchmarked."""
 
-    def test_the_complete_source_is_compared_and_accepted(self, tmp_path, capsys):
+    @pytest.mark.parametrize(
+        "expected_pin, reason",
+        [
+            (hashlib.sha256(b"<other articles />").hexdigest(), "SHA-256 mismatch"),
+            (None, "no expected source SHA-256 pin"),
+            ("z" * 64, "malformed expected source SHA-256 pin"),
+        ],
+        ids=["mismatch", "missing-pin", "malformed-pin"],
+    )
+    def test_invalid_cached_source_is_rejected_before_scoring_and_preserves_outputs(
+        self, monkeypatch, tmp_path, capsys, expected_pin, reason
+    ):
+        _stub_run_environment(monkeypatch)
+        monkeypatch.setattr(
+            benchmark_cli.pipelines,
+            "pipeline_execution_settings",
+            lambda *args, **kwargs: {},
+        )
+
+        def forbidden_run_corpus(*args, **kwargs):
+            pytest.fail("source rejection must happen before scoring")
+
+        monkeypatch.setattr(benchmark_cli, "run_corpus", forbidden_run_corpus)
+        folder = tmp_path / "geovirus"
+        folder.mkdir()
+        source_bytes = b"<articles />"
+        (folder / corpora.CORPORA["geovirus"].filename).write_bytes(source_bytes)
+        monkeypatch.setitem(
+            corpora.CORPORA,
+            "geovirus",
+            replace(
+                corpora.CORPORA["geovirus"],
+                expected_source_sha256=expected_pin,
+            ),
+        )
+        report_path = folder / "benchmark-report.json"
+        checkpoint_path = folder / f"checkpoint-{pipelines.XLM_MINILM}.json"
+        report_bytes = b'{"old report": true}\n'
+        checkpoint_bytes = b'{"old checkpoint": true}\n'
+        report_path.write_bytes(report_bytes)
+        checkpoint_path.write_bytes(checkpoint_bytes)
+
+        exit_code = benchmark_cli.main(
+            [
+                "--output-dir",
+                str(tmp_path),
+                "--corpus",
+                "geovirus",
+                "--phase",
+                "recognition",
+                "--device",
+                "cpu",
+            ]
+        )
+
+        manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+        cell = manifest["protocol"]["corpora"]["geovirus"]
+        assert (
+            exit_code,
+            manifest["status"],
+            cell["status"],
+            reason in cell["reason"],
+            "completed_at" in manifest,
+            report_path.read_bytes(),
+            checkpoint_path.read_bytes(),
+            reason in capsys.readouterr().err,
+        ) == (
+            1,
+            "rejected",
+            "rejected",
+            True,
+            False,
+            report_bytes,
+            checkpoint_bytes,
+            True,
+        )
+
+    def test_newsli_release_hash_rejection_is_recorded_without_replacing_outputs(
+        self, monkeypatch, tmp_path
+    ):
+        _stub_run_environment(monkeypatch)
+        monkeypatch.setattr(
+            benchmark_cli.pipelines,
+            "pipeline_execution_settings",
+            lambda *args, **kwargs: {},
+        )
+
+        def reject_release(data, path):
+            raise corpora.SourceHashError(
+                f"{path} is not the pinned UniTopRank release"
+            )
+
+        monkeypatch.setattr(corpora, "_check_newsli_release", reject_release)
+        monkeypatch.setattr(
+            benchmark_cli,
+            "run_corpus",
+            lambda *args, **kwargs: pytest.fail(
+                "source rejection must happen before scoring"
+            ),
+        )
+        (tmp_path / corpora.NEWSLI_RELEASE).write_bytes(b"stale release")
+        folder = tmp_path / "newsli-ar"
+        folder.mkdir()
+        report_path = folder / "benchmark-report.json"
+        checkpoint_path = folder / f"checkpoint-{pipelines.XLM_MINILM}.json"
+        report_path.write_bytes(b'{"old report": true}\n')
+        checkpoint_path.write_bytes(b'{"old checkpoint": true}\n')
+        report_bytes = report_path.read_bytes()
+        checkpoint_bytes = checkpoint_path.read_bytes()
+
+        exit_code = benchmark_cli.main(
+            [
+                "--output-dir",
+                str(tmp_path),
+                "--corpus",
+                "newsli-ar",
+                "--phase",
+                "recognition",
+                "--device",
+                "cpu",
+            ]
+        )
+
+        manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+        cell = manifest["protocol"]["corpora"]["newsli-ar"]
+        assert (
+            exit_code,
+            manifest["status"],
+            cell["status"],
+            "pinned UniTopRank release" in cell["reason"],
+            report_path.read_bytes(),
+            checkpoint_path.read_bytes(),
+        ) == (
+            1,
+            "rejected",
+            "rejected",
+            True,
+            report_bytes,
+            checkpoint_bytes,
+        )
+
+    def test_repaired_source_resume_clears_the_previous_rejection_reason(
+        self, monkeypatch, tmp_path
+    ):
+        _stub_run_environment(monkeypatch)
+        monkeypatch.setattr(
+            benchmark_cli.pipelines,
+            "pipeline_execution_settings",
+            lambda *args, **kwargs: {},
+        )
+        source_bytes = b"<articles />"
+        source_pin = hashlib.sha256(source_bytes).hexdigest()
+        spec = replace(
+            corpora.CORPORA["geovirus"],
+            expected_source_sha256=source_pin,
+        )
+        monkeypatch.setitem(corpora.CORPORA, "geovirus", spec)
+        source_path = tmp_path / "geovirus" / spec.filename
+        source_path.parent.mkdir()
+        source_path.write_bytes(b"<changed articles />")
+        arguments = [
+            "--output-dir",
+            str(tmp_path),
+            "--corpus",
+            "geovirus",
+            "--pipeline",
+            pipelines.XLM_MINILM,
+            "--phase",
+            runner.RECOGNITION,
+            "--device",
+            "cpu",
+        ]
+
+        rejected_exit_code = benchmark_cli.main(arguments)
+        rejected_manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+        rejected_cell = rejected_manifest["protocol"]["corpora"]["geovirus"]
+        assert (
+            rejected_exit_code,
+            rejected_manifest["status"],
+            rejected_cell["status"],
+            "SHA-256 mismatch" in rejected_cell["reason"],
+        ) == (1, "rejected", "rejected", True)
+
+        source_path.write_bytes(source_bytes)
+
+        def write_synthetic_report(loaded, args, folder, **kwargs):
+            payload = {
+                "corpus_digest": loaded.digest,
+                "documents": len(loaded.documents),
+                "gold_toponyms": 0,
+                "environment": {},
+                "pipelines": [
+                    {
+                        "name": pipelines.XLM_MINILM,
+                        "recognition": {"f1": 1.0},
+                        "resolution": {},
+                        "phase_elapsed_seconds": {runner.RECOGNITION: 0.0},
+                        "phase_provenance": {},
+                        "failures": {},
+                    }
+                ],
+            }
+            (folder / "benchmark-report.json").write_text(json.dumps(payload))
+            return []
+
+        monkeypatch.setattr(benchmark_cli, "run_corpus", write_synthetic_report)
+
+        completed_exit_code = benchmark_cli.main(arguments)
+        completed_manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+        completed_cell = completed_manifest["protocol"]["corpora"]["geovirus"]
+        assert (
+            completed_exit_code,
+            completed_manifest["status"],
+            completed_cell["status"],
+            "reason" in completed_cell,
+        ) == (benchmark_cli.EXIT_OK, "complete", "complete", False)
+
+    def test_the_complete_source_is_compared_and_accepted(
+        self, tmp_path, capsys, monkeypatch
+    ):
         """229 articles and 2167 toponyms match the source, so the run goes ahead."""
-        _write_geovirus(tmp_path, GEOVIRUS_ARTICLES)
+        _write_geovirus(tmp_path, GEOVIRUS_ARTICLES, monkeypatch)
         loaded = corpora.load("geovirus", tmp_path)
 
         benchmark_cli.require_clean_corpus(loaded)
@@ -990,10 +1266,10 @@ class TestSourceTotalsGate:
         )
 
     def test_a_capped_run_is_compared_on_documents_and_says_gold_is_not(
-        self, tmp_path, capsys
+        self, tmp_path, capsys, monkeypatch
     ):
         """With --limit the document cap is checked, and the skipped gold total is named."""
-        _write_geovirus(tmp_path, GEOVIRUS_ARTICLES)
+        _write_geovirus(tmp_path, GEOVIRUS_ARTICLES, monkeypatch)
         loaded = corpora.load("geovirus", tmp_path, limit=9)
 
         benchmark_cli.require_clean_corpus(loaded)
@@ -1004,9 +1280,11 @@ class TestSourceTotalsGate:
             in capsys.readouterr().out
         )
 
-    def test_a_capped_run_rejects_gold_lost_while_parsing_the_source(self, tmp_path):
+    def test_a_capped_run_rejects_gold_lost_while_parsing_the_source(
+        self, tmp_path, monkeypatch
+    ):
         """A cap cannot hide a GeoVirus span dropped from the full source."""
-        _write_geovirus(tmp_path, GEOVIRUS_ARTICLES)
+        _write_geovirus(tmp_path, GEOVIRUS_ARTICLES, monkeypatch)
         path = tmp_path / "GeoVirus.xml"
         path.write_text(
             path.read_text(encoding="utf-8").replace(
@@ -1014,6 +1292,7 @@ class TestSourceTotalsGate:
             ),
             encoding="utf-8",
         )
+        _pin_source(monkeypatch, "geovirus", path.read_bytes())
         loaded = corpora.load("geovirus", tmp_path, limit=9)
 
         with pytest.raises(benchmark_cli.CorpusRejectedError) as raised:
@@ -1028,7 +1307,7 @@ class TestSourceTotalsGate:
         """A well-formed file with 228 articles, or none, is refused end to end."""
         _stub_run_environment(monkeypatch)
         phase_calls = _record_phase_calls(monkeypatch)
-        _write_geovirus(tmp_path / "geovirus", articles)
+        _write_geovirus(tmp_path / "geovirus", articles, monkeypatch)
 
         exit_code = benchmark_cli.main(
             ["--output-dir", str(tmp_path), "--device", "cpu"]
@@ -1119,7 +1398,9 @@ def _stage_hipe(monkeypatch, folder, spans_per_document: list) -> None:
     """Write a HIPE split into the corpus folder and resolve its one place offline."""
     folder.mkdir(parents=True, exist_ok=True)
     filename = corpora.CORPORA["hipe2020-de"].filename
-    (folder / filename).write_text(_hipe_tsv(spans_per_document), encoding="utf-8")
+    source_bytes = _hipe_tsv(spans_per_document).encode("utf-8")
+    (folder / filename).write_bytes(source_bytes)
+    _pin_source(monkeypatch, "hipe2020-de", source_bytes)
     monkeypatch.setattr(
         corpora, "load_coordinates", lambda qids, cache, **_: {"Q90": (48.85, 2.35)}
     )
@@ -1182,6 +1463,7 @@ class TestHipeRecordedTotals:
             ),
             encoding="utf-8",
         )
+        _pin_source(monkeypatch, "hipe2020-de", path.read_bytes())
         loaded = corpora.load("hipe2020-de", folder, limit=5)
 
         with pytest.raises(benchmark_cli.CorpusRejectedError) as raised:

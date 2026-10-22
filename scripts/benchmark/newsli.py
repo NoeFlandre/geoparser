@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import zipfile
+from io import BytesIO
 from pathlib import Path
 
 from scripts.benchmark.corpus import Document, GoldSpan
@@ -76,7 +77,7 @@ def _articles(
 
 
 def read_newsli(
-    path: Path, language: str, *, limit: int | None = None
+    path: Path | bytes, language: str, *, limit: int | None = None
 ) -> tuple[list[Document], int]:
     """
     Read one language of the NewsLi release, and count the gold it dropped.
@@ -87,7 +88,7 @@ def read_newsli(
     past.
 
     Args:
-        path: The release zip
+        path: The release ZIP path or its verified bytes
         language: Two-letter code of the language to read
         limit: Keep only the first this many documents, on top of the cap
 
@@ -98,13 +99,14 @@ def read_newsli(
         KeyError: When the release holds no such language
     """
     cap = min(MAX_DOCUMENTS, limit) if limit is not None else MAX_DOCUMENTS
-    with zipfile.ZipFile(path) as archive:
+    source = BytesIO(path) if isinstance(path, bytes) else path
+    with zipfile.ZipFile(source) as archive:
         gold = json.loads(archive.read(f"{language}_geotoponyms.json"))
         return _articles(archive, language, gold, cap)
 
 
 def parse_newsli(
-    path: Path, language: str, *, limit: int | None = None
+    path: Path | bytes, language: str, *, limit: int | None = None
 ) -> list[Document]:
     """
     Read one language of the NewsLi release into documents with gold spans.

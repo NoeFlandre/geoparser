@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
+from io import BytesIO, TextIOWrapper
 from pathlib import Path
 from typing import TextIO
 
@@ -92,12 +93,21 @@ def _append_token(
     return current
 
 
-def _blocks(path: Path) -> Iterator[_Block]:
+def _blocks(source: Path | bytes) -> Iterator[_Block]:
     """Yield every document in the file with its rebuilt text and entities."""
-    with path.open(encoding="utf-8") as handle:
-        header = handle.readline().rstrip("\n").split("\t")
-        tag, link, misc = _column_indices(header)
-        yield from _read_document_blocks(handle, tag, link, misc)
+    if isinstance(source, bytes):
+        with TextIOWrapper(BytesIO(source), encoding="utf-8") as handle:
+            yield from _blocks_from_handle(handle)
+        return
+    with source.open(encoding="utf-8") as handle:
+        yield from _blocks_from_handle(handle)
+
+
+def _blocks_from_handle(handle: TextIO) -> Iterator[_Block]:
+    """Yield blocks parsed from a decoded HIPE source."""
+    header = handle.readline().rstrip("\n").split("\t")
+    tag, link, misc = _column_indices(header)
+    yield from _read_document_blocks(handle, tag, link, misc)
 
 
 def _read_document_blocks(
@@ -135,7 +145,7 @@ def _append_line_token(
     return _append_token(block, line.split("\t"), tag, link, misc, current)
 
 
-def hipe_qids(path: Path) -> set[str]:
+def hipe_qids(path: Path | bytes) -> set[str]:
     """Return the Wikidata items the file's location entities link to."""
     return {
         entity.qid
@@ -146,7 +156,7 @@ def hipe_qids(path: Path) -> set[str]:
 
 
 def parse_hipe(
-    path: Path, coordinates: Coordinates, *, limit: int | None = None
+    path: Path | bytes, coordinates: Coordinates, *, limit: int | None = None
 ) -> list[Document]:
     """
     Read a HIPE TSV file into documents with gold spans.
@@ -155,7 +165,7 @@ def parse_hipe(
     is dropped: distance cannot be scored without a place on Earth.
 
     Args:
-        path: The HIPE TSV file
+        path: The HIPE TSV file or the source bytes already verified by the caller
         coordinates: Wikidata QID to (latitude, longitude)
         limit: Keep only the first this many documents, for a shorter run
 
