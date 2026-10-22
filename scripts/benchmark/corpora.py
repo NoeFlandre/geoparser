@@ -73,11 +73,22 @@ NEWSLI_LANGUAGES = tuple(NEWSLI_RECORDED_TOTALS)
 # in this repository, and a parse of the upstream file matched them on 2026-10-10.
 GEOVIRUS_DOCUMENTS = 229
 GEOVIRUS_GOLD_SPANS = 2167
+GEOVIRUS_HIPE_SOURCE_SHA256: dict[str, str] = {
+    GEOVIRUS: "2f8a928b9af4a44232493b37c5324bcb14a06873a4d97315cf3b2c7653ea06b1",
+    "hipe2020-de": "39a27cae920561005c5a366b923a827bf7e0b35fbbae47943667dcf1865da550",
+    "hipe2020-fr": "c3e10f1c9a9b12bae71a40d8148516da3979315a405911474ecfee304bb688a6",
+    "hipe2020-en": "081e5b3648c26e7fb4f3825d0ab34fc60c9f021b06943750ad9973cb0458c311",
+    "newseye-de": "e208286fc47f364e5d60bf6a077852a5007ca514500f7bbb4bfc645755efe719",
+    "newseye-fr": "9afece6528a8dc4da51b00a73fdce0f67a0e14449c05c5e230e4c707da3ecfcc",
+    "newseye-fi": "115b3299226b97a1b34db2ee4a544530bced616f084f7e60327c7e375b46682a",
+    "newseye-sv": "6fd7634b1aa82432798e1858df2061249ce4a6e81fde9a422346a987460c7faa",
+    "topres19th-en": "f54fb9ab5600f9f50126327ac9bef05c6c20ebd6472c1c9b1ffbd0cff465adeb",
+}
 
 
 @dataclass(frozen=True)
 class CorpusSpec:
-    """Where a corpus comes from, how to read it, and the totals it should hold."""
+    """Describe a corpus source, its expected hash, and its recorded totals."""
 
     name: str
     language: str
@@ -85,6 +96,7 @@ class CorpusSpec:
     kind: str
     documents: int | None = None
     gold_spans: int | None = None
+    expected_source_sha256: str | None = None
 
     @property
     def filename(self) -> str:
@@ -150,6 +162,7 @@ def _hipe(dataset: str, language: str) -> CorpusSpec:
         kind=HIPE,
         documents=documents,
         gold_spans=gold_spans,
+        expected_source_sha256=GEOVIRUS_HIPE_SOURCE_SHA256[name],
     )
 
 
@@ -163,6 +176,7 @@ CORPORA: dict[str, CorpusSpec] = {
             GEOVIRUS,
             documents=GEOVIRUS_DOCUMENTS,
             gold_spans=GEOVIRUS_GOLD_SPANS,
+            expected_source_sha256=GEOVIRUS_HIPE_SOURCE_SHA256[GEOVIRUS],
         ),
         _hipe("hipe2020", "de"),
         _hipe("hipe2020", "fr"),
@@ -180,6 +194,7 @@ CORPORA: dict[str, CorpusSpec] = {
                 NEWSLI,
                 documents=NEWSLI_RECORDED_TOTALS[language][0],
                 gold_spans=NEWSLI_RECORDED_TOTALS[language][1],
+                expected_source_sha256=NEWSLI_RELEASE_SHA256,
             )
             for language in NEWSLI_LANGUAGES
         ),
@@ -318,6 +333,7 @@ def _load_parsed(
     if spec.kind == NEWSLI:
         return _load_newsli(spec, cache_dir, limit, scoring_view)
     path = corpus.download_corpus(cache_dir / spec.filename, url=spec.url)
+    source_sha256 = _verify_source_sha256(spec, path)
     if spec.kind == GEOVIRUS:
         return LoadedCorpus(
             spec.name,
@@ -325,7 +341,7 @@ def _load_parsed(
             corpus.parse_corpus(path, limit=limit),
             corpus.corpus_digest(path),
             source_url=spec.url,
-            source_content_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+            source_content_sha256=source_sha256,
         )
     coordinates = load_coordinates(hipe_qids(path), coordinate_cache)
     digest = hashlib.sha256(path.read_bytes())
@@ -336,11 +352,26 @@ def _load_parsed(
         parse_hipe(path, coordinates, limit=limit),
         digest.hexdigest()[:16],
         source_url=spec.url,
-        source_content_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+        source_content_sha256=source_sha256,
         coordinate_cache_sha256=hashlib.sha256(
             coordinate_cache.read_bytes()
         ).hexdigest(),
     )
+
+
+def _verify_source_sha256(spec: CorpusSpec, path: Path) -> str:
+    """Refuse a cached or downloaded source that differs from its registry pin."""
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    expected = spec.expected_source_sha256
+    if expected is None:
+        message = f"{spec.name} has no expected source SHA-256 pin"
+        raise ValueError(message)
+    if actual != expected:
+        message = (
+            f"{spec.name} source SHA-256 mismatch: expected {expected}, found {actual}"
+        )
+        raise ValueError(message)
+    return actual
 
 
 def _check_newsli_release(data: bytes, path: Path) -> None:

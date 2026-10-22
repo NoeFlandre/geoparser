@@ -1145,6 +1145,7 @@ def _manifest_cell_data(
         "evaluation_rule": _manifest_evaluation_rule(fixed),
         "source_split": _manifest_source_split(name),
         "source_url": getattr(spec, "url", None),
+        "expected_source_content_sha256": getattr(spec, "expected_source_sha256", None),
         "status": "pending",
     }
 
@@ -1429,6 +1430,7 @@ def _manifest_identity(manifest: dict) -> dict:
                         "evaluation_rule",
                         "source_split",
                         "source_url",
+                        "expected_source_content_sha256",
                     )
                 }
                 for name, value in protocol["corpora"].items()

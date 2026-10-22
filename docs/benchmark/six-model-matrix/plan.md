@@ -63,12 +63,13 @@ rows are the Cartesian product of these recognizers and resolvers:
 | `otter-jina` | `whoisjones/otter-cross-mmbert` | `8729188e4f5fc7948d0e9dfd7d7e6d36c2e7270d` | Jina embeddings + reranker | `jinaai/jina-embeddings-v5-text-small@dd76d535f5447ca3897a9c893fb1e612ead98192` + `jinaai/jina-reranker-v3.5@e8a93f33f0b22108f8c2364f8484ce3422552fbc` |
 
 No population prior or inflection trimming is part of the current run. Pin the
-reviewed code commit and `uv.lock` digest. For every corpus, freeze the fetched
-source URL and source-content SHA256 in the run manifest; for HIPE/NewsEye and
-TopRes also record the committed Wikidata coordinate-cache SHA256. The
-GeoVirus and HIPE source URLs use mutable upstream branch refs and the matrix
-registry does not freeze their byte digests, so a shard must record the exact
-bytes it validated before scoring.
+reviewed code commit and `uv.lock` digest. For every corpus, record the source
+URL, expected source-content SHA256, and observed source-content SHA256 in the
+run manifest. The registry pins GeoVirus and each HIPE/NewsEye/TopRes source
+file, and the loader checks cached and fetched bytes before parsing. For
+HIPE/NewsEye and TopRes, also record the committed Wikidata coordinate-cache
+SHA256. The source URLs use mutable upstream branch refs, so the loader refuses
+bytes that differ from the reviewed hashes.
 NewsLi is additionally checked against the release archive at
 `https://ndownloader.figshare.com/files/59465342`: 63,356,728 bytes, MD5
 `8e6f82a0931cb909e6f18217e80ce1f3`, SHA256

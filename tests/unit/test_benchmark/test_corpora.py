@@ -7,7 +7,7 @@ the report never need to know which one they are scoring.
 
 import hashlib
 import io
-from types import SimpleNamespace
+from dataclasses import replace
 
 import pytest
 
@@ -26,6 +26,18 @@ def pin_release(monkeypatch, release):
     )
     monkeypatch.setattr(
         corpora, "NEWSLI_RELEASE_SHA256", hashlib.sha256(data).hexdigest()
+    )
+
+
+def pin_source(monkeypatch, name, source_bytes):
+    spec = corpora.CORPORA[name]
+    monkeypatch.setitem(
+        corpora.CORPORA,
+        name,
+        replace(
+            spec,
+            expected_source_sha256=hashlib.sha256(source_bytes).hexdigest(),
+        ),
     )
 
 
@@ -51,6 +63,21 @@ class TestRegistry:
                 assert "-test-" in spec.url, name
                 assert "masked" not in spec.url, name
 
+    def test_geovirus_and_hipe_sources_have_full_sha256_pins(self):
+        sources = {
+            name: spec.expected_source_sha256
+            for name, spec in corpora.CORPORA.items()
+            if spec.kind in {corpora.GEOVIRUS, corpora.HIPE}
+        }
+
+        assert sources == corpora.GEOVIRUS_HIPE_SOURCE_SHA256
+        assert all(
+            source_sha256 is not None
+            and len(source_sha256) == 64
+            and set(source_sha256) <= set("0123456789abcdef")
+            for source_sha256 in sources.values()
+        )
+
     def test_unknown_corpus_is_an_error(self, tmp_path):
         """Test that a typo does not silently fall back."""
         with pytest.raises(KeyError):
@@ -67,16 +94,13 @@ class TestLoad:
         self, tmp_path, monkeypatch, kind, fetched, matches
     ):
         name = "geovirus" if kind == corpora.GEOVIRUS else "hipe2020-en"
-        filename = "GeoVirus.xml" if kind == corpora.GEOVIRUS else "HIPE.tsv"
+        original_spec = corpora.CORPORA[name]
+        filename = original_spec.filename
         source_bytes = b"<source />"
         expected_bytes = source_bytes if matches else b"<different source />"
         expected_hash = hashlib.sha256(expected_bytes).hexdigest()
-        spec = SimpleNamespace(
-            name=name,
-            language="en",
-            url="https://example.invalid/source",
-            filename=filename,
-            kind=kind,
+        spec = replace(
+            original_spec,
             documents=None,
             gold_spans=None,
             expected_source_sha256=expected_hash,
@@ -118,9 +142,9 @@ class TestLoad:
 
         if matches:
             loaded = corpora.load(name, tmp_path)
-            assert loaded.source_content_sha256 == hashlib.sha256(
-                source_bytes
-            ).hexdigest()
+            assert (
+                loaded.source_content_sha256 == hashlib.sha256(source_bytes).hexdigest()
+            )
             assert parser_calls
         else:
             with pytest.raises(ValueError, match=f"{name}.*SHA-256 mismatch"):
@@ -130,12 +154,14 @@ class TestLoad:
     def test_loads_a_hipe_corpus_from_cache(self, tmp_path, monkeypatch):
         """Test that a cached TSV is parsed with committed coordinates."""
         spec = corpora.CORPORA["hipe2020-fr"]
-        (tmp_path / spec.filename).write_text(
+        source = (
             "TOKEN\tNE-COARSE-LIT\tA\tB\tC\tD\tE\tNEL-LIT\tF\tMISC\n"
             "# hipe2022:document_id = d\n"
-            "Paris\tB-loc\tO\tO\tO\tO\tO\tQ90\t_\t_\n",
-            encoding="utf-8",
+            "Paris\tB-loc\tO\tO\tO\tO\tO\tQ90\t_\t_\n"
         )
+        source_bytes = source.encode("utf-8")
+        (tmp_path / spec.filename).write_bytes(source_bytes)
+        pin_source(monkeypatch, spec.name, source_bytes)
         monkeypatch.setattr(
             corpora, "load_coordinates", lambda qids, cache, **_: {"Q90": (48.85, 2.35)}
         )
@@ -152,12 +178,14 @@ class TestLoad:
     def test_digest_changes_with_coordinates(self, tmp_path, monkeypatch):
         """Test that a checkpoint cannot resume across a gold change."""
         spec = corpora.CORPORA["hipe2020-fr"]
-        (tmp_path / spec.filename).write_text(
+        source = (
             "TOKEN\tNE-COARSE-LIT\tA\tB\tC\tD\tE\tNEL-LIT\tF\tMISC\n"
             "# hipe2022:document_id = d\n"
-            "Paris\tB-loc\tO\tO\tO\tO\tO\tQ90\t_\t_\n",
-            encoding="utf-8",
+            "Paris\tB-loc\tO\tO\tO\tO\tO\tQ90\t_\t_\n"
         )
+        source_bytes = source.encode("utf-8")
+        (tmp_path / spec.filename).write_bytes(source_bytes)
+        pin_source(monkeypatch, spec.name, source_bytes)
         monkeypatch.setattr(
             corpora, "load_coordinates", lambda qids, cache, **_: {"Q90": (48.85, 2.35)}
         )
