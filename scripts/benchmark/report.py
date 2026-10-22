@@ -122,6 +122,7 @@ def render_markdown(  # noqa: PLR0913
     gold_toponyms: int,
     gazetteer: str,
     min_similarity: float,
+    scoring_spans: int,
     partial: bool = False,
 ) -> str:
     """
@@ -135,6 +136,8 @@ def render_markdown(  # noqa: PLR0913
         gazetteer: The gazetteer both pipelines resolved against
         min_similarity: The shared abstention threshold
         partial: Whether this report covers only an input slice
+        scoring_spans: Number of distinct (document, start, end) identities
+            used by the set-based scoring metrics
 
     Returns:
         The report as Markdown
@@ -143,7 +146,8 @@ def render_markdown(  # noqa: PLR0913
         f"# {corpus_name} benchmark",
         "",
         f"- Documents: {documents}",
-        f"- Gold toponyms: {gold_toponyms}",
+        f"- Gold reference rows: {gold_toponyms}",
+        f"- Distinct scoring spans: {scoring_spans}",
         f"- Gazetteer: {gazetteer}",
         f"- Shared abstention threshold: {min_similarity}",
         f"- Input slice: {'partial' if partial else 'complete'}",
@@ -184,6 +188,10 @@ def render_markdown(  # noqa: PLR0913
         "Resolution is scored on the gold spans, supplied to both pipelines",
         "through ManualRecognizer, so the resolvers are judged on the same",
         "toponyms and a difference cannot be an artefact of recognition.",
+        "",
+        "Both phases score distinct (document ID, start, end) span identities.",
+        "Exact duplicate reference rows retained by strict raw remain visible",
+        "in inspection files, but count once in metric denominators.",
         "",
         "A gold toponym a pipeline did not place is charged the maximum",
         "possible error rather than dropped, so resolving less cannot improve",
@@ -267,16 +275,17 @@ def render_summary(rows: Sequence[dict[str, t.Any]]) -> str:
         "Recognition is exact-match F1 on each pipeline's own spans; resolution",
         "is scored on the gold spans. Each corpus's own report has the detail.",
         "",
-        "| Corpus | Lang | Docs | Gold | Pipeline | Rec F1 | Acc@161km | AUC "
+        "| Corpus | Lang | Docs | Gold rows | Scored spans | Pipeline | Rec F1 | Acc@161km | AUC "
         "| Seconds |",
-        "| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: |",
+        "| --- | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: |",
     ]
     for row in rows:
         f1 = row["recognition"].get("f1") if row["recognition"] else None
         resolution = row["resolution"] or {}
         lines.append(
             f"| {row['corpus']} | {row['language']} | {row['documents']} "
-            f"| {row['gold_toponyms']} | {row['pipeline']} "
+            f"| {row['gold_toponyms']} | {row['scoring_spans']} "
+            f"| {row['pipeline']} "
             f"| {_number(f1)} | {_number(resolution.get('accuracy_at_161km'))} "
             f"| {_number(resolution.get('auc'))} | {row['elapsed_seconds']:.1f} |"
         )

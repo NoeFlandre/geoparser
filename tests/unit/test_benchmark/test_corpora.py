@@ -22,6 +22,9 @@ def pin_release(monkeypatch, release):
         "NEWSLI_RELEASE_MD5",
         hashlib.md5(data, usedforsecurity=False).hexdigest(),
     )
+    monkeypatch.setattr(
+        corpora, "NEWSLI_RELEASE_SHA256", hashlib.sha256(data).hexdigest()
+    )
 
 
 class TestRegistry:
@@ -143,7 +146,7 @@ class TestNewsliRegistry:
         assert [d.identifier for d in loaded.documents] == ["ro-1", "ro-2"]
         assert len(loaded.digest) == 16
 
-    @pytest.mark.parametrize("wrong_pin", ["bytes", "digest"])
+    @pytest.mark.parametrize("wrong_pin", ["bytes", "digest", "sha256"])
     def test_refuses_a_cached_release_that_is_not_the_pinned_file(
         self, tmp_path, monkeypatch, wrong_pin
     ):
@@ -156,8 +159,10 @@ class TestNewsliRegistry:
             monkeypatch.setattr(
                 corpora, "NEWSLI_RELEASE_BYTES", corpora.NEWSLI_RELEASE_BYTES + 1
             )
-        else:
+        elif wrong_pin == "digest":
             monkeypatch.setattr(corpora, "NEWSLI_RELEASE_MD5", "0" * 32)
+        else:
+            monkeypatch.setattr(corpora, "NEWSLI_RELEASE_SHA256", "0" * 64)
         monkeypatch.setattr(
             corpora.corpus, "download_corpus", lambda cache_path, *, url: release
         )

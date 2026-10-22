@@ -17,6 +17,7 @@ from scripts.benchmark.checkpoint import (
     Checkpoint,
     RunIdentity,
     load,
+    recognition_reuse_compatible,
     resolution_reuse_compatible,
     save,
 )
@@ -442,6 +443,67 @@ class TestRunIdentity:
 
         assert resolution_reuse_compatible(first, second)
 
+    def test_recognition_reuse_allows_different_resolvers_with_same_recognizer(self):
+        common = {
+            "corpus_digest": "same-corpus",
+            "limit": None,
+            "commit": "same-code",
+            "scoring_view": "strict-raw-v1",
+            "accelerator": "cuda (H100)",
+            "model_pins": {
+                "recognizer": "gliner@pin",
+                "resolver": "minilm@pin",
+            },
+            "execution_settings": {
+                "document_chunk_size": 5,
+                "recognition": {"method": "per_document"},
+                "resolution": {"batch_size": 32},
+            },
+        }
+        first = identity(pipeline="gliner-minilm", **common)
+        second = identity(
+            pipeline="gliner-jina",
+            **{
+                **common,
+                "model_pins": {
+                    **common["model_pins"],
+                    "resolver": "jina@pin",
+                    "reranker": "reranker@pin",
+                },
+            },
+        )
+
+        assert recognition_reuse_compatible(first, second)
+
+    @pytest.mark.parametrize(
+        "change",
+        [
+            {"model_pins": {"recognizer": "other@pin"}},
+            {"corpus_digest": "other-corpus"},
+            {"scoring_view": "newsli-exact-full-record-dedup-v1"},
+            {"commit": "other-code"},
+            {"accelerator": "cpu"},
+        ],
+    )
+    def test_recognition_reuse_rejects_a_changed_component_or_input(self, change):
+        common = {
+            "corpus_digest": "same-corpus",
+            "limit": None,
+            "commit": "same-code",
+            "scoring_view": "strict-raw-v1",
+            "accelerator": "cuda (H100)",
+            "model_pins": {"recognizer": "gliner@pin"},
+            "execution_settings": {
+                "document_chunk_size": 5,
+                "recognition": {"method": "per_document"},
+                "resolution": None,
+            },
+        }
+        first = identity(pipeline="gliner-minilm", **common)
+        changed = identity(pipeline="gliner-jina", **{**common, **change})
+
+        assert not recognition_reuse_compatible(first, changed)
+
     def test_gold_span_resolution_reuse_requires_resolver_pin(self):
         first = identity(model_pins={"reranker": "reranker@one"})
         second = identity(model_pins={"reranker": "reranker@one"})
@@ -478,6 +540,8 @@ class TestRunIdentity:
             ("limit", 10),
             ("commit", "other-code"),
             ("schema_version", SCHEMA_VERSION + 1),
+            ("scoring_view", "newsli-exact-full-record-dedup-v1"),
+            ("accelerator", "cpu"),
         ],
     )
     def test_gold_span_resolution_reuse_rejects_resolution_input_changes(

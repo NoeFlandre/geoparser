@@ -26,6 +26,8 @@ from pathlib import Path
 from scripts.benchmark.corpus import Document, GoldSpan
 
 MAX_DOCUMENTS = 500
+STRICT_RAW_VIEW = "strict-raw-v1"
+EXACT_FULL_RECORD_DEDUP_VIEW = "newsli-exact-full-record-dedup-v1"
 
 
 def _article(
@@ -119,6 +121,40 @@ def parse_newsli(
         KeyError: When the release holds no such language
     """
     return read_newsli(path, language, limit=limit)[0]
+
+
+def deduplicate_exact_full_records(
+    documents: list[Document],
+) -> tuple[list[Document], int, int]:
+    """Collapse repeated full gold records without changing source documents.
+
+    Equality follows the published NewsLi view: start, end, name, latitude,
+    longitude. The first occurrence stays in source order. Nonidentical records
+    remain in the output.
+
+    Returns the new document list, excess records removed, and groups collapsed.
+    """
+    transformed: list[Document] = []
+    removed_records = 0
+    collapsed_groups = 0
+    for document in documents:
+        seen: set[tuple[int, int, str, float, float]] = set()
+        duplicate_groups: set[tuple[int, int, str, float, float]] = set()
+        retained: list[GoldSpan] = []
+        for span in document.gold:
+            key = (span.start, span.end, span.name, span.latitude, span.longitude)
+            if key in seen:
+                removed_records += 1
+                if key not in duplicate_groups:
+                    duplicate_groups.add(key)
+                    collapsed_groups += 1
+                continue
+            seen.add(key)
+            retained.append(span)
+        transformed.append(
+            Document(document.identifier, document.text, tuple(retained))
+        )
+    return transformed, removed_records, collapsed_groups
 
 
 def _aligned(entries: list[dict], text: str):

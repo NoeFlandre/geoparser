@@ -88,6 +88,17 @@ class _CorpusExecution:
     manifest: dict
 
 
+@dataclass(frozen=True)
+class _PhaseReusePlan:
+    """The selected phases and drivers for one pipeline's reuse checks."""
+
+    phases: Sequence[str]
+    selected: Sequence[str]
+    recognition_drivers: dict[str, str]
+    resolver_drivers: dict[str, str]
+    shareable: set[str]
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Return the argument parser for the benchmark CLI."""
     parser = argparse.ArgumentParser(
@@ -97,9 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--pipeline",
         action="append",
         choices=list(pipelines.PIPELINES),
-        help=(
-            "Pipeline to run; repeat for several. Defaults to all but the ablations."
-        ),
+        help="Pipeline to run; repeat for several. Defaults to all six current combinations.",
     )
     parser.add_argument(
         "--corpus",
@@ -144,6 +153,15 @@ def build_parser() -> argparse.ArgumentParser:
         choices=[runner.RECOGNITION, runner.RESOLUTION],
         help="Phase to run; repeat for several. Defaults to both.",
     )
+    parser.add_argument(
+        "--scoring-view",
+        choices=[corpora.STRICT_RAW_VIEW, corpora.EXACT_FULL_RECORD_DEDUP_VIEW],
+        default=corpora.STRICT_RAW_VIEW,
+        help=(
+            "Scoring protocol. NewsLi exact-record dedup selects the reviewed "
+            "seven-language view and remains separate from strict raw."
+        ),
+    )
     return parser
 
 
@@ -176,6 +194,10 @@ def _corpus_problems(loaded: corpora.LoadedCorpus) -> list[corpus_checks.Problem
         expected_documents=loaded.expected_documents,
         expected_gold=loaded.expected_gold,
         dropped_gold=loaded.dropped_gold,
+        allow_exact_duplicate_records=(
+            loaded.name.startswith("newsli-")
+            and loaded.scoring_view == corpora.STRICT_RAW_VIEW
+        ),
     )
     reports = [found]
     if loaded.integrity_report is not None:
@@ -271,13 +293,16 @@ def run_corpus(
     require_clean_corpus(loaded)
     documents = loaded.documents
     gold_count = corpus.gold_toponym_count(documents)
+    scoring_spans = runner.scoring_span_count(documents)
     output_dir.mkdir(parents=True, exist_ok=True)
     print(
         f"{loaded.name} ({loaded.language}): {len(documents)} documents, "
-        f"{gold_count} gold toponyms, corpus {loaded.digest}, commit {commit}"
+        f"{gold_count} gold reference rows, {scoring_spans} distinct scoring spans, "
+        f"corpus {loaded.digest}, commit {commit}"
     )
     run = _CorpusRun(loaded, arguments, output_dir, device, commit, facts)
     results = _score_requested_pipelines(run)
+    _write_inspection_outputs(run, results)
 
     text = report.render_markdown(
         results,
@@ -287,14 +312,38 @@ def run_corpus(
         gazetteer=pipelines.GAZETTEER_NAME,
         min_similarity=arguments.min_similarity,
         partial=_limit_is_partial(loaded.name, arguments.limit),
+        scoring_spans=scoring_spans,
     )
     _write_corpus_reports(
         output_dir,
         text,
-        _corpus_report_payload(run, gold_count, results),
+        _corpus_report_payload(run, gold_count, results, scoring_spans=scoring_spans),
     )
     print(text)
-    return _summary_rows(run, gold_count, results)
+    return _summary_rows(run, gold_count, results, scoring_spans=scoring_spans)
+
+
+def _write_inspection_outputs(
+    run: _CorpusRun, results: Sequence[report.PipelineResult]
+) -> None:
+    """Write one text-free gold/prediction file per pipeline and corpus."""
+    for result in results:
+        identity = _run_identity(run, result.name)
+        checkpoint_path = run.output_dir / f"checkpoint-{result.name}.json"
+        state, reasons = ckpt.load(checkpoint_path, identity)
+        if reasons:
+            msg = (
+                f"Cannot write inspection output for {result.name}: "
+                f"{', '.join(reasons)}"
+            )
+            raise RuntimeError(msg)
+        runner.write_inspection(
+            run.output_dir / f"inspection-{result.name}.jsonl",
+            run.loaded.documents,
+            state,
+            pipeline=result.name,
+            scoring_view=run.loaded.scoring_view,
+        )
 
 
 def _score_requested_pipelines(
@@ -303,10 +352,13 @@ def _score_requested_pipelines(
     """Run each selected pipeline over the requested corpus phases."""
     pipelines_to_run = run.arguments.pipeline or list(pipelines.DEFAULT_PIPELINES)
     phases = _requested_phases(getattr(run.arguments, "phase", None))
-    shareable = {pipelines.XLM_MINILM, pipelines.OTTER_MINILM}
+    shareable = set(pipelines.DEFAULT_PIPELINES)
     drivers = _resolution_drivers(pipelines_to_run, phases, shareable)
+    recognition_drivers = _recognition_drivers(pipelines_to_run, phases, shareable)
     return [
-        _score_one_requested_pipeline(run, name, phases, shareable, drivers)
+        _score_one_requested_pipeline(
+            run, name, phases, shareable, drivers, recognition_drivers
+        )
         for name in pipelines_to_run
     ]
 
@@ -329,15 +381,45 @@ def _resolution_drivers(
     return drivers
 
 
+def _recognition_drivers(
+    pipeline_names: Sequence[str], phases: Sequence[str], shareable: set[str]
+) -> dict[str, str]:
+    """Choose one run per recognizer to produce reusable span predictions."""
+    if runner.RECOGNITION not in phases:
+        return {}
+    drivers: dict[str, str] = {}
+    for name in pipeline_names:
+        if name in shareable:
+            drivers.setdefault(missing_matrix.recognizer_family(name), name)
+    return drivers
+
+
 def _phases_for_pipeline(
-    name: str, phases: Sequence[str], shareable: set[str], drivers: dict[str, str]
+    name: str,
+    phases: Sequence[str],
+    shareable: set[str],
+    drivers: dict[str, str],
+    recognition_drivers: dict[str, str] | None = None,
 ) -> list[str]:
-    """Skip resolution when an equivalent recognizer pipeline already ran it."""
-    selected = list(phases)
-    family = missing_matrix.resolver_family(name)
-    if name in shareable and drivers.get(family, name) != name:
-        selected = [phase for phase in selected if phase != runner.RESOLUTION]
-    return selected
+    """Skip phases whose exact model components already have a driver."""
+    if name not in shareable:
+        return list(phases)
+    selected = _remove_shared_resolver_phase(name, phases, drivers)
+    return _remove_shared_recognition_phase(name, selected, recognition_drivers or {})
+
+
+def _remove_shared_resolver_phase(
+    name: str, phases: Sequence[str], drivers: dict[str, str]
+) -> list[str]:
+    driver = drivers.get(missing_matrix.resolver_family(name), name)
+    return [phase for phase in phases if phase != runner.RESOLUTION or driver == name]
+
+
+def _remove_shared_recognition_phase(
+    name: str, phases: Sequence[str], drivers: dict[str, str]
+) -> list[str]:
+    driver = drivers.get(missing_matrix.recognizer_family(name), name)
+    return [phase for phase in phases if phase != runner.RECOGNITION or driver == name]
 
 
 def _score_one_requested_pipeline(
@@ -346,15 +428,63 @@ def _score_one_requested_pipeline(
     phases: Sequence[str],
     shareable: set[str],
     drivers: dict[str, str],
+    recognition_drivers: dict[str, str] | None = None,
 ) -> report.PipelineResult:
-    """Run one pipeline and attach matching reusable resolution predictions."""
-    driver = drivers.get(missing_matrix.resolver_family(name))
-    result = _score_pipeline(
-        run, name, _phases_for_pipeline(name, phases, shareable, drivers)
+    """Run needed phases and attach compatible component predictions."""
+    recognition_drivers = recognition_drivers or {}
+    selected = _phases_for_pipeline(
+        name, phases, shareable, drivers, recognition_drivers
     )
-    if name in shareable and runner.RESOLUTION in phases and driver and driver != name:
-        return _reuse_resolution(run, name, driver, result)
+    result = _score_pipeline(run, name, selected)
+    plan = _PhaseReusePlan(
+        phases=phases,
+        selected=selected,
+        recognition_drivers=recognition_drivers,
+        resolver_drivers=drivers,
+        shareable=shareable,
+    )
+    return _reuse_skipped_phases(run, name, result, plan)
+
+
+def _reuse_skipped_phases(
+    run: _CorpusRun,
+    name: str,
+    result: report.PipelineResult,
+    plan: _PhaseReusePlan,
+) -> report.PipelineResult:
+    if name not in plan.shareable:
+        return result
+    sources = (
+        (
+            runner.RECOGNITION,
+            plan.recognition_drivers.get(missing_matrix.recognizer_family(name)),
+        ),
+        (
+            runner.RESOLUTION,
+            plan.resolver_drivers.get(missing_matrix.resolver_family(name)),
+        ),
+    )
+    for phase, source in sources:
+        result = _reuse_phase_if_needed(run, name, phase, source, result, plan)
     return result
+
+
+def _reuse_phase_if_needed(
+    run: _CorpusRun,
+    name: str,
+    phase: str,
+    source: str | None,
+    result: report.PipelineResult,
+    plan: _PhaseReusePlan,
+) -> report.PipelineResult:
+    if (
+        phase not in plan.phases
+        or phase in plan.selected
+        or not source
+        or source == name
+    ):
+        return result
+    return _reuse_phase(run, name, source, result, phase)
 
 
 def _run_identity(run: _CorpusRun, pipeline_name: str) -> ckpt.RunIdentity:
@@ -369,6 +499,7 @@ def _run_identity(run: _CorpusRun, pipeline_name: str) -> ckpt.RunIdentity:
         limit=run.arguments.limit,
         commit=run.commit,
         model_pins=pipelines.pipeline_model_pins(pipeline_name),
+        scoring_view=getattr(run.loaded, "scoring_view", corpora.STRICT_RAW_VIEW),
         execution_settings=_pipeline_execution_settings(
             pipeline_name,
             getattr(run.arguments, "chunk_size", runner.DEFAULT_CHUNK_SIZE),
@@ -409,6 +540,143 @@ def _reuse_resolution(
         source_state,
     )
     models = _resolution_score_models(target_result, target_identity)
+    return runner.score(
+        target_pipeline,
+        run.loaded.documents,
+        target_state,
+        models=models,
+        device=run.device,
+    )
+
+
+def _reuse_phase(
+    run: _CorpusRun,
+    target_pipeline: str,
+    source_pipeline: str,
+    target_result: report.PipelineResult,
+    phase: str,
+) -> report.PipelineResult:
+    """Copy a complete phase after its full model and input identity matches."""
+    if phase == runner.RECOGNITION:
+        return _reuse_recognition(run, target_pipeline, source_pipeline, target_result)
+    if phase == runner.RESOLUTION:
+        return _reuse_resolution(run, target_pipeline, source_pipeline, target_result)
+    msg = f"Unknown phase for reuse: {phase}"
+    raise ValueError(msg)
+
+
+def _load_reusable_recognition(
+    run: _CorpusRun, target_pipeline: str, source_pipeline: str
+) -> tuple[ckpt.RunIdentity, ckpt.RunIdentity, ckpt.Checkpoint]:
+    """Load complete source spans only when corpus and recognizer pins match."""
+    source_identity = _run_identity(run, source_pipeline)
+    target_identity = _run_identity(run, target_pipeline)
+    if not ckpt.recognition_reuse_compatible(source_identity, target_identity):
+        msg = (
+            f"Cannot reuse {source_pipeline} recognition for {target_pipeline}: "
+            "the corpus, recognizer, execution settings or code pins differ."
+        )
+        raise RuntimeError(msg)
+    source_path = run.output_dir / f"checkpoint-{source_pipeline}.json"
+    source_state, reasons = ckpt.load(source_path, source_identity)
+    if reasons:
+        msg = f"Cannot reuse {source_pipeline} recognition: {', '.join(reasons)}"
+        raise RuntimeError(msg)
+    expected_documents = {document.identifier for document in run.loaded.documents}
+    if source_state.completed(runner.RECOGNITION) != expected_documents:
+        msg = (
+            f"Cannot reuse incomplete {source_pipeline} recognition: "
+            f"{len(source_state.completed(runner.RECOGNITION))}/"
+            f"{len(expected_documents)} documents."
+        )
+        raise RuntimeError(msg)
+    return source_identity, target_identity, source_state
+
+
+def _recognition_reuse_provenance(
+    source_pipeline: str,
+    source_identity: ckpt.RunIdentity,
+    document_count: int,
+) -> dict:
+    """Describe the recognizer and inputs behind copied span predictions."""
+    return {
+        "reused": True,
+        "source_pipeline": source_pipeline,
+        "documents": document_count,
+        "corpus_digest": source_identity.corpus_digest,
+        "scoring_view": source_identity.scoring_view,
+        "code_commit": source_identity.commit,
+        "model_pins": {
+            name: pin
+            for name, pin in source_identity.model_pins.items()
+            if name == "recognizer"
+        },
+        "execution_settings": {
+            "document_chunk_size": source_identity.execution_settings[
+                "document_chunk_size"
+            ],
+            "recognition": source_identity.execution_settings["recognition"],
+        },
+    }
+
+
+def _copy_reusable_recognition(
+    run: _CorpusRun,
+    target_pipeline: str,
+    source_pipeline: str,
+    target_identity: ckpt.RunIdentity,
+    source_identity: ckpt.RunIdentity,
+    source_state: ckpt.Checkpoint,
+) -> ckpt.Checkpoint:
+    """Copy recognition annotations, failures, timing and provenance."""
+    target_path = run.output_dir / f"checkpoint-{target_pipeline}.json"
+    expected_documents = {document.identifier for document in run.loaded.documents}
+    target_state, reasons = ckpt.load(target_path, target_identity)
+    for reason in reasons:
+        print(f"  {target_pipeline}: starting fresh -- {reason}")
+    if target_state.completed(runner.RECOGNITION) != expected_documents:
+        previous_seconds = target_state.phase_elapsed_seconds.get(
+            runner.RECOGNITION, 0.0
+        )
+        target_state.recognition = copy.deepcopy(source_state.recognition)
+        target_state.failures[runner.RECOGNITION] = copy.deepcopy(
+            source_state.failures.get(runner.RECOGNITION, {})
+        )
+        target_state.phase_elapsed_seconds[runner.RECOGNITION] = (
+            source_state.phase_elapsed_seconds.get(runner.RECOGNITION, 0.0)
+        )
+        target_state.elapsed_seconds += (
+            target_state.phase_elapsed_seconds[runner.RECOGNITION] - previous_seconds
+        )
+        target_state.phase_provenance[runner.RECOGNITION] = (
+            _recognition_reuse_provenance(
+                source_pipeline, source_identity, len(expected_documents)
+            )
+        )
+        ckpt.save(target_path, target_state)
+    return target_state
+
+
+def _reuse_recognition(
+    run: _CorpusRun,
+    target_pipeline: str,
+    source_pipeline: str,
+    target_result: report.PipelineResult,
+) -> report.PipelineResult:
+    """Score one pipeline after reusing an identical recognition component."""
+    source_identity, target_identity, source_state = _load_reusable_recognition(
+        run, target_pipeline, source_pipeline
+    )
+    target_state = _copy_reusable_recognition(
+        run,
+        target_pipeline,
+        source_pipeline,
+        target_identity,
+        source_identity,
+        source_state,
+    )
+    models = dict(target_result.models)
+    models["recognizer"] = target_identity.model_pins["recognizer"]
     return runner.score(
         target_pipeline,
         run.loaded.documents,
@@ -460,6 +728,7 @@ def _resolution_reuse_provenance(
         "gazetteer": source_identity.gazetteer,
         "gazetteer_sha256": source_identity.gazetteer_sha256,
         "min_similarity": source_identity.min_similarity,
+        "scoring_view": source_identity.scoring_view,
         "code_commit": source_identity.commit,
         "model_pins": {
             name: pin
@@ -488,6 +757,9 @@ def _copy_reusable_resolution(
             runner.RESOLUTION, 0.0
         )
         target_state.resolution = copy.deepcopy(source_state.resolution)
+        target_state.failures[runner.RESOLUTION] = copy.deepcopy(
+            source_state.failures.get(runner.RESOLUTION, {})
+        )
         target_state.phase_elapsed_seconds[runner.RESOLUTION] = (
             source_state.phase_elapsed_seconds.get(runner.RESOLUTION, 0.0)
         )
@@ -512,7 +784,7 @@ def _resolution_score_models(
     models.update(
         {
             name: target_identity.model_pins[name]
-            for name in ("resolver", "reranker")
+            for name in ("resolver", "reranker", "context_sentence_splitter")
             if name in target_identity.model_pins
         }
     )
@@ -610,7 +882,12 @@ def _complete_phase_model_pins(
     models: dict[str, str], phases: Sequence[str], model_pins: dict[str, str]
 ) -> dict[str, str]:
     """Keep immutable model identities in scores when checkpoints were resumed."""
-    for role in ("recognizer", "resolver", "reranker"):
+    for role in (
+        "recognizer",
+        "resolver",
+        "reranker",
+        "context_sentence_splitter",
+    ):
         phase = runner.RECOGNITION if role == "recognizer" else runner.RESOLUTION
         if phase in phases and role in model_pins:
             models.setdefault(role, model_pins[role])
@@ -621,6 +898,8 @@ def _corpus_report_payload(
     run: _CorpusRun,
     gold_count: int,
     results: Sequence[report.PipelineResult],
+    *,
+    scoring_spans: int,
 ) -> dict:
     """Return the metadata and pipeline measurements stored as JSON."""
     loaded = run.loaded
@@ -629,10 +908,20 @@ def _corpus_report_payload(
         "corpus": loaded.name,
         "language": loaded.language,
         "corpus_digest": loaded.digest,
+        "scoring_view": loaded.scoring_view,
+        "pre_transform_gold_toponyms": loaded.pre_transform_gold_toponyms,
+        "exact_duplicate_records": loaded.exact_duplicate_records,
+        "duplicate_records_removed": loaded.duplicate_records_removed,
+        "duplicate_groups_collapsed": loaded.duplicate_groups_collapsed,
+        "source_archive_sha256": loaded.source_archive_sha256,
+        "source_url": loaded.source_url,
+        "source_content_sha256": loaded.source_content_sha256,
+        "coordinate_cache_sha256": loaded.coordinate_cache_sha256,
         "limit": limit,
         "partial": _limit_is_partial(loaded.name, limit),
         "documents": len(loaded.documents),
         "gold_toponyms": gold_count,
+        "scoring_spans": scoring_spans,
         "gazetteer": pipelines.GAZETTEER_NAME,
         "gazetteer_sha256": run.facts.get("gazetteer_artifact_sha256"),
         "min_similarity": run.arguments.min_similarity,
@@ -651,12 +940,13 @@ def _corpus_report_payload(
                 "failures": result.failures,
                 "model_metadata": (
                     missing_matrix.pipeline_model_metadata(result.name, loaded.language)
-                    if result.name in missing_matrix.MISSING_PIPELINES
+                    if result.name in pipelines.DEFAULT_PIPELINES
+                    or result.name in missing_matrix.MISSING_PIPELINES
                     else {}
                 ),
                 "integration_provenance": (
                     pipelines.otter_integration_provenance()
-                    if result.name == pipelines.OTTER_MINILM
+                    if missing_matrix.recognizer_family(result.name) == "otter_cross"
                     else {}
                 ),
             }
@@ -686,6 +976,8 @@ def _summary_rows(
     run: _CorpusRun,
     gold_count: int,
     results: Sequence[report.PipelineResult],
+    *,
+    scoring_spans: int,
 ) -> list[dict]:
     """Flatten corpus metadata and pipeline scores for the root summary."""
     loaded = run.loaded
@@ -696,6 +988,7 @@ def _summary_rows(
             "language": loaded.language,
             "documents": len(documents),
             "gold_toponyms": gold_count,
+            "scoring_spans": scoring_spans,
             "pipeline": result.name,
             "recognition": result.recognition,
             "resolution": result.resolution,
@@ -709,7 +1002,8 @@ def _summary_rows(
 
 def _run_manifest(plan: _ManifestPlan) -> dict:
     """Build a reproducible, incrementally updated manifest for this run."""
-    cells = _manifest_corpus_cells(plan.names)
+    scoring_view = getattr(plan.arguments, "scoring_view", corpora.STRICT_RAW_VIEW)
+    cells = _manifest_corpus_cells(plan.names, scoring_view, plan.arguments.limit)
     model_runs = _manifest_pipeline_pins(
         plan.pipeline_names, plan.arguments.chunk_size, plan.phases
     )
@@ -730,29 +1024,168 @@ def _manifest_source_split(name: str) -> str:
     return "registered corpus adapter"
 
 
-def _manifest_corpus_cell(name: str, fixed: Any) -> dict:
+def _manifest_corpus_cell(
+    name: str,
+    fixed: Any,
+    *,
+    scoring_view: str = corpora.STRICT_RAW_VIEW,
+    limit: int | None = None,
+) -> dict:
     """Describe expected counts and split rules for one requested corpus."""
     spec = corpora.CORPORA[name]
+    counts = _manifest_counts(name, spec, fixed, scoring_view, limit)
+    return _manifest_cell_data(name, spec, fixed, scoring_view, limit, counts)
+
+
+def _manifest_base_counts(spec: Any, fixed: Any) -> tuple[int | None, int | None]:
+    if fixed is not None:
+        return fixed.documents, fixed.gold_toponyms
+    return spec.documents, spec.gold_spans
+
+
+def _manifest_counts(
+    name: str,
+    spec: Any,
+    fixed: Any,
+    scoring_view: str,
+    limit: int | None,
+) -> tuple[int | None, int | None]:
+    documents, gold_toponyms = _manifest_base_counts(spec, fixed)
+    if scoring_view != corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
+        return documents, gold_toponyms
+    gold_toponyms = _deduplicated_gold_count(name, spec, fixed)
+    documents, gold_toponyms = _cap_deduplicated_totals(
+        fixed, limit, documents, gold_toponyms
+    )
+    return documents, gold_toponyms
+
+
+def _deduplicated_gold_count(name: str, spec: Any, fixed: Any) -> int:
+    if (
+        fixed is None
+        or spec.language not in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
+    ):
+        message = f"{name} is outside the NewsLi exact-dedup matrix"
+        raise ValueError(message)
+    return (
+        fixed.gold_toponyms
+        - missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[spec.language]
+    )
+
+
+def _cap_deduplicated_totals(
+    fixed: Any,
+    limit: int | None,
+    documents: int | None,
+    gold_toponyms: int,
+) -> tuple[int | None, int | None]:
+    if fixed is not None and limit is not None and limit < fixed.documents:
+        return limit, None
+    return documents, gold_toponyms
+
+
+def _manifest_exact_duplicate_count(spec: Any) -> int:
+    if getattr(spec, "kind", None) != corpora.NEWSLI:
+        return 0
+    return missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED.get(spec.language, 0)
+
+
+def _manifest_scoring_spans(
+    gold_toponyms: int | None,
+    fixed: Any,
+    scoring_view: str,
+    limit: int | None,
+    exact_duplicates: int,
+) -> int | None:
+    if _manifest_spans_unknown(gold_toponyms, fixed, limit):
+        return None
+    return _manifest_span_count(gold_toponyms, scoring_view, exact_duplicates)
+
+
+def _manifest_spans_unknown(
+    gold_toponyms: int | None, fixed: Any, limit: int | None
+) -> bool:
+    return gold_toponyms is None or (
+        fixed is not None and limit is not None and limit < fixed.documents
+    )
+
+
+def _manifest_span_count(
+    gold_toponyms: int | None, scoring_view: str, exact_duplicates: int
+) -> int | None:
+    if gold_toponyms is None:
+        return None
+    if scoring_view == corpora.STRICT_RAW_VIEW:
+        return gold_toponyms - exact_duplicates
+    return gold_toponyms
+
+
+def _manifest_cell_data(
+    name: str,
+    spec: Any,
+    fixed: Any,
+    scoring_view: str,
+    limit: int | None,
+    counts: tuple[int | None, int | None],
+) -> dict:
+    documents, gold_toponyms = counts
+    exact_duplicates = _manifest_exact_duplicate_count(spec)
     return {
         "language": spec.language,
-        "expected_documents": fixed.documents if fixed else spec.documents,
-        "expected_gold_toponyms": fixed.gold_toponyms if fixed else spec.gold_spans,
-        "evaluation_rule": (
-            "frozen first-five-corpora matrix"
-            if fixed
-            else "registered benchmark adapter"
+        "expected_documents": documents,
+        "expected_gold_toponyms": gold_toponyms,
+        "scoring_spans": _manifest_scoring_spans(
+            gold_toponyms, fixed, scoring_view, limit, exact_duplicates
         ),
+        "pre_transform_gold_toponyms": _manifest_pretransform_gold(
+            fixed, scoring_view, limit
+        ),
+        "exact_duplicate_records": exact_duplicates,
+        "duplicate_records_removed": _manifest_removed_duplicates(spec, scoring_view),
+        "evaluation_rule": _manifest_evaluation_rule(fixed),
         "source_split": _manifest_source_split(name),
+        "source_url": getattr(spec, "url", None),
         "status": "pending",
     }
 
 
-def _manifest_corpus_cells(names: Sequence[str]) -> dict[str, dict]:
-    """Describe each selected corpus against the frozen matrix or registry."""
+def _manifest_pretransform_gold(
+    fixed: Any, scoring_view: str, limit: int | None
+) -> int | None:
+    if fixed is None or scoring_view != corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
+        return None
+    if limit is not None and limit < fixed.documents:
+        return None
+    return fixed.gold_toponyms
+
+
+def _manifest_removed_duplicates(spec: Any, scoring_view: str) -> int:
+    if scoring_view != corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
+        return 0
+    return missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[spec.language]
+
+
+def _manifest_evaluation_rule(fixed: Any) -> str:
+    if fixed is not None:
+        return "frozen first-five-corpora matrix"
+    return "registered corpus adapter"
+
+
+def _manifest_corpus_cells(
+    names: Sequence[str],
+    scoring_view: str = corpora.STRICT_RAW_VIEW,
+    limit: int | None = None,
+) -> dict[str, dict]:
+    """Describe selected source slices and the named scoring view."""
     fixed_cells = {
         missing_matrix.cell_name(cell): cell for cell in missing_matrix.MATRIX
     }
-    return {name: _manifest_corpus_cell(name, fixed_cells.get(name)) for name in names}
+    return {
+        name: _manifest_corpus_cell(
+            name, fixed_cells.get(name), scoring_view=scoring_view, limit=limit
+        )
+        for name in names
+    }
 
 
 def _manifest_pipeline_pins(
@@ -767,7 +1200,7 @@ def _manifest_pipeline_pins(
                 name, chunk_size, phases
             ),
         }
-        if name == pipelines.OTTER_MINILM:
+        if missing_matrix.recognizer_family(name) == "otter_cross":
             model_runs[name]["integration_provenance"] = (
                 pipelines.otter_integration_provenance()
             )
@@ -778,7 +1211,7 @@ def _assemble_run_manifest(plan: _ManifestPlan, cells: dict, model_runs: dict) -
     """Assemble protocol, environment and experiment inputs into a manifest."""
     lock_path = REPOSITORY_ROOT / "uv.lock"
     return {
-        "manifest_version": 1,
+        "manifest_version": 2,
         "status": "running",
         "commit": plan.commit,
         "full_commit": plan.full_commit,
@@ -794,7 +1227,11 @@ def _assemble_run_manifest(plan: _ManifestPlan, cells: dict, model_runs: dict) -
             "device": plan.device,
             "accelerator": pipelines.describe_device(plan.device),
             "phases": list(plan.phases),
+            "scoring_view": getattr(
+                plan.arguments, "scoring_view", corpora.STRICT_RAW_VIEW
+            ),
             "pipelines": model_runs,
+            "legacy_pipeline_id_map": missing_matrix.LEGACY_PIPELINE_ID_MAP,
             "corpora": cells,
         },
     }
@@ -813,6 +1250,16 @@ def _record_manifest_cell(
             "corpus_digest": payload["corpus_digest"],
             "documents": payload["documents"],
             "gold_toponyms": payload["gold_toponyms"],
+            "scoring_spans": payload.get("scoring_spans"),
+            "scoring_view": payload.get("scoring_view", corpora.STRICT_RAW_VIEW),
+            "pre_transform_gold_toponyms": payload.get("pre_transform_gold_toponyms"),
+            "source_archive_sha256": payload.get("source_archive_sha256"),
+            "source_url": payload.get("source_url"),
+            "source_content_sha256": payload.get("source_content_sha256"),
+            "coordinate_cache_sha256": payload.get("coordinate_cache_sha256"),
+            "exact_duplicate_records": payload.get("exact_duplicate_records", 0),
+            "duplicate_records_removed": payload.get("duplicate_records_removed", 0),
+            "duplicate_groups_collapsed": payload.get("duplicate_groups_collapsed", 0),
             "environment": payload["environment"],
             "partial": bool(payload.get("partial", False)),
             "pipelines": {},
@@ -871,7 +1318,8 @@ def _manifest_pipeline_metadata(name: str, language: str) -> dict:
     """Return model metadata for benchmark pipelines that need it."""
     return (
         missing_matrix.pipeline_model_metadata(name, language)
-        if name in missing_matrix.MISSING_PIPELINES
+        if name in missing_matrix.PIPELINE_COMPONENTS
+        or name in missing_matrix.MISSING_PIPELINES
         else {}
     )
 
@@ -880,7 +1328,7 @@ def _manifest_integration_provenance(name: str) -> dict:
     """Return integration evidence only for the Otter pipeline."""
     return (
         pipelines.otter_integration_provenance()
-        if name == pipelines.OTTER_MINILM
+        if missing_matrix.recognizer_family(name) == "otter_cross"
         else {}
     )
 
@@ -897,10 +1345,15 @@ def _manifest_pipeline_cell(
     name = result["name"]
     phase_status = _manifest_phase_status(result, phases, partial=partial)
     failures = result["failures"]
+    pipeline_manifest = manifest["protocol"]["pipelines"].get(name)
     return {
         "status": _manifest_pipeline_status(phase_status, partial=partial),
         "phase_status": phase_status,
-        "model_pins": manifest["protocol"]["pipelines"][name]["model_pins"],
+        "model_pins": (
+            pipeline_manifest["model_pins"]
+            if pipeline_manifest
+            else pipelines.pipeline_model_pins(name)
+        ),
         "model_metadata": _manifest_pipeline_metadata(name, language),
         "integration_provenance": _manifest_integration_provenance(name),
         "recognition": result["recognition"],
@@ -942,6 +1395,7 @@ def _manifest_identity(manifest: dict) -> dict:
     """Select immutable run inputs, excluding progress and measured results."""
     protocol = manifest["protocol"]
     return {
+        "manifest_version": manifest.get("manifest_version"),
         "commit": manifest["commit"],
         "full_commit": manifest["full_commit"],
         "dependency_lock_sha256": manifest["dependency_lock_sha256"],
@@ -955,20 +1409,26 @@ def _manifest_identity(manifest: dict) -> dict:
                 "chunk_size",
                 "device",
                 "accelerator",
+                "scoring_view",
                 "phases",
                 "pipelines",
+                "legacy_pipeline_id_map",
             )
         }
         | {
             "corpora": {
                 name: {
-                    key: value[key]
+                    key: value.get(key)
                     for key in (
                         "language",
                         "expected_documents",
                         "expected_gold_toponyms",
+                        "pre_transform_gold_toponyms",
+                        "exact_duplicate_records",
+                        "duplicate_records_removed",
                         "evaluation_rule",
                         "source_split",
+                        "source_url",
                     )
                 }
                 for name, value in protocol["corpora"].items()
@@ -1006,7 +1466,13 @@ def _run_requested_corpora(
     cache_root = Path(os.environ.get("GEOPARSER_CORPUS_CACHE_DIR", str(output_dir)))
     for name in dict.fromkeys(names):
         folder = corpus_output_dir(output_dir, name)
-        loaded = corpora.load(name, cache_root / name, limit=execution.arguments.limit)
+        scoring_view = getattr(
+            execution.arguments, "scoring_view", corpora.STRICT_RAW_VIEW
+        )
+        load_options = {"limit": execution.arguments.limit}
+        if scoring_view != corpora.STRICT_RAW_VIEW:
+            load_options["scoring_view"] = scoring_view
+        loaded = corpora.load(name, cache_root / name, **load_options)
         try:
             rows += run_corpus(
                 loaded,
@@ -1114,9 +1580,45 @@ def _manifest_plan(arguments: argparse.Namespace) -> _ManifestPlan:
 
 def _requested_corpus_names(arguments: argparse.Namespace) -> list[str]:
     """Expand the all-corpora selector and preserve unique request order."""
-    requested = arguments.corpus or list(corpora.DEFAULT)
-    names = list(corpora.CORPORA) if "all" in requested else requested
+    scoring_view = getattr(arguments, "scoring_view", corpora.STRICT_RAW_VIEW)
+    requested = _corpus_request(arguments, scoring_view)
+    names = _expand_corpus_request(requested, scoring_view)
+    _validate_dedup_corpus_names(names, scoring_view)
     return list(dict.fromkeys(names))
+
+
+def _corpus_request(arguments: argparse.Namespace, scoring_view: str) -> list[str]:
+    if arguments.corpus:
+        return arguments.corpus
+    if scoring_view == corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
+        return ["all"]
+    return list(corpora.DEFAULT)
+
+
+def _expand_corpus_request(requested: list[str], scoring_view: str) -> list[str]:
+    if "all" in requested and scoring_view == corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
+        return [
+            f"newsli-{language}"
+            for language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
+        ]
+    return list(corpora.CORPORA) if "all" in requested else requested
+
+
+def _validate_dedup_corpus_names(names: Sequence[str], scoring_view: str) -> None:
+    if scoring_view != corpora.EXACT_FULL_RECORD_DEDUP_VIEW:
+        return
+    allowed = {
+        f"newsli-{language}" for language in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
+    }
+    invalid = [name for name in names if name not in allowed]
+    _require_requested_corpus_names(invalid)
+
+
+def _require_requested_corpus_names(invalid: list[str]) -> None:
+    if invalid:
+        raise ValueError(
+            "NewsLi exact-record dedup cannot score: " + ", ".join(invalid)
+        )
 
 
 if __name__ == "__main__":

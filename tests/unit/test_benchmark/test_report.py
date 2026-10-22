@@ -148,16 +148,22 @@ class TestRenderMarkdown:
             gold_toponyms=14,
             gazetteer="geonames",
             min_similarity=0.0,
+            scoring_spans=14,
         )
 
     def test_states_the_run_parameters(self):
         """Test that the header carries what the numbers depend on."""
         text = self.render([self.result()])
 
-        assert "- Documents: 2" in text
-        assert "- Gold toponyms: 14" in text
-        assert "- Gazetteer: geonames" in text
-        assert "- Shared abstention threshold: 0.0" in text
+        expected_parameters = (
+            "- Documents: 2",
+            "- Gold reference rows: 14",
+            "- Distinct scoring spans: 14",
+            "Exact duplicate reference rows retained by strict raw",
+            "- Gazetteer: geonames",
+            "- Shared abstention threshold: 0.0",
+        )
+        assert all(parameter in text for parameter in expected_parameters)
 
     def test_marks_a_limited_input_slice_as_partial(self):
         """A reader can distinguish a smoke slice from a complete corpus result."""
@@ -168,6 +174,7 @@ class TestRenderMarkdown:
             gold_toponyms=14,
             gazetteer="geonames",
             min_similarity=0.0,
+            scoring_spans=14,
             partial=True,
         )
 
@@ -256,6 +263,7 @@ class TestRenderSummary:
                 "language": "de",
                 "documents": 3,
                 "gold_toponyms": 7,
+                "scoring_spans": 7,
                 "pipeline": "hybrid",
                 "recognition": {"f1": 0.5},
                 "resolution": {"accuracy_at_161km": 0.75, "auc": 0.25},
@@ -266,6 +274,6 @@ class TestRenderSummary:
         text = render_summary(rows)
 
         assert (
-            "| hipe2020-de | de | 3 | 7 | hybrid | 0.500 | 0.750 | 0.250 | 12.0 |"
+            "| hipe2020-de | de | 3 | 7 | 7 | hybrid | 0.500 | 0.750 | 0.250 | 12.0 |"
             in text
         )

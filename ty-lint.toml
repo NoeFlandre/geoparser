@@ -18,6 +18,7 @@ allowed-unresolved-imports = [
   "markupsafe.**",
   "mutmut.**",
   "numpy.**",
+  "platformdirs.**",
   "pydantic.**",
   "pyproj.**",
   "pytest.**",

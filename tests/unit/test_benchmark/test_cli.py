@@ -80,21 +80,32 @@ def test_score_requested_pipelines_uses_defaults_and_explicit_choices(
 
     def score_pipeline(run, name, phases):
         scored.append((name, phases))
-        return name
+        return PipelineResult(name=name)
 
     monkeypatch.setattr(benchmark_cli, "_score_pipeline", score_pipeline)
+    monkeypatch.setattr(
+        benchmark_cli,
+        "_reuse_phase",
+        lambda _run, _name, _source, result, _phase: result,
+    )
 
     defaults = benchmark_cli._score_requested_pipelines(run)
     run.arguments.pipeline = ["swapped", "hybrid"]
     run.arguments.phase = [runner.RESOLUTION]
     selected = benchmark_cli._score_requested_pipelines(run)
 
-    assert defaults == list(pipelines.DEFAULT_PIPELINES)
-    assert selected == ["swapped", "hybrid"]
+    assert [result.name for result in defaults] == list(pipelines.DEFAULT_PIPELINES)
+    assert [result.name for result in selected] == ["swapped", "hybrid"]
     assert scored == [
-        (name, [runner.RECOGNITION, runner.RESOLUTION])
-        for name in pipelines.DEFAULT_PIPELINES
-    ] + [("swapped", [runner.RESOLUTION]), ("hybrid", [runner.RESOLUTION])]
+        ("gliner-minilm", [runner.RECOGNITION, runner.RESOLUTION]),
+        ("gliner-jina", [runner.RESOLUTION]),
+        ("xlm-minilm", [runner.RECOGNITION]),
+        ("xlm-jina", []),
+        ("otter-minilm", [runner.RECOGNITION]),
+        ("otter-jina", []),
+        ("swapped", [runner.RESOLUTION]),
+        ("hybrid", [runner.RESOLUTION]),
+    ]
 
 
 def _execute_score_pipeline(monkeypatch, tmp_path):
@@ -190,7 +201,7 @@ def _corpus_report_run(tmp_path):
 
 def test_corpus_report_preserves_environment_and_pipeline_metrics(tmp_path):
     run, result = _corpus_report_run(tmp_path)
-    payload = benchmark_cli._corpus_report_payload(run, 3, [result])
+    payload = benchmark_cli._corpus_report_payload(run, 3, [result], scoring_spans=3)
     pipeline = payload["pipelines"][0]
     assert {
         "environment": payload["environment"],
@@ -221,7 +232,7 @@ def test_corpus_report_preserves_environment_and_pipeline_metrics(tmp_path):
 
 def test_corpus_summary_row_records_counts_and_scores(tmp_path):
     run, result = _corpus_report_run(tmp_path)
-    rows = benchmark_cli._summary_rows(run, 3, [result])
+    rows = benchmark_cli._summary_rows(run, 3, [result], scoring_spans=3)
 
     assert rows == [
         {
@@ -229,6 +240,7 @@ def test_corpus_summary_row_records_counts_and_scores(tmp_path):
             "language": "en",
             "documents": 1,
             "gold_toponyms": 3,
+            "scoring_spans": 3,
             "pipeline": "swapped",
             "recognition": {"f1": 0.75},
             "resolution": {"auc": 0.2},
@@ -599,7 +611,7 @@ def test_run_manifest_marks_explicit_document_failures():
 
 def test_corpus_report_writer_emits_markdown_and_json(tmp_path):
     run, result = _corpus_report_run(tmp_path)
-    payload = benchmark_cli._corpus_report_payload(run, 3, [result])
+    payload = benchmark_cli._corpus_report_payload(run, 3, [result], scoring_spans=3)
     benchmark_cli._write_corpus_reports(tmp_path, "# fixture report", payload)
 
     assert (tmp_path / "benchmark-report.md").read_text() == "# fixture report"
@@ -693,9 +705,10 @@ def test_main_reports_provenance_and_corpus_summary(monkeypatch, tmp_path, capsy
     assert summary["environment"]["job_id"] == "job-17"
     assert summary["rows"][0]["corpus"] == "geovirus"
     assert (
-        "| geovirus | en | 1 | 2 | swapped |" in (tmp_path / "summary.md").read_text()
+        "| geovirus | en | 1 | 2 | 2 | swapped |"
+        in (tmp_path / "summary.md").read_text()
     )
-    assert "Gold toponyms: 2" in output
+    assert "2 gold reference rows, 2 distinct scoring spans" in output
 
 
 def test_main_expands_all_corpora_once_and_preserves_database_override(

@@ -70,6 +70,19 @@ def test_g5k_gazetteer_helper_is_executable():
 SUBMIT_SCRIPT = Path(__file__).resolve().parents[3] / "scripts/g5k/submit.sh"
 
 
+def _run_submit(env):
+    bash = shutil.which("bash")
+    if bash is None:
+        raise RuntimeError("The Grid5000 submit regression requires Bash")
+    return subprocess.run(
+        [bash, str(SUBMIT_SCRIPT)],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
 @pytest.mark.skipif(os.name == "nt", reason="Grid5000 submission requires POSIX shell")
 def test_g5k_submit_forwards_memory_ceiling(tmp_path):
     """A configured installer memory cap reaches the OAR job command."""
@@ -92,6 +105,7 @@ def test_g5k_submit_forwards_memory_ceiling(tmp_path):
             "OARSUB_CAPTURE": str(tmp_path / "oarsub-args.txt"),
             "JOB_NAME": "geoparser-memory-test",
             "RESULTS": str(tmp_path / "results"),
+            "RUN_OUTPUT_DIR": str(tmp_path / "results" / "evidence" / "shard-a"),
             "REPO_ROOT": str(tmp_path / "repo"),
             "VENV": str(tmp_path / "venv"),
             "CLUSTER": "grue",
@@ -102,23 +116,138 @@ def test_g5k_submit_forwards_memory_ceiling(tmp_path):
             "PIPELINES": "swapped,xlm-minilm,otter-cross-minilm",
             "CORPORA": "geovirus",
             "PHASES": "recognition,resolution",
+            "SCORING_VIEW": "newsli-exact-full-record-dedup-v1",
             "GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB": "6144",
         }
     )
-    bash = shutil.which("bash")
-    if bash is None:
-        raise RuntimeError("The Grid5000 submit regression requires Bash")
-    subprocess.run(
-        [bash, str(SUBMIT_SCRIPT)],
-        check=True,
+    _run_submit(env)
+
+    command = (tmp_path / "oarsub-args.txt").read_text(encoding="utf-8")
+    expected = (
+        "host=1/gpu=1/core=4,walltime=2:00",
+        "GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB='6144'",
+        f"RUN_OUTPUT_DIR='{tmp_path}/results/evidence/shard-a'",
+        "SCORING_VIEW='newsli-exact-full-record-dedup-v1'",
+    )
+    assert all(argument in command for argument in expected)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Grid5000 submission requires POSIX shell")
+def test_g5k_submit_rejects_unknown_scoring_view_before_submission(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    oarstat = fake_bin / "oarstat"
+    oarstat.write_text("#!/bin/sh\nprintf '[]\\n'\n", encoding="utf-8")
+    oarstat.chmod(0o755)
+    oarsub_called = tmp_path / "oarsub-called"
+    oarsub = fake_bin / "oarsub"
+    oarsub.write_text(
+        f"#!/bin/sh\nprintf called > '{oarsub_called}'\n", encoding="utf-8"
+    )
+    oarsub.chmod(0o755)
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{fake_bin}:{env.get('PATH', '/usr/bin:/bin')}",
+            "RESULTS": str(tmp_path / "results"),
+            "SCORING_VIEW": "unknown-view",
+        }
+    )
+
+    result = subprocess.run(
+        ["bash", str(SUBMIT_SCRIPT)], capture_output=True, text=True, env=env
+    )
+
+    assert result.returncode == 2
+    assert "SCORING_VIEW must be" in result.stderr
+    assert not oarsub_called.exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Grid5000 worker requires POSIX shell")
+def test_g5k_worker_forwards_view_and_shard_output_dir(tmp_path):
+    """A NewsLi scoring view writes checkpoints under its own shard directory."""
+    project_root = Path(__file__).resolve().parents[3]
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_python = fake_bin / "python"
+    fake_python.write_text(
+        "#!/usr/bin/env bash\n"
+        'if [[ "$1" == "-m" && "$2" == "scripts.benchmark" ]]; then\n'
+        '  printf \'%s\\0\' "$@" > "$BENCHMARK_ARGS_CAPTURE"\n'
+        "  exit 0\n"
+        "fi\n"
+        "cat >/dev/null\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    fake_nvidia_smi = fake_bin / "nvidia-smi"
+    fake_nvidia_smi.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_nvidia_smi.chmod(0o755)
+
+    venv = tmp_path / "venv"
+    (venv / "bin").mkdir(parents=True)
+    activate = venv / "bin" / "activate"
+    activate.write_text(
+        f'export PATH="{fake_bin}:$PATH"\n',
+        encoding="utf-8",
+    )
+    results = tmp_path / "results"
+    artifacts = results / "artifacts"
+    artifacts.mkdir(parents=True)
+    (artifacts / "geonames.db").write_bytes(b"test gazetteer")
+    run_output = (
+        results
+        / "evidence"
+        / "matrix-2026"
+        / "newsli-exact-full-record-dedup-v1"
+        / "newsli-fa"
+    )
+    run_output.mkdir(parents=True)
+    scratch = tmp_path / "scratch"
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{fake_bin}:{env.get('PATH', '/usr/bin:/bin')}",
+            "BENCHMARK_ARGS_CAPTURE": str(tmp_path / "benchmark-args.bin"),
+            "RESULTS": str(results),
+            "RUN_OUTPUT_DIR": str(run_output),
+            "REPO_ROOT": str(project_root),
+            "VENV": str(venv),
+            "SCRATCH": str(scratch),
+            "PIPELINES": (
+                "gliner-minilm,gliner-jina,xlm-minilm,xlm-jina,otter-minilm,otter-jina"
+            ),
+            "CORPORA": "newsli-fa",
+            "SCORING_VIEW": "newsli-exact-full-record-dedup-v1",
+            "CHUNK_SIZE": "5",
+        }
+    )
+
+    result = subprocess.run(
+        ["bash", str(project_root / "scripts/g5k/run_benchmark.sh")],
         capture_output=True,
         text=True,
         env=env,
     )
 
-    command = (tmp_path / "oarsub-args.txt").read_text(encoding="utf-8")
-    assert "host=1/gpu=1/core=4,walltime=2:00" in command
-    assert "GEOPARSER_GAZETTEER_BUILD_MEMORY_LIMIT_MB='6144'" in command
+    assert result.returncode == 0, result.stderr
+    captured = (tmp_path / "benchmark-args.bin").read_bytes().split(b"\0")[:-1]
+    args = [part.decode() for part in captured]
+    forwarded = (
+        args[:2],
+        args[args.index("--output-dir") + 1],
+        args[args.index("--scoring-view") + 1],
+        args[args.index("--corpus") + 1],
+        args[args.index("--chunk-size") + 1],
+    )
+    assert forwarded == (
+        ["-m", "scripts.benchmark"],
+        str(run_output),
+        "newsli-exact-full-record-dedup-v1",
+        "newsli-fa",
+        "5",
+    )
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Grid5000 submission requires POSIX shell")

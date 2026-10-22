@@ -29,6 +29,12 @@ PIPELINE_ORDER = (
     "population",
     "population-0.05",
     "population-0.2",
+    "gliner-minilm",
+    "gliner-jina",
+    "xlm-minilm",
+    "xlm-jina",
+    "otter-minilm",
+    "otter-jina",
 )
 
 SERIES_COLORS = {
@@ -41,6 +47,12 @@ SERIES_COLORS = {
         "#008300",
         "#4a3aa7",
         "#e34948",
+        "#6f4e7c",
+        "#8a6d3b",
+        "#138b97",
+        "#cc3f70",
+        "#6848a6",
+        "#6a8f3a",
     ),
     "dark": (
         "#3987e5",
@@ -51,6 +63,12 @@ SERIES_COLORS = {
         "#008300",
         "#9085e9",
         "#e66767",
+        "#8b6a9a",
+        "#ae8d4f",
+        "#24a0ad",
+        "#df5b86",
+        "#8b73c4",
+        "#8aa94c",
     ),
 }
 SURFACE = {"light": "#fcfcfb", "dark": "#1a1a19"}

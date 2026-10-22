@@ -9,6 +9,7 @@
 # PIPELINES accepts benchmark pipeline names, CORPORA accepts registered
 # corpus names or "all", and PHASES accepts recognition and/or resolution.
 # Each value is comma-separated and passed to the benchmark CLI on the node.
+# RUN_OUTPUT_DIR separates one resumable shard from the shared RESULTS root.
 #
 # Policy notes this script encodes:
 #   * one GPU and four CPU cores on one host -- the workload is single-process
@@ -31,6 +32,8 @@ CORES="${CORES:-4}"
 REPO_ROOT="${REPO_ROOT:-$HOME/geoparser}"
 VENV="${VENV:-$HOME/geoparser-venv}"
 : "${RESULTS:?Set RESULTS to a durable shared filesystem path (for example Grid5000 Evergreen)}"
+RUN_OUTPUT_DIR="${RUN_OUTPUT_DIR:-$RESULTS}"
+SCORING_VIEW="${SCORING_VIEW:-strict-raw-v1}"
 CLUSTER="${CLUSTER:-}"
 if [[ -n "$CLUSTER" && ! "$CLUSTER" =~ ^[a-z0-9-]+$ ]]; then
     echo "CLUSTER must be a simple Grid5000 cluster name" >&2
@@ -63,6 +66,11 @@ fi
 PHASES="${PHASES:-}"
 if [[ -n "$PHASES" && ! "$PHASES" =~ ^(recognition|resolution)(,(recognition|resolution))?$ ]]; then
     echo "PHASES must be recognition, resolution, or both, comma-separated" >&2
+    exit 2
+fi
+
+if [[ "$SCORING_VIEW" != "strict-raw-v1" && "$SCORING_VIEW" != "newsli-exact-full-record-dedup-v1" ]]; then
+    echo "SCORING_VIEW must be strict-raw-v1 or newsli-exact-full-record-dedup-v1" >&2
     exit 2
 fi
 
@@ -160,6 +168,8 @@ shell_quote() {
 WORKER_COMMAND="REPO_ROOT=$(shell_quote "$REPO_ROOT")"
 WORKER_COMMAND+=" VENV=$(shell_quote "$VENV")"
 WORKER_COMMAND+=" RESULTS=$(shell_quote "$RESULTS")"
+WORKER_COMMAND+=" RUN_OUTPUT_DIR=$(shell_quote "$RUN_OUTPUT_DIR")"
+WORKER_COMMAND+=" SCORING_VIEW=$(shell_quote "$SCORING_VIEW")"
 WORKER_COMMAND+=" LIMIT=$(shell_quote "${LIMIT:-}")"
 WORKER_COMMAND+=" DEVICE=$(shell_quote "${DEVICE:-auto}")"
 WORKER_COMMAND+=" CHUNK_SIZE=$(shell_quote "${CHUNK_SIZE:-5}")"

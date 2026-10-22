@@ -1,0 +1,7 @@
+date	decision	reason
+2026-10-21	Base the branch on main at 4773e70bdf81aefcf04d1e65143f8563abb8236c	The source campaign commit and later fix are on divergent histories; inspection found the campaign SHA cited by public evidence changed only an XLM regression test, while 1cdebcc contains a separate Grid wait change. Neither is a safe replacement for current main.
+2026-10-21	Use six explicit recognizer/resolver component combinations and preserve old IDs as aliases	The public legacy identifiers are immutable evidence keys; current display labels must name the exact components.
+2026-10-21	Keep strict raw and NewsLi exact-record dedup as separate scoring views	The public dedup protocol defines a seven-language 42-cell view and states its scores are not interchangeable with strict raw.
+2026-10-21	Emit references and predictions without corpus text	Offsets, names, IDs, and coordinates allow score inspection while avoiding public redistribution of article text.
+2026-10-21	Defer new compute and Hub mutation	Scheduler access is unavailable and the HF identity is read-only; held jobs and the pending private staging proposal must remain untouched.
+2026-10-21	Retain but do not count the public NewsLi-SR checkpoint as a current matrix cell	The checkpoint is verified legacy three-pipeline evidence from a different code commit and does not carry the complete six-pipeline gold-reference inspection bundle; component reuse remains gated by matching corpus, code, model, phase settings, and accelerator provenance.

@@ -17,10 +17,16 @@ import json
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from scripts.benchmark import corpus, corpus_checks
+from scripts.benchmark import corpus, corpus_checks, missing_matrix
 from scripts.benchmark.corpus import Document
 from scripts.benchmark.hipe import hipe_qids, parse_hipe
-from scripts.benchmark.newsli import MAX_DOCUMENTS, read_newsli
+from scripts.benchmark.newsli import (
+    EXACT_FULL_RECORD_DEDUP_VIEW,
+    MAX_DOCUMENTS,
+    STRICT_RAW_VIEW,
+    deduplicate_exact_full_records,
+    read_newsli,
+)
 from scripts.benchmark.wikidata import load_coordinates
 
 HIPE_BASE_URL = (
@@ -39,6 +45,9 @@ NEWSLI_RELEASE = "unitoprank-data.zip"
 # both values, or the load stops before any article is read.
 NEWSLI_RELEASE_BYTES = 63356728
 NEWSLI_RELEASE_MD5 = "8e6f82a0931cb909e6f18217e80ce1f3"
+NEWSLI_RELEASE_SHA256 = (
+    "d4672d28045868cd64c52febedb2f62ae85288b9572e70bb7026b410f355d192"
+)
 # Totals per NewsLi language, as the checked-in report of the 2026-09-23 run
 # recorded them at commit bbb8a7b (benchmark-evidence/2026-09-23-newsli). A
 # document is an article the adapter keeps: its text file exists and its gold
@@ -99,6 +108,15 @@ class LoadedCorpus:
     integrity_report: corpus_checks.CorpusReport | None = None
     # The explicit benchmark CLI limit, if this load is a smoke/subset run.
     limit: int | None = None
+    scoring_view: str = STRICT_RAW_VIEW
+    pre_transform_gold_toponyms: int | None = None
+    source_archive_sha256: str | None = None
+    exact_duplicate_records: int = 0
+    duplicate_records_removed: int = 0
+    duplicate_groups_collapsed: int = 0
+    source_url: str | None = None
+    source_content_sha256: str | None = None
+    coordinate_cache_sha256: str | None = None
 
 
 # Totals per HIPE-2022 test split, as the checked-in multilingual report of the
@@ -214,6 +232,7 @@ def load(
     *,
     limit: int | None = None,
     coordinate_cache: Path = COORDINATE_CACHE,
+    scoring_view: str = STRICT_RAW_VIEW,
 ) -> LoadedCorpus:
     """
     Download (once) and parse one registered corpus.
@@ -231,13 +250,51 @@ def load(
         KeyError: When the name is not registered
     """
     spec = CORPORA[name]
+    _validate_scoring_view(spec, scoring_view)
     documents, gold = expected_totals(spec, limit)
+    loaded = _load_expected_slice(
+        spec, cache_dir, limit, coordinate_cache, scoring_view, gold
+    )
+    if scoring_view == EXACT_FULL_RECORD_DEDUP_VIEW:
+        documents, gold = _exact_dedup_expected_totals(spec, limit)
+    return replace(
+        loaded,
+        expected_documents=documents,
+        expected_gold=gold,
+        limit=limit,
+        scoring_view=scoring_view,
+    )
+
+
+def _validate_scoring_view(spec: CorpusSpec, scoring_view: str) -> None:
+    if scoring_view not in {STRICT_RAW_VIEW, EXACT_FULL_RECORD_DEDUP_VIEW}:
+        msg = f"Unknown scoring view: {scoring_view}"
+        raise ValueError(msg)
+    if scoring_view == EXACT_FULL_RECORD_DEDUP_VIEW and (
+        spec.kind != NEWSLI
+        or spec.language not in missing_matrix.NEWSLI_EXACT_DEDUP_LANGUAGES
+    ):
+        msg = (
+            "NewsLi exact-record dedup is defined only for the seven affected "
+            "NewsLi languages."
+        )
+        raise ValueError(msg)
+
+
+def _load_expected_slice(
+    spec: CorpusSpec,
+    cache_dir: Path,
+    limit: int | None,
+    coordinate_cache: Path,
+    scoring_view: str,
+    gold: int | None,
+) -> LoadedCorpus:
     if limit is not None and gold is None and spec.kind != NEWSLI:
         # A cap makes the subset's gold total unknown, but must not also hide
         # gold lost while parsing the registered source. Validate its pinned
         # full-load totals before selecting the documents to score.
-        full = _load_parsed(spec, cache_dir, None, coordinate_cache)
-        loaded = replace(
+        full = _load_parsed(spec, cache_dir, None, coordinate_cache, scoring_view)
+        return replace(
             full,
             documents=full.documents[:limit],
             integrity_report=corpus_checks.check_corpus(
@@ -247,14 +304,7 @@ def load(
                 dropped_gold=full.dropped_gold,
             ),
         )
-    else:
-        loaded = _load_parsed(spec, cache_dir, limit, coordinate_cache)
-    return replace(
-        loaded,
-        expected_documents=documents,
-        expected_gold=gold,
-        limit=limit,
-    )
+    return _load_parsed(spec, cache_dir, limit, coordinate_cache, scoring_view)
 
 
 def _load_parsed(
@@ -262,10 +312,11 @@ def _load_parsed(
     cache_dir: Path,
     limit: int | None,
     coordinate_cache: Path,
+    scoring_view: str = STRICT_RAW_VIEW,
 ) -> LoadedCorpus:
     """Download and parse one corpus, before its expected totals are attached."""
     if spec.kind == NEWSLI:
-        return _load_newsli(spec, cache_dir, limit)
+        return _load_newsli(spec, cache_dir, limit, scoring_view)
     path = corpus.download_corpus(cache_dir / spec.filename, url=spec.url)
     if spec.kind == GEOVIRUS:
         return LoadedCorpus(
@@ -273,6 +324,8 @@ def _load_parsed(
             spec.language,
             corpus.parse_corpus(path, limit=limit),
             corpus.corpus_digest(path),
+            source_url=spec.url,
+            source_content_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
         )
     coordinates = load_coordinates(hipe_qids(path), coordinate_cache)
     digest = hashlib.sha256(path.read_bytes())
@@ -282,6 +335,11 @@ def _load_parsed(
         spec.language,
         parse_hipe(path, coordinates, limit=limit),
         digest.hexdigest()[:16],
+        source_url=spec.url,
+        source_content_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+        coordinate_cache_sha256=hashlib.sha256(
+            coordinate_cache.read_bytes()
+        ).hexdigest(),
     )
 
 
@@ -290,6 +348,7 @@ def _check_newsli_release(data: bytes, path: Path) -> None:
     if (
         len(data) != NEWSLI_RELEASE_BYTES
         or hashlib.md5(data, usedforsecurity=False).hexdigest() != NEWSLI_RELEASE_MD5
+        or hashlib.sha256(data).hexdigest() != NEWSLI_RELEASE_SHA256
     ):
         message = (
             f"{path} is not the pinned UniTopRank release; delete it and load again"
@@ -297,18 +356,75 @@ def _check_newsli_release(data: bytes, path: Path) -> None:
         raise ValueError(message)
 
 
-def _load_newsli(spec: CorpusSpec, cache_dir: Path, limit: int | None) -> LoadedCorpus:
+def _load_newsli(
+    spec: CorpusSpec,
+    cache_dir: Path,
+    limit: int | None,
+    scoring_view: str = STRICT_RAW_VIEW,
+) -> LoadedCorpus:
     """Load one NewsLi language from the shared release zip."""
     release = corpus.download_corpus(cache_dir.parent / NEWSLI_RELEASE, url=spec.url)
     data = release.read_bytes()
     _check_newsli_release(data, release)
     digest = hashlib.sha256(data)
+    source_archive_sha256 = digest.hexdigest()
     digest.update(spec.language.encode())
     documents, dropped = read_newsli(release, spec.language, limit=limit)
+    pre_transform_gold = sum(len(document.gold) for document in documents)
+    deduplicated, exact_duplicates, collapsed_groups = deduplicate_exact_full_records(
+        documents
+    )
+    removed_records = 0
+    if scoring_view == EXACT_FULL_RECORD_DEDUP_VIEW:
+        documents = deduplicated
+        removed_records = exact_duplicates
+        fixed = _newsli_matrix_cell(spec.name)
+        if len(documents) == fixed.documents and (
+            removed_records
+            != missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[spec.language]
+        ):
+            msg = (
+                f"{spec.name} removed {removed_records} exact duplicate records; "
+                "the pinned protocol audit expects "
+                f"{missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[spec.language]}."
+            )
+            raise ValueError(msg)
+    digest.update(scoring_view.encode())
     return LoadedCorpus(
         spec.name,
         spec.language,
         documents,
         digest.hexdigest()[:16],
         dropped_gold=dropped,
+        scoring_view=scoring_view,
+        pre_transform_gold_toponyms=pre_transform_gold,
+        source_archive_sha256=source_archive_sha256,
+        exact_duplicate_records=exact_duplicates,
+        duplicate_records_removed=removed_records,
+        duplicate_groups_collapsed=collapsed_groups,
+        source_url=spec.url,
+        source_content_sha256=source_archive_sha256,
+    )
+
+
+def _newsli_matrix_cell(name: str) -> missing_matrix.CorpusLanguageCell:
+    """Return the frozen NewsLi subset used by the published dedup audit."""
+    for cell in missing_matrix.MATRIX:
+        if missing_matrix.cell_name(cell) == name:
+            return cell
+    msg = f"NewsLi corpus is outside the frozen matrix: {name}"
+    raise KeyError(msg)
+
+
+def _exact_dedup_expected_totals(
+    spec: CorpusSpec, limit: int | None
+) -> tuple[int | None, int | None]:
+    """Return the reviewed transformed totals for one NewsLi dedup slice."""
+    fixed = _newsli_matrix_cell(spec.name)
+    if limit is not None and limit < fixed.documents:
+        return limit, None
+    return (
+        fixed.documents,
+        fixed.gold_toponyms
+        - missing_matrix.NEWSLI_EXACT_DUPLICATES_REMOVED[spec.language],
     )

@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from geoparser.modules.recognizers.otter import PredictionOutputError
+from scripts._io import write_text_atomic
 from scripts.benchmark import checkpoint as ckpt
 from scripts.benchmark import pipelines, report
 from scripts.benchmark.corpus import Document
@@ -67,6 +68,141 @@ def gold_annotations(documents: Sequence[Document]) -> list[t.Any]:
         for document in documents
         for span in document.gold
     ]
+
+
+def scoring_span_count(documents: Sequence[Document]) -> int:
+    """Count distinct document/span identities used by the set-based metrics."""
+    return len(
+        {
+            (document.identifier, span.start, span.end)
+            for document in documents
+            for span in document.gold
+        }
+    )
+
+
+def inspection_records(
+    documents: Sequence[Document],
+    state: ckpt.Checkpoint,
+    *,
+    pipeline: str,
+    scoring_view: str,
+) -> list[dict[str, t.Any]]:
+    """Return one text-free reference/prediction record per input document."""
+    return [
+        _inspection_record(document, state, pipeline, scoring_view)
+        for document in documents
+    ]
+
+
+def _inspection_record(
+    document: Document,
+    state: ckpt.Checkpoint,
+    pipeline: str,
+    scoring_view: str,
+) -> dict[str, t.Any]:
+    failures = _document_phase_failures(document, state)
+    return {
+        "schema": "geoparser-prediction-inspection-v1",
+        "pipeline": pipeline,
+        "scoring_view": scoring_view,
+        "document_id": document.identifier,
+        "reference": _inspection_references(document),
+        "resolution_input": "gold_reference",
+        "prediction": _inspection_predictions(document, state),
+        "phase_status": _document_phase_status(document, state, failures),
+        "failures": _public_phase_failures(failures),
+    }
+
+
+def _document_phase_failures(
+    document: Document, state: ckpt.Checkpoint
+) -> dict[str, dict[str, t.Any] | None]:
+    return {
+        phase: state.failures.get(phase, {}).get(document.identifier)
+        for phase in (RECOGNITION, RESOLUTION)
+    }
+
+
+def _document_phase_status(
+    document: Document,
+    state: ckpt.Checkpoint,
+    failures: dict[str, dict[str, t.Any] | None],
+) -> dict[str, str]:
+    return {
+        phase: _phase_status(document, state, phase, failures[phase])
+        for phase in (RECOGNITION, RESOLUTION)
+    }
+
+
+def _phase_status(
+    document: Document,
+    state: ckpt.Checkpoint,
+    phase: str,
+    failure: dict[str, t.Any] | None,
+) -> str:
+    if failure:
+        return "failed"
+    return "complete" if document.identifier in state.completed(phase) else "incomplete"
+
+
+def _public_phase_failures(
+    failures: dict[str, dict[str, t.Any] | None],
+) -> dict[str, dict[str, t.Any]]:
+    return {
+        phase: {key: failure[key] for key in ("kind", "reason") if key in failure}
+        for phase, failure in failures.items()
+        if failure
+    }
+
+
+def _inspection_references(document: Document) -> list[dict[str, t.Any]]:
+    return [
+        {
+            "start": span.start,
+            "end": span.end,
+            "name": span.name,
+            "latitude": span.latitude,
+            "longitude": span.longitude,
+        }
+        for span in document.gold
+    ]
+
+
+def _inspection_predictions(
+    document: Document, state: ckpt.Checkpoint
+) -> dict[str, list[dict[str, t.Any]]]:
+    return {
+        phase: _phase_predictions(document, state, phase)
+        for phase in (RECOGNITION, RESOLUTION)
+    }
+
+
+def _phase_predictions(
+    document: Document, state: ckpt.Checkpoint, phase: str
+) -> list[dict[str, t.Any]]:
+    return [
+        {key: value for key, value in annotation.items() if key != "document_id"}
+        for annotation in state._phase(phase).get(document.identifier, [])
+    ]
+
+
+def write_inspection(
+    path: Path,
+    documents: Sequence[Document],
+    state: ckpt.Checkpoint,
+    *,
+    pipeline: str,
+    scoring_view: str,
+) -> None:
+    """Write complete text-free per-document references and predictions."""
+    lines = [
+        json.dumps(record, ensure_ascii=False, allow_nan=False)
+        for record in inspection_records(
+            documents, state, pipeline=pipeline, scoring_view=scoring_view
+        )
+    ]
+    write_text_atomic(path, "\n".join(lines) + ("\n" if lines else ""))
 
 
 def predictions_by_document(
