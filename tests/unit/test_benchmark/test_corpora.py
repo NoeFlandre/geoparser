@@ -147,9 +147,73 @@ class TestLoad:
             )
             assert parser_calls
         else:
-            with pytest.raises(ValueError, match=f"{name}.*SHA-256 mismatch"):
+            with pytest.raises(
+                corpora.SourceHashError, match=f"{name}.*SHA-256 mismatch"
+            ):
                 corpora.load(name, tmp_path)
             assert parser_calls == []
+
+    @pytest.mark.parametrize(
+        "pin", [None, "z" * 64, "0" * 63], ids=["missing", "non-hex", "short"]
+    )
+    def test_missing_or_malformed_pin_is_rejected_before_parsing(
+        self, tmp_path, monkeypatch, pin
+    ):
+        name = "geovirus"
+        original_spec = corpora.CORPORA[name]
+        source_bytes = b"<articles />"
+        monkeypatch.setitem(
+            corpora.CORPORA,
+            name,
+            replace(
+                original_spec,
+                expected_source_sha256=pin,
+            ),
+        )
+        (tmp_path / original_spec.filename).write_bytes(source_bytes)
+        parser_calls = []
+        monkeypatch.setattr(
+            corpora.corpus,
+            "parse_corpus",
+            lambda *args, **kwargs: parser_calls.append("parse") or [],
+        )
+
+        with pytest.raises(
+            corpora.SourceHashError, match="expected source SHA-256 pin"
+        ):
+            corpora.load(name, tmp_path)
+
+        assert parser_calls == []
+
+    def test_parser_receives_the_same_bytes_that_were_verified(
+        self, tmp_path, monkeypatch
+    ):
+        name = "geovirus"
+        original_spec = corpora.CORPORA[name]
+        source_bytes = b"<articles />"
+        path = tmp_path / original_spec.filename
+        path.write_bytes(source_bytes)
+        pin_source(monkeypatch, name, source_bytes)
+        original_verify = corpora._verify_source_sha256
+        parser_inputs = []
+
+        def verify_then_mutate(spec, verified_bytes):
+            digest = original_verify(spec, verified_bytes)
+            path.write_bytes(b"<mutated after verification />")
+            return digest
+
+        monkeypatch.setattr(corpora, "_verify_source_sha256", verify_then_mutate)
+        monkeypatch.setattr(
+            corpora.corpus,
+            "parse_corpus",
+            lambda source, **kwargs: parser_inputs.append(source) or [],
+        )
+
+        loaded = corpora.load(name, tmp_path)
+
+        assert parser_inputs == [source_bytes]
+        assert loaded.source_content_sha256 == hashlib.sha256(source_bytes).hexdigest()
+        assert path.read_bytes() != source_bytes
 
     def test_loads_a_hipe_corpus_from_cache(self, tmp_path, monkeypatch):
         """Test that a cached TSV is parsed with committed coordinates."""

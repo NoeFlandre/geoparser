@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -102,6 +103,10 @@ class CorpusSpec:
     def filename(self) -> str:
         """The name the downloaded file is cached under."""
         return self.url.rsplit("/", 1)[-1]
+
+
+class SourceHashError(ValueError):
+    """The expected source identity is absent, malformed, or differs from its bytes."""
 
 
 @dataclass(frozen=True)
@@ -333,23 +338,24 @@ def _load_parsed(
     if spec.kind == NEWSLI:
         return _load_newsli(spec, cache_dir, limit, scoring_view)
     path = corpus.download_corpus(cache_dir / spec.filename, url=spec.url)
-    source_sha256 = _verify_source_sha256(spec, path)
+    source_bytes = path.read_bytes()
+    source_sha256 = _verify_source_sha256(spec, source_bytes)
     if spec.kind == GEOVIRUS:
         return LoadedCorpus(
             spec.name,
             spec.language,
-            corpus.parse_corpus(path, limit=limit),
-            corpus.corpus_digest(path),
+            corpus.parse_corpus(source_bytes, limit=limit),
+            source_sha256[:16],
             source_url=spec.url,
             source_content_sha256=source_sha256,
         )
-    coordinates = load_coordinates(hipe_qids(path), coordinate_cache)
-    digest = hashlib.sha256(path.read_bytes())
+    coordinates = load_coordinates(hipe_qids(source_bytes), coordinate_cache)
+    digest = hashlib.sha256(source_bytes)
     digest.update(json.dumps(sorted(coordinates.items())).encode())
     return LoadedCorpus(
         spec.name,
         spec.language,
-        parse_hipe(path, coordinates, limit=limit),
+        parse_hipe(source_bytes, coordinates, limit=limit),
         digest.hexdigest()[:16],
         source_url=spec.url,
         source_content_sha256=source_sha256,
@@ -359,18 +365,21 @@ def _load_parsed(
     )
 
 
-def _verify_source_sha256(spec: CorpusSpec, path: Path) -> str:
-    """Refuse a cached or downloaded source that differs from its registry pin."""
-    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+def _verify_source_sha256(spec: CorpusSpec, source: bytes) -> str:
+    """Refuse source bytes that lack a valid registry pin or differ from it."""
     expected = spec.expected_source_sha256
     if expected is None:
         message = f"{spec.name} has no expected source SHA-256 pin"
-        raise ValueError(message)
+        raise SourceHashError(message)
+    if not isinstance(expected, str) or re.fullmatch(r"[0-9a-f]{64}", expected) is None:
+        message = f"{spec.name} has a malformed expected source SHA-256 pin"
+        raise SourceHashError(message)
+    actual = hashlib.sha256(source).hexdigest()
     if actual != expected:
         message = (
             f"{spec.name} source SHA-256 mismatch: expected {expected}, found {actual}"
         )
-        raise ValueError(message)
+        raise SourceHashError(message)
     return actual
 
 
@@ -384,7 +393,7 @@ def _check_newsli_release(data: bytes, path: Path) -> None:
         message = (
             f"{path} is not the pinned UniTopRank release; delete it and load again"
         )
-        raise ValueError(message)
+        raise SourceHashError(message)
 
 
 def _load_newsli(
@@ -400,7 +409,7 @@ def _load_newsli(
     digest = hashlib.sha256(data)
     source_archive_sha256 = digest.hexdigest()
     digest.update(spec.language.encode())
-    documents, dropped = read_newsli(release, spec.language, limit=limit)
+    documents, dropped = read_newsli(data, spec.language, limit=limit)
     pre_transform_gold = sum(len(document.gold) for document in documents)
     deduplicated, exact_duplicates, collapsed_groups = deduplicate_exact_full_records(
         documents

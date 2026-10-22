@@ -253,25 +253,27 @@ def test_corpus_summary_row_records_counts_and_scores(tmp_path):
     ]
 
 
-def _run_manifest_for_xlm_pipeline(corpus_name="newsli-ar"):
+def _manifest_plan_for_xlm_pipeline(corpus_name="newsli-ar"):
     arguments = argparse.Namespace(
         min_similarity=0.0,
         limit=None,
         chunk_size=5,
         device="cuda",
     )
-    return benchmark_cli._run_manifest(
-        _ManifestPlan(
-            names=[corpus_name],
-            pipeline_names=[pipelines.XLM_MINILM],
-            phases=[runner.RECOGNITION, runner.RESOLUTION],
-            arguments=arguments,
-            commit="short-sha",
-            full_commit="a" * 40,
-            facts={"started_at": "2026-10-13T00:00:00+00:00", "gpu": "A100"},
-            device="cuda",
-        )
+    return _ManifestPlan(
+        names=[corpus_name],
+        pipeline_names=[pipelines.XLM_MINILM],
+        phases=[runner.RECOGNITION, runner.RESOLUTION],
+        arguments=arguments,
+        commit="short-sha",
+        full_commit="a" * 40,
+        facts={"started_at": "2026-10-13T00:00:00+00:00", "gpu": "A100"},
+        device="cuda",
     )
+
+
+def _run_manifest_for_xlm_pipeline(corpus_name="newsli-ar"):
+    return benchmark_cli._run_manifest(_manifest_plan_for_xlm_pipeline(corpus_name))
 
 
 def test_run_manifest_pins_matrix_counts_models_and_language_evidence():
@@ -318,6 +320,30 @@ def test_run_manifest_identity_binds_expected_source_hash():
     assert benchmark_cli._manifest_identity(
         different_pin
     ) != benchmark_cli._manifest_identity(manifest)
+
+
+def test_legacy_manifest_without_source_pin_is_refused_without_rewriting(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(
+        benchmark_cli.pipelines,
+        "pipeline_execution_settings",
+        lambda *args, **kwargs: {},
+    )
+    monkeypatch.setattr(
+        benchmark_cli.pipelines, "describe_device", lambda device: device
+    )
+    plan = _manifest_plan_for_xlm_pipeline("geovirus")
+    legacy = benchmark_cli._run_manifest(plan)
+    del legacy["protocol"]["corpora"]["geovirus"]["expected_source_content_sha256"]
+    manifest_bytes = json.dumps(legacy).encode()
+    manifest_path = tmp_path / "run-manifest.json"
+    manifest_path.write_bytes(manifest_bytes)
+
+    with pytest.raises(RuntimeError, match="different experiment"):
+        benchmark_cli._prepare_run_manifest(tmp_path, plan)
+
+    assert manifest_path.read_bytes() == manifest_bytes
 
 
 def test_run_manifest_records_effective_pipeline_execution_settings():
@@ -1004,35 +1030,133 @@ def _write_geovirus(folder, articles: int, monkeypatch) -> None:
 class TestSourceTotalsGate:
     """A GeoVirus file that is not the whole source is refused, not benchmarked."""
 
-    def test_changed_cached_source_stops_before_scoring_models(
+    @pytest.mark.parametrize(
+        "pin, reason",
+        [
+            ("different", "SHA-256 mismatch"),
+            (None, "no expected source SHA-256 pin"),
+            ("malformed", "malformed expected source SHA-256 pin"),
+        ],
+        ids=["mismatch", "missing-pin", "malformed-pin"],
+    )
+    def test_invalid_cached_source_is_rejected_before_scoring_and_preserves_outputs(
+        self, monkeypatch, tmp_path, capsys, pin, reason
+    ):
+        _stub_run_environment(monkeypatch)
+        monkeypatch.setattr(
+            benchmark_cli.pipelines,
+            "pipeline_execution_settings",
+            lambda *args, **kwargs: {},
+        )
+
+        def forbidden_run_corpus(*args, **kwargs):
+            pytest.fail("source rejection must happen before scoring")
+
+        monkeypatch.setattr(benchmark_cli, "run_corpus", forbidden_run_corpus)
+        folder = tmp_path / "geovirus"
+        folder.mkdir()
+        source_bytes = b"<articles />"
+        (folder / corpora.CORPORA["geovirus"].filename).write_bytes(source_bytes)
+        if pin == "different":
+            expected_pin = hashlib.sha256(b"<other articles />").hexdigest()
+        elif pin == "malformed":
+            expected_pin = "z" * 64
+        else:
+            expected_pin = pin
+        monkeypatch.setitem(
+            corpora.CORPORA,
+            "geovirus",
+            replace(
+                corpora.CORPORA["geovirus"],
+                expected_source_sha256=expected_pin,
+            ),
+        )
+        report_path = folder / "benchmark-report.json"
+        checkpoint_path = folder / f"checkpoint-{pipelines.XLM_MINILM}.json"
+        report_bytes = b'{"old report": true}\n'
+        checkpoint_bytes = b'{"old checkpoint": true}\n'
+        report_path.write_bytes(report_bytes)
+        checkpoint_path.write_bytes(checkpoint_bytes)
+
+        exit_code = benchmark_cli.main(
+            [
+                "--output-dir",
+                str(tmp_path),
+                "--corpus",
+                "geovirus",
+                "--phase",
+                "recognition",
+                "--device",
+                "cpu",
+            ]
+        )
+
+        assert exit_code == 1
+        manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+        assert manifest["status"] == "rejected"
+        assert manifest["protocol"]["corpora"]["geovirus"]["status"] == "rejected"
+        assert reason in manifest["protocol"]["corpora"]["geovirus"]["reason"]
+        assert "completed_at" not in manifest
+        assert report_path.read_bytes() == report_bytes
+        assert checkpoint_path.read_bytes() == checkpoint_bytes
+        assert reason in capsys.readouterr().err
+
+    def test_newsli_release_hash_rejection_is_recorded_without_replacing_outputs(
         self, monkeypatch, tmp_path
     ):
         _stub_run_environment(monkeypatch)
-        model_calls = []
+        monkeypatch.setattr(
+            benchmark_cli.pipelines,
+            "pipeline_execution_settings",
+            lambda *args, **kwargs: {},
+        )
+
+        def reject_release(data, path):
+            raise corpora.SourceHashError(
+                f"{path} is not the pinned UniTopRank release"
+            )
+
+        monkeypatch.setattr(corpora, "_check_newsli_release", reject_release)
         monkeypatch.setattr(
             benchmark_cli,
             "run_corpus",
-            lambda *args, **kwargs: model_calls.append(args) or [],
+            lambda *args, **kwargs: pytest.fail(
+                "source rejection must happen before scoring"
+            ),
         )
-        folder = tmp_path / "geovirus"
+        (tmp_path / corpora.NEWSLI_RELEASE).write_bytes(b"stale release")
+        folder = tmp_path / "newsli-ar"
         folder.mkdir()
-        (folder / corpora.CORPORA["geovirus"].filename).write_bytes(b"<articles />")
+        report_path = folder / "benchmark-report.json"
+        checkpoint_path = folder / f"checkpoint-{pipelines.XLM_MINILM}.json"
+        report_path.write_bytes(b'{"old report": true}\n')
+        checkpoint_path.write_bytes(b'{"old checkpoint": true}\n')
+        report_bytes = report_path.read_bytes()
+        checkpoint_bytes = checkpoint_path.read_bytes()
 
-        with pytest.raises(ValueError, match=r"geovirus.*SHA-256 mismatch"):
-            benchmark_cli.main(
-                [
-                    "--output-dir",
-                    str(tmp_path),
-                    "--corpus",
-                    "geovirus",
-                    "--phase",
-                    "recognition",
-                    "--device",
-                    "cpu",
-                ]
-            )
+        exit_code = benchmark_cli.main(
+            [
+                "--output-dir",
+                str(tmp_path),
+                "--corpus",
+                "newsli-ar",
+                "--phase",
+                "recognition",
+                "--device",
+                "cpu",
+            ]
+        )
 
-        assert model_calls == []
+        assert exit_code == 1
+        manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+        assert manifest["status"] == "rejected"
+        assert manifest["protocol"]["corpora"]["newsli-ar"]["status"] == "rejected"
+        assert (
+            "pinned UniTopRank release"
+            in manifest["protocol"]["corpora"]["newsli-ar"]["reason"]
+        )
+        assert report_path.read_bytes() == report_bytes
+        assert checkpoint_path.read_bytes() == checkpoint_bytes
 
     def test_the_complete_source_is_compared_and_accepted(
         self, tmp_path, capsys, monkeypatch

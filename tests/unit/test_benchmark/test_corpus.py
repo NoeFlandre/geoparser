@@ -45,6 +45,12 @@ def write(tmp_path, xml, name="corpus.xml"):
 class TestParseCorpus:
     """Turning the shipped XML into documents with usable spans."""
 
+    def test_parses_the_verified_source_bytes(self, tmp_path):
+        """The loader can parse the exact XML bytes it verified."""
+        path = write(tmp_path, ARTICLE)
+
+        assert parse_corpus(path.read_bytes()) == parse_corpus(path)
+
     def test_applies_the_one_character_offset_shift(self, tmp_path):
         """Test that the corrected offsets select the toponym text."""
         documents = parse_corpus(write(tmp_path, ARTICLE))
