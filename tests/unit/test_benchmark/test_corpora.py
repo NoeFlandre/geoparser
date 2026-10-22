@@ -6,6 +6,8 @@ the report never need to know which one they are scoring.
 """
 
 import hashlib
+import io
+from types import SimpleNamespace
 
 import pytest
 
@@ -57,6 +59,73 @@ class TestRegistry:
 
 class TestLoad:
     """Loading a HIPE corpus through the registry."""
+
+    @pytest.mark.parametrize("kind", [corpora.GEOVIRUS, corpora.HIPE])
+    @pytest.mark.parametrize("fetched", [False, True], ids=["cached", "fetched"])
+    @pytest.mark.parametrize("matches", [False, True], ids=["changed", "pinned"])
+    def test_source_hash_is_checked_before_parsing(
+        self, tmp_path, monkeypatch, kind, fetched, matches
+    ):
+        name = "geovirus" if kind == corpora.GEOVIRUS else "hipe2020-en"
+        filename = "GeoVirus.xml" if kind == corpora.GEOVIRUS else "HIPE.tsv"
+        source_bytes = b"<source />"
+        expected_bytes = source_bytes if matches else b"<different source />"
+        expected_hash = hashlib.sha256(expected_bytes).hexdigest()
+        spec = SimpleNamespace(
+            name=name,
+            language="en",
+            url="https://example.invalid/source",
+            filename=filename,
+            kind=kind,
+            documents=None,
+            gold_spans=None,
+            expected_source_sha256=expected_hash,
+        )
+        monkeypatch.setitem(corpora.CORPORA, name, spec)
+        cache_path = tmp_path / filename
+        if fetched:
+            monkeypatch.setattr(
+                corpora.corpus.urllib.request,
+                "urlopen",
+                lambda *args, **kwargs: io.BytesIO(source_bytes),
+            )
+        else:
+            cache_path.write_bytes(source_bytes)
+
+        parser_calls = []
+        if kind == corpora.GEOVIRUS:
+            monkeypatch.setattr(
+                corpora.corpus,
+                "parse_corpus",
+                lambda *args, **kwargs: parser_calls.append("parse") or [],
+            )
+        else:
+            monkeypatch.setattr(
+                corpora,
+                "hipe_qids",
+                lambda path: parser_calls.append("qids") or set(),
+            )
+            monkeypatch.setattr(
+                corpora,
+                "load_coordinates",
+                lambda *args, **kwargs: parser_calls.append("coordinates") or {},
+            )
+            monkeypatch.setattr(
+                corpora,
+                "parse_hipe",
+                lambda *args, **kwargs: parser_calls.append("parse") or [],
+            )
+
+        if matches:
+            loaded = corpora.load(name, tmp_path)
+            assert loaded.source_content_sha256 == hashlib.sha256(
+                source_bytes
+            ).hexdigest()
+            assert parser_calls
+        else:
+            with pytest.raises(ValueError, match=f"{name}.*SHA-256 mismatch"):
+                corpora.load(name, tmp_path)
+            assert parser_calls == []
 
     def test_loads_a_hipe_corpus_from_cache(self, tmp_path, monkeypatch):
         """Test that a cached TSV is parsed with committed coordinates."""
