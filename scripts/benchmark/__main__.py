@@ -1246,6 +1246,7 @@ def _record_manifest_cell(
 ) -> None:
     """Record counts, metrics, and any explicit per-document failures."""
     cell = manifest["protocol"]["corpora"][name]
+    cell.pop("reason", None)
     cell.update(
         {
             "corpus_digest": payload["corpus_digest"],

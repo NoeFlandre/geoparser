@@ -1158,6 +1158,74 @@ class TestSourceTotalsGate:
         assert report_path.read_bytes() == report_bytes
         assert checkpoint_path.read_bytes() == checkpoint_bytes
 
+    def test_repaired_source_resume_clears_the_previous_rejection_reason(
+        self, monkeypatch, tmp_path
+    ):
+        _stub_run_environment(monkeypatch)
+        monkeypatch.setattr(
+            benchmark_cli.pipelines,
+            "pipeline_execution_settings",
+            lambda *args, **kwargs: {},
+        )
+        source_bytes = b"<articles />"
+        source_pin = hashlib.sha256(source_bytes).hexdigest()
+        spec = replace(
+            corpora.CORPORA["geovirus"],
+            expected_source_sha256=source_pin,
+        )
+        monkeypatch.setitem(corpora.CORPORA, "geovirus", spec)
+        source_path = tmp_path / "geovirus" / spec.filename
+        source_path.parent.mkdir()
+        source_path.write_bytes(b"<changed articles />")
+        arguments = [
+            "--output-dir",
+            str(tmp_path),
+            "--corpus",
+            "geovirus",
+            "--pipeline",
+            pipelines.XLM_MINILM,
+            "--phase",
+            runner.RECOGNITION,
+            "--device",
+            "cpu",
+        ]
+
+        assert benchmark_cli.main(arguments) == 1
+        rejected_manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+        rejected_cell = rejected_manifest["protocol"]["corpora"]["geovirus"]
+        assert rejected_manifest["status"] == rejected_cell["status"] == "rejected"
+        assert "SHA-256 mismatch" in rejected_cell["reason"]
+
+        source_path.write_bytes(source_bytes)
+
+        def write_synthetic_report(loaded, args, folder, **kwargs):
+            payload = {
+                "corpus_digest": loaded.digest,
+                "documents": len(loaded.documents),
+                "gold_toponyms": 0,
+                "environment": {},
+                "pipelines": [
+                    {
+                        "name": pipelines.XLM_MINILM,
+                        "recognition": {"f1": 1.0},
+                        "resolution": {},
+                        "phase_elapsed_seconds": {runner.RECOGNITION: 0.0},
+                        "phase_provenance": {},
+                        "failures": {},
+                    }
+                ],
+            }
+            (folder / "benchmark-report.json").write_text(json.dumps(payload))
+            return []
+
+        monkeypatch.setattr(benchmark_cli, "run_corpus", write_synthetic_report)
+
+        assert benchmark_cli.main(arguments) == benchmark_cli.EXIT_OK
+        completed_manifest = json.loads((tmp_path / "run-manifest.json").read_text())
+        completed_cell = completed_manifest["protocol"]["corpora"]["geovirus"]
+        assert completed_manifest["status"] == completed_cell["status"] == "complete"
+        assert "reason" not in completed_cell
+
     def test_the_complete_source_is_compared_and_accepted(
         self, tmp_path, capsys, monkeypatch
     ):
