@@ -1031,16 +1031,16 @@ class TestSourceTotalsGate:
     """A GeoVirus file that is not the whole source is refused, not benchmarked."""
 
     @pytest.mark.parametrize(
-        "pin, reason",
+        "expected_pin, reason",
         [
-            ("different", "SHA-256 mismatch"),
+            (hashlib.sha256(b"<other articles />").hexdigest(), "SHA-256 mismatch"),
             (None, "no expected source SHA-256 pin"),
-            ("malformed", "malformed expected source SHA-256 pin"),
+            ("z" * 64, "malformed expected source SHA-256 pin"),
         ],
         ids=["mismatch", "missing-pin", "malformed-pin"],
     )
     def test_invalid_cached_source_is_rejected_before_scoring_and_preserves_outputs(
-        self, monkeypatch, tmp_path, capsys, pin, reason
+        self, monkeypatch, tmp_path, capsys, expected_pin, reason
     ):
         _stub_run_environment(monkeypatch)
         monkeypatch.setattr(
@@ -1057,12 +1057,6 @@ class TestSourceTotalsGate:
         folder.mkdir()
         source_bytes = b"<articles />"
         (folder / corpora.CORPORA["geovirus"].filename).write_bytes(source_bytes)
-        if pin == "different":
-            expected_pin = hashlib.sha256(b"<other articles />").hexdigest()
-        elif pin == "malformed":
-            expected_pin = "z" * 64
-        else:
-            expected_pin = pin
         monkeypatch.setitem(
             corpora.CORPORA,
             "geovirus",
@@ -1091,15 +1085,27 @@ class TestSourceTotalsGate:
             ]
         )
 
-        assert exit_code == 1
         manifest = json.loads((tmp_path / "run-manifest.json").read_text())
-        assert manifest["status"] == "rejected"
-        assert manifest["protocol"]["corpora"]["geovirus"]["status"] == "rejected"
-        assert reason in manifest["protocol"]["corpora"]["geovirus"]["reason"]
-        assert "completed_at" not in manifest
-        assert report_path.read_bytes() == report_bytes
-        assert checkpoint_path.read_bytes() == checkpoint_bytes
-        assert reason in capsys.readouterr().err
+        cell = manifest["protocol"]["corpora"]["geovirus"]
+        assert (
+            exit_code,
+            manifest["status"],
+            cell["status"],
+            reason in cell["reason"],
+            "completed_at" in manifest,
+            report_path.read_bytes(),
+            checkpoint_path.read_bytes(),
+            reason in capsys.readouterr().err,
+        ) == (
+            1,
+            "rejected",
+            "rejected",
+            True,
+            False,
+            report_bytes,
+            checkpoint_bytes,
+            True,
+        )
 
     def test_newsli_release_hash_rejection_is_recorded_without_replacing_outputs(
         self, monkeypatch, tmp_path
@@ -1147,16 +1153,23 @@ class TestSourceTotalsGate:
             ]
         )
 
-        assert exit_code == 1
         manifest = json.loads((tmp_path / "run-manifest.json").read_text())
-        assert manifest["status"] == "rejected"
-        assert manifest["protocol"]["corpora"]["newsli-ar"]["status"] == "rejected"
+        cell = manifest["protocol"]["corpora"]["newsli-ar"]
         assert (
-            "pinned UniTopRank release"
-            in manifest["protocol"]["corpora"]["newsli-ar"]["reason"]
+            exit_code,
+            manifest["status"],
+            cell["status"],
+            "pinned UniTopRank release" in cell["reason"],
+            report_path.read_bytes(),
+            checkpoint_path.read_bytes(),
+        ) == (
+            1,
+            "rejected",
+            "rejected",
+            True,
+            report_bytes,
+            checkpoint_bytes,
         )
-        assert report_path.read_bytes() == report_bytes
-        assert checkpoint_path.read_bytes() == checkpoint_bytes
 
     def test_repaired_source_resume_clears_the_previous_rejection_reason(
         self, monkeypatch, tmp_path
@@ -1190,11 +1203,15 @@ class TestSourceTotalsGate:
             "cpu",
         ]
 
-        assert benchmark_cli.main(arguments) == 1
+        rejected_exit_code = benchmark_cli.main(arguments)
         rejected_manifest = json.loads((tmp_path / "run-manifest.json").read_text())
         rejected_cell = rejected_manifest["protocol"]["corpora"]["geovirus"]
-        assert rejected_manifest["status"] == rejected_cell["status"] == "rejected"
-        assert "SHA-256 mismatch" in rejected_cell["reason"]
+        assert (
+            rejected_exit_code,
+            rejected_manifest["status"],
+            rejected_cell["status"],
+            "SHA-256 mismatch" in rejected_cell["reason"],
+        ) == (1, "rejected", "rejected", True)
 
         source_path.write_bytes(source_bytes)
 
@@ -1220,11 +1237,15 @@ class TestSourceTotalsGate:
 
         monkeypatch.setattr(benchmark_cli, "run_corpus", write_synthetic_report)
 
-        assert benchmark_cli.main(arguments) == benchmark_cli.EXIT_OK
+        completed_exit_code = benchmark_cli.main(arguments)
         completed_manifest = json.loads((tmp_path / "run-manifest.json").read_text())
         completed_cell = completed_manifest["protocol"]["corpora"]["geovirus"]
-        assert completed_manifest["status"] == completed_cell["status"] == "complete"
-        assert "reason" not in completed_cell
+        assert (
+            completed_exit_code,
+            completed_manifest["status"],
+            completed_cell["status"],
+            "reason" in completed_cell,
+        ) == (benchmark_cli.EXIT_OK, "complete", "complete", False)
 
     def test_the_complete_source_is_compared_and_accepted(
         self, tmp_path, capsys, monkeypatch

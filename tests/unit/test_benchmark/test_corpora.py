@@ -84,74 +84,122 @@ class TestRegistry:
             corpora.load("nope", tmp_path)
 
 
+def _stage_cached_source(monkeypatch, cache_path, source_bytes):
+    """Stage a cached corpus source."""
+    cache_path.write_bytes(source_bytes)
+
+
+def _stage_fetched_source(monkeypatch, cache_path, source_bytes):
+    """Stub a corpus download with the given bytes."""
+    monkeypatch.setattr(
+        corpora.corpus.urllib.request,
+        "urlopen",
+        lambda *args, **kwargs: io.BytesIO(source_bytes),
+    )
+
+
+def _stage_geovirus_parser(monkeypatch, parser_calls):
+    """Record GeoVirus parser calls without reading model data."""
+    monkeypatch.setattr(
+        corpora.corpus,
+        "parse_corpus",
+        lambda *args, **kwargs: parser_calls.append("parse") or [],
+    )
+
+
+def _stage_hipe_parsers(monkeypatch, parser_calls):
+    """Record each HIPE parsing stage without loading coordinates."""
+    monkeypatch.setattr(
+        corpora,
+        "hipe_qids",
+        lambda path: parser_calls.append("qids") or set(),
+    )
+    monkeypatch.setattr(
+        corpora,
+        "load_coordinates",
+        lambda *args, **kwargs: parser_calls.append("coordinates") or {},
+    )
+    monkeypatch.setattr(
+        corpora,
+        "parse_hipe",
+        lambda *args, **kwargs: parser_calls.append("parse") or [],
+    )
+
+
+def _stage_pinned_source(
+    monkeypatch, tmp_path, *, name, kind, fetched, source_bytes, pinned_bytes
+):
+    """Stage a pinned source and parser spies for one loader regression case."""
+    original_spec = corpora.CORPORA[name]
+    spec = replace(
+        original_spec,
+        documents=None,
+        gold_spans=None,
+        expected_source_sha256=hashlib.sha256(pinned_bytes).hexdigest(),
+    )
+    monkeypatch.setitem(corpora.CORPORA, name, spec)
+    cache_path = tmp_path / spec.filename
+    {False: _stage_cached_source, True: _stage_fetched_source}[fetched](
+        monkeypatch, cache_path, source_bytes
+    )
+
+    parser_calls = []
+    {
+        corpora.GEOVIRUS: _stage_geovirus_parser,
+        corpora.HIPE: _stage_hipe_parsers,
+    }[kind](monkeypatch, parser_calls)
+    return name, parser_calls
+
+
 class TestLoad:
     """Loading a HIPE corpus through the registry."""
 
-    @pytest.mark.parametrize("kind", [corpora.GEOVIRUS, corpora.HIPE])
+    @pytest.mark.parametrize(
+        ("name", "kind"),
+        [("geovirus", corpora.GEOVIRUS), ("hipe2020-en", corpora.HIPE)],
+    )
     @pytest.mark.parametrize("fetched", [False, True], ids=["cached", "fetched"])
-    @pytest.mark.parametrize("matches", [False, True], ids=["changed", "pinned"])
-    def test_source_hash_is_checked_before_parsing(
-        self, tmp_path, monkeypatch, kind, fetched, matches
+    def test_changed_source_hash_is_checked_before_parsing(
+        self, tmp_path, monkeypatch, name, kind, fetched
     ):
-        name = "geovirus" if kind == corpora.GEOVIRUS else "hipe2020-en"
-        original_spec = corpora.CORPORA[name]
-        filename = original_spec.filename
-        source_bytes = b"<source />"
-        expected_bytes = source_bytes if matches else b"<different source />"
-        expected_hash = hashlib.sha256(expected_bytes).hexdigest()
-        spec = replace(
-            original_spec,
-            documents=None,
-            gold_spans=None,
-            expected_source_sha256=expected_hash,
+        name, parser_calls = _stage_pinned_source(
+            monkeypatch,
+            tmp_path,
+            name=name,
+            kind=kind,
+            fetched=fetched,
+            source_bytes=b"<source />",
+            pinned_bytes=b"<different source />",
         )
-        monkeypatch.setitem(corpora.CORPORA, name, spec)
-        cache_path = tmp_path / filename
-        if fetched:
-            monkeypatch.setattr(
-                corpora.corpus.urllib.request,
-                "urlopen",
-                lambda *args, **kwargs: io.BytesIO(source_bytes),
-            )
-        else:
-            cache_path.write_bytes(source_bytes)
 
-        parser_calls = []
-        if kind == corpora.GEOVIRUS:
-            monkeypatch.setattr(
-                corpora.corpus,
-                "parse_corpus",
-                lambda *args, **kwargs: parser_calls.append("parse") or [],
-            )
-        else:
-            monkeypatch.setattr(
-                corpora,
-                "hipe_qids",
-                lambda path: parser_calls.append("qids") or set(),
-            )
-            monkeypatch.setattr(
-                corpora,
-                "load_coordinates",
-                lambda *args, **kwargs: parser_calls.append("coordinates") or {},
-            )
-            monkeypatch.setattr(
-                corpora,
-                "parse_hipe",
-                lambda *args, **kwargs: parser_calls.append("parse") or [],
-            )
+        with pytest.raises(corpora.SourceHashError, match=f"{name}.*SHA-256 mismatch"):
+            corpora.load(name, tmp_path)
 
-        if matches:
-            loaded = corpora.load(name, tmp_path)
-            assert (
-                loaded.source_content_sha256 == hashlib.sha256(source_bytes).hexdigest()
-            )
-            assert parser_calls
-        else:
-            with pytest.raises(
-                corpora.SourceHashError, match=f"{name}.*SHA-256 mismatch"
-            ):
-                corpora.load(name, tmp_path)
-            assert parser_calls == []
+        assert parser_calls == []
+
+    @pytest.mark.parametrize(
+        ("name", "kind"),
+        [("geovirus", corpora.GEOVIRUS), ("hipe2020-en", corpora.HIPE)],
+    )
+    @pytest.mark.parametrize("fetched", [False, True], ids=["cached", "fetched"])
+    def test_matching_source_hash_allows_parsing(
+        self, tmp_path, monkeypatch, name, kind, fetched
+    ):
+        source_bytes = b"<source />"
+        name, parser_calls = _stage_pinned_source(
+            monkeypatch,
+            tmp_path,
+            name=name,
+            kind=kind,
+            fetched=fetched,
+            source_bytes=source_bytes,
+            pinned_bytes=source_bytes,
+        )
+
+        loaded = corpora.load(name, tmp_path)
+
+        assert loaded.source_content_sha256 == hashlib.sha256(source_bytes).hexdigest()
+        assert parser_calls
 
     @pytest.mark.parametrize(
         "pin", [None, "z" * 64, "0" * 63], ids=["missing", "non-hex", "short"]

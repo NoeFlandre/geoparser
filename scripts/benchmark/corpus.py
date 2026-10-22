@@ -93,6 +93,13 @@ def corpus_digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
 
 
+def _parse_xml_source(path: Path | bytes) -> ET.Element:
+    """Parse a path or the exact source bytes already checked by the loader."""
+    if isinstance(path, bytes):
+        return ET.fromstring(path)  # noqa: S314 - parses the pinned corpus bytes
+    return ET.parse(path).getroot()  # noqa: S314 - parses the pinned corpus file
+
+
 def parse_corpus(path: Path | bytes, *, limit: int | None = None) -> list[Document]:
     """
     Read GeoVirus into documents with gold spans.
@@ -108,7 +115,7 @@ def parse_corpus(path: Path | bytes, *, limit: int | None = None) -> list[Docume
     Returns:
         The parsed documents, in corpus order
     """
-    root = ET.fromstring(path) if isinstance(path, bytes) else ET.parse(path).getroot()  # noqa: S314 - parses the benchmark corpus this script downloads itself
+    root = _parse_xml_source(path)
     documents: list[Document] = []
     for index, article in enumerate(root.findall("article")):
         document = _article_document(index, article)
