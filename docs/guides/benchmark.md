@@ -106,13 +106,21 @@ The sample of September 30 is in `benchmark-evidence/panx/feasibility-2026-09-30
 
 The submission wrapper checks for a duplicate active OAR job. It requests one GPU and a limited walltime, and it submits `run_benchmark.sh` to the node. The node script builds GeoNames on local scratch. It keeps the model caches and the database off the home quota. It writes the checkpoints to the results directory that you selected.
 
+Use the readiness helper only for a node that is still reserved by an active OAR job. `oarsh` identifies that job through `OAR_JOB_ID` or `OAR_JOB_KEY_FILE`; when running from a frontend shell outside the job shell, set one of those variables for the active job ([Advanced OAR](https://www.grid5000.fr/w/Advanced_OAR)). For example, while the target node remains in that allocation:
+
+```bash
+python3 scripts/g5k/wait_for_node.py hydra-1
+```
+
+It retries the harmless `oarsh hydra-1 true` check every 10 seconds, with a 15-minute total timeout and a 10-second cap per probe. Transient connection refusals are retried; a timeout is reported as a failure. An interactive `-t deploy` job ends when its shell is closed. Grid5000 then reboots the reserved nodes into the standard environment and releases them for another job ([Advanced Kadeploy](https://www.grid5000.fr/w/Advanced_Kadeploy)); the ended job's OAR context cannot be used to monitor that reboot. The normal benchmark path uses the passive `submit.sh` job and does not deploy a node.
+
 For example, use this command to run only the resolution phase of two pipelines on all corpora:
 
 ```bash
 CORPORA=all PIPELINES=prior,trim PHASES=resolution ./scripts/g5k/submit.sh
 ```
 
-`CORPORA`, `PIPELINES`, and `PHASES` accept names that are separated by commas. You can also set `LIMIT`, `DEVICE`, `CHUNK_SIZE`, `MIN_SIMILARITY`, `WALLTIME`, `GPUS`, `QUEUE`, `CLUSTER`, `REPO_ROOT`, and `RESULTS` when you submit. Run `usagepolicycheck -t` before and after you use Grid'5000.
+`CORPORA`, `PIPELINES`, and `PHASES` accept names that are separated by commas. You can also set `LIMIT`, `DEVICE`, `CHUNK_SIZE`, `MIN_SIMILARITY`, `WALLTIME`, `GPUS`, `QUEUE`, `CLUSTER`, `REPO_ROOT`, and `RESULTS` when you submit. Run `usagepolicycheck -t` before and after you use Grid'5000 to check current usage; `usagepolicycheck -l --detailed-limits` lists daily per-cluster limits. An omitted cluster in the `-t` usage summary is not evidence that the cluster has no allowance.
 
 ## Publish the results
 
